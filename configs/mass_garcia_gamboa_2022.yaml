@@ -1,0 +1,68 @@
+# Garcia & Gamboa (2022) mass model defaults: circular tube spar wing concept.
+# Source: Garcia, G.L. & Gamboa, P.V. (2022), Aeronaut. J. 126, 249-296, doi:10.1017/aer.2021.68
+#
+# These are the paper's values, used as PLACEHOLDERS until the model is
+# calibrated against USYD aircraft (see aircrafter2/mass/calibration.py and
+# docs/OPEN_QUESTIONS.md). All values are SI. Input names and units are listed
+# in aircrafter2/mass/garcia_gamboa/inputs.py.
+
+options:
+  max_mode: ks                 # smooth max on the gradient path; "hard" for reporting/verification
+  rho_ks: 100.0                # log-space KS sharpness: over-estimate <= 2**(1/100) = 0.7 % for two terms
+  softplus_scale: 1.0e-6       # m, smooth floor on the divergence thickness (PLAN G9)
+  deflection_mode: paper       # Eq. 110 as printed; "exact" = Euler-Bernoulli (PLAN G10)
+  torsion_stiffness_mode: paper  # Eq. 115 as printed; "bredt" = 2 pi r^3 G t (PLAN G12)
+  tail_boom_load_mode: paper   # Eq. 55 with Eq. 5 as printed: reproduces Table 15, and f_tb was fitted with it (PLAN G19)
+  sizing_radius_mode: paper    # K_tube = r/c_mean (Sec. 2.2.2) with sizing chord c_root (Sec. 3.3): reproduces Table 15;
+                               # identical to "physical" for a rectangular wing, unconservative for taper (PLAN G23)
+  include_twist: false         # G&G Sec. 4.2 sized torsion stiffness by divergence only
+  use_min_gauge: true
+  r_tube_mode: derived         # decision D1: r = k_fill * (t/c at spar) * c_root / 2 - clearance
+  n_panels: 1
+  statistical_model: all       # Eq. 124
+  standalone_solver: true
+
+inputs:
+  # Safety factor and air (Table 3)
+  SF: 1.5                      # Table 3 / Eq. 42
+  rho: 1.225                   # Table 3
+  # Load case (Table 3 values for the tube-spar aircraft; USYD values are an open question, Q12)
+  n: 2.0                       # Table 3 (UBI11, GRA13, UBI15)
+  div_speed_factor: 1.2        # text after Eq. 47
+  delta_tip_ratio: 0.1         # Table 3 (UBI15); Sec. 3.3.1 "typical upper value 0.1"
+  theta_tb_max: 0.017453       # rad = 1 deg, Table 3
+  x_spar: 0.25                 # brief default; Eq. 117 vanishes at the quarter chord
+  # UD CFRP spar / tube (Table 13)
+  sigma_spar: 7.2e+8           # Table 13, normal stress (ultimate)
+  tau_spar: 5.4e+7             # Table 13, shear stress (ultimate)
+  E_spar: 8.4e+10              # Table 13
+  G_spar: 5.0e+9               # Table 13
+  rho_spar: 1600.0             # Table 13
+  # Tail boom: not tabulated; assumed UD CFRP as Table 13 (PLAN G17)
+  sigma_tb: 7.2e+8
+  tau_tb: 5.4e+7
+  E_tb: 8.4e+10
+  rho_tb: 1600.0
+  # Balsa ribs and LE/TE stringers (Table 13)
+  sigma_balsa: 1.0e+7          # Table 13
+  tau_balsa: 1.4e+6            # Table 13
+  rho_balsa: 200.0             # Table 13
+  # Covering film (Table 13; 0.018 for UBI11)
+  gamma_film: 0.036
+  # Cross-section stringer ratios (Table 12, UBI11/UBI15)
+  le_ratio: 0.021
+  te_ratio: 0.021
+  c_rib_frac: 0.7              # Sec. 3.3.3 "around 70 % of the chord"
+  # Combined correction factors, circular tube spar concept (Table 14)
+  f_wing: 1.120
+  f_tb: 12.81
+  f_ht: 0.6411
+  f_vt: 0.3414                 # lower trend; 0.7753 = "heavy/composite tail" option (Table 14, Fig. 11b)
+  f_cb: 0.7878                 # kg/m^2
+  f_gear: 0.0089
+  # Tube fit (decision D1): PLACEHOLDERS, see OPEN_QUESTIONS Q5
+  k_fill: 0.85
+  clearance: 0.001
+  # Minimum gauge: PLACEHOLDERS, see OPEN_QUESTIONS Q3
+  t_tube_min: 5.0e-4
+  t_tb_min: 5.0e-4

@@ -1,0 +1,46 @@
+extends: _tube_spar_common.yaml
+name: GRA13
+source: "Garcia & Gamboa (2022): Beihang GRAVITY, ACC 2013. Inputs Tables 3, 12, 13, 14; expected Table 15 (calculated)."
+
+options:
+  n_panels: 5                  # Table 3
+
+inputs:
+  b: 4.74                      # Table 3
+  c_mean: 0.296                # Table 3
+  c_root: 0.33                 # Table 3
+  S_wing: 1.40304              # b * c_mean
+  tc: 0.122                    # Table 3
+  x_spar: 0.26                 # Table 3
+  winglet_ratio: 0.0           # Table 3
+  delta_tip_ratio: 0.2         # Table 3
+  l_ht: 1.09968                # Table 3 tail arm-to-span 0.232 * b
+  l_tb: 1.19922                # Table 3 length-to-span 0.253 * b
+  r_tb: 0.0125                 # Table 3 diameter 0.025 m
+  theta_tb_max: 0.017453       # Table 3, 1 deg
+  S_ht: 0.149                  # Table 3
+  S_vt: 0.165                  # Table 3
+  S_cb: 0.13                   # Table 3
+  Cm: -0.27                    # Table 3
+  n: 2.0                       # Table 3
+  V_design: 14.6               # Table 3
+  A_c2: 0.0649                 # Table 12
+  P_c: 2.088                   # Table 12
+  le_ratio: 0.028              # Table 12
+  te_ratio: 0.028              # Table 12
+  gamma_film: 0.036            # Table 13
+  f_vt: 0.3414                 # Table 14 combined (GRA13)
+  m_sys: 0.65                  # Table 15
+  m_pay: 11.0                  # Table 15
+  y1: 0.474                    # ASSUMPTION: b / (2 n_panels) (OPEN_QUESTIONS Q4)
+  x_gd: 0.26                   # ASSUMPTION: held at the spar (OPEN_QUESTIONS Q4)
+
+expected:                      # Table 15, calculated masses (kg)
+  m_wing: 1.249
+  m_ht: 0.085
+  m_vt: 0.050
+  m_tb: 0.131
+  m_cb: 0.102
+  m_gear: 0.119
+  m_empty: 2.387
+  m_total: 13.395

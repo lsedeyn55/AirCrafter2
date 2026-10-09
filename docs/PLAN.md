@@ -311,7 +311,7 @@ for n = 2 the flight and ground bending moments are *exactly equal* (§7 G18), s
 | `RibSizing` | 97–104 (D-box derivation, applied with c_rib = 0.7c per §3.3.3) | Total n_rib·t_rib, no integer count. |
 | `WingMass` | 26, 27, 28 (γ form), 30, 31, 32 | Multi-panel via Eq. 33 (G7). |
 | `TailMass` | 34, 35 | |
-| `TailBoomLoads` + `TailBoomSizing` | 54 (with l_ht directly), 56 as Q·l_tb; 119–123 | See G1, G19. |
+| `TailBoomLoads` + `TailBoomSizing` | 55 with Eq. 5 (default) or 54; 56; 119–123 | See G1, G19. |
 | `FuselageMass` | 36, 37, 38 | |
 | `GearMass` | 39 | Uses coupled m. |
 | `MassSum` | 40, 41 | Closure residual `m − (m_empty + m_pay)` converged by the MDA, not inside a component. |
@@ -331,11 +331,19 @@ the trade step 5 must show. A `r_tube: design_variable` mode with the `tube_fit_
 available for cases where minimum gauge creates an interior optimum. Post-processing reports the next commercial
 tube size up (catalogue in `data/`, placeholder).
 
-**Verification (unit tests, step 2).** `tests/mass/test_gg_table15.py`:
-- Run UBI11, GRA13 and UBI15 with Table 3/12/13 inputs and the **combined** Table 14 factors, with f_vt per aircraft
-  as in Table 14 (0.7753 for UBI11, 0.3414 for the others) and γ_film per aircraft (0.018 for UBI11).
-- Assert every component in Table 15 within a tolerance to be agreed (the brief says "a few percent"). §7 G20 shows
-  this **won't pass on a literal reading**, so step 2 starts by isolating the cause.
+**Verification (step 2, done).** `tests/mass/test_table15.py` reproduces every Table 15 component of UBI11, GRA13
+and UBI15 within ±3% (worst case 2.3%). `docs/mass_verification.md` has the full table. That needed the readings in
+G19, G22 and G23.
+
+`tests/mass/test_reference.py` checks the group against an independent plain-Python implementation to 1e-8,
+across all 16 combinations of the interpretation switches. `tests/mass/test_calibration.py` checks that Eq. 127,
+fitted to Table 15's real masses, recovers the Table 14 individual factors (within 0.4%).
+
+**Closure solver.** Standalone, the mass group uses NonlinearBlockGS with Aitken acceleration. The closure is weakly
+coupled (dm_total/dm ≈ 0.05). Newton from the cold-start outputs diverged.
+
+**Multi-panel Eq. 33 is deferred to step 5,** when the geometry module provides panel spans and chords. Step 2
+implements Eq. 32, with `n_panels` setting the f_wing exponent.
 
 ---
 
@@ -347,8 +355,8 @@ item says otherwise. Each deviation is a config switch.
 **G1. Eqs. 5–8 are inconsistent with Table 3.** Eq. 5 prints `K_ht = (l_ht/c_wing)·A_wing`, so with Eq. 7
 (`l_ht = K_ht c`) you'd get `l_ht = l_ht·A`. Table 3 gives a "tail arm-to-span ratio" (l_ht/b), which suggests the
 intent was `K = l/b`. Eqs. 55–56 are written with K_ht and K_tb.
-→ Use `l_ht` (a DV, in metres) and `l_tb` directly: Eq. 54 for the boom shear, and `M_tb = Q_tb·l_tb` for Eq. 56.
-Tests convert Table 3 ratios as `l = ratio·b`.
+→ Use `l_ht` (a DV, in metres) and `l_tb` directly. Tests convert Table 3 ratios as `l = ratio·b`. For the boom
+loads, see G19: the paper's own numbers use Eq. 5 *as printed*.
 
 **G2. Tables 4, 8 and 12 list "Aerofoil area-to-chord squared ratio" (A/c²), not K_A from Eq. 9 (A/((t/c)c²)).**
 UBI15's 0.0868 at t/c = 0.141 is a realistic A/c². Read as K_A, it would give A/c² = 0.012, which is impossible for
@@ -429,20 +437,38 @@ degrees.
 **G18.** With n = 2 (all three test aircraft), flight and ground bending (Eqs. 45, 49 at y = 0) are both `Wb/4`.
 Eq. 52 is evaluated exactly at the KS kink, hence the hard-max verification mode.
 
-**G19. Tail boom: the order of magnitude doesn't reproduce.** With θ_max = 1° in radians, Eq. 121 (rotation
-stiffness) dominates and gives m_tb ≈ 1.7–2.0 kg against Table 15's 0.13–0.19 kg (about 9–14× high). If θ were
-mistakenly used as 1 *rad*, UBI15 gives 0.137 kg (target 0.193). Neither fits. To investigate in step 2.
+**G19. Tail-boom shear: resolved. The paper's numbers use Eq. 55 with K_ht from Eq. 5 as printed.**
+With K_ht = (l_ht/c)·A (A = b/c), Eq. 55 gives Q_tb = q|Cm| b c/K_ht = q|Cm| c³/l_ht. That's Eq. 54's
+moment-balance shear divided by the aspect ratio. Eq. 56's moment is unaffected (A cancels), so M_tb ≠ Q_tb·l_tb.
+This reading reproduces all three Table 15 tail booms to within 0.2%. The literal Eq. 54 reading is 9–14× high,
+because the rotation-stiffness term (Eq. 121) then dominates.
+- `tail_boom_load_mode: paper` (default): f_tb = 12.81 was calibrated with it.
+- `eq54`: self-consistent physics, but needs f_tb recalibrated.
 
-**G20. Prototype status (scratch script, not package code).** Literal reading, combined Table 14 factors, exponent
-per G5, y₁ ∈ {0, b/2n, b/6}:
-- The wing comes out **12–19% high for all three aircraft**, at a near-constant ratio (0.84–0.85 needed on the
-  pre-factor sum).
-- A brute-force search over the discrete readings (r = d vs d/2, wing-weight relief W − W_wing, y₁, δ ratio of span
-  vs semispan, G2) gets the best case to within 5–9%. Not good enough.
-- Following the brief, I won't tune factors. Step 2 will report the equation-level cause or state that it can't be
-  reproduced.
-- Prime suspects: an unstated relief or load assumption, the LE/TE stringer areas (they're 32–44% of the computed
-  wing mass, which is unusually high), and the tail-boom mismatch in G19.
+Note the two modes differ by a factor of A in the boom *shear*, so the choice matters for any recalibration.
+
+**G20. Resolved in step 2.** The 12–19% wing over-prediction from step 1 had two causes:
+- G19: the boom error inflated total mass, and with it the wing loads.
+- G23: the spar sizing radius.
+
+No correction factor was tuned.
+
+**G22. Table 15's UBI11 column uses UBI11's *individual* general factors.** For UBI11 the ratios m_ht/m_wing and
+m_vt/m_wing in Table 15 imply f_ht = 0.659 and f_vt = 1.177. Its m_cb and m_gear imply f_cb = 0.867 and
+f_gear = 0.0100. Those are the individual Table 14 values (0.6609, 1.172, 0.8667, 0.0100), not the combined ones.
+Table 14's "combined" column even lists f_vt = 0.7753 for UBI11. f_wing and f_tb are the combined values: the wing
+and boom errors in Table 15 equal the combined/individual factor ratios. GRA13 and UBI15 use combined factors
+throughout. `configs/verification/ubi11.yaml` follows this.
+
+**G23. Spar sizing radius: the paper's numbers use K_tube = r/c̄ with the sizing chord c_root.** Eq. 15 defines
+K_tube = r/c, and §2.2.2 says c is the mean chord in the mass models. Eqs. 107–117 write π K² c² (etc.), and §3.3
+says c = c_root there. Read literally, the tube is sized as if its radius were r·c_root/c̄. That makes it thinner
+by (c_root/c̄)² in bending and (c_root/c̄)³ in deflection and divergence. With G19, this reproduces the Table 15
+wings to −0.6…−1.9%.
+- `sizing_radius_mode: paper` (default, consistent with f_wing = 1.12).
+- `physical`: sizes with r.
+
+The two are identical for a rectangular wing (c_root = c̄). For taper, `paper` is unconservative.
 
 **G21. Statistical Eq. 124's fit range.** It was fitted to ACC aircraft with m = 8.9–16 kg and m_pay = 5–12 kg.
 DBF aircraft (~3–7 kg) are an extrapolation, and the paper reports empty-mass errors up to 55%.
@@ -523,9 +549,20 @@ a Windows binary, so on Linux we'd need a native AVL build.
 
 ---
 
-## 11. Decisions I need from you
+## 11. Decisions
 
-| ID | Decision | My recommendation |
+**Resolved 2026-10-09:**
+- D1: derived radius (approved).
+- D2: smooth lap-model twin (approved).
+- D3: reduced airfoil shape modes (approved).
+- D4: discrete outer enumeration for prop, motor and cells (approved).
+- D6: **single tube**.
+- D7: pydantic (approved).
+- Git: approved; repo initialised in `AirCrafter2/`.
+
+D5 (Table 15 tolerance) is still open. Working value: ±3%.
+
+| ID | Decision | Recommendation (as proposed) |
 |---|---|---|
 | D1 | Spar tube radius: derived (r = k_fill·t_spar·c_root/2) or DV + tube-fit constraint | **Derived** by default; DV mode available |
 | D2 | Add a smooth twin of the lap modeller for gradients (reference kept for reporting and the MATLAB check) | **Yes** |

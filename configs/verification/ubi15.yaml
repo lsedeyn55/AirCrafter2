@@ -1,0 +1,46 @@
+extends: _tube_spar_common.yaml
+name: UBI15
+source: "Garcia & Gamboa (2022): AERO@UBI_Team, ACC 2015. Inputs Tables 3, 12, 13, 14; expected Table 15 (calculated)."
+
+options:
+  n_panels: 3                  # Table 3
+
+inputs:
+  b: 3.324                     # Table 3
+  c_mean: 0.332                # Table 3
+  c_root: 0.38                 # Table 3
+  S_wing: 1.103568             # b * c_mean (Eqs. 34-35 check against Table 15)
+  tc: 0.141                    # Table 3
+  x_spar: 0.3                  # Table 3
+  winglet_ratio: 0.038         # Table 3
+  delta_tip_ratio: 0.1         # Table 3
+  l_ht: 1.316304               # Table 3 tail arm-to-span 0.396 * b (PLAN G1)
+  l_tb: 1.575576               # Table 3 length-to-span 0.474 * b
+  r_tb: 0.0165                 # Table 3 diameter 0.033 m
+  theta_tb_max: 0.017453       # Table 3, 1 deg
+  S_ht: 0.1035                 # Table 3
+  S_vt: 0.119                  # Table 3
+  S_cb: 0.23                   # Table 3
+  Cm: -0.25                    # Table 3
+  n: 2.0                       # Table 3
+  V_design: 15.0               # Table 3
+  A_c2: 0.0868                 # Table 12 (A/c^2, PLAN G2)
+  P_c: 2.091                   # Table 12
+  le_ratio: 0.021              # Table 12
+  te_ratio: 0.021              # Table 12
+  gamma_film: 0.036            # Table 13
+  f_vt: 0.3414                 # Table 14 combined (UBI15)
+  m_sys: 0.65                  # Table 15
+  m_pay: 10.0                  # Table 15
+  y1: 0.554                    # ASSUMPTION: b / (2 n_panels) (centre panel edge); not given (OPEN_QUESTIONS Q4)
+  x_gd: 0.3                    # ASSUMPTION: held at the spar (OPEN_QUESTIONS Q4)
+
+expected:                      # Table 15, calculated masses (kg)
+  m_wing: 0.710
+  m_ht: 0.043
+  m_vt: 0.026
+  m_tb: 0.193
+  m_cb: 0.181
+  m_gear: 0.106
+  m_empty: 1.909
+  m_total: 11.909

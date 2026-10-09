@@ -1,0 +1,108 @@
+"""Garcia & Gamboa (2022) structure-based mass model, circular tube spar wing concept.
+
+Data flow (all promoted):
+
+    Allowables -> SectionCoeffs -> WingLoads(m) -> CriticalLoads -> TubeSparSizing
+               -> RibSizing -> WingMass -> TailMass
+    TailBoomLoads -> TailBoomSizing -> FuselageMass
+    MassSum(m) -> m_total  --(closure)-->  m
+
+The closure m = m_total (Eqs. 39-41, with the loads depending on W = m g) is a
+coupled cycle. It is converged by the enclosing nonlinear solver (NonlinearBlockGS +
+DirectSolver when ``standalone_solver``; the MDF solver in the full
+framework). No component iterates internally. The statistical model
+(Eq. 124) provides the initial guess for m.
+"""
+
+import openmdao.api as om
+
+from ...config.mass import MassConfig, MassOptions
+from ..statistical import StatisticalMass, statistical_mass
+from .inputs import INPUTS, active_inputs
+from .loads import CriticalLoads, TailBoomLoads, WingLoads
+from .masses import FuselageMass, GearMass, MassSum, TailMass, WingMass
+from .materials import Allowables
+from .section import SectionCoeffs, TubeFitMargin, TubeRadius
+from .sizing import RibSizing, TailBoomSizing, TubeSparSizing
+
+MASS_OUTPUTS = ["m_tube", "m_rib", "m_le", "m_te", "m_film", "m_wing", "m_ht", "m_vt", "m_tb", "m_cb",
+                "m_fus", "m_gear", "m_empty", "m_total", "m_stat"]
+
+
+class GarciaGamboaMass(om.Group):
+    def initialize(self):
+        self.options.declare("config", default=None, types=(MassOptions, type(None)))
+
+    def setup(self):
+        opts = self.options["config"] or MassOptions()
+        self._opts = opts
+        self._guessed = False
+        smooth = dict(max_mode=opts.max_mode, rho_ks=opts.rho_ks)
+
+        self.add_subsystem("allowables", Allowables(), promotes=["*"])
+        if opts.r_tube_mode == "derived":
+            self.add_subsystem("tube_radius", TubeRadius(), promotes=["*"])
+        self.add_subsystem("section", SectionCoeffs(), promotes=["*"])
+        self.add_subsystem("wing_loads", WingLoads(), promotes=["*"])
+        self.add_subsystem("critical_loads", CriticalLoads(**smooth), promotes=["*"])
+        self.add_subsystem("spar_sizing", TubeSparSizing(
+            **smooth, softplus_scale=opts.softplus_scale, deflection_mode=opts.deflection_mode,
+            torsion_stiffness_mode=opts.torsion_stiffness_mode, include_twist=opts.include_twist,
+            use_min_gauge=opts.use_min_gauge, sizing_radius_mode=opts.sizing_radius_mode), promotes=["*"])
+        self.add_subsystem("rib_sizing", RibSizing(**smooth), promotes=["*"])
+        self.add_subsystem("wing_mass", WingMass(n_panels=opts.n_panels), promotes=["*"])
+        self.add_subsystem("tail_mass", TailMass(), promotes=["*"])
+        self.add_subsystem("boom_loads", TailBoomLoads(load_mode=opts.tail_boom_load_mode), promotes=["*"])
+        self.add_subsystem("boom_sizing", TailBoomSizing(**smooth, use_min_gauge=opts.use_min_gauge),
+                           promotes=["*"])
+        self.add_subsystem("fuselage_mass", FuselageMass(), promotes=["*"])
+        self.add_subsystem("gear_mass", GearMass(), promotes=["*"])
+        self.add_subsystem("mass_sum", MassSum(), promotes=["*"])
+        self.add_subsystem("statistical", StatisticalMass(model=opts.statistical_model), promotes=["*"])
+        if opts.r_tube_mode == "design_variable":
+            self.add_subsystem("tube_fit", TubeFitMargin(), promotes=["*"])
+
+        # mass closure: the loads and the gear mass see the converged total mass
+        self.connect("m_total", "m")
+
+        for name in active_inputs(opts):
+            units, val, _ = INPUTS[name]
+            self.set_input_defaults(name, val=val, units=units)
+
+        if opts.standalone_solver:
+            # The closure is weakly coupled (d m_total / d m ~ 0.05), so block Gauss-Seidel converges
+            # in a few iterations from any start; Newton from the cold-start outputs diverges.
+            self.nonlinear_solver = om.NonlinearBlockGS(maxiter=50, atol=1e-12, rtol=1e-12, use_aitken=True,
+                                                        iprint=0, err_on_non_converge=True)
+            self.linear_solver = om.DirectSolver()
+
+    def guess_nonlinear(self, inputs, outputs, residuals):
+        # Initial guess of the closure from the statistical model (Eq. 124-126), first solve only.
+        if not self._guessed:
+            outputs["m_total"] = statistical_mass(inputs["statistical.b"], inputs["statistical.c_mean"],
+                                                  inputs["statistical.m_pay"],
+                                                  self._opts.statistical_model)
+            self._guessed = True
+
+
+def set_mass_inputs(prob, values, prefix=""):
+    """Set mass-group inputs (SI values, names from INPUTS) on a set-up problem."""
+    for name, val in values.items():
+        units = INPUTS[name][0]
+        prob.set_val(prefix + name, val, units=units)
+
+
+def build_mass_problem(config: MassConfig, force_alloc_complex=False):
+    """Standalone problem: just the mass group, inputs set from ``config``."""
+    prob = om.Problem(reports=False)
+    prob.model.add_subsystem("mass", GarciaGamboaMass(config=config.options), promotes=["*"])
+    prob.setup(force_alloc_complex=force_alloc_complex)
+    # Valid names that the chosen options don't use (e.g. k_fill with a fixed radius) are skipped.
+    active = set(active_inputs(config.options))
+    set_mass_inputs(prob, {k: v for k, v in config.inputs.items() if k in active})
+    return prob
+
+
+def mass_breakdown(prob, prefix=""):
+    """Dict of component masses (kg) after a run."""
+    return {name: float(prob.get_val(prefix + name, units="kg")[0]) for name in MASS_OUTPUTS}

@@ -1,0 +1,53 @@
+extends: _tube_spar_common.yaml
+name: UBI11
+source: "Garcia & Gamboa (2022): Portugal_Team, ACC 2011. Inputs Tables 3, 12, 13, 14; expected Table 15 (calculated)."
+
+options:
+  n_panels: 3                  # Table 3
+
+inputs:
+  b: 4.16                      # Table 3
+  c_mean: 0.322                # Table 3
+  c_root: 0.38                 # Table 3
+  S_wing: 1.33952              # b * c_mean
+  tc: 0.141                    # Table 3
+  x_spar: 0.3                  # Table 3
+  winglet_ratio: 0.0           # Table 3
+  delta_tip_ratio: 0.2         # Table 3
+  l_ht: 1.872                  # Table 3 tail arm-to-span 0.45 * b
+  l_tb: 1.664                  # Table 3 length-to-span 0.4 * b
+  r_tb: 0.009                  # Table 3 diameter 0.018 m
+  theta_tb_max: 0.017453       # Table 3, 1 deg
+  S_ht: 0.182                  # Table 3
+  S_vt: 0.102                  # Table 3
+  S_cb: 0.3                    # Table 3
+  Cm: -0.25                    # Table 3
+  n: 2.0                       # Table 3
+  V_design: 8.0                # Table 3
+  A_c2: 0.0868                 # Table 12
+  P_c: 2.091                   # Table 12
+  le_ratio: 0.021              # Table 12
+  te_ratio: 0.021              # Table 12
+  gamma_film: 0.018            # Table 13 (UBI11)
+  # Table 15's UBI11 column was computed with UBI11's *individual* general factors (Table 14),
+  # not the combined ones: m_ht/m_wing, m_vt/m_wing, m_cb and m_gear in Table 15 all match the
+  # individual values (PLAN G22). f_wing and f_tb stay combined (the wing and boom errors in
+  # Table 15 match the combined/individual ratios).
+  f_ht: 0.6609                 # Table 14, UBI11 individual
+  f_vt: 1.172                  # Table 14, UBI11 individual (combined column says 0.7753)
+  f_cb: 0.8667                 # Table 14, UBI11 individual
+  f_gear: 0.0100               # Table 14, UBI11 individual
+  m_sys: 0.62                  # Table 15
+  m_pay: 11.0                  # Table 15
+  y1: 0.693333                 # ASSUMPTION: b / (2 n_panels) (OPEN_QUESTIONS Q4)
+  x_gd: 0.3                    # ASSUMPTION: held at the spar (OPEN_QUESTIONS Q4)
+
+expected:                      # Table 15, calculated masses (kg)
+  m_wing: 0.759
+  m_ht: 0.068
+  m_vt: 0.068
+  m_tb: 0.139
+  m_cb: 0.260
+  m_gear: 0.130
+  m_empty: 2.043
+  m_total: 13.043

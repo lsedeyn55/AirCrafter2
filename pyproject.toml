@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aircrafter2"
+version = "0.1.0"
+description = "AirCrafter 2.0: a DBF-specific MDAO framework (OpenMDAO) for conceptual design of small electric RC aircraft"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+authors = [{ name = "Lucas" }]
+dependencies = [
+    "openmdao==3.45.0",
+    "openaerostruct==2.12.0",
+    "numpy==2.5.2",
+    "scipy==1.18.0",
+    "matplotlib==3.11.1",
+    "pyyaml==6.0.3",
+    "pydantic==2.13.5",
+    "neuralfoil==0.3.3",
+    "aerosandbox==4.2.10",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1", "sympy==1.14.0"]
+
+[project.scripts]
+aircrafter2 = "aircrafter2.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["aircrafter2*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
