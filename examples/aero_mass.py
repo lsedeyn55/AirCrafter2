@@ -65,7 +65,7 @@ def main():
     w("## 2. The t/c trade (b = 1.2 m, c = 0.3 m, camber_scale = 1)\n")
     for gauge in (True, False):
         p = build_aero_mass_problem(cfg_with(gauge), driver=False)
-        w(f"**Minimum gauge {'on (0.5 mm)' if gauge else 'off'}**\n")
+        w(f"**Spar minimum gauge {'on (0.5 mm)' if gauge else 'off'}**\n")
         w("| t/c | r_tube (mm) | t_tube (mm) | m_tube (kg) | m_wing (kg) | m_total (kg) | C_Dp | D (N) |")
         w("|---:|---:|---:|---:|---:|---:|---:|---:|")
         for ts in [0.5, 0.7, 0.9, 1.1, 1.3, 1.6]:
@@ -95,23 +95,21 @@ def main():
         t = time.perf_counter()
         r = p.run_driver()
         res[gauge] = (p, r, time.perf_counter() - t)
-    w("| Quantity | min gauge on | min gauge off |")
+    w("| Quantity | spar min gauge on | spar min gauge off |")
     w("|---|---:|---:|")
     for k in rows:
         w(f"| {k} | {v(res[True][0], k):.4g} | {v(res[False][0], k):.4g} |")
     w("| converged / iterations / time | " + " | ".join(
         f"{res[g][1].success} / {res[g][1].iter_count} / {res[g][2]:.0f} s" for g in (True, False)) + " |")
     w("")
-    w("Active constraints: span at its upper bound; with the gauge on, the thin-wall limit")
-    w("t_tube/r_tube <= 0.2 (strength needs a thick wall once the section, and with it the tube, gets")
-    w("thin); with the gauge off, the minimum tube radius (5 mm placeholder). Either way the spar")
-    w("sets the thinnest section, at t/c ~ 0.08 for this aircraft. That is the drag-vs-spar trade.")
+    w("Active constraints: span at its upper bound and the minimum tube radius (5 mm placeholder),")
+    w("with the wall at t/r ~ 0.2. Strength needs a ~1 mm wall once the section, and with it the tube,")
+    w("is that thin, so the 0.5 mm spar gauge is inactive and both columns coincide. The spar sets the")
+    w("thinnest section, at t/c ~ 0.08 for this aircraft. That is the drag-vs-spar trade.")
     w("")
-    w("**The tail-boom/fuselage model is not credible at this scale.** With the gauge on, m_tb = 0.32 kg")
-    w("(0.5 mm boom minimum gauge times f_tb = 12.81). With it off, m_tb = 0.006 kg, because the boom")
-    w("loads of Eq. 55 (paper reading, PLAN G19) need a wall of a few micrometres, and f_tb scales that.")
-    w("G&G's f_tb was fitted on ACC aircraft with 10-16 kg take-off mass; it needs USYD calibration")
-    w("(OPEN_QUESTIONS Q14, Q15) before fuselage mass means anything here.")
+    w("Tail boom: both cases use the 1 mm minimum boom wall with the refitted f_tb = 0.847")
+    w("(docs/tail_boom_calibration.md); the gauge switch above affects the spar only.")
+    w("")
 
     out = ROOT / "docs" / "step5_aero_mass.md"
     out.write_text("\n".join(L))

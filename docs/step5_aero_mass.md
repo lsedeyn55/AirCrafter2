@@ -12,23 +12,23 @@ section thickness (D1).
 
 | b | c | tc_scale | camber_scale | Newton its | time (s) | m_total (kg) | alpha (deg) | t_tube (mm) |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0.90 | 0.15 | 0.50 | 0.00 | 3 | 3.0 | 3.304 | 14.04 | 2.082 |
-| 0.90 | 0.15 | 0.50 | 2.00 | 2 | 2.0 | 3.305 | 14.04 | 2.193 |
-| 0.90 | 0.15 | 1.60 | 0.00 | 2 | 2.1 | 3.342 | 14.20 | 0.500 |
-| 0.90 | 0.15 | 1.60 | 2.00 | 2 | 2.1 | 3.342 | 14.21 | 0.500 |
-| 0.90 | 0.45 | 0.50 | 0.00 | 3 | 3.0 | 3.404 | 8.23 | 0.500 |
-| 0.90 | 0.45 | 0.50 | 2.00 | 2 | 2.2 | 3.404 | 8.23 | 0.500 |
-| 0.90 | 0.45 | 1.60 | 0.00 | 3 | 3.2 | 3.676 | 8.90 | 0.500 |
-| 0.90 | 0.45 | 1.60 | 2.00 | 2 | 1.9 | 3.677 | 8.90 | 0.500 |
-| 1.52 | 0.15 | 0.50 | 0.00 | 3 | 3.6 | 3.293 | 7.10 | 5.137 |
-| 1.52 | 0.15 | 0.50 | 2.00 | 2 | 2.2 | 3.275 | 7.06 | 5.530 |
-| 1.52 | 0.15 | 1.60 | 0.00 | 2 | 2.3 | 3.399 | 7.33 | 0.500 |
-| 1.52 | 0.15 | 1.60 | 2.00 | 1 | 1.4 | 3.399 | 7.33 | 0.500 |
-| 1.52 | 0.45 | 0.50 | 0.00 | 3 | 3.1 | 3.500 | 3.67 | 0.500 |
-| 1.52 | 0.45 | 0.50 | 2.00 | 2 | 2.1 | 3.501 | 3.67 | 0.500 |
-| 1.52 | 0.45 | 1.60 | 0.00 | 2 | 2.0 | 3.948 | 4.14 | 0.500 |
-| 1.52 | 0.45 | 1.60 | 2.00 | 2 | 2.1 | 3.948 | 4.14 | 0.500 |
-| 1.21 | 0.30 | 1.05 | 1.00 | 3 | 3.1 | 3.456 | 6.30 | 0.500 |
+| 0.90 | 0.15 | 0.50 | 0.00 | 3 | 3.0 | 3.016 | 12.78 | 1.892 |
+| 0.90 | 0.15 | 0.50 | 2.00 | 2 | 1.9 | 3.017 | 12.79 | 2.025 |
+| 0.90 | 0.15 | 1.60 | 0.00 | 2 | 1.9 | 3.057 | 12.96 | 0.500 |
+| 0.90 | 0.15 | 1.60 | 2.00 | 2 | 2.0 | 3.057 | 12.96 | 0.500 |
+| 0.90 | 0.45 | 0.50 | 0.00 | 3 | 2.8 | 3.117 | 7.52 | 0.500 |
+| 0.90 | 0.45 | 0.50 | 2.00 | 2 | 1.9 | 3.117 | 7.53 | 0.500 |
+| 0.90 | 0.45 | 1.60 | 0.00 | 3 | 2.7 | 3.390 | 8.20 | 0.500 |
+| 0.90 | 0.45 | 1.60 | 2.00 | 2 | 1.8 | 3.391 | 8.20 | 0.500 |
+| 1.52 | 0.15 | 0.50 | 0.00 | 3 | 2.7 | 3.024 | 6.52 | 4.713 |
+| 1.52 | 0.15 | 0.50 | 2.00 | 2 | 1.9 | 3.009 | 6.49 | 5.104 |
+| 1.52 | 0.15 | 1.60 | 0.00 | 2 | 1.9 | 3.113 | 6.71 | 0.500 |
+| 1.52 | 0.15 | 1.60 | 2.00 | 1 | 1.1 | 3.113 | 6.72 | 0.500 |
+| 1.52 | 0.45 | 0.50 | 0.00 | 3 | 2.7 | 3.213 | 3.37 | 0.500 |
+| 1.52 | 0.45 | 0.50 | 2.00 | 2 | 1.9 | 3.214 | 3.37 | 0.500 |
+| 1.52 | 0.45 | 1.60 | 0.00 | 2 | 1.9 | 3.662 | 3.84 | 0.500 |
+| 1.52 | 0.45 | 1.60 | 2.00 | 2 | 1.8 | 3.662 | 3.84 | 0.500 |
+| 1.21 | 0.30 | 1.05 | 1.00 | 3 | 2.7 | 3.171 | 5.77 | 0.500 |
 
 All 17 points converged (atol 1e-10); worst case 3 Newton iterations.
 Convergence is not feasibility: e.g. at b = 1.52, c = 0.15, t/c = 0.06 the derived tube is so small
@@ -37,27 +37,27 @@ wall-ratio and minimum-radius constraints are what exclude such designs.
 
 ## 2. The t/c trade (b = 1.2 m, c = 0.3 m, camber_scale = 1)
 
-**Minimum gauge on (0.5 mm)**
+**Spar minimum gauge on (0.5 mm)**
 
 | t/c | r_tube (mm) | t_tube (mm) | m_tube (kg) | m_wing (kg) | m_total (kg) | C_Dp | D (N) |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 0.060 | 6.64 | 0.594 | 0.0454 | 0.1206 | 3.365 | 0.00691 | 1.6002 |
-| 0.084 | 9.66 | 0.500 | 0.0568 | 0.1435 | 3.391 | 0.00717 | 1.6378 |
-| 0.108 | 12.68 | 0.500 | 0.0750 | 0.1748 | 3.427 | 0.00771 | 1.7061 |
-| 0.132 | 15.71 | 0.500 | 0.0932 | 0.2069 | 3.464 | 0.00843 | 1.7894 |
-| 0.156 | 18.73 | 0.500 | 0.1115 | 0.2400 | 3.502 | 0.00928 | 1.8853 |
-| 0.192 | 23.26 | 0.500 | 0.1388 | 0.2896 | 3.559 | 0.01061 | 2.0344 |
+| 0.060 | 6.64 | 0.555 | 0.0426 | 0.1169 | 3.075 | 0.00728 | 1.4639 |
+| 0.084 | 9.66 | 0.500 | 0.0568 | 0.1429 | 3.105 | 0.00747 | 1.4965 |
+| 0.108 | 12.68 | 0.500 | 0.0750 | 0.1744 | 3.141 | 0.00801 | 1.5631 |
+| 0.132 | 15.71 | 0.500 | 0.0932 | 0.2065 | 3.178 | 0.00871 | 1.6434 |
+| 0.156 | 18.73 | 0.500 | 0.1115 | 0.2396 | 3.216 | 0.00947 | 1.7293 |
+| 0.192 | 23.26 | 0.500 | 0.1388 | 0.2892 | 3.273 | 0.01071 | 1.8673 |
 
-**Minimum gauge off**
+**Spar minimum gauge off**
 
 | t/c | r_tube (mm) | t_tube (mm) | m_tube (kg) | m_wing (kg) | m_total (kg) | C_Dp | D (N) |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 0.060 | 6.64 | 0.557 | 0.0427 | 0.1170 | 3.087 | 0.00726 | 1.4684 |
-| 0.084 | 9.66 | 0.278 | 0.0319 | 0.1180 | 3.087 | 0.00749 | 1.4885 |
-| 0.108 | 12.68 | 0.170 | 0.0259 | 0.1251 | 3.094 | 0.00808 | 1.5424 |
-| 0.132 | 15.71 | 0.117 | 0.0221 | 0.1353 | 3.105 | 0.00879 | 1.6088 |
-| 0.156 | 18.73 | 0.087 | 0.0195 | 0.1475 | 3.118 | 0.00954 | 1.6789 |
-| 0.192 | 23.26 | 0.060 | 0.0169 | 0.1671 | 3.138 | 0.01074 | 1.7927 |
+| 0.060 | 6.64 | 0.555 | 0.0426 | 0.1169 | 3.075 | 0.00728 | 1.4639 |
+| 0.084 | 9.66 | 0.277 | 0.0318 | 0.1179 | 3.077 | 0.00751 | 1.4842 |
+| 0.108 | 12.68 | 0.170 | 0.0258 | 0.1251 | 3.085 | 0.00809 | 1.5385 |
+| 0.132 | 15.71 | 0.117 | 0.0220 | 0.1352 | 3.097 | 0.00880 | 1.6051 |
+| 0.156 | 18.73 | 0.086 | 0.0195 | 0.1475 | 3.111 | 0.00954 | 1.6754 |
+| 0.192 | 23.26 | 0.060 | 0.0169 | 0.1671 | 3.133 | 0.01074 | 1.7902 |
 
 - Strength-governed spar (gauge off): tube mass falls as t/c grows (t_sigma ~ 1/r^2 with
   r ~ t/c), the expected half of the trade. The G&G LE/TE stringer and rib masses scale with the
@@ -69,34 +69,31 @@ wall-ratio and minimum-radius constraints are what exclude such designs.
 
 ## 3. Optimisation: minimise cruise drag (b, c, tc_scale, camber_scale; alpha from the MDA)
 
-| Quantity | min gauge on | min gauge off |
+| Quantity | spar min gauge on | spar min gauge off |
 |---|---:|---:|
 | b | 1.52 | 1.52 |
-| c | 0.1855 | 0.1743 |
-| tc_max | 0.0782 | 0.08175 |
-| camber_scale | 0.5984 | 0.5551 |
-| r_tube | 0.005111 | 0.005 |
-| t_tube | 0.001022 | 0.0009734 |
-| wall_ratio | 0.2 | 0.1947 |
-| m_tube | 0.07184 | 0.06713 |
-| m_wing | 0.1213 | 0.1125 |
-| m_tb | 0.3244 | 0.005777 |
-| m_total | 3.371 | 3.04 |
-| cruise.vlm.wing_perf.CL | 0.4972 | 0.4774 |
-| cruise.CDp | 0.008029 | 0.008283 |
-| cruise.D | 1.182 | 1.046 |
-| cruise.L_over_D | 27.97 | 28.5 |
-| cruise.CL_max_over_CL | 2.068 | 2.131 |
-| cruise.nf_confidence_min | 0.9256 | 0.9334 |
-| converged / iterations / time | True / 11 / 26 s | True / 12 / 31 s |
+| c | 0.1776 | 0.1776 |
+| tc_max | 0.08021 | 0.08021 |
+| camber_scale | 0.5689 | 0.5689 |
+| r_tube | 0.005 | 0.005 |
+| t_tube | 0.0009885 | 0.0009885 |
+| wall_ratio | 0.1977 | 0.1977 |
+| m_tube | 0.06806 | 0.06806 |
+| m_wing | 0.1144 | 0.1144 |
+| m_tb | 0.04151 | 0.04151 |
+| m_total | 3.078 | 3.078 |
+| cruise.vlm.wing_perf.CL | 0.4743 | 0.4743 |
+| cruise.CDp | 0.008153 | 0.008153 |
+| cruise.D | 1.06 | 1.06 |
+| cruise.L_over_D | 28.47 | 28.47 |
+| cruise.CL_max_over_CL | 2.154 | 2.154 |
+| cruise.nf_confidence_min | 0.9307 | 0.9307 |
+| converged / iterations / time | True / 11 / 25 s | True / 11 / 24 s |
 
-Active constraints: span at its upper bound; with the gauge on, the thin-wall limit
-t_tube/r_tube <= 0.2 (strength needs a thick wall once the section, and with it the tube, gets
-thin); with the gauge off, the minimum tube radius (5 mm placeholder). Either way the spar
-sets the thinnest section, at t/c ~ 0.08 for this aircraft. That is the drag-vs-spar trade.
+Active constraints: span at its upper bound and the minimum tube radius (5 mm placeholder),
+with the wall at t/r ~ 0.2. Strength needs a ~1 mm wall once the section, and with it the tube,
+is that thin, so the 0.5 mm spar gauge is inactive and both columns coincide. The spar sets the
+thinnest section, at t/c ~ 0.08 for this aircraft. That is the drag-vs-spar trade.
 
-**The tail-boom/fuselage model is not credible at this scale.** With the gauge on, m_tb = 0.32 kg
-(0.5 mm boom minimum gauge times f_tb = 12.81). With it off, m_tb = 0.006 kg, because the boom
-loads of Eq. 55 (paper reading, PLAN G19) need a wall of a few micrometres, and f_tb scales that.
-G&G's f_tb was fitted on ACC aircraft with 10-16 kg take-off mass; it needs USYD calibration
-(OPEN_QUESTIONS Q14, Q15) before fuselage mass means anything here.
+Tail boom: both cases use the 1 mm minimum boom wall with the refitted f_tb = 0.847
+(docs/tail_boom_calibration.md); the gauge switch above affects the spar only.

@@ -38,6 +38,7 @@ All inputs, their units and descriptions are in `aircrafter2/mass/garcia_gamboa/
 .venv/bin/python examples/neuralfoil_fd_steps.py  # FD step study -> docs/neuralfoil_fd_steps.md
 .venv/bin/python examples/oval_lap.py            # step 4 oval lap optimisation -> docs/step4_oval.md
 .venv/bin/python examples/aero_mass.py           # step 5 MDA grid, t/c trade, optimisation -> docs/step5_aero_mass.md
+.venv/bin/python examples/tail_boom_calibration.py  # f_tb refit for the minimum boom wall -> docs/tail_boom_calibration.md
 ```
 
 ## Layout

@@ -20,7 +20,9 @@ class MassOptions(BaseModel):
     sizing_radius_mode: Literal["paper", "physical"] = Field(
         "paper", description="paper: K_tube = r/c_mean times c_root (reproduces Table 15); physical: r")
     include_twist: bool = Field(False, description="add Eq. 116 (G&G Sec. 4.2 did not use it)")
-    use_min_gauge: bool = True
+    use_min_gauge: bool = Field(True, description="spar tube minimum wall thickness t_tube_min")
+    tb_min_gauge: bool = Field(True, description="tail boom minimum wall thickness t_tb_min; f_tb must be "
+                               "calibrated on the same basis (docs/tail_boom_calibration.md)")
     r_tube_mode: Literal["fixed", "derived", "design_variable"] = "derived"
     n_panels: int = Field(1, ge=1)
     statistical_model: Literal["all", "balsa", "composite"] = "all"

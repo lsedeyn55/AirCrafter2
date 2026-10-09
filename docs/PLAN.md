@@ -408,8 +408,14 @@ Findings:
   - The cruise-drag optimum is set by the spar: the thinnest section (t/c ≈ 0.08) is where the thin-wall
     limit (gauge on) or the minimum tube radius (gauge off) binds.
 - New constraints: `wall_ratio ≤ 0.2` (thin-wall validity) and `r_tube ≥ r_tube_min` (placeholder 5 mm).
-- **Finding M1:** the G&G tail-boom × f_tb fuselage model gives 0.006 kg or 0.32 kg depending only on the
-  minimum gauge. It is not credible at DBF scale without calibration (Q14, Q15).
+- **Finding M1 (resolved 2026-10-09):** with load-sized walls (micrometres at DBF scale) the G&G
+  tail-boom × f_tb fuselage model gave 0.006 kg or 0.32 kg depending only on the minimum gauge.
+  - Fix: a separate tail-boom minimum wall (`tb_min_gauge`, t_tb_min = 1 mm from the USYD tubes in Spar
+    Sizer 3.1), with an output `t_tb_gauge_margin` (< 0 means the minimum wall governs).
+  - f_tb is refitted on that basis to Table 15's real boom masses with the Eq. 128 hook: f_tb = 0.847
+    (`docs/tail_boom_calibration.md`).
+  - The step 5 placeholder aircraft now gets m_tb = 0.042 kg.
+  - The Table 15 verification keeps the paper's basis (no minimum wall, f_tb = 12.81).
 - **Finding M2:** the G&G LE/TE stringer and rib masses scale with section area, so at DBF scale they outweigh
   the strength-governed spar saving from a thicker section.
 

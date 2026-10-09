@@ -53,7 +53,7 @@ class GarciaGamboaMass(om.Group):
         self.add_subsystem("wing_mass", WingMass(n_panels=opts.n_panels), promotes=["*"])
         self.add_subsystem("tail_mass", TailMass(), promotes=["*"])
         self.add_subsystem("boom_loads", TailBoomLoads(load_mode=opts.tail_boom_load_mode), promotes=["*"])
-        self.add_subsystem("boom_sizing", TailBoomSizing(**smooth, use_min_gauge=opts.use_min_gauge),
+        self.add_subsystem("boom_sizing", TailBoomSizing(**smooth, use_min_gauge=opts.tb_min_gauge),
                            promotes=["*"])
         self.add_subsystem("fuselage_mass", FuselageMass(), promotes=["*"])
         self.add_subsystem("gear_mass", GearMass(), promotes=["*"])

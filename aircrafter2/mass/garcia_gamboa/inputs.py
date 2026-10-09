@@ -48,7 +48,7 @@ INPUTS = {
     "theta_tip_max": ("rad", 0.0349, "max tip twist (Eq. 116; only with include_twist)"),
     "theta_tb_max": ("rad", 0.01745, "max tail boom rotation at the tail (Eq. 121)"),
     "t_tube_min": ("m", 5e-4, "spar tube minimum gauge (only with use_min_gauge)"),
-    "t_tb_min": ("m", 5e-4, "tail boom minimum gauge (only with use_min_gauge)"),
+    "t_tb_min": ("m", 1e-3, "tail boom minimum wall thickness (only with tb_min_gauge)"),
     # --- materials (ultimate values; Eq. 42 divides strengths by SF) ---
     "SF": (None, 1.5, "safety factor (Eq. 42)"),
     "sigma_spar": ("Pa", 720e6, "spar direct strength"),
@@ -83,7 +83,9 @@ def active_inputs(opts):
     if not opts.include_twist:
         skip.add("theta_tip_max")
     if not opts.use_min_gauge:
-        skip |= {"t_tube_min", "t_tb_min"}
+        skip.add("t_tube_min")
+    if not opts.tb_min_gauge:
+        skip.add("t_tb_min")
     if opts.r_tube_mode == "fixed":
         skip |= {"t_at_spar", "k_fill", "clearance"}
     elif opts.r_tube_mode == "derived":

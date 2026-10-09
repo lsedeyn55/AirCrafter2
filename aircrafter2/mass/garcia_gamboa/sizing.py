@@ -251,6 +251,12 @@ class TailBoomSizing(AnalyticComponent):
     Eq. 121  t_theta = Q_tb l_tb^2 / (2 E pi r^3 theta_max)
     Eq. 122  t_tau   = 3 Q_tb / (4 tau pi r)
     Eq. 123  t_tb    = max(t_sigma, t_theta) + t_tau
+
+    Minimum wall (use_min_gauge): t_tb = max(t_tb,req, t_tb_min). At DBF scale the load-based
+    wall is micrometres, so in practice the commercial tube wall governs. The output
+    t_tb_gauge_margin = t_tb,req - t_tb_min is < 0 when the minimum wall governs. G&G's f_tb was
+    fitted to load-based walls, so with the minimum wall active f_tb must be recalibrated on the
+    same basis (docs/tail_boom_calibration.md).
     """
 
     def initialize(self):
@@ -272,6 +278,8 @@ class TailBoomSizing(AnalyticComponent):
         if self.options["use_min_gauge"]:
             ins["t_tb_min"] = (5e-4, "m")
         outs = {name: (1e-4, "m") for name in ["t_tb_sigma", "t_tb_theta", "t_tb_tau", "t_tb_req", "t_tb"]}
+        if self.options["use_min_gauge"]:
+            outs["t_tb_gauge_margin"] = (0.0, "m")
         return ins, outs
 
     def evaluate(self, x):
@@ -301,5 +309,9 @@ class TailBoomSizing(AnalyticComponent):
             g_tb = wa * g_req + D({"t_tb_min": wb})
         else:
             t_tb, g_tb = t_req, g_req
-        return ({"t_tb_sigma": t_s, "t_tb_theta": t_th, "t_tb_tau": t_t, "t_tb_req": t_req, "t_tb": t_tb},
-                {"t_tb_sigma": g_s, "t_tb_theta": g_th, "t_tb_tau": g_t, "t_tb_req": g_req, "t_tb": g_tb})
+        values = {"t_tb_sigma": t_s, "t_tb_theta": t_th, "t_tb_tau": t_t, "t_tb_req": t_req, "t_tb": t_tb}
+        grads = {"t_tb_sigma": g_s, "t_tb_theta": g_th, "t_tb_tau": g_t, "t_tb_req": g_req, "t_tb": g_tb}
+        if self.options["use_min_gauge"]:
+            values["t_tb_gauge_margin"] = t_req - x["t_tb_min"]
+            grads["t_tb_gauge_margin"] = g_req + D({"t_tb_min": -1.0})
+        return values, grads

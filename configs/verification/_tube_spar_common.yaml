@@ -4,6 +4,7 @@ extends: ../mass_garcia_gamboa_2022.yaml
 options:
   max_mode: hard               # exact max for verification (Eq. 52 sits on its kink when n = 2, PLAN G18)
   use_min_gauge: false         # the paper applies no minimum gauge (Sec. 4.2)
+  tb_min_gauge: false          # ... on the tail boom either; f_tb = 12.81 belongs to this basis
   include_twist: false         # Table 3: max tip twist "-" ; Sec. 4.2: divergence only
   r_tube_mode: fixed           # Table 12 gives the tube diameter
 
@@ -12,3 +13,4 @@ inputs:
   CL_alpha: 6.0                # Table 3 "aerofoil lift curve slope", per rad (PLAN G9)
   c_rib_frac: 0.7              # Sec. 3.3.3 (not tabulated for this concept; PLAN G17)
   r_tube: 0.015                # Table 12: spar tube diameter 0.03 m
+  f_tb: 12.81                  # Table 14 combined: the paper's basis (load-sized boom wall)
