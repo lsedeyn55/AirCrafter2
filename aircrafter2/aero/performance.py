@@ -60,6 +60,56 @@ class CriticalSectionCLmax(om.ExplicitComponent):
         J["CL_max", "Clmax_sec"] = inputs["CL"] * dm_dClmax[None, :]
 
 
+class WingSectionMoment(om.ExplicitComponent):
+    """Wing pitching-moment coefficient from the strip section moments (about each c/4):
+
+        Cm_wing = f sum_i Cm_i c_i^2 w_i / (S c_ref),   f = 2 for a symmetric half-wing model.
+
+    With c_ref = S/b this is the area- and chord-weighted mean section C_m (for a rectangular
+    wing, the width-weighted mean). Used as G&G's wing C_m in Eqs. 46 and 54.
+    """
+
+    def initialize(self):
+        self.options.declare("n_strips", types=int)
+
+    def setup(self):
+        n = self.options["n_strips"]
+        self.add_input("Cm_sec", np.zeros(n))
+        self.add_input("chords", 0.25 * np.ones(n + 1), units="m")
+        self.add_input("widths", 0.1 * np.ones(n), units="m")
+        self.add_input("S_ref", 0.375, units="m**2")
+        self.add_output("Cm_wing", -0.1)
+        self.declare_partials("Cm_wing", "*", method="cs")
+
+    def compute(self, inputs, outputs):
+        ch, w = inputs["chords"], inputs["widths"]
+        c = 0.5 * (ch[1:] + ch[:-1])
+        b_half = w.sum()
+        c_ref = inputs["S_ref"] / (2.0 * b_half)
+        outputs["Cm_wing"] = 2.0 * (inputs["Cm_sec"] * c**2 * w).sum() / (inputs["S_ref"] * c_ref)
+
+
+class LiftCurveSlope(om.ExplicitComponent):
+    """Wing C_L,alpha = C_L / alpha (per rad).
+
+    Exact for the flat-plate VLM, whose alpha is measured from zero lift (PLAN A2), so C_L is
+    linear in alpha through the origin. Needs alpha != 0.
+    """
+
+    def setup(self):
+        self.add_input("CL", 0.5)
+        self.add_input("alpha", 5.0, units="rad")
+        self.add_output("CL_alpha", 5.0, units="1/rad")
+        self.declare_partials("CL_alpha", ["CL", "alpha"])
+
+    def compute(self, inputs, outputs):
+        outputs["CL_alpha"] = inputs["CL"] / inputs["alpha"]
+
+    def compute_partials(self, inputs, J):
+        J["CL_alpha", "CL"] = 1.0 / inputs["alpha"]
+        J["CL_alpha", "alpha"] = -inputs["CL"] / inputs["alpha"] ** 2
+
+
 class WingPerformance(om.ExplicitComponent):
     """CD = CDi (VLM) + CDp (NeuralFoil strips) + CD_extra (parasite, later steps); L, D, L/D."""
 

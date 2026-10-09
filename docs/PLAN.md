@@ -394,6 +394,25 @@ Findings:
 - Note: VLM α is measured from zero lift (A2), so the α_turn bound is set wide (30°). The C_L-margin and
   per-strip stall constraints are what limit the turn.
 
+## 6d. Step 5 status (aero + mass MDF)
+
+- `aircrafter2/geometry/`: rectangular planform, tail arm/boom and tail volume coefficients, cargo-bay area.
+- The aero point now also outputs `Cm_wing` (chord-weighted strip C_m) and `CL_alpha` (= C_L/α, exact for
+  the flat-plate VLM).
+- `aircrafter2/problems/aero_mass.py` (config `configs/step5_aero_mass.yaml`; `mass_config` points at the base
+  mass YAML): MDA = Newton (solve_subsystems) + DirectSolver around {cruise aero, `BalanceComp` α for
+  L = W, G&G mass with its own NLBGS closure}.
+- Results: `docs/step5_aero_mass.md`.
+  - The MDA converges at all 16 corners of the DV box plus the centre in ≤ 3 Newton iterations.
+  - `check_totals` passes through the coupled loop.
+  - The cruise-drag optimum is set by the spar: the thinnest section (t/c ≈ 0.08) is where the thin-wall
+    limit (gauge on) or the minimum tube radius (gauge off) binds.
+- New constraints: `wall_ratio ≤ 0.2` (thin-wall validity) and `r_tube ≥ r_tube_min` (placeholder 5 mm).
+- **Finding M1:** the G&G tail-boom × f_tb fuselage model gives 0.006 kg or 0.32 kg depending only on the
+  minimum gauge. It is not credible at DBF scale without calibration (Q14, Q15).
+- **Finding M2:** the G&G LE/TE stringer and rib masses scale with section area, so at DBF scale they outweigh
+  the strength-governed spar saving from a thicker section.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an

@@ -5,8 +5,8 @@
     --CriticalSectionCLmax--> CL_max ;  --WingPerformance--> CD, L, D, L/D
 
 Promoted inputs: b, c, alpha (deg), v, rho, mu, upper_weights, lower_weights, le_weight,
-te_thickness. Promoted outputs: CL, CDi, CDp, CD, L, D, L_over_D, CL_max, S_ref, plus the
-per-strip arrays from the strip-drag component.
+te_thickness. Promoted outputs: CDp, CD, q, L, D, L_over_D, CL_max, CL_max_over_CL, Cm_wing,
+CL_alpha, plus the per-strip arrays from the strip-drag component (CL and CDi are vlm.wing_perf.*).
 """
 
 import numpy as np
@@ -15,7 +15,7 @@ from openaerostruct.aerodynamics.aero_groups import AeroPoint
 
 from ..airfoil.neuralfoil_section import NFSettings
 from .mesh import RectWingMesh, template_mesh
-from .performance import CriticalSectionCLmax, WingPerformance
+from .performance import CriticalSectionCLmax, LiftCurveSlope, WingPerformance, WingSectionMoment
 from .profile_drag import NeuralFoilStripDrag
 
 
@@ -76,6 +76,15 @@ class WingAero(om.Group):
         self.connect("vlm.wing_perf.CL", "clmax.CL")
         self.connect("vlm.wing_perf.Cl", "clmax.Cl")
         self.connect("Clmax_sec", "clmax.Clmax_sec")
+
+        self.add_subsystem("moment", WingSectionMoment(n_strips=n), promotes_outputs=["Cm_wing"])
+        self.connect("Cm_sec", "moment.Cm_sec")
+        self.connect("vlm.wing.chords", "moment.chords")
+        self.connect("vlm.wing.widths", "moment.widths")
+        self.connect("vlm.wing.S_ref", "moment.S_ref")
+
+        self.add_subsystem("cla", LiftCurveSlope(), promotes_inputs=["alpha"], promotes_outputs=["CL_alpha"])
+        self.connect("vlm.wing_perf.CL", "cla.CL")
 
         self.add_subsystem("perf", WingPerformance(), promotes_inputs=["v", "rho"],
                            promotes_outputs=["CD", "q", "L", "D", "L_over_D"])

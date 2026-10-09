@@ -73,7 +73,7 @@ class GarciaGamboaMass(om.Group):
             # The closure is weakly coupled (d m_total / d m ~ 0.05), so block Gauss-Seidel converges
             # in a few iterations from any start; Newton from the cold-start outputs diverges.
             self.nonlinear_solver = om.NonlinearBlockGS(maxiter=50, atol=1e-12, rtol=1e-12, use_aitken=True,
-                                                        iprint=0, err_on_non_converge=True)
+                                                        iprint=-1, err_on_non_converge=True)
             self.linear_solver = om.DirectSolver()
 
     def guess_nonlinear(self, inputs, outputs, residuals):
