@@ -159,13 +159,15 @@ class GearMass(AnalyticComponent):
 
 
 class MassSum(AnalyticComponent):
-    """Eq. 40  m_empty = m_wing + m_ht + m_vt + m_fus + m_gear + m_sys
+    """Eq. 40  m_empty = m_wing + m_ht + m_vt + m_fus + m_gear + m_sys (+ m_ballast)
     Eq. 41  m_total = m_empty + m_pay
+
+    m_ballast (default 0) is not in G&G: it is the robustness hook for "mass + X %" worst cases.
 
     The closure m = m_total is enforced by the enclosing solver, not here.
     """
 
-    PARTS = ["m_wing", "m_ht", "m_vt", "m_fus", "m_gear", "m_sys"]
+    PARTS = ["m_wing", "m_ht", "m_vt", "m_fus", "m_gear", "m_sys", "m_ballast"]
 
     def io(self):
         ins = {name: (0.1, "kg") for name in self.PARTS + ["m_pay"]}

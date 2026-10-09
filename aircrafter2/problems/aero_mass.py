@@ -143,7 +143,7 @@ def add_structural_constraints(m, cfg: AeroMassProblemConfig):
     m.add_constraint("r_tube", lower=cfg.r_tube_min, units="m", ref=0.01)
 
 
-def apply_aero_mass_values(prob, cfg: AeroMassProblemConfig):
+def apply_aero_mass_values(prob, cfg: AeroMassProblemConfig, exclude=()):
     """Set the config values on a set-up problem (flight condition, geometry, mass inputs, initial point)."""
     atm = isa(cfg.altitude)
     prob.set_val("v", cfg.V, units="m/s")
@@ -152,7 +152,7 @@ def apply_aero_mass_values(prob, cfg: AeroMassProblemConfig):
     geo = cfg.geometry
     for name in ["l_ht", "S_ht", "S_vt", "boom_offset", "l_cb", "w_cb", "h_cb", "x_spar"]:
         prob.set_val(name, getattr(geo, name))
-    active = set(active_inputs(cfg.mass.options)) - MASS_FROM_OTHERS
+    active = set(active_inputs(cfg.mass.options)) - MASS_FROM_OTHERS - set(exclude)
     set_mass_inputs(prob, {k: v for k, v in cfg.mass.inputs.items() if k in active})
     if cfg.airfoil.te_thickness is not None:
         prob.set_val("te_thickness_in", cfg.airfoil.te_thickness)

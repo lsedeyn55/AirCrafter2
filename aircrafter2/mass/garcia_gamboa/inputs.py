@@ -74,6 +74,7 @@ INPUTS = {
     # --- fixed masses ---
     "m_sys": ("kg", 0.65, "systems mass: propulsion, battery, servos, receiver"),
     "m_pay": ("kg", 1.0, "payload mass"),
+    "m_ballast": ("kg", 0.0, "robustness margin added to the empty mass (not G&G; default 0)"),
 }
 
 

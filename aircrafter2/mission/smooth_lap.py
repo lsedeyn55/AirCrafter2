@@ -11,6 +11,8 @@ performance_modeller.m), reformulated so that gradients are exact:
   at V (the pilot holds the target speed); here the acceleration is a smooth
   min(a(v), (V - v) / tau_hold), so v relaxes onto V and stays there (a plain multiplicative
   cap leaks: thrust exceeds drag at V because P includes 1/eta).
+* Wind (robustness): a steady wind along the straights; ground speed = v -/+ wind on alternate
+  straights (500 ft legs into wind, 1000 ft leg downwind); turns ignore drift.
 * Turns: duration = angle / omega(v_entry), with omega = g sqrt(n^2 - 1) / v and
   n = KSmin(q S CL_max / W, n_struct) (Eqs. 3.10-3.12: stall-limited turn rate, capped at the
   structural limit). During the turn the speed follows dv/dt = min(a_turn(v), 0) with drag at
@@ -19,6 +21,15 @@ performance_modeller.m), reformulated so that gradients are exact:
 * Lap count: continuous surrogate laps_frac = KSmin(laps limited by time, laps limited by energy),
   where laps(t) = 1 + (t - (lap1 + t_r)) / (lap_other + t_r) mirrors the MATLAB counting loop.
   lapCount (integer) is reported only.
+
+power_mode="propulsion" (decision B, step 7) replaces AirCrafter's power rule:
+* thrust T(v) and battery power P(v) come from the powertrain (cubic fits in v, propulsion/
+  powertrain.py) at a fixed throttle; there is no speed cap, so the aircraft accelerates on the
+  straights towards the speed where T = D. Input V is that equilibrium cruise speed (solved in
+  the MDA) and is used for the stall margin and the reaction-time energy only.
+* Battery energy is integrated along every leg; laps_frac uses the usable battery energy.
+* thrust_margin_static = T(0) - Tstatic (take-off ground roll).
+power_mode="aircrafter" keeps the AirCrafter 1.0 rule (P = D(V) V / eta, T = P / v, speed held at V).
 
 All arithmetic is complex-step safe; the component uses method="cs" partials (exact).
 """
@@ -49,6 +60,8 @@ class SmoothLapModel(om.ExplicitComponent):
         self.options.declare("pilot_reaction_time", default=3.0, desc="s per lap, performance_modeller.m")
         self.options.declare("lap1", default=LAP1)
         self.options.declare("lap_other", default=LAP_OTHER)
+        self.options.declare("power_mode", default="aircrafter", values=["aircrafter", "propulsion"])
+        self.options.declare("n_poly", default=4, types=int, desc="coefficients in the T(v), P(v) fits")
 
     def setup(self):
         for name, val, units in [
@@ -56,9 +69,14 @@ class SmoothLapModel(om.ExplicitComponent):
             ("CD0", 0.012, None), ("CD1", 0.0, None), ("k", 0.06, None), ("CL_max", 1.4, None), ("CL_to", 1.5, None),
             ("eta", 0.7, None), ("n_struct", 5.0, None), ("mu_roll", 0.02, None),
             ("takeoff_distance", 100.0, "m"), ("mission_time", 300.0, "s"), ("E_avail", 288000.0, "J"),
-            ("g", 9.81, "m/s**2"),
+            ("g", 9.81, "m/s**2"), ("wind", 0.0, "m/s"), ("thrust_factor", 1.0, None),
         ]:
             self.add_input(name, val, units=units)
+        if self.options["power_mode"] == "propulsion":
+            npoly = self.options["n_poly"]
+            self.add_input("T_coeffs", np.zeros(npoly), desc="T(v) = sum t_i v^i (N, v in m/s)")
+            self.add_input("P_coeffs", np.zeros(npoly), desc="P_batt(v) = sum p_i v^i (W)")
+            self.add_output("thrust_margin_static", 1.0, units="N")
         for name, val, units in [
             ("Vstall", 15.0, "m/s"), ("Preq", 100.0, "W"), ("Tstatic", 15.0, "N"), ("Lap1time", 60.0, "s"),
             ("otherLapTime", 55.0, "s"), ("ThreeLapTime", 170.0, "s"), ("laps_frac", 5.0, None),
@@ -79,18 +97,30 @@ class SmoothLapModel(om.ExplicitComponent):
         qS = lambda v: 0.5 * rho * v**2 * S  # noqa: E731
 
         Vstall = np.sqrt(W / (0.5 * rho * CLmax * S))
-        D_cruise = qS(V) * cd(W / qS(V))
-        P = D_cruise * V / x["eta"]
+        propulsion = o["power_mode"] == "propulsion"
+        if propulsion:
+            tc, pc = x["T_coeffs"], x["P_coeffs"]
+            thrust = lambda v: x["thrust_factor"] * sum(tc[i] * v**i for i in range(len(tc)))  # noqa: E731
+            p_batt = lambda v: sum(pc[i] * v**i for i in range(len(pc)))  # noqa: E731
+            P = p_batt(V)  # battery power at the equilibrium cruise speed
+        else:
+            D_cruise = qS(V) * cd(W / qS(V))
+            P = D_cruise * V / x["eta"]
+            thrust = lambda v: P / v  # noqa: E731
+            p_batt = lambda v: P + 0.0 * v  # noqa: E731
 
         def a_level(v):  # straight, level: CL = W / qS
-            return (P / v - qS(v) * cd(W / qS(v))) / m
+            return (thrust(v) - qS(v) * cd(W / qS(v))) / m
 
-        def a_capped(v):  # smooth min(a_level, (V - v) / tau): the pilot holds V
+        def a_capped(v):
             a = a_level(v)
+            if propulsion:  # fixed throttle: no speed hold, T = D sets the top speed
+                return a
+            # smooth min(a_level, (V - v) / tau): the pilot holds V
             return a - softplus(a - (V - v) / o["tau_hold"], o["a_smooth"])[0]
 
         def a_turn(v):  # drag at CL_max (MATLAB deceleration tables), only the decelerating part
-            a = (P / v - qS(v) * cd(CLmax)) / m
+            a = (thrust(v) - qS(v) * cd(CLmax)) / m
             return -softplus(-a, o["a_smooth"])[0]
 
         def omega(v):
@@ -99,48 +129,57 @@ class SmoothLapModel(om.ExplicitComponent):
             n = 1.0 + softplus(n - 1.0, 0.01)[0]
             return g * np.sqrt(n**2 - 1.0) / v
 
-        def straight(v, dist):
+        def straight(v, dist, wind_sign):
+            # s is ground distance; ground speed = airspeed - wind_sign * wind (+1 = headwind leg)
             N = o["n_steps_straight"]
             h = dist / N
             t = 0.0 * v
-            for _ in range(N):  # RK4 on y = (v, t) with ds steps
-                f = lambda vv: (a_capped(vv) / vv, 1.0 / vv)  # noqa: E731
+            e = 0.0 * v
+            w = wind_sign * x["wind"]
+            f = lambda vv: (a_capped(vv) / (vv - w), 1.0 / (vv - w), p_batt(vv) / (vv - w))  # noqa: E731
+            for _ in range(N):  # RK4 in distance
                 k1 = f(v)
                 k2 = f(v + 0.5 * h * k1[0])
                 k3 = f(v + 0.5 * h * k2[0])
                 k4 = f(v + h * k3[0])
-                v, t = (v + h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
-                        t + h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]))
-            return v, t
+                v, t, e = (y + h / 6 * (a1 + 2 * a2 + 2 * a3 + a4)
+                           for y, a1, a2, a3, a4 in zip((v, t, e), k1, k2, k3, k4))
+            return v, t, e
 
         def turn(v, angle_deg):
             t_turn = np.radians(angle_deg) / omega(v)
             N = o["n_steps_turn"]
             h = t_turn / N
+            e = 0.0 * v
+            f = lambda vv: (a_turn(vv), p_batt(vv))  # noqa: E731  d(v, E)/dt
             for _ in range(N):
-                k1 = a_turn(v)
-                k2 = a_turn(v + 0.5 * h * k1)
-                k3 = a_turn(v + 0.5 * h * k2)
-                k4 = a_turn(v + h * k3)
-                v = v + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
-            return v, t_turn
+                k1 = f(v)
+                k2 = f(v + 0.5 * h * k1[0])
+                k3 = f(v + 0.5 * h * k2[0])
+                k4 = f(v + h * k3[0])
+                v, e = (y + h / 6 * (a1 + 2 * a2 + 2 * a3 + a4) for y, a1, a2, a3, a4 in zip((v, e), k1, k2, k3, k4))
+            return v, t_turn, e
 
-        def lap(v, legs, track_360=False):
-            total, v_after_360 = 0.0 * v, None
+        def lap(v, legs):
+            total, energy, v_after_360 = 0.0 * v, 0.0 * v, None
+            n_straight = 0
             for kind, size in legs:
                 if kind == "s":
-                    v, t = straight(v, size * FT2M)
+                    # straights alternate direction: 500 ft out (into wind), 1000 ft back, 500 ft out
+                    v, t, e = straight(v, size * FT2M, 1.0 if n_straight % 2 == 0 else -1.0)
+                    n_straight += 1
                 else:
-                    v, t = turn(v, size)
+                    v, t, e = turn(v, size)
                     if size == 360 and v_after_360 is None:
                         v_after_360 = v
                 total = total + t
-            return v, total, v_after_360
+                energy = energy + e
+            return v, total, energy, v_after_360
 
-        v, lap1, v360 = lap(Vstall, o["lap1"])
+        v, lap1, e_lap1, v360 = lap(Vstall, o["lap1"])
         if v360 is None:  # custom courses without a 360-degree turn: use the lap-1 exit speed
             v360 = v
-        _, other, _ = lap(v, o["lap_other"])
+        _, other, e_other, _ = lap(v, o["lap_other"])
 
         # static thrust for the take-off ground roll (Eqs. 3.1-3.3, static_thrust_calculator.m)
         CLto = x["CL_to"]
@@ -149,12 +188,14 @@ class SmoothLapModel(om.ExplicitComponent):
 
         tr = o["pilot_reaction_time"]
         laps_time = 1.0 + (x["mission_time"] - (lap1 + tr)) / (other + tr)
-        laps_energy = 1.0 + (x["E_avail"] / P - (lap1 + tr)) / (other + tr)
+        e_react = P * tr  # reaction time flown at cruise power
+        laps_energy = 1.0 + (x["E_avail"] - (e_lap1 + e_react)) / (e_other + e_react)
         laps_frac, _ = ks_min([1.0 + softplus(laps_time - 1.0, 0.05)[0],
                                1.0 + softplus(laps_energy - 1.0, 0.05)[0]], o["rho_ks"])
         return dict(Vstall=Vstall, Preq=P, Tstatic=Tstatic, Lap1time=lap1, otherLapTime=other,
                     ThreeLapTime=lap1 + 2.0 * other, laps_frac=laps_frac, stall_margin=V - 1.2 * Vstall,
-                    turn_speed_margin=v360 - Vstall, energy_3laps=P * (lap1 + 2.0 * other + 3.0 * tr))
+                    turn_speed_margin=v360 - Vstall, energy_3laps=e_lap1 + 2.0 * e_other + 3.0 * e_react,
+                    **({"thrust_margin_static": thrust(0.0 * V) - Tstatic} if propulsion else {}))
 
     def compute(self, inputs, outputs):
         res = self._model({k: inputs[k] for k in inputs})
