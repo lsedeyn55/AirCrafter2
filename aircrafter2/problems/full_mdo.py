@@ -12,8 +12,8 @@
     lap model (propulsion mode): T(v) and P(v) on every leg, battery energy, laps
     static stability: neutral point, CG, static margin
 
-DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery station.
-Objective: placeholder ThreeLapTime (scoring plug-ins, step 8).
+DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery and cargo-bay stations.
+Objective: a scoring plug-in (aircrafter2.scoring; placeholder default three_lap_time).
 """
 
 import numpy as np
@@ -26,6 +26,7 @@ from ..aero.polar import ThreePointPolar, TurnAlpha
 from ..mass.garcia_gamboa import GarciaGamboaMass
 from ..mission.smooth_lap import SmoothLapModel
 from ..propulsion.powertrain import Powertrain
+from ..scoring import add_scoring, get_plugin
 from ..stability import StaticStability
 from .aero_mass import (SHARED_AERO, AeroMassProblemConfig, apply_aero_mass_values)
 from .wing_aero import Bounds
@@ -73,6 +74,12 @@ class StabilityInputs(BaseModel):
     V_v_max: float = Field(0.06, description="PLACEHOLDER")
 
 
+class ScoringConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    plugin: str = Field("three_lap_time", description="registered name or 'module:Class' (aircrafter2.scoring)")
+    options: dict = {}
+
+
 class FullMDOConfig(AeroMassProblemConfig):
     propulsion: PropulsionInputs = PropulsionInputs()
     stability: StabilityInputs = StabilityInputs()
@@ -82,7 +89,10 @@ class FullMDOConfig(AeroMassProblemConfig):
     takeoff_distance: float = 100.0
     mission_time: float = 300.0
     n_struct: float = 5.0
-    lap_objective: str = "ThreeLapTime"
+    scoring: ScoringConfig = ScoringConfig()
+    energy_reserve: float = Field(0.2, description="fraction of usable battery energy kept in reserve "
+                                  "(PLACEHOLDER, OPEN_QUESTIONS Q24)")
+    require_3lap_energy: bool = Field(True, description="constrain the reserve-adjusted energy to cover 3 laps")
 
 
 def default_full_dvs():
@@ -196,9 +206,13 @@ def build_full_model(m, cfg: FullMDOConfig):
         m.connect(f"{name}.vlm.wing_perf.CL", f"polar.CL_{i}")
         m.connect(f"{name}.CD", f"polar.CD_{i}")
 
+    m.add_subsystem("mission_energy", om.ExecComp("E_mission = (1.0 - reserve) * E_usable",
+                                                  E_mission={"units": "J"}, E_usable={"units": "J"},
+                                                  reserve={"val": cfg.energy_reserve}),
+                    promotes=["E_mission", "E_usable"])
     m.add_subsystem("lap", SmoothLapModel(rho_ks=a.rho_ks, power_mode="propulsion"),
                     promotes_inputs=["CD0", "CD1", "k", "rho", "g", "T_coeffs", "P_coeffs", ("V", "v"), ("S", "S"),
-                                     ("m", "m_total"), ("E_avail", "E_usable")],
+                                     ("m", "m_total"), ("E_avail", "E_mission")],
                     promotes_outputs=["*"])
     m.connect("cruise.CL_max", ["lap.CL_max", "lap.CL_to"])
 
@@ -233,8 +247,8 @@ def build_full_model(m, cfg: FullMDOConfig):
         v={"units": "m/s"}),
         promotes=["*"])
     m.connect("rpm_at_v.y", "rpm_v")
-    m.add_subsystem("energy_con", om.ExecComp("energy_margin = E_usable - energy_3laps", energy_margin={"units": "J"},
-                                              E_usable={"units": "J"}, energy_3laps={"units": "J"}), promotes=["*"])
+    m.add_subsystem("energy_con", om.ExecComp("energy_margin = E_mission - energy_3laps", energy_margin={"units": "J"},
+                                              E_mission={"units": "J"}, energy_3laps={"units": "J"}), promotes=["*"])
 
     geo = cfg.geometry
     for name, val, units in [("b", cfg.initial.get("b", 1.2), "m"), ("c", cfg.initial.get("c", 0.3), "m"),
@@ -254,11 +268,12 @@ def add_full_driver(prob, cfg: FullMDOConfig):
     units = {"b": "m", "c": "m", "l_ht": "m", "S_ht": "m**2", "S_vt": "m**2", "x_batt": "m", "capacity": "A*h"}
     for name, bd in cfg.design_variables.items():
         m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=units.get(name))
-    m.add_objective(cfg.lap_objective, ref=100.0)
+    add_scoring(m, get_plugin(cfg.scoring.plugin, **cfg.scoring.options))
     m.add_constraint("stall_margin", lower=0.0, ref=1.0)
     m.add_constraint("turn_speed_margin", lower=0.0, ref=1.0)
     m.add_constraint("thrust_margin_static", lower=0.0, ref=10.0)
-    m.add_constraint("energy_margin", lower=0.0, ref=1e4)
+    if cfg.require_3lap_energy:
+        m.add_constraint("energy_margin", lower=0.0, ref=1e4)
     # rpm at the top speed depends on the design (through v): a real constraint.
     m.add_constraint("rpm_margin", lower=0.0, ref=1000.0)
     # The static current depends only on the powertrain (fixed prop, cells, throttle), not on the DVs,
@@ -294,6 +309,8 @@ def build_full_problem(cfg: FullMDOConfig, driver=True):
     build_full_model(prob.model, cfg)
     if driver:
         add_full_driver(prob, cfg)
+    else:  # the score is still computed (reports, robustness), just not optimised
+        add_scoring(prob.model, get_plugin(cfg.scoring.plugin, **cfg.scoring.options), objective=False)
     prob.setup()
     apply_full_values(prob, cfg)
     return prob

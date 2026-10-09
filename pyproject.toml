@@ -23,6 +23,8 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest==9.1.1", "sympy==1.14.0"]
+ui = ["streamlit==1.64.0"]
+docs = ["pyxdsm==2.3.2"]
 
 [project.scripts]
 aircrafter2 = "aircrafter2.cli:main"

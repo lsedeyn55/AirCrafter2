@@ -1,55 +1,106 @@
 # AirCrafter 2.0
 
-A DBF-specific MDAO framework (Python + OpenMDAO) for the conceptual design of small fixed-wing electric RC aircraft.
-It is the successor to AirCrafter 1.0 (MATLAB, J. Kallarackel, 2025). See `docs/PLAN.md` for the architecture.
+A lightweight MDAO framework (Python + OpenMDAO) for the conceptual design of the USYD AIAA Design/Build/Fly
+aircraft: a small fixed-wing electric RC aircraft, optimised for competition mission performance. It is the
+successor to AirCrafter 1.0 (MATLAB grid search, J. Kallarackel, 2025), and adds coupled aerodynamics, a
+structure-based mass model, airfoil optimisation, propulsion, stability and gradient-based optimisation.
 
-**Status:** step 7 of 8. Mass model (step 2), aero-only wing with NeuralFoil profile drag (step 3), simple oval lap time (step 4), the coupled aero + mass MDF loop (step 5) the coupled AirCrafter lap modeller (step 6) and the full model with propulsion, stability, parasite drag and a robustness suite (step 7) work.
+**Status:** all 8 build steps are implemented. Inputs marked `PLACEHOLDER` in the configs are not USYD data yet
+(see `docs/OPEN_QUESTIONS.md`); replace them before trusting the numbers.
 
 ## Install
 
 ```bash
-uv venv --python 3.14 .venv            # or use the existing .venv
-uv pip install --python .venv/bin/python -e ".[test]"
+cd AirCrafter2
+uv venv --python 3.14 .venv                                   # or use the existing .venv
+uv pip install --python .venv/bin/python -e ".[test,ui,docs]"
 ```
 
-## Quickstart: mass model
+The APC propeller data is read from `../PERFILES2/` (the same files AirCrafter 1.0 used).
 
-```python
-from aircrafter2.config import MassConfig, load_yaml
-from aircrafter2.mass.garcia_gamboa import build_mass_problem, mass_breakdown
-
-cfg = MassConfig(**load_yaml("configs/mass_garcia_gamboa_2022.yaml"))
-cfg.inputs.update(b=1.5, c_mean=0.25, c_root=0.25, S_wing=0.375, tc=0.12, t_at_spar=0.12,
-                  l_ht=0.8, l_tb=0.7, S_ht=0.06, S_vt=0.03, S_cb=0.12, r_tb=0.008,
-                  V_design=22.0, Cm=-0.08, CL_alpha=4.8, n=5.0, m_sys=1.2, m_pay=2.0)
-prob = build_mass_problem(cfg)
-prob.run_model()
-print(mass_breakdown(prob))
-```
-
-All inputs, their units and descriptions are in `aircrafter2/mass/garcia_gamboa/inputs.py`.
-
-## Tests and verification
+## Quickstart
 
 ```bash
-.venv/bin/python -m pytest                     # unit tests, check_partials, check_totals, Table 15
-.venv/bin/python examples/mass_verification.py  # regenerates docs/mass_verification.md
-.venv/bin/python examples/aero_verification.py  # hand calcs, mesh study, step 3 optimisation -> docs/aero_verification.md
-.venv/bin/python examples/neuralfoil_fd_steps.py  # FD step study -> docs/neuralfoil_fd_steps.md
-.venv/bin/python examples/oval_lap.py            # step 4 oval lap optimisation -> docs/step4_oval.md
-.venv/bin/python examples/aero_mass.py           # step 5 MDA grid, t/c trade, optimisation -> docs/step5_aero_mass.md
-.venv/bin/python examples/tail_boom_calibration.py  # f_tb refit for the minimum boom wall -> docs/tail_boom_calibration.md
-.venv/bin/python examples/lap_mdo.py             # step 6 twin check + coupled lap optimisation -> docs/step6_lap_mdo.md
-matlab -batch "run('verification/matlab/run_reference.m')"   # MATLAB reference for the step 6 code check
-.venv/bin/python examples/full_mdo.py [props]    # step 7: prop enumeration + robustness -> docs/step7_full_mdo.md
+# optimise the full design (aero + mass + propulsion + stability + lap model)
+.venv/bin/aircrafter2 run configs/step7_full.yaml --out outputs/my_design
+
+# analyse only (no optimisation), or try another propeller
+.venv/bin/aircrafter2 run configs/step7_full.yaml --analyse --prop 11x7E
+
+# the graphical interface
+.venv/bin/aircrafter2 ui
+
+# available objectives (scoring plug-ins)
+.venv/bin/aircrafter2 plugins
+```
+
+A run writes into its output folder:
+
+| File | What |
+|---|---|
+| `summary.md`, `results.json` | optimum, constraints and margins, sensitivities |
+| `figures/*.pdf` (+ `.png`) | planform, airfoil, spanwise lift, drag breakdown, mass breakdown, convergence, sensitivities |
+| `cases.sql` | optimiser history (OpenMDAO `CaseReader`) |
+| `n2.html` | the model's N2 diagram |
+| `xdsm.tex` + `xdsm.tikz`, `xdsm.pdf` | XDSM (compile the `.tex` with LaTeX, e.g. Overleaf; the `.pdf` is a quick look) |
+
+For thesis figures including the design-space surface: `.venv/bin/python examples/make_thesis_figures.py`.
+
+From Python:
+
+```python
+from aircrafter2.api import run_design
+res = run_design("configs/step7_full.yaml", optimise=True, out_dir="outputs/demo")
+print(res.values["ThreeLapTime"], res.values["m_total"])
+```
+
+## Configs
+
+Everything a run needs is in one YAML file (`configs/step7_full.yaml` is the full model). Configs can point at
+shared files (`mass_config:`) and override them. Misspelt keys are errors, not silently ignored values.
+
+| Section | Contents |
+|---|---|
+| `airfoil` | seed airfoil (AeroSandbox name or `.dat`) and shape modes |
+| `aero` | VLM mesh, NeuralFoil settings |
+| `mass` | Garcia & Gamboa options and inputs (materials, correction factors, payload, load factor) |
+| `geometry`, `stability` | tail and fuselage placeholders, CG stations, stability bands |
+| `propulsion` | APC prop, motor, battery, throttle |
+| `scoring` | the objective plug-in (`three_lap_time`, `laps_in_window`, or your own) |
+| `design_variables`, `initial` | bounds and start point |
+
+## Documentation
+
+- `docs/PLAN.md`: architecture, XDSM, module interfaces, every finding and decision.
+- `docs/modules/`: one page per module (physics, equations, assumptions, sources).
+- `docs/how_to_add_a_scoring_plugin.md`: adding a year-specific score.
+- `docs/OPEN_QUESTIONS.md`: placeholders and open decisions.
+- Verification reports:
+  - `docs/mass_verification.md`: Garcia & Gamboa Table 15 reproduced within 2.3%.
+  - `docs/aero_verification.md`: hand calculations and mesh study.
+  - `docs/step6_lap_mdo.md`: port vs the original MATLAB, matching to ~1e-8.
+  - `docs/step7_full_mdo.md`: full optimisation and robustness.
+
+## Tests
+
+```bash
+.venv/bin/python -m pytest          # ~190 tests: check_partials, check_totals, verification, CLI, UI
 ```
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `aircrafter2/` | the package: `geometry/`, `airfoil/`, `aero/`, `mass/`, `mission/`, `problems/` so far |
-| `configs/` | YAML configs; `verification/` holds the paper's test aircraft |
-| `tests/` | pytest suite |
-| `examples/legacy/` | earlier OpenMDAO/OAS experiments, kept unchanged |
-| `docs/` | plan, open questions, verification report |
+| `aircrafter2/geometry` | rectangular planform, tails, cargo bay |
+| `aircrafter2/airfoil` | Kulfan/CST shapes, section geometry, NeuralFoil section solver |
+| `aircrafter2/aero` | OpenAeroStruct VLM + NeuralFoil strip drag, C_L,max, parasite drag, drag polar |
+| `aircrafter2/mass` | Garcia & Gamboa (2022) structure-based and statistical mass, calibration |
+| `aircrafter2/propulsion` | APC data, motor + ESC + battery powertrain |
+| `aircrafter2/stability` | static margin from tail volume |
+| `aircrafter2/mission` | AirCrafter lap model: MATLAB-faithful reference and smooth twin; oval |
+| `aircrafter2/scoring` | objective plug-ins |
+| `aircrafter2/problems` | the problem builders for each build step (`full_mdo.py` is the full model) |
+| `aircrafter2/robustness` | sensitivities, worst cases, Monte Carlo |
+| `aircrafter2/plotting`, `api.py`, `cli.py`, `ui/` | figures, API, CLI, Streamlit |
+| `configs/`, `tests/`, `examples/`, `verification/matlab/` | configs, tests, report scripts, MATLAB reference |
+| `examples/legacy/` | earlier experiments, unchanged |

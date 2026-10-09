@@ -36,6 +36,11 @@ takeoff_distance: 100.0  # m, inputs_file.m
 mission_time: 300.0      # s, inputs_file.m
 n_struct: 5.0            # assumptions_file.m
 
+scoring:
+  plugin: three_lap_time # placeholder objective; or laps_in_window, or 'module:Class' (docs/how_to_add_a_scoring_plugin.md)
+energy_reserve: 0.2      # PLACEHOLDER: keep 20 % of the usable battery energy in reserve (Q24)
+require_3lap_energy: true
+
 propulsion:              # decision B: the powertrain sets the power; cruise speed is where T = D
   prop: 11x7E            # APC PER3 file (discrete choice, D4: enumerate in examples/full_mdo.py)
   throttle: 1.0          # full throttle (the fastest-lap placeholder objective)

@@ -485,6 +485,23 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
     did not converge (tight RPM limit).
   - Sensitivities: the motor Kv placeholder dominates (−0.25), then payload, Rm, air density and R_cell.
 
+## 6g. Step 8 status (UI, docs, figures)
+
+- `aircrafter2/scoring/`: plug-in interface. Plug-ins are registered or loaded from a dotted path, use
+  complex-step partials, and can add their own constraints. Placeholders: `three_lap_time`, `laps_in_window`.
+  The full model's objective is now the plug-in's `score`.
+- **Energy reserve (Q24, placeholder 20%):** the lap model and the 3-lap energy constraint both use
+  (1 − reserve) × usable energy.
+- `aircrafter2/api.py` (`run_design`) and `aircrafter2/cli.py` (`aircrafter2 run | plugins | ui`). Each run writes
+  `summary.md`, `results.json`, `cases.sql` (SqliteRecorder), `n2.html`, `xdsm.tex` / `.tikz` / `.pdf`, and
+  `figures/*.pdf` + `.png`.
+- `aircrafter2/plotting/`: one thesis style (serif, 9 pt, vector PDF, embedded fonts). Figures: planform,
+  airfoil, spanwise lift, drag and mass breakdowns, convergence, sensitivities, design-space surface, plus
+  `xdsm.py` (pyXDSM TikZ and a matplotlib quick look; no LaTeX on this machine).
+- `aircrafter2/ui/app.py`: Streamlit, thin over `run_design`. Tested headless with `streamlit.testing`.
+- Docs: README quickstart, `docs/modules/*.md` (one page per module), `docs/how_to_add_a_scoring_plugin.md`.
+  Figures script: `examples/make_thesis_figures.py`.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an

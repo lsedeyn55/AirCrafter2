@@ -1,0 +1,55 @@
+# Aerodynamics and airfoil
+
+Code: `aircrafter2/airfoil/`, `aircrafter2/aero/`.
+
+## Airfoil (`airfoil/`)
+
+- **Shape.** Kulfan/CST "with LEM" exactly as in AeroSandbox, which NeuralFoil was trained on: 8 + 8 weights, a
+  leading-edge weight and the TE thickness (`cst.py`; matches AeroSandbox to 1e-16).
+- **Design variables (D3).** On a seed airfoil (`airfoil.seed`), `tc_scale` scales the thickness distribution and
+  `camber_scale` the camber distribution. Optionally, `n_modes` local bump modes are added per surface. The TE
+  thickness is fixed (buildability).
+- **Section geometry.** Max t/c, its position, the thickness at the spar, A/c² and P/c, which feed the mass
+  model. Partials are exact (complex step).
+- **Section aerodynamics.** NeuralFoil (v0.3.3, `model_size` xlarge by default) at the VLM strip's own c_l and Re:
+  1. α is solved so that c_l,NeuralFoil(α) = c_l (grid bracket, then Newton);
+  2. c_d and c_m are read there;
+  3. c_l,max is the C_l(α) peak.
+- **Derivatives.** Implicit-function theorem: only the network is finite-differenced. Step sizes are α 1e-4°,
+  ln Re 1e-5 and Kulfan weights 1e-6, from `docs/neuralfoil_fd_steps.md` (the TE-thickness derivative needs
+  ≤ 1e-6).
+
+## Wing (`aero/wing.py`)
+
+1. **VLM.** OpenAeroStruct `AeroPoint`, aero only, `with_viscous=False`, on a rectangular half-wing mesh
+   (`num_y` = 41 nodes by default; 21 in the full optimisation config).
+2. **Profile drag.** Strip integral C_Dp = 2 Σ c_d,i c_i w_i / S of the NeuralFoil section drag. OAS's own
+   viscous drag is off, so profile drag isn't counted twice.
+3. **C_L,max** by the critical-section method: C_L,max = C_L · KSmin(c_l,max,i / c_l,i). This is exact for the
+   linear VLM.
+4. **Moment and lift slope.** C_m,wing (chord-weighted strip c_m) and C_L,α = C_L/α, both used by the mass loads.
+5. **Parasite drag** (`aero/parasite.py`): Raymer's component build-up (Ch. 12) for the tails and a switchable
+   fuselage (cargo box + boom). Fully turbulent C_f with thin-surface and body form factors.
+6. **Drag polar for the mission** (`aero/polar.py`): CD = CD0 + CD1 C_L + k C_L², fitted exactly through cruise, mid
+   and 0.95 C_L,max points, so the lap model interpolates and never extrapolates.
+
+## Assumptions to know
+
+- **The VLM is a flat plate.** α is measured from zero lift; camber enters only through NeuralFoil. `alpha_sec`
+  gives the true section angle.
+- **C_L,max uses the analysis point's Reynolds number**, which is optimistic at stall.
+- **Rectangular wing only** (multi-panel tapered wings were dropped).
+
+## Verification (`docs/aero_verification.md`)
+
+| Check | Result |
+|---|---|
+| Trefftz-plane drag vs OAS near-field drag | −0.3% |
+| Span efficiency e, VLM vs lifting line (AR 6) | +4.7% (a genuine difference between the theories) |
+| Strip C_Dp vs 2D c_d at the wing C_L | +4.6% (tip strips run off-design) |
+| Total C_D vs the hand calculation | −0.7% |
+| Mesh convergence | tabulated in the report |
+| `check_partials` / `check_totals` | pass |
+
+One OAS gotcha: OAS reads the *values* of the template mesh passed in the surface dict, not just its shape. A zero
+placeholder gives garbage (PLAN A1).
