@@ -1,0 +1,29 @@
+# Step 3: aero-only rectangular wing, minimise CD at fixed lift and fixed wing area.
+# Schema: aircrafter2/problems/wing_aero.py (WingAeroProblemConfig). SI units; alpha in deg.
+
+airfoil:
+  seed: naca4412          # AeroSandbox name or path to a .dat file
+  n_modes: 0              # 0 = (tc_scale, camber_scale) only (decision D3)
+
+aero:
+  num_x: 2                # one chordwise panel
+  num_y: 41               # 40 strips per half wing (docs/aero_verification.md, mesh convergence)
+  spacing: cosine
+  model_size: xlarge      # NeuralFoil network
+  n_crit: 9.0             # PLACEHOLDER: XFoil "average wind tunnel" default
+
+altitude: 400.0           # m, inputs_file.m (Wichita ~400 m)
+V: 20.0                   # m/s, PLACEHOLDER cruise speed
+weight: 49.0              # N (5 kg), PLACEHOLDER: fixed lift until step 5 couples mass
+S: 0.375                  # m^2, PLACEHOLDER fixed wing area
+tc_min: 0.10              # PLACEHOLDER spar room (OPEN_QUESTIONS Q5)
+clmax_ratio_min: 1.44     # (1.2)^2: cruise at >= 1.2 V_stall, as in the lap modeller
+
+design_variables:
+  b: {lower: 0.9, upper: 1.52}        # 3-5 ft, inputs_file.m
+  c: {lower: 0.15, upper: 0.45}
+  alpha: {lower: -5.0, upper: 15.0}   # deg from zero lift (flat-plate VLM)
+  tc_scale: {lower: 0.6, upper: 1.5}
+  camber_scale: {lower: 0.0, upper: 2.0}
+
+initial: {b: 1.2, c: 0.3125, alpha: 3.0, tc_scale: 1.0, camber_scale: 1.0}

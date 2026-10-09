@@ -342,10 +342,43 @@ fitted to Table 15's real masses, recovers the Table 14 individual factors (with
 **Closure solver.** Standalone, the mass group uses NonlinearBlockGS with Aitken acceleration. The closure is weakly
 coupled (dm_total/dm ≈ 0.05). Newton from the cold-start outputs diverged.
 
-**Multi-panel Eq. 33 is deferred to step 5,** when the geometry module provides panel spans and chords. Step 2
-implements Eq. 32, with `n_panels` setting the f_wing exponent.
+**Multi-panel Eq. 33 is dropped** (your decision, 2026-10-09: tapered multi-panel wings aren't needed for the
+optimiser). The model uses Eq. 32 with one equivalent panel; `n_panels` only sets the f_wing exponent (the
+number of wing joints).
 
 ---
+
+## 6b. Step 3 status and findings (aero)
+
+What's implemented:
+- `aircrafter2/airfoil/`: CST evaluator matching AeroSandbox to 1e-16, reduced shape modes (D3), section
+  geometry (t/c, thickness at the spar, A/c², P/c) with cs partials, and a NeuralFoil section solver.
+- `aircrafter2/aero/`: rectangular half-wing mesh, OAS AeroPoint (aero-only, `with_viscous=False`),
+  NeuralFoil strip profile drag, critical-section C_L,max, and wing totals.
+- `aircrafter2/problems/wing_aero.py`, configured by `configs/step3_wing_aero.yaml`.
+- Report: `docs/aero_verification.md`. FD step study: `docs/neuralfoil_fd_steps.md`.
+
+Changes from §5.3:
+- **No polar tables.** Each strip solves C_l,NF(α) = C_l directly (grid bracket, then Newton). Partials use the
+  implicit-function theorem; only the network is finite-differenced. This avoids table-interpolation error and
+  big table Jacobians. It costs about 0.1 s per run plus 0.1 s per derivative evaluation at 40 strips.
+- **Parasite drag of tails and fuselage is deferred to step 7,** where the geometry module provides the wetted
+  areas. `WingPerformance` already has a `CD_extra` input for it.
+
+Findings:
+- **A1. OAS reads the template mesh values.** OAS reads `surface["mesh"]` *values* at setup (e.g.
+  `eval_mtx.py` checks which half-wing it is). An all-zero placeholder gives garbage (C_L ~ 1e15). We pass a
+  unit-size template with the same node pattern; its size doesn't affect results (tested).
+- **A2. The VLM is a flat-plate model.** Its α is measured from zero lift, and camber enters only through the
+  NeuralFoil strips (matched on c_l). Report `alpha_sec` for the true section angle.
+- **A3. Span efficiency, mesh and theory.** At AR 6 the VLM gives e ≈ 0.99 (converged) against lifting-line
+  0.954, and C_L,α is 7% lower. OAS's near-field drag equals an independent Trefftz-plane calculation, so the
+  difference is between the theories, not an OAS bug. Coarse meshes overstate e (1.04 at 10 strips); the
+  default is 40 strips per half.
+- **A4. FD steps for NeuralFoil.** NeuralFoil's derivative w.r.t. TE thickness is strongly nonlinear: a 1e-4
+  step was off by up to tens of percent. Defaults are now α 1e-4°, ln Re 1e-5, Kulfan 1e-6, all on the plateau.
+- **A5. C_L,max uses the cruise-point Reynolds number.** That's slightly optimistic for the stall check, because
+  Re is lower at stall. It's documented, and a dedicated low-speed point can be added in step 7 if needed.
 
 ## 7. G&G 2022: errata, ambiguities and findings
 
