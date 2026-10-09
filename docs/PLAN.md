@@ -419,6 +419,35 @@ Findings:
 - **Finding M2:** the G&G LE/TE stringer and rib masses scale with section area, so at DBF scale they outweigh
   the strength-governed spar saving from a thicker section.
 
+## 6e. Step 6 status (lap modeller)
+
+- `aircrafter2/mission/lap_modeller.py` is the reference port (moved from `dbf_performance_modeller.py`).
+  It gains `matlab_compat=True`, which reproduces MATLAB's rounded V_stall (M1) and its unrounded
+  turn-table start.
+- **MATLAB check: pending.** MATLAB R2026a is installed but waits for a MathWorks sign-in when started
+  headless.
+  - `verification/matlab/run_reference.m` runs the original `performance_modeller.m` unchanged at 6 points
+    (2 deliberately infeasible), with `batteryFraction` 1 and 0, and writes `tests/data/matlab_reference.csv`.
+  - `tests/test_lap_modeller.py::test_port_reproduces_matlab` then checks the port to 0.5% (skipped until
+    then).
+- `aircrafter2/mission/smooth_lap.py`: the smooth twin (D2).
+  - Straights are RK4 in distance with a smooth speed hold at V; turns are RK4 in time with a smooth
+    min(a, 0) at C_L,max drag.
+  - Turn rate is stall-limited and KS-capped at n_struct. Lap count is a fractional surrogate; the integer
+    `lapCount` is for reporting only. Partials are complex step (exact).
+  - Matches the port within 0.65% (3-lap time) on 8 points, including near-stall, with identical lap counts.
+  - A first multiplicative speed cap leaked (thrust > drag at V because P includes 1/η) and was replaced
+    by a smooth min with relaxation.
+- `aircrafter2/problems/lap_mdo.py` (config `configs/step6_lap_mdo.yaml`) couples the lap model:
+  - the step 5 MDA (aero + mass);
+  - two more aero points (mid, 0.95 C_L,max) feeding a three-point polar CD = CD0 + CD1 CL + k CL²;
+  - inputs: m_total, S, V (now a DV), C_L,max; take-off C_L = C_L,max (no flaps).
+  - Results: `docs/step6_lap_mdo.md`.
+- **Finding L1:** AirCrafter's P = D(V)V/η makes lap time *improve* with cruise drag (higher drag means a
+  higher throttle setting and more thrust out of the turns). The optimiser exploits it up to the 300 W
+  placeholder (cruise L/D ≈ 4). Proposed for step 7: the power setting comes from propulsion, not from
+  cruise drag.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an

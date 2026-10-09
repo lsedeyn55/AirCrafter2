@@ -193,14 +193,16 @@ def _build_decel_table(Vstall, V, Preq, W, m, rho, S, Cd0, k, Clmax, t_step=0.1,
     return v_time, t_time
 
 
-def _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n, g=G):
+def _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n, g=G, v_broad_start=None):
     """Turn-rate vs speed, stall-limited then capped at the structural limit (Eq 3.10-3.12)."""
 
     def turn_rate(v):
         term = ((0.5 * rho * Clmax * S) / W) ** 2 * v**2 - 1.0 / v**2
         return g * np.sqrt(np.abs(term))
 
-    v_broad = np.arange(Vstall, 1.1 * V, 0.1)
+    # MATLAB starts this table at the *unrounded* stall speed (matters only with matlab_compat)
+    start = Vstall if v_broad_start is None else v_broad_start
+    v_broad = np.arange(start, 1.1 * V, 0.1)
     v_broad = np.append(v_broad, 1.1 * V)
 
     bank_stall = np.degrees(
@@ -295,8 +297,18 @@ def _lap_count(Preq, E, mission_time, lap1_time, other_lap_time, pilot_reaction_
     return lap_count
 
 
-def performance_modeller(assumptions, design):
+def _matlab_round(x):
+    """MATLAB round(): halves away from zero (numpy rounds halves to even)."""
+    return np.sign(x) * np.floor(np.abs(x) + 0.5)
+
+
+def performance_modeller(assumptions, design, matlab_compat=False):
     """Full port of performance_modeller.m. See module docstring for outputs.
+
+    matlab_compat=True reproduces the MATLAB exactly where it differs from the cleaned-up port:
+    the stall speed is rounded to an integer, Vstall = round(sqrt(W / (0.5 rho Clmax S))), and
+    that rounded value drives the stall check (1.2 round(Vstall) >= V), the lookup tables and the
+    Vstall output (PLAN §8, M1). Use it only for the step 6 code check against MATLAB.
 
     `assumptions`: dict with Cd0, Clmax, Clto, e, n, mu, eta, E, payload_fraction.
     `design`: dict with m [kg], b [m], AR, V [m/s], altitude [m],
@@ -327,7 +339,8 @@ def performance_modeller(assumptions, design):
 
     Tstatic = static_thrust_calculator(m, b, AR, sg, altitude, Cd0, Clto, e, mu)
 
-    Vstall = np.sqrt(W / (0.5 * rho * Clmax * S))
+    Vstall_exact = np.sqrt(W / (0.5 * rho * Clmax * S))
+    Vstall = _matlab_round(Vstall_exact) if matlab_compat else Vstall_exact
     stall_margin = V - 1.2 * Vstall
 
     q = 0.5 * rho * V**2
@@ -338,7 +351,8 @@ def performance_modeller(assumptions, design):
 
     accel_tables = _build_accel_table(Vstall, V, Preq, W, m, rho, S, Cd0, k)
     v_time_decel, t_time_decel = _build_decel_table(Vstall, V, Preq, W, m, rho, S, Cd0, k, Clmax)
-    turn_tables = _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n)
+    turn_tables = _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n,
+                                         v_broad_start=Vstall_exact if matlab_compat else None)
 
     lap1, other, v_after_360 = _lap_performance(
         Vstall, accel_tables, (v_time_decel, t_time_decel), turn_tables

@@ -116,9 +116,8 @@ class AeroMassMDA(om.Group):
         self.linear_solver = om.DirectSolver()
 
 
-def build_aero_mass_problem(cfg: AeroMassProblemConfig, driver=True):
-    prob = om.Problem(reports=False)
-    m = prob.model
+def add_aero_mass_model(m, cfg: AeroMassProblemConfig):
+    """Add airfoil, geometry and the aero + mass MDA to a model (all promoted)."""
     m.add_subsystem("airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes),
                     promotes=["*"])
     m.add_subsystem("planform", RectPlanform(), promotes=["*"])
@@ -137,6 +136,34 @@ def build_aero_mass_problem(cfg: AeroMassProblemConfig, driver=True):
                              ("g", 9.80665, "m/s**2")]:
         m.set_input_defaults(name, val, units=units)
 
+
+def add_structural_constraints(m, cfg: AeroMassProblemConfig):
+    m.add_constraint("cruise.cl_margin_sec", lower=0.0)
+    m.add_constraint("wall_ratio", upper=cfg.wall_ratio_max)
+    m.add_constraint("r_tube", lower=cfg.r_tube_min, units="m", ref=0.01)
+
+
+def apply_aero_mass_values(prob, cfg: AeroMassProblemConfig):
+    """Set the config values on a set-up problem (flight condition, geometry, mass inputs, initial point)."""
+    atm = isa(cfg.altitude)
+    prob.set_val("v", cfg.V, units="m/s")
+    prob.set_val("rho", atm["rho"], units="kg/m**3")
+    prob.set_val("mu", atm["mu"], units="Pa*s")
+    geo = cfg.geometry
+    for name in ["l_ht", "S_ht", "S_vt", "boom_offset", "l_cb", "w_cb", "h_cb", "x_spar"]:
+        prob.set_val(name, getattr(geo, name))
+    active = set(active_inputs(cfg.mass.options)) - MASS_FROM_OTHERS
+    set_mass_inputs(prob, {k: v for k, v in cfg.mass.inputs.items() if k in active})
+    if cfg.airfoil.te_thickness is not None:
+        prob.set_val("te_thickness_in", cfg.airfoil.te_thickness)
+    for name, val in cfg.initial.items():
+        prob.set_val(name, val)
+
+
+def build_aero_mass_problem(cfg: AeroMassProblemConfig, driver=True):
+    prob = om.Problem(reports=False)
+    m = prob.model
+    add_aero_mass_model(m, cfg)
     if driver:
         prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
         units = {"b": "m", "c": "m"}
@@ -147,21 +174,7 @@ def build_aero_mass_problem(cfg: AeroMassProblemConfig, driver=True):
         else:
             m.add_objective("P_cruise", ref=10.0)
         m.add_constraint("cruise.CL_max_over_CL", lower=cfg.clmax_ratio_min)
-        m.add_constraint("cruise.cl_margin_sec", lower=0.0)
-        m.add_constraint("wall_ratio", upper=cfg.wall_ratio_max)
-        m.add_constraint("r_tube", lower=cfg.r_tube_min, units="m", ref=0.01)
-
+        add_structural_constraints(m, cfg)
     prob.setup()
-    atm = isa(cfg.altitude)
-    prob.set_val("v", cfg.V, units="m/s")
-    prob.set_val("rho", atm["rho"], units="kg/m**3")
-    prob.set_val("mu", atm["mu"], units="Pa*s")
-    for name in ["l_ht", "S_ht", "S_vt", "boom_offset", "l_cb", "w_cb", "h_cb", "x_spar"]:
-        prob.set_val(name, getattr(geo, name))
-    active = set(active_inputs(cfg.mass.options)) - MASS_FROM_OTHERS
-    set_mass_inputs(prob, {k: v for k, v in cfg.mass.inputs.items() if k in active})
-    if cfg.airfoil.te_thickness is not None:
-        prob.set_val("te_thickness_in", cfg.airfoil.te_thickness)
-    for name, val in cfg.initial.items():
-        prob.set_val(name, val)
+    apply_aero_mass_values(prob, cfg)
     return prob

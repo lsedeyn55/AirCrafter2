@@ -24,3 +24,6 @@ configs as `PLACEHOLDER`, with a pointer back to this file.
 | Q17 | Step 3 placeholders: cruise V = 20 m/s, fixed lift 49 N, S = 0.375 m², t/c ≥ 0.10 (replaced by the coupled mass and tube-fit constraint in step 5) | step 5 | as listed |
 | Q18 | Step 4 placeholders: turn C_L margin C_L,max/C_L ≥ 1.21 (10 % speed margin in turns), optional turn power limit (400 W used in the report), fixed V = 20 m/s | step 6-7 | as listed |
 | Q19 | Step 5 placeholders: m_sys 1.2 kg, m_pay 1.5 kg, tail arm 0.8 m, S_ht 0.06 m², S_vt 0.03 m², boom offset 0.15 m, cargo bay 0.40 × 0.12 × 0.12 m, boom radius 8 mm, minimum spar tube radius 5 mm | step 7 | as listed |
+| Q20 | MATLAB reference for the step 6 code check: please run `matlab -batch "run('verification/matlab/run_reference.m')"` from `AirCrafter2/` (needs your MathWorks sign-in; headless start from this session hangs) | step 6 | pending |
+| Q21 | Finding L1: replace AirCrafter's power setting P = D(V)V/η (which rewards cruise drag) with a propulsion-defined power in step 7? | step 7 | proposed: yes |
+| Q22 | Step 6 placeholder: electrical power ≤ 300 W until propulsion exists | step 7 | 300 W |
