@@ -3,7 +3,7 @@
 A DBF-specific MDAO framework (Python + OpenMDAO) for the conceptual design of small fixed-wing electric RC aircraft.
 It is the successor to AirCrafter 1.0 (MATLAB, J. Kallarackel, 2025). See `docs/PLAN.md` for the architecture.
 
-**Status:** step 3 of 8. The mass model (step 2) and the aero-only wing with NeuralFoil profile drag (step 3) work standalone.
+**Status:** step 4 of 8. Mass model (step 2), aero-only wing with NeuralFoil profile drag (step 3) and the simple oval lap-time optimisation (step 4) work.
 
 ## Install
 
@@ -36,13 +36,14 @@ All inputs, their units and descriptions are in `aircrafter2/mass/garcia_gamboa/
 .venv/bin/python examples/mass_verification.py  # regenerates docs/mass_verification.md
 .venv/bin/python examples/aero_verification.py  # hand calcs, mesh study, step 3 optimisation -> docs/aero_verification.md
 .venv/bin/python examples/neuralfoil_fd_steps.py  # FD step study -> docs/neuralfoil_fd_steps.md
+.venv/bin/python examples/oval_lap.py            # step 4 oval lap optimisation -> docs/step4_oval.md
 ```
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `aircrafter2/` | the package: `mass/`, `airfoil/`, `aero/`, `problems/` so far |
+| `aircrafter2/` | the package: `mass/`, `airfoil/`, `aero/`, `mission/`, `problems/` so far |
 | `configs/` | YAML configs; `verification/` holds the paper's test aircraft |
 | `tests/` | pytest suite |
 | `examples/legacy/` | earlier OpenMDAO/OAS experiments, kept unchanged |

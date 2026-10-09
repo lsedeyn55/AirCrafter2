@@ -1,0 +1,26 @@
+# Step 4: minimise the lap time of a simple oval at fixed cruise speed.
+# Schema: aircrafter2/problems/oval_lap.py (OvalLapProblemConfig). SI units; alpha in deg.
+
+airfoil: {seed: naca4412, n_modes: 0}
+aero: {num_x: 2, num_y: 41, spacing: cosine, model_size: xlarge, n_crit: 9.0}
+
+altitude: 400.0               # m, inputs_file.m
+V: 20.0                       # m/s, PLACEHOLDER fixed cruise and turn speed
+weight: 49.0                  # N, PLACEHOLDER (5 kg) until step 5 couples mass
+straight_length: 304.8        # m = 1000 ft, the long leg in performance_modeller.m
+n_struct: 5.0                 # assumptions_file.m
+turn_clmax_ratio_min: 1.21    # PLACEHOLDER: turn at C_L <= C_L,max / 1.21 (10 % speed margin in the turn)
+clmax_ratio_min: 1.44         # cruise at >= 1.2 V_stall
+tc_min: 0.10                  # PLACEHOLDER spar room
+power_available: null         # W; PLACEHOLDER, e.g. 400.0 to limit turn power until step 7 adds propulsion
+eta: 0.7                      # assumptions_file.m
+
+design_variables:
+  b: {lower: 0.9, upper: 1.52}
+  c: {lower: 0.15, upper: 0.45}
+  alpha_cruise: {lower: -5.0, upper: 15.0}
+  alpha_turn: {lower: -5.0, upper: 30.0}
+  tc_scale: {lower: 0.6, upper: 1.5}
+  camber_scale: {lower: 0.0, upper: 2.0}
+
+initial: {b: 1.2, c: 0.3, alpha_cruise: 6.0, alpha_turn: 10.0, tc_scale: 1.0, camber_scale: 1.0}

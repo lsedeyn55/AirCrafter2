@@ -380,6 +380,20 @@ Findings:
 - **A5. C_L,max uses the cruise-point Reynolds number.** That's slightly optimistic for the stall check, because
   Re is lower at stall. It's documented, and a dedicated low-speed point can be added in step 7 if needed.
 
+## 6c. Step 4 status (oval lap)
+
+- `aircrafter2/mission/oval.py`: `LoadFactor` (n = L_turn/W, KS-capped at n_struct) and `OvalLapTime`
+  (R = V²/(g√(n²−1)), lap = (2L_s + 2πR)/V), with analytic partials. Developed from
+  `examples/legacy/basic_perf.py`; its `np.where` floor became a softplus floor.
+- `aircrafter2/problems/oval_lap.py` (config `configs/step4_oval_lap.yaml`): one wing, two aero points
+  (cruise with L = W; turn with its own α). The turn C_L margin C_L,max/C_L ≥ 1.21 sets n and R.
+- Results: `docs/step4_oval.md`.
+  - Without a power limit the turn margin is active (lap 33.6 s, R = 9.9 m, n = 4.2). With nothing penalising
+    drag, the optimiser maximises the wing and its camber.
+  - With a 400 W placeholder on turn power, the power limit becomes active (lap 35.0 s, R = 14.4 m).
+- Note: VLM α is measured from zero lift (A2), so the α_turn bound is set wide (30°). The C_L-margin and
+  per-strip stall constraints are what limit the turn.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an
