@@ -448,6 +448,43 @@ Findings:
   placeholder (cruise L/D ≈ 4). Proposed for step 7: the power setting comes from propulsion, not from
   cruise drag.
 
+## 6f. Step 7 status (propulsion, stability, parasite drag, full optimisation)
+
+Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an output.
+
+- `aircrafter2/propulsion/apc.py`: APC PER3 parser (the AirCrafter 1.0 data in `THESIS/PERFILES2`) and
+  smooth C_T(J, RPM), C_P(J, RPM) surrogates (RMS ≈ 0.0002 and 0.001).
+- `aircrafter2/propulsion/powertrain.py`: battery + ideal ESC + first-order DC motor (Drela) + prop.
+  - Torque balance solved at speed nodes, giving cubic T(v) and P_batt(v).
+  - Also outputs static thrust, peak current, max RPM, usable energy and m_sys. Exact cs partials.
+- Lap twin, `power_mode="propulsion"`:
+  - thrust from T(v), no speed hold;
+  - battery energy integrated on every leg;
+  - energy-limited fractional laps and a static-thrust margin;
+  - headwind and thrust-factor hooks.
+- `aircrafter2/aero/parasite.py`: Raymer component build-up for the tails and a switchable fuselage
+  (cargo box + boom).
+- `aircrafter2/stability/static.py`: tail-volume neutral point, CG from component stations, static margin.
+- `aircrafter2/problems/full_mdo.py` (config `configs/step7_full.yaml`):
+  - the MDA now also solves v where T(v) = D(v) (that speed is the G&G design speed too), and includes
+    parasite drag;
+  - DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery station and
+    cargo-bay station;
+  - current/RPM limits are post-checks (they don't depend on the DVs at fixed prop, cells and throttle);
+  - the prop is enumerated outside the optimiser (D4).
+- `aircrafter2/robustness/suite.py`: normalised sensitivities (compute_totals), one-at-a-time worst cases
+  (mass, thrust, capacity, headwind), and Monte Carlo over the uncertain inputs.
+- Results: `docs/step7_full_mdo.md`.
+- Notes:
+  - The first full run was infeasible: with the placeholder stations the CG was too far forward for
+    SM ≤ 0.20 together with V_h ≥ 0.35. Making the cargo-bay station a DV fixed it.
+  - With the placeholder 3-lap objective, the battery is sized to exactly three laps (no reserve).
+  - Rotor speed rises with flight speed. A first max-over-nodes RPM post-check therefore judged props
+    above their top speed; it was replaced by a constraint on rpm at the full-throttle level speed.
+  - Result (placeholder powertrain): 10x7E best at 79.7 s for 3 laps; 11x7E 80.7 s (RPM-limited); 12x8E
+    did not converge (tight RPM limit).
+  - Sensitivities: the motor Kv placeholder dominates (−0.25), then payload, Rm, air density and R_cell.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an

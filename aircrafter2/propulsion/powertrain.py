@@ -17,7 +17,8 @@ Outputs for the lap model: cubic least-squares fits through the nodes
     T(v)      = sum_i t_i v^i         thrust (N)
     P_batt(v) = sum_i p_i v^i         power drawn from the battery chemistry, V_oc I_batt (W)
 plus the static thrust T(0), the static battery current (the maximum), the largest rotor
-speed over the nodes, and the system masses.
+speed over the nodes (report only: the top node is above the flight envelope), the rotor-speed
+fit rpm(v) (check it at the actual top speed), and the system masses.
 """
 
 import numpy as np
@@ -56,6 +57,7 @@ class Powertrain(om.ExplicitComponent):
 
         self.add_output("T_coeffs", np.zeros(d), desc="T(v) = sum t_i v^i, N, v in m/s")
         self.add_output("P_coeffs", np.zeros(d), desc="P_batt(v) = sum p_i v^i, W")
+        self.add_output("RPM_coeffs", np.zeros(d), desc="rotor rpm(v) = sum r_i v^i (rises with v)")
         self.add_output("T_static", 10.0, units="N")
         self.add_output("I_static", 30.0, units="A", desc="battery current at v = 0 (the maximum)")
         self.add_output("rpm_max", 10000.0, units="rpm")
@@ -68,7 +70,7 @@ class Powertrain(om.ExplicitComponent):
         self.add_output("eta_prop_nodes", np.zeros(n))
         self.add_output("fit_residual_T", 0.0, units="N", desc="max |fit - node| (report)")
         elec = ["throttle", "rho", "n_cells", "V_cell", "R_cell", "Kv", "Rm", "I0"]
-        for out in ["T_coeffs", "P_coeffs", "T_static", "I_static", "rpm_max", "T_nodes", "P_nodes",
+        for out in ["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "I_static", "rpm_max", "T_nodes", "P_nodes",
                     "eta_prop_nodes"]:
             self.declare_partials(out, elec, method="cs")
         self.declare_partials("E_usable", ["n_cells", "V_cell", "capacity", "usable_fraction"], method="cs")
@@ -116,6 +118,7 @@ class Powertrain(om.ExplicitComponent):
         tc = self._pinv @ r["T"]
         outputs["T_coeffs"] = tc
         outputs["P_coeffs"] = self._pinv @ r["P_batt"]
+        outputs["RPM_coeffs"] = self._pinv @ (r["omega"] / RPM2RADS)
         V = np.stack([self._v**i for i in range(len(tc))], axis=1)
         outputs["fit_residual_T"] = np.max(np.abs(np.real(V @ tc - r["T"])))
         outputs["T_static"] = r["T"][0]

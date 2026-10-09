@@ -3,7 +3,7 @@
 # Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md).
 
 airfoil: {seed: naca4412, n_modes: 0}
-aero: {num_x: 2, num_y: 41, spacing: cosine, model_size: xlarge, n_crit: 9.0}
+aero: {num_x: 2, num_y: 21, spacing: cosine, model_size: xlarge, n_crit: 9.0}
 
 mass_config: mass_garcia_gamboa_2022.yaml   # base mass-model config, relative to this file
 mass:                    # overrides merged over mass_config
@@ -53,7 +53,7 @@ propulsion:              # decision B: the powertrain sets the power; cruise spe
   m_avionics: 0.25       # kg, PLACEHOLDER
   I_max: 60.0            # A, PLACEHOLDER motor/ESC limit (Q7)
   rpm_fraction: 0.85     # of APC's 150000/D, propSelector.m
-  v_top: 40.0            # m/s, T(v) fit range
+  v_top: 50.0            # m/s, T(v) fit range (above the full-throttle level speed)
 
 stability:
   AR_ht: 4.0             # PLACEHOLDER
@@ -64,7 +64,7 @@ stability:
   x_motor: -0.30         # m from wing LE, PLACEHOLDER
   x_avionics: -0.10      # m, PLACEHOLDER
   x_gear: 0.05           # m, PLACEHOLDER
-  x_cb_frac: 0.25        # PLACEHOLDER: cargo/payload centred at the quarter chord
+  x_cb_frac: 0.25        # initial cargo/payload centre (chord fraction); a design variable below
   SM_min: 0.05           # PLACEHOLDER (Q9)
   SM_max: 0.20           # PLACEHOLDER (Q9)
   V_h_min: 0.35          # PLACEHOLDER (Q9)
@@ -82,6 +82,7 @@ design_variables:
   S_ht: {lower: 0.02, upper: 0.15}       # m^2
   S_vt: {lower: 0.01, upper: 0.10}       # m^2
   x_batt: {lower: -0.35, upper: 0.2}     # m, battery station (trims the CG)
+  x_cb_frac: {lower: 0.0, upper: 0.6}    # cargo bay / payload centre as a chord fraction (trims the CG)
 
 initial: {b: 1.2, c: 0.3, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 6.0, v: 22.0, capacity: 3.0,
           l_ht: 0.8, S_ht: 0.06, S_vt: 0.03, x_batt: -0.1}

@@ -96,7 +96,14 @@ def default_full_dvs():
         "S_ht": Bounds(lower=0.02, upper=0.15),
         "S_vt": Bounds(lower=0.01, upper=0.10),
         "x_batt": Bounds(lower=-0.35, upper=0.2),
+        "x_cb_frac": Bounds(lower=0.0, upper=0.6),
     }
+
+
+def check_fixed_limits(prob):
+    """Static current (fixed by the powertrain choice) plus the RPM constraint value, after optimising."""
+    return {"I_margin_A": float(prob.get_val("I_margin")[0]), "rpm_margin": float(prob.get_val("rpm_margin")[0]),
+            "ok": bool(prob.get_val("I_margin")[0] >= 0 and prob.get_val("rpm_margin")[0] >= -1.0)}
 
 
 class PolyAt(om.ExplicitComponent):
@@ -167,7 +174,7 @@ def build_full_model(m, cfg: FullMDOConfig):
     m.add_subsystem("propulsion", Powertrain(prop=cfg.propulsion.prop, v_top=cfg.propulsion.v_top),
                     promotes_inputs=["rho", "capacity", "throttle", "n_cells", "V_cell", "R_cell", "usable_fraction",
                                      "e_spec", "Kv", "Rm", "I0", "m_motor", "m_esc", "m_prop", "m_avionics"],
-                    promotes_outputs=["T_coeffs", "P_coeffs", "T_static", "I_static", "rpm_max", "rpm_limit",
+                    promotes_outputs=["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "I_static", "rpm_max", "rpm_limit",
                                       "E_usable", "m_batt", "m_sys"])
     m.add_subsystem("mda", FullMDA(cfg=cfg), promotes=["*"])
 
@@ -204,7 +211,8 @@ def build_full_model(m, cfg: FullMDOConfig):
         fw={"val": st.wing_cg_frac}, fcb={"val": st.x_cb_frac},
         m_tail={"units": "kg"}, m_ht={"units": "kg"}, m_vt={"units": "kg"}, m_motor_group={"units": "kg"},
         m_motor={"units": "kg"}, m_esc={"units": "kg"}, m_prop={"units": "kg"}),
-        promotes_inputs=["c", "l_ht", "boom_offset", "l_tb", "m_ht", "m_vt", "m_motor", "m_esc", "m_prop"])
+        promotes_inputs=["c", "l_ht", "boom_offset", "l_tb", "m_ht", "m_vt", "m_motor", "m_esc", "m_prop",
+                         ("fcb", "x_cb_frac")])
     m.add_subsystem("stability", StaticStability(),
                     promotes_inputs=["c", "S", "AR", "S_ht", "AR_ht", "l_ht", "eta_h", "m_wing", "m_tb", "m_cb",
                                      "m_pay", "m_batt", "m_avionics", "m_gear", "x_batt", "x_motor", "x_avionics",
@@ -215,13 +223,16 @@ def build_full_model(m, cfg: FullMDOConfig):
         m.connect(f"stations.{s}", f"stability.{s}")
     m.connect("stations.x_cb", ["stability.x_cb", "stability.x_pay"])
 
+    # rotor speed rises with flight speed, so the RPM limit is checked at the top (full-throttle level) speed
+    m.add_subsystem("rpm_at_v", PolyAt(), promotes_inputs=[("coeffs", "RPM_coeffs"), "v"])
     m.add_subsystem("limits", om.ExecComp(
-        ["I_margin = I_max - I_static", "rpm_margin = frac * rpm_limit - rpm_max", "v_fit_margin = v_top - v"],
+        ["I_margin = I_max - I_static", "rpm_margin = frac * rpm_limit - rpm_v", "v_fit_margin = v_top - v"],
         I_margin={"units": "A"}, I_max={"units": "A"}, I_static={"units": "A"},
-        rpm_margin={"units": "rpm"}, rpm_limit={"units": "rpm"}, rpm_max={"units": "rpm"},
+        rpm_margin={"units": "rpm"}, rpm_limit={"units": "rpm"}, rpm_v={"units": "rpm"},
         frac={"val": cfg.propulsion.rpm_fraction}, v_fit_margin={"units": "m/s"}, v_top={"units": "m/s"},
         v={"units": "m/s"}),
         promotes=["*"])
+    m.connect("rpm_at_v.y", "rpm_v")
     m.add_subsystem("energy_con", om.ExecComp("energy_margin = E_usable - energy_3laps", energy_margin={"units": "J"},
                                               E_usable={"units": "J"}, energy_3laps={"units": "J"}), promotes=["*"])
 
@@ -248,8 +259,10 @@ def add_full_driver(prob, cfg: FullMDOConfig):
     m.add_constraint("turn_speed_margin", lower=0.0, ref=1.0)
     m.add_constraint("thrust_margin_static", lower=0.0, ref=10.0)
     m.add_constraint("energy_margin", lower=0.0, ref=1e4)
-    m.add_constraint("I_margin", lower=0.0, ref=10.0)
+    # rpm at the top speed depends on the design (through v): a real constraint.
     m.add_constraint("rpm_margin", lower=0.0, ref=1000.0)
+    # The static current depends only on the powertrain (fixed prop, cells, throttle), not on the DVs,
+    # so it is checked after the optimisation (check_fixed_limits), not passed to SLSQP.
     m.add_constraint("v_fit_margin", lower=0.0, ref=10.0)
     m.add_constraint("SM", lower=st.SM_min, upper=st.SM_max)
     m.add_constraint("V_h", lower=st.V_h_min, upper=st.V_h_max)
@@ -271,6 +284,7 @@ def apply_full_values(prob, cfg: FullMDOConfig):
         prob.set_val(name, getattr(st, name))
     for name in ["mu_roll", "takeoff_distance", "mission_time", "n_struct"]:
         prob.set_val(f"lap.{name}", getattr(cfg, name))
+    prob.set_val("x_cb_frac", st.x_cb_frac)
     for name, val in cfg.initial.items():
         prob.set_val(name, val)
 

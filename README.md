@@ -3,7 +3,7 @@
 A DBF-specific MDAO framework (Python + OpenMDAO) for the conceptual design of small fixed-wing electric RC aircraft.
 It is the successor to AirCrafter 1.0 (MATLAB, J. Kallarackel, 2025). See `docs/PLAN.md` for the architecture.
 
-**Status:** step 6 of 8. Mass model (step 2), aero-only wing with NeuralFoil profile drag (step 3), simple oval lap time (step 4), the coupled aero + mass MDF loop (step 5) and the coupled AirCrafter lap modeller (step 6) work.
+**Status:** step 7 of 8. Mass model (step 2), aero-only wing with NeuralFoil profile drag (step 3), simple oval lap time (step 4), the coupled aero + mass MDF loop (step 5) the coupled AirCrafter lap modeller (step 6) and the full model with propulsion, stability, parasite drag and a robustness suite (step 7) work.
 
 ## Install
 
@@ -41,6 +41,7 @@ All inputs, their units and descriptions are in `aircrafter2/mass/garcia_gamboa/
 .venv/bin/python examples/tail_boom_calibration.py  # f_tb refit for the minimum boom wall -> docs/tail_boom_calibration.md
 .venv/bin/python examples/lap_mdo.py             # step 6 twin check + coupled lap optimisation -> docs/step6_lap_mdo.md
 matlab -batch "run('verification/matlab/run_reference.m')"   # MATLAB reference for the step 6 code check
+.venv/bin/python examples/full_mdo.py [props]    # step 7: prop enumeration + robustness -> docs/step7_full_mdo.md
 ```
 
 ## Layout
