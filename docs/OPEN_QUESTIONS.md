@@ -15,7 +15,7 @@ configs as `PLACEHOLDER`, with a pointer back to this file.
 | Q8 | Battery cell data (nominal voltage, internal resistance, specific energy, mass per Ah, usable fraction) | step 7 | none: needs team data |
 | Q9 | Static-margin band and V_h, V_v ranges for RC aircraft | step 7 | SM 0.05–0.20; V_h, V_v from Raymer Table 6.4 (homebuilt/sailplane rows). Edition to verify. |
 | Q10 | NeuralFoil `analysis_confidence` threshold for buildable/in-distribution shapes | step 3 | 0.8 |
-| Q11 | Lap modeller convention for the MATLAB check: reproduce `batteryFraction = 0` (lapCount = 1) or set 1.0? (PLAN §8 M2) | step 6 | report both |
+| Q11 | **Resolved:** the MATLAB check covers both conventions (batteryFraction 1 and 0). Original: lap modeller convention for the MATLAB check: reproduce `batteryFraction = 0` (lapCount = 1) or set 1.0? (PLAN §8 M2) | step 6 | report both |
 | Q12 | Payload mass `m_pay`, load factor n, design speed for loads, deflection ratio, tail-boom rotation limit for USYD designs | step 5 | G&G Table 3 values (n = 2, δ/b = 0.1, θ_tb = 1°); m_pay is a placeholder |
 | Q13 | Spar Sizer 3.1 speed: 138.65 km/h is used, but the script's comment says V_a = 80.6 km/h | reference only | n/a |
 | Q14 | Tail-boom load mode for USYD designs: the paper's Eq. 55/Eq. 5 reading (consistent with f_tb = 12.81) or the physical Eq. 54 (needs a USYD-calibrated f_tb)? Same question for `sizing_radius_mode` with tapered wings (PLAN G19, G23). | calibration | paper readings |
@@ -24,6 +24,6 @@ configs as `PLACEHOLDER`, with a pointer back to this file.
 | Q17 | Step 3 placeholders: cruise V = 20 m/s, fixed lift 49 N, S = 0.375 m², t/c ≥ 0.10 (replaced by the coupled mass and tube-fit constraint in step 5) | step 5 | as listed |
 | Q18 | Step 4 placeholders: turn C_L margin C_L,max/C_L ≥ 1.21 (10 % speed margin in turns), optional turn power limit (400 W used in the report), fixed V = 20 m/s | step 6-7 | as listed |
 | Q19 | Step 5 placeholders: m_sys 1.2 kg, m_pay 1.5 kg, tail arm 0.8 m, S_ht 0.06 m², S_vt 0.03 m², boom offset 0.15 m, cargo bay 0.40 × 0.12 × 0.12 m, boom radius 8 mm, minimum spar tube radius 5 mm | step 7 | as listed |
-| Q20 | MATLAB reference for the step 6 code check: please run `matlab -batch "run('verification/matlab/run_reference.m')"` from `AirCrafter2/` (needs your MathWorks sign-in; headless start from this session hangs) | step 6 | pending |
+| Q20 | **Resolved 2026-10-09:** MATLAB signed in, reference run done, port matches to ~1e-8. Original: MATLAB reference for the step 6 code check: please run `matlab -batch "run('verification/matlab/run_reference.m')"` from `AirCrafter2/` (needs your MathWorks sign-in; headless start from this session hangs) | step 6 | pending |
 | Q21 | Finding L1: replace AirCrafter's power setting P = D(V)V/η (which rewards cruise drag) with a propulsion-defined power in step 7? | step 7 | proposed: yes |
 | Q22 | Step 6 placeholder: electrical power ≤ 300 W until propulsion exists | step 7 | 300 W |

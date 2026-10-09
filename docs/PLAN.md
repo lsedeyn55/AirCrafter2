@@ -424,12 +424,12 @@ Findings:
 - `aircrafter2/mission/lap_modeller.py` is the reference port (moved from `dbf_performance_modeller.py`).
   It gains `matlab_compat=True`, which reproduces MATLAB's rounded V_stall (M1) and its unrounded
   turn-table start.
-- **MATLAB check: pending.** MATLAB R2026a is installed but waits for a MathWorks sign-in when started
-  headless.
-  - `verification/matlab/run_reference.m` runs the original `performance_modeller.m` unchanged at 6 points
-    (2 deliberately infeasible), with `batteryFraction` 1 and 0, and writes `tests/data/matlab_reference.csv`.
-  - `tests/test_lap_modeller.py::test_port_reproduces_matlab` then checks the port to 0.5% (skipped until
-    then).
+- **MATLAB check: done (2026-10-09, R2026a).**
+  - `verification/matlab/run_reference.m` ran the original `performance_modeller.m` unchanged at 6 points
+    (2 deliberately infeasible), with `batteryFraction` 1 and 0 → `tests/data/matlab_reference.csv`.
+  - The port (`matlab_compat=True`) matches to round-off (~1e-8): lap times, Preq, Tstatic, rounded V_stall
+    and lap counts. NaN-flagged points have negative stall margins in the port.
+  - The run exposed MATLAB bug M7 (§8). The test now uses rel 1e-6.
 - `aircrafter2/mission/smooth_lap.py`: the smooth twin (D2).
   - Straights are RK4 in distance with a smooth speed hold at V; turns are RK4 in time with a smooth
     min(a, 0) at C_L,max drag.
@@ -596,6 +596,12 @@ reproduction points.
 
 **M5.** MATLAB raises an error if accel-table building exceeds 100000 steps (for example when the target speed is
 unreachable). The port breaks out with `a ≤ 0`. Both behave the same on feasible points.
+
+**M7 (found 2026-10-09 with the MATLAB run).** In `leg_calc_turn.m`, if the turn-entry speed is below the
+slowest speed in the deceleration table (where C_L,max-drag deceleration ends), `interp1` returns NaN. It is
+not flagged: the lap times become NaN and the lap count is 1 (`NaN < missionTime` is false). An example is
+m = 7, b = 1.5, AR = 9, V = 25. The port now keeps the speed unchanged in that case; `matlab_compat`
+reproduces the NaN.
 
 **M6.** `static_thrust_calculator` computes `Tstatic`, but it doesn't feed the lap time in either version. In 2.0 it
 becomes the propulsion requirement `T_static_req`.

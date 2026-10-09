@@ -42,6 +42,7 @@ def main():
         rows = list(csv.DictReader(open(MATLAB_CSV)))
         w("Port with `matlab_compat=True` vs `performance_modeller.m` (unchanged), "
           "`tests/data/matlab_reference.csv`.\n")
+        w("MATLAB R2026a, run with `verification/matlab/run_reference.m`.\n")
         w("| m | b | AR | V | battery fraction | MATLAB 3-lap (s) | port 3-lap (s) | max rel. diff (Lap1, other, 3-lap, Preq, Tstatic) | laps M/P |")
         w("|---:|---:|---:|---:|---:|---:|---:|---:|---|")
         for r in rows:
@@ -51,14 +52,27 @@ def main():
             if r["NaNflag"] == "1":
                 w(pre + f" NaN (screened) | stall margin {py['stall_margin']:+.2f} m/s | - | - |")
                 continue
+            if np.isnan(float(r["ThreeLapTime"])):
+                w(pre + f" NaN (unflagged, M7) | {py['ThreeLapTime']} | NaN in both | "
+                  f"{int(float(r['lapCount']))}/{py['lapCount']} |")
+                continue
             diffs = [abs(py[k] / float(r[k]) - 1) for k in ["Lap1time", "otherLapTime", "ThreeLapTime", "Preq", "Tstatic"]]
-            w(pre + f" {float(r['ThreeLapTime']):.3f} | {py['ThreeLapTime']:.3f} | {100 * max(diffs):.3f} % | "
+            w(pre + f" {float(r['ThreeLapTime']):.3f} | {py['ThreeLapTime']:.3f} | {max(diffs):.1e} | "
               f"{int(float(r['lapCount']))}/{py['lapCount']} |")
     else:
         w("**Pending.** MATLAB could not be started headless from this session (it waits for a MathWorks")
         w("sign-in). Run `matlab -batch \"run('verification/matlab/run_reference.m')\"` from `AirCrafter2/`;")
         w("it writes `tests/data/matlab_reference.csv`, and `tests/test_lap_modeller.py` then compares the")
         w("port (with `matlab_compat=True`) against it automatically. Then rerun this script.")
+    if MATLAB_CSV.exists():
+        w("")
+        w("The port reproduces MATLAB to round-off (~1e-8) wherever MATLAB returns numbers. Lap counts")
+        w("match, including the always-1 count with batteryFraction = 0 (M2). The checks found one more")
+        w("MATLAB bug (M7): at m = 7, b = 1.5, AR = 9, V = 25 the aircraft enters the first turn at")
+        w("20.00 m/s, below the deceleration table's range (20.32 m/s, where turning at C_L,max stops")
+        w("slowing it down). MATLAB's interp1 returns NaN outside a table and nothing flags it, so the lap")
+        w("times are NaN and the count is 1. `matlab_compat` reproduces this. The default port now keeps")
+        w("the speed unchanged there (the old port clamped to the table edge and sped the aircraft up).")
     w("")
 
     # 2. twin

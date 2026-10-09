@@ -226,30 +226,48 @@ def _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n, g=G, v_broad_start=No
     return v_final, omega_final
 
 
-def leg_calc_straight(v_time, s_time, t_time, V1, leg_dist):
+def _interp1(x, xp, fp, matlab_compat):
+    """Linear interpolation. matlab_compat: NaN outside [min(xp), max(xp)] like MATLAB's interp1;
+    otherwise numpy's clamping."""
+    if matlab_compat:
+        lo, hi = np.min(xp), np.max(xp)
+        if not (lo <= x <= hi):
+            return np.nan
+    return _interp_monotonic(x, xp, fp)
+
+
+def leg_calc_straight(v_time, s_time, t_time, V1, leg_dist, matlab_compat=False):
     """Exit velocity + time to cover leg_dist, entering a straight at V1."""
-    initial_s = np.interp(V1, v_time, s_time)
-    initial_t = np.interp(V1, v_time, t_time)
+    initial_s = _interp1(V1, v_time, s_time, matlab_compat)
+    initial_t = _interp1(V1, v_time, t_time, matlab_compat)
     dist = initial_s + leg_dist
-    v = np.interp(dist, s_time, v_time)
-    final_t = np.interp(dist, s_time, t_time)
+    v = _interp1(dist, s_time, v_time, matlab_compat)
+    final_t = _interp1(dist, s_time, t_time, matlab_compat)
     return v, final_t - initial_t
 
 
-def leg_calc_turn(v_time_decel, omega_vs_v, t_time_decel, V1, turn_angle, v_for_omega):
-    """Exit velocity + time to complete turn_angle radians, entering at V1."""
-    omega = _interp_monotonic(V1, v_for_omega, omega_vs_v)
+def leg_calc_turn(v_time_decel, omega_vs_v, t_time_decel, V1, turn_angle, v_for_omega, matlab_compat=False):
+    """Exit velocity + time to complete turn_angle radians, entering at V1.
+
+    If V1 is below the slowest speed in the deceleration table (where the C_L,max-drag
+    deceleration ends), the aircraft does not slow down in the turn: v = V1. MATLAB's interp1
+    returns NaN there instead, and nothing flags it (PLAN §8, M7); matlab_compat reproduces that.
+    The original port clamped to the table edge, which spuriously sped the aircraft up.
+    """
+    omega = _interp1(V1, v_for_omega, omega_vs_v, matlab_compat)
     t = turn_angle / omega
 
     if v_time_decel is None or len(v_time_decel) == 0:
         return V1, t
+    if not matlab_compat and V1 < np.min(v_time_decel):
+        return V1, t
 
-    initial_t = _interp_monotonic(V1, v_time_decel, t_time_decel)
-    v = _interp_monotonic(initial_t + t, t_time_decel, v_time_decel)
+    initial_t = _interp1(V1, v_time_decel, t_time_decel, matlab_compat)
+    v = _interp1(initial_t + t, t_time_decel, v_time_decel, matlab_compat)
     return v, t
 
 
-def _lap_performance(Vstall, accel_tables, decel_tables, turn_tables):
+def _lap_performance(Vstall, accel_tables, decel_tables, turn_tables, matlab_compat=False):
     """Assemble Lap 1 and "other lap" times leg-by-leg, per Table 3.5."""
     v_time, t_time, s_time = accel_tables
     v_time_decel, t_time_decel = decel_tables
@@ -258,10 +276,10 @@ def _lap_performance(Vstall, accel_tables, decel_tables, turn_tables):
     straight500 = 500 * FT2M
 
     def straight(v0, dist):
-        return leg_calc_straight(v_time, s_time, t_time, v0, dist)
+        return leg_calc_straight(v_time, s_time, t_time, v0, dist, matlab_compat)
 
     def turn(v0, angle):
-        return leg_calc_turn(v_time_decel, omega_turn, t_time_decel, v0, angle, v_turn)
+        return leg_calc_turn(v_time_decel, omega_turn, t_time_decel, v0, angle, v_turn, matlab_compat)
 
     lap1 = 0.0
     v = Vstall
@@ -355,7 +373,7 @@ def performance_modeller(assumptions, design, matlab_compat=False):
                                          v_broad_start=Vstall_exact if matlab_compat else None)
 
     lap1, other, v_after_360 = _lap_performance(
-        Vstall, accel_tables, (v_time_decel, t_time_decel), turn_tables
+        Vstall, accel_tables, (v_time_decel, t_time_decel), turn_tables, matlab_compat
     )
     turn_speed_margin = v_after_360 - Vstall
 

@@ -29,6 +29,7 @@ def design(m, b, AR, V, bf=1.0):
 # --- code check against the original MATLAB ---------------------------------------------------
 @pytest.mark.skipif(not MATLAB_CSV.exists(), reason="run verification/matlab/run_reference.m in MATLAB first")
 def test_port_reproduces_matlab():
+    """Port (matlab_compat=True) vs performance_modeller.m run in MATLAB R2026a (round-off level)."""
     rows = list(csv.DictReader(open(MATLAB_CSV)))
     assert rows
     for r in rows:
@@ -41,7 +42,11 @@ def test_port_reproduces_matlab():
         assert py["Vstall"] == pytest.approx(float(r["Vstall"]), abs=1e-12)
         assert py["lapCount"] == int(float(r["lapCount"]))
         for key in ["Lap1time", "otherLapTime", "ThreeLapTime", "Preq", "Tstatic"]:
-            assert py[key] == pytest.approx(float(r[key]), rel=5e-3), (key, r)
+            ref = float(r[key])
+            if np.isnan(ref):  # MATLAB's unflagged out-of-table NaN (PLAN M7), reproduced in compat mode
+                assert np.isnan(py[key]), (key, r)
+            else:
+                assert py[key] == pytest.approx(ref, rel=1e-6), (key, r)
 
 
 # --- smooth twin vs reference port ------------------------------------------------------------
@@ -134,3 +139,17 @@ def test_coupled_lap_check_totals():
     assert prob.get_val("k")[0] > 0  # convex polar at the start point
     data = prob.check_totals(method="fd", step=1e-6, form="central", out_stream=None)
     assert_check_totals(data, atol=1e-4, rtol=5e-3)
+
+
+def test_turn_below_decel_table_keeps_speed():
+    """PLAN M7: entering a turn below the deceleration table's range, the speed is unchanged
+    (MATLAB gives NaN there; the old port clamped and sped the aircraft up)."""
+    from aircrafter2.mission.lap_modeller import leg_calc_turn
+
+    v_dec = np.array([25.0, 23.0, 21.0, 20.32])
+    t_dec = np.array([0.0, 1.0, 2.0, 103.0])
+    v_om, om = np.array([18.0, 27.5]), np.array([0.6, 0.6])
+    v, t = leg_calc_turn(v_dec, om, t_dec, 20.0, np.pi, v_om)
+    assert v == 20.0 and t == pytest.approx(np.pi / 0.6)
+    v, _ = leg_calc_turn(v_dec, om, t_dec, 20.0, np.pi, v_om, matlab_compat=True)
+    assert np.isnan(v)
