@@ -502,6 +502,237 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
 - Docs: README quickstart, `docs/modules/*.md` (one page per module), `docs/how_to_add_a_scoring_plugin.md`.
   Figures script: `examples/make_thesis_figures.py`.
 
+## 6h. Twin-motor configurations (D8, in progress)
+
+Brief: `aircrafter2_twin_motor_prompt.md`, which replaces Task A of the step 9 brief. Sources:
+- **Woombah:** USYD 2025 DBF design report, *Project Woombah*. Used only for cited placeholder defaults.
+- **Bohari et al. (2017):** Bohari, B., Bronz, M., Benard, E. & Borlon, Q., *Conceptual design of distributed
+  propeller aircraft: linear aerodynamic model verification of propeller–wing interaction*, EUCASS 2017-445
+  (`3_LITERATURE/state of art/prop-wing interaction.pdf`).
+- **Raymer:** *Aircraft Design: A Conceptual Approach*, Ch. 12.
+
+**Status:** checkpoint 1 done (propulsion, config, CLI). Checkpoints 2 (airframe integration) and 3 (study) are
+still to do.
+
+### Interface changes
+
+| Where | Change | n = 1, defaults |
+|---|---|---|
+| `PropulsionInputs` | New fields:<br>• `n_motors` ∈ {1, 2}<br>• `battery_topology` ∈ {`per_motor`, `shared`}<br>• `y_motor` (fraction of the semi-span; required for n = 2)<br>• `m_nacelle` (kg per unit)<br>• `pack_I_max` (A, optional) | 1, `per_motor`, –, 0, off |
+| `Powertrain` options | `n_motors`, `battery_topology`. The station list comes from `motor_stations(n, y_motor)`, which rejects n ∉ {1, 2}. | |
+| `Powertrain` outputs | **Totals:** `T_coeffs`, `P_coeffs`, `T_static`, `T_nodes`, `P_nodes`, `E_usable`, `m_batt`, `m_sys`, new `E_nom_total` (Wh), new `m_motor_group`.<br>**Per unit:** `RPM_coeffs`, `rpm_max`, `I_static`, new `T_static_unit`, new `m_motor_unit`, new `D_prop`.<br>**Per pack:** new `I_pack_static`. | identical values |
+| `full_mdo` | The stability motor mass is now the powertrain's `m_motor_group`, no longer an ExecComp sum. Optional `I_pack_margin`, added when `pack_I_max` is set. | identical values |
+| CLI | `--n-motors {1,2}` and `--battery-topology {per_motor,shared}`. `check_fixed_limits` reports the per-ESC and pack current margins. | |
+| Config | New `configs/step7_full_twin.yaml`: `step7_full.yaml` plus the layout fields. | |
+| *Checkpoint 2* | <br>• G&G `WingLoads` motor terms (option `motor_inertia_relief`, default off)<br>• nacelle `CD_nac`<br>• placement constraints<br>• OEI post-check<br>• plots<br>• UI | |
+
+### Battery topologies and the shared-pack equation
+
+The model is Drela's first-order motor with an ideal PWM ESC at throttle δ, as before:
+- the ESC output voltage is δ V_term;
+- the ESC input current is δ I, where I is the motor current;
+- the motor obeys δ V_term = ω/K_v + I R_m.
+
+**`per_motor`:** each unit has its own pack (n_s cells, capacity Q). The pack current is δ I, so
+V_term = V_oc − δ I R_b and
+
+  I = (δ V_oc − ω/K_v) / (R_m + δ² R_b),
+
+which is the existing single-unit model. Totals are n × per unit: thrust, chemistry power V_oc δ I, nominal energy
+n_s V_cell Q and pack mass.
+
+**`shared`:** one pack feeds the n identical ESCs, which run at the same operating point. The pack current is
+I_pack = n δ I, so V_term = V_oc − n δ I R_b. Substituting into the motor equation:
+
+  δ V_oc − n δ² R_b I = ω/K_v + I R_m
+  ⇒ **I = (δ V_oc − ω/K_v) / (R_m + n δ² R_b)**,   I_pack = n δ I.
+
+Each motor therefore sees n times the pack resistance (the pack sag is shared). With one pack:
+- total chemistry power: P_batt = V_oc I_pack = n V_oc δ I;
+- energy and battery mass: those of one pack.
+
+The code changes one coefficient: R_tot = R_m + k δ² R_b, with k = n (shared) or 1 (per_motor). The Newton
+torque balance and the complex-step partials are unchanged.
+
+Current limits:
+- `I_max` applies to each ESC's input current δ I (`I_static`), as before.
+- `pack_I_max` applies to n δ I. It is a PLACEHOLDER and off by default.
+
+`capacity` (a DV) is the capacity of **one pack** in both topologies. So, at the same capacity, `shared` has half
+the energy of the twin `per_motor` layout. `E_nom_total` = (number of packs) × n_s V_cell Q, in Wh, is an output
+for the step 9 rule C-F1 (≤ 100 Wh). It is not constrained unless a config asks.
+
+### Wing loads with wing-mounted units (G&G Eqs. 44–46, 48–50)
+
+**Notation and sign conventions.**
+- y is spanwise from the centreline; one semi-span runs from 0 to b/2.
+- x is chordwise from the wing LE, positive aft; x_motor < 0 means forward of the LE.
+- Each unit (motor + ESC + prop + nacelle) is a point mass m_u at (y_m, x_m).
+- Batteries stay in the fuselage at `x_batt`.
+- G&G take torsion about the quarter-chord line (text before Eq. 46, and Eq. 50). So the reference axis here is
+  x_ea = c/4. With the default x_spar = 0.25 this is also the tube axis.
+- Root loads are reactions on the free body of one semi-span outboard of y = 0:
+  - Q is positive up;
+  - M is positive for tip-up (lift) bending;
+  - T is the pitching moment about x_ea, with nose-up positive.
+- G&G size with magnitudes (|C_m|, |x_c/4 − x_gd|). The new terms are added with their physical sign, before any
+  magnitude is taken.
+
+G&G put the whole weight W on the centreline: no wing mass relief, and lift w_z = nW/b uniform (Eq. 43). This
+derivation keeps both assumptions. The only change is that the m_u of each unit acts at y_m instead of y = 0.
+
+**Free body, flight (load factor n).** One semi-span carries:
+- lift nW/2, uniformly distributed;
+- downward inertial forces n g m_u at y_m (one per unit on that side; for n_motors = 2, one unit).
+
+Root equilibrium gives:
+
+| G&G eq. | Published (y = 0) | With units at y_m (per semi-span) |
+|---|---|---|
+| 44, shear | Q_fl = nW/2 | Q_fl = nW/2 − n g Σ m_u |
+| 45, bending | M_fl = nWb/8 | M_fl = nWb/8 − n g Σ m_u y_m |
+| 46, torsion | T_fl = q \|C_m\| c² b/2 (nose-down for C_m < 0) | T_fl = \|−q \|C_m\| c² b/2 − n g Σ m_u (x_ea − x_m)\| = q \|C_m\| c² b/2 + n g Σ m_u (x_ea − x_m) |
+
+The sums run over the units on one side (y_m > 0); for n_motors = 2 there is one per side. On the torsion row:
+- a unit forward of the axis (x_m < x_ea) under positive n pitches the section nose-down;
+- that is the same sense as a cambered section's C_m < 0;
+- so the two terms add.
+
+The brief asks only for bending and torsion. The shear term comes from the same free body, and leaving it out
+would make Eqs. 44 and 45 inconsistent. It is small (about 4% of Q_fl here).
+
+**Free body, ground wingtip-suspension test (Eqs. 48–50).** G&G state that the aircraft "is suspended by its wing
+tips when fully loaded". Each tip reaction is W/2, acting up at y = b/2 and x = x_gd c. On the semi-span free body,
+the unit's weight m_u g acts down at (y_m, x_m), with **no load factor**:
+
+| G&G eq. | Published | With units at y_m |
+|---|---|---|
+| 48, shear | Q_gd = W/2 | Q_gd = W/2 − g Σ m_u |
+| 49, bending | M_gd = Wb/4 | M_gd = Wb/4 − g Σ m_u y_m |
+| 50, torsion | T_gd = (W/2) c \|1/4 − x_gd\| | T_gd = \|(W/2) c (1/4 − x_gd) − g Σ m_u (x_ea − x_m)\| |
+
+The ground test is not just the flight relief with n = 1. The tip reaction is fixed at W/2 and acts at y = b/2,
+while flight lift is distributed. Two consequences:
+- **Bending:** relief is g m_u y_m on a moment of Wb/4. In flight it is n g m_u y_m on nWb/8. So relative relief is
+  twice as large in the ground case, at equal y_m/b.
+- **Torsion:** the tip-reaction torque changes sign with x_gd, so the signed sum is taken before the magnitude
+  (smooth |·| as now). With x_gd > 1/4 both terms are nose-down and add. With x_gd < 1/4 they partly cancel.
+
+**Not modified:**
+- **Eq. 110 deflection (t_δ):** it still uses the uniform load nW. The point relief would lower the tip deflection
+  by n g m_u y_m² (3b/2 − y_m)/(6EI), against the uniform-load value nWb³/(128EI) at y₁ = 0, so leaving it out is
+  conservative. With a panel break (y₁ > 0, stepped EI, Eq. 108) the closed form is longer; it is left for later.
+- **Eq. 117 divergence** is unchanged.
+- **Thrust and motor-torque loads** on the wing (in-plane bending and a nose-up torque from a thrust line below the
+  axis; Woombah's firewall is 0.8" below the wing) are not modelled. This is a stated limitation.
+
+**Implementation (checkpoint 2).**
+- Option `motor_inertia_relief` on `WingLoads`, default false. False is the published model exactly; the G&G
+  verification tests don't change.
+- New inputs: m_u (`m_motor_unit`), y_m (= `y_motor` b/2), x_m (`x_motor`), c.
+- Analytic partials, as in the rest of the G&G group, then `check_partials`.
+
+**Partials of the new terms** (flight; the ground terms are the same with n → 1, plus the smooth-|·| chain rule
+on T_gd):
+
+| Term | Partials |
+|---|---|
+| ΔM_fl = −n g m_u y_m | ∂/∂n = −g m_u y_m, ∂/∂m_u = −n g y_m, ∂/∂y_m = −n g m_u |
+| ΔT_fl = n g m_u (c/4 − x_m) | ∂/∂c = n g m_u/4, ∂/∂x_m = −n g m_u |
+
+with y_m = y_motor b/2, so ∂y_m/∂b = y_motor/2 and ∂y_m/∂y_motor = b/2.
+
+### Flagged for decision
+
+**T1. Nacelle mass is not in Woombah Table 34.**
+- The brief points to a "Motor nacelles" row in Table 34. Table 34 (p. 45, checked on the rendered page) has no
+  such row. Its rows are wing, fuselage nose, fuselage, undercarriage, HT, VT, ESC, receiver, receiver battery,
+  motors ×2, propellers ×2, payload and batteries.
+- "Motor nacelles" is a row of **Table 26 (drag)**: C_D0 = 0.00069 for both nacelles in M1.
+- The nacelles are built into the mid-wing (Sec. 4.3.2, 5.3.2), so their mass is most likely inside the 3.41 lb
+  "Wing" item.
+- `m_nacelle` is therefore 0.0 PLACEHOLDER in the twin config (OPEN_QUESTIONS Q25) until a value is supplied. With
+  0, the twin is not charged for the nacelles' mass.
+
+**T2. Motor station.** The firewall is 5.5" forward of the LE (Sec. 4.3.2 and 5.3.2), and that is the briefed
+`x_motor` default. Table 34 puts the motor masses at x = −6.50" and the props at −7.48", measured from the wing LE.
+For the CG, −6.5" (the motor's own CG) is arguably the right mass station. On Woombah the 1" difference moves the
+CG by (0.50 + 0.08)/9.32 × 1" ≈ 0.06", i.e. 0.5% of the 13.0" MAC (M1 mass from Table 34, MAC from Table 19). It
+is used as briefed (−5.5") until you say otherwise.
+
+**T3. The default `motor_inertia_relief: false` is not conservative in torsion.** The switch adds one relieving
+term (bending, shear) and one *adding* term (nacelle torsion). At the step 7 10x7E optimum scale:
+- n = 5, b = 1.26 m, c = 0.15 m, m_u = 0.24 kg, y_motor = 0.2793, x_m = −5.5";
+- bending relief ΔM_fl = 2.07 N·m, 11% of M_fl = 18.2 N·m;
+- added torque ΔT_fl = 2.09 N·m, about 3.5× G&G's aerodynamic T_fl (≈ 0.6 N·m).
+
+So "off" may *under*-size t_T for a twin. Options:
+- (a) one switch, as briefed;
+- (b) two switches: `motor_inertia_relief` for bending and shear, default false; `nacelle_torsion` for the added
+  torque, default **true** for n = 2. The latter is a no-op for n = 1, so the G&G tests are unaffected.
+
+I recommend (b), so that the default is conservative in every load.
+
+**T4. `y_motor` as a fraction of the semi-span vs prop clearance.**
+- Woombah's fraction (0.2793) comes from a 1.80 m span.
+- At the step 7 optimum span (1.26 m) it puts the motor at y_m = 0.176 m. With a 10" prop:
+  y_m − D/2 = 0.049 m < w_cb/2 + c_clear = 0.085 m.
+- The fixed-fraction fuselage-clearance constraint therefore needs b ≥ 1.52 m (the DV upper bound) for 10" props,
+  and cannot be met for 11" or 12".
+- Options:
+  - (a) keep the fraction, as briefed (the twin is then pinned at maximum span, or infeasible);
+  - (b) fix the **absolute** station y_m = 9.9" = 0.251 m by default (clearances hold for 10–12" props for any
+    b ≥ 0.76 m), with the fraction as an alternative;
+  - (c) make `y_motor` a DV by default.
+
+I recommend (b) for the single-vs-twin study. Otherwise the comparison is decided by the clearance constraint, not
+by the physics.
+
+**T5. Shear relief** (above) goes slightly beyond the brief. It is included for consistency. Tell me if you want it
+out.
+
+### Slipstream and prop–wing interaction (proposal only, not built)
+
+**Low-fidelity option to add later.** Use actuator-disc momentum theory for the slipstream, as in Bohari et al.
+(2017), Sec. 2.1–2.2. Their Eq. 13 gives the axial induced velocity at the disc:
+
+  V_ix = (V∞/2) [√(1 + 2T/(ρ S_disc V∞²)) − 1].
+
+1-D momentum theory gives twice that in the fully developed slipstream. A wing 5.5" behind the disc sees something
+in between, which needs a contraction or development factor (still to find a source).
+
+How to apply it:
+- Over the washed span (about one prop diameter per unit, centred on y_m), scale the local dynamic pressure of the
+  NeuralFoil strip sections and of the VLM panels by ((V∞ + V_ix)/V∞)².
+- Bohari et al. do the same thing by modifying the local freestream in the VLM ("VSPAERO … modifies the local
+  freestream to account for increased speed"), and in their BLLT through Eq. 11, V_e ≈ V∞ + V_ix.
+- Swirl (their Eq. 14) and the rotation-direction effects they report are second order; their Sec. 4 found
+  rotation direction "almost insignificant" at low thrust coefficient.
+
+**Outputs it would change:**
+- **Take-off C_L and ground roll:** the largest effect. For example, one unit with T = 9 N at 10 m/s and a 10" disc
+  has 2T/(ρSV²) ≈ 3, so V_ix ≈ V∞. That is about 2.3× the local q at the disc over the washed strip.
+- **Turn performance:** low speed and high thrust out of the turns.
+- **Profile drag in the wash:** small in cruise. With T = D at 38 m/s, V_ix/V∞ ≈ 1.3%, about 2.6% more q over the
+  washed strip.
+
+**Is leaving it out consistent for the single-vs-twin comparison? Only partly.** The two layouts are not affected
+symmetrically:
+- **Single nose tractor:** it mostly washes the fuselage and a wing-root strip about D wide, which is partly blanked
+  by the fuselage.
+- **Twin:** it washes about 2D of clean wing. That is ~0.5 m of a 1.26 m span for 10" props, i.e. ~40%.
+
+Leaving slipstream out therefore:
+- **under-predicts the twin's take-off and turn C_L** (it favours the single layout where take-off is the active
+  constraint);
+- **slightly under-predicts the twin's cruise profile drag** (it favours the twin, but only by a few percent of the
+  washed-strip profile drag);
+- **omits the single layout's fuselage scrubbing drag.**
+
+For the lap-time comparison, where cruise and straights dominate, the omission is second order. Where
+`thrust_margin_static` or the stall and turn margins are active, it is not. The study (checkpoint 3) will report
+which constraints are active, so the reader can tell which case applies.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an
@@ -732,6 +963,7 @@ D5 (Table 15 tolerance) is still open. Working value: ±3%.
 | D5 | Table 15 tolerance for "a few percent" | ±3% per component *if* the cause in G20 is found; otherwise I report |
 | D6 | B2: single equivalent tube or N-tube extension | Single tube now, N-tube later |
 | D7 | Config validation with pydantic v2 (clear error messages for students) | **Yes** |
+| D8 | Twin wing-mounted tractors (2026-10-13 brief) | `n_motors` ∈ {1, 2} is a discrete config choice enumerated with prop and cells (D4), not a DV. Identical units; `per_motor` packs by default, `shared` optional; `capacity` is per pack. Wing-load motor terms are switchable, default off (see §6h T3). Slipstream not modelled (§6h). |
 
 ---
 

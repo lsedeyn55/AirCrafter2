@@ -19,11 +19,12 @@ from .problems.full_mdo import FullMDOConfig, build_full_problem, check_fixed_li
 SUMMARY_KEYS = [
     ("score", "-", "objective (scoring plug-in)"), ("ThreeLapTime", "s", "3-lap time"),
     ("laps_frac", "-", "laps in the mission window"), ("b", "m", "span"), ("c", "m", "chord"),
-    ("tc_max", "-", "t/c"), ("camber_scale", "-", "camber scale"), ("capacity", "Ah", "battery"),
+    ("tc_max", "-", "t/c"), ("camber_scale", "-", "camber scale"), ("capacity", "Ah", "battery capacity per pack"),
     ("l_ht", "m", "tail arm"), ("S_ht", "m²", "HT area"), ("S_vt", "m²", "VT area"),
     ("x_batt", "m", "battery station"), ("x_cb_frac", "-", "cargo station / c"), ("v", "m/s", "cruise speed"),
     ("m_total", "kg", "total mass"), ("m_empty", "kg", "empty mass"), ("cruise.L_over_D", "-", "cruise L/D"),
-    ("T_static", "N", "static thrust"), ("thrust_margin_static", "N", "take-off thrust margin"),
+    ("T_static", "N", "static thrust (all motors)"), ("E_nom_total", "W*h", "nominal battery energy (all packs)"),
+    ("thrust_margin_static", "N", "take-off thrust margin"),
     ("energy_margin", "J", "3-lap energy margin (after reserve)"), ("stall_margin", "m/s", "V - 1.2 V_stall"),
     ("SM", "-", "static margin"), ("V_h", "-", "HT volume coeff."), ("V_v", "-", "VT volume coeff."),
     ("wall_ratio", "-", "spar t/r"), ("r_tube", "m", "spar radius"), ("I_margin", "A", "current margin"),
@@ -90,7 +91,8 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
         values["sensitivities"] = sens
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
     lines = [f"# AirCrafter 2.0 result\n", f"Config: scoring = `{cfg.scoring.plugin}`, prop = "
-             f"`{cfg.propulsion.prop}`. {'Optimised' if optimise else 'Analysed'}: success = {success}, "
+             f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
+             f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "
              f"iterations = {its}.\n", "| Quantity | Value | Unit |", "|---|---:|---|"]
     lines += [f"| {desc} (`{k}`) | {v:.5g} | {unit} |" for k, unit, desc, v in summary_table(prob)]
     (out / "summary.md").write_text("\n".join(lines) + "\n")

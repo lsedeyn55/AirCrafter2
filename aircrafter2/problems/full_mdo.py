@@ -16,16 +16,18 @@ DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, batte
 Objective: a scoring plug-in (aircrafter2.scoring; placeholder default three_lap_time).
 """
 
+from typing import Literal, Optional
+
 import numpy as np
 import openmdao.api as om
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..aero import WingAero
 from ..aero.parasite import ParasiteDrag
 from ..aero.polar import ThreePointPolar, TurnAlpha
 from ..mass.garcia_gamboa import GarciaGamboaMass
 from ..mission.smooth_lap import SmoothLapModel
-from ..propulsion.powertrain import Powertrain
+from ..propulsion.powertrain import Powertrain, motor_stations
 from ..scoring import add_scoring, get_plugin
 from ..stability import StaticStability
 from .aero_mass import (SHARED_AERO, AeroMassProblemConfig, apply_aero_mass_values)
@@ -34,8 +36,24 @@ from ..airfoil import AirfoilGroup, load_seed
 from ..geometry import CargoBay, RectPlanform, TailGeometry
 
 
+# Woombah (USYD 2025 DBF design report, "Project Woombah"): nacelles at 9.9 in along the semi-span
+# (Sec. 5.3.2, "Nacelles"); span 70.9 in (Table 30), so y_motor = 9.9 / 35.45.
+WOOMBAH_Y_MOTOR = 9.9 / (70.9 / 2.0)
+
+
 class PropulsionInputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    n_motors: Literal[1, 2] = Field(1, description="identical propulsion units: 1 = centreline nose tractor, "
+                                    "2 = symmetric wing-mounted tractor pair (discrete, D4; not a DV)")
+    battery_topology: Literal["per_motor", "shared"] = Field(
+        "per_motor", description="per_motor: one pack per unit (2025 rule C-F2, Woombah); shared: one pack feeds "
+        "every ESC. 'capacity' is the capacity of ONE pack in both")
+    y_motor: Optional[float] = Field(None, description="wing-motor station / semi-span (n_motors = 2 only); "
+                                     f"Woombah {WOOMBAH_Y_MOTOR:.4f}")
+    m_nacelle: float = Field(0.0, description="kg per unit; 0 for the nose layout (in G&G's fuselage). "
+                             "PLACEHOLDER for twin (OPEN_QUESTIONS Q25)")
+    pack_I_max: Optional[float] = Field(None, description="A, pack current limit (shared topology), PLACEHOLDER; "
+                                        "None = off")
     prop: str = Field("11x7E", description="APC PER3 name (discrete, D4)")
     throttle: float = 1.0
     n_cells: float = Field(4.0, description="series cells (discrete)")
@@ -53,6 +71,12 @@ class PropulsionInputs(BaseModel):
     I_max: float = Field(60.0, description="A, PLACEHOLDER motor/ESC current limit")
     rpm_fraction: float = Field(0.85, description="of APC's 150000/D limit (propSelector.m)")
     v_top: float = Field(40.0, description="m/s, top of the T(v) fit range")
+
+    @model_validator(mode="after")
+    def _check_layout(self):
+        if self.n_motors == 2:
+            motor_stations(2, self.y_motor)  # raises a clear error if y_motor is missing or out of (0, 1)
+        return self
 
 
 class StabilityInputs(BaseModel):
@@ -111,9 +135,17 @@ def default_full_dvs():
 
 
 def check_fixed_limits(prob):
-    """Static current (fixed by the powertrain choice) plus the RPM constraint value, after optimising."""
-    return {"I_margin_A": float(prob.get_val("I_margin")[0]), "rpm_margin": float(prob.get_val("rpm_margin")[0]),
-            "ok": bool(prob.get_val("I_margin")[0] >= 0 and prob.get_val("rpm_margin")[0] >= -1.0)}
+    """Static current per motor/ESC (fixed by the powertrain choice), the optional pack current, and the RPM
+    constraint value, after optimising."""
+    out = {"I_margin_A": float(prob.get_val("I_margin")[0]), "rpm_margin": float(prob.get_val("rpm_margin")[0])}
+    ok = out["I_margin_A"] >= 0 and out["rpm_margin"] >= -1.0
+    try:
+        out["I_pack_margin_A"] = float(prob.get_val("I_pack_margin")[0])
+        ok = ok and out["I_pack_margin_A"] >= 0
+    except KeyError:  # no pack limit configured
+        pass
+    out["ok"] = bool(ok)
+    return out
 
 
 class PolyAt(om.ExplicitComponent):
@@ -181,11 +213,15 @@ def build_full_model(m, cfg: FullMDOConfig):
     m.add_subsystem("planform", RectPlanform(), promotes=["*"])
     m.add_subsystem("tail", TailGeometry(), promotes=["*"])
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
-    m.add_subsystem("propulsion", Powertrain(prop=cfg.propulsion.prop, v_top=cfg.propulsion.v_top),
+    pr = cfg.propulsion
+    m.add_subsystem("propulsion", Powertrain(prop=pr.prop, v_top=pr.v_top, n_motors=pr.n_motors,
+                                             battery_topology=pr.battery_topology),
                     promotes_inputs=["rho", "capacity", "throttle", "n_cells", "V_cell", "R_cell", "usable_fraction",
-                                     "e_spec", "Kv", "Rm", "I0", "m_motor", "m_esc", "m_prop", "m_avionics"],
-                    promotes_outputs=["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "I_static", "rpm_max", "rpm_limit",
-                                      "E_usable", "m_batt", "m_sys"])
+                                     "e_spec", "Kv", "Rm", "I0", "m_motor", "m_esc", "m_prop", "m_nacelle",
+                                     "m_avionics"],
+                    promotes_outputs=["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "T_static_unit", "I_static",
+                                      "I_pack_static", "rpm_max", "rpm_limit", "D_prop", "E_nom_total", "E_usable",
+                                      "m_batt", "m_motor_unit", "m_motor_group", "m_sys"])
     m.add_subsystem("mda", FullMDA(cfg=cfg), promotes=["*"])
 
     # polar from three coupled aero points (step 6)
@@ -219,21 +255,19 @@ def build_full_model(m, cfg: FullMDOConfig):
     # stability: stations and grouped masses
     m.add_subsystem("stations", om.ExecComp(
         ["x_wing = fw * c", "x_tail = 0.25 * c + l_ht", "x_tb = 0.25 * c + boom_offset + 0.5 * l_tb",
-         "x_cb = fcb * c", "m_tail = m_ht + m_vt", "m_motor_group = m_motor + m_esc + m_prop"],
+         "x_cb = fcb * c", "m_tail = m_ht + m_vt"],
         x_wing={"units": "m"}, x_tail={"units": "m"}, x_tb={"units": "m"}, x_cb={"units": "m"},
         c={"units": "m"}, l_ht={"units": "m"}, boom_offset={"units": "m"}, l_tb={"units": "m"},
         fw={"val": st.wing_cg_frac}, fcb={"val": st.x_cb_frac},
-        m_tail={"units": "kg"}, m_ht={"units": "kg"}, m_vt={"units": "kg"}, m_motor_group={"units": "kg"},
-        m_motor={"units": "kg"}, m_esc={"units": "kg"}, m_prop={"units": "kg"}),
-        promotes_inputs=["c", "l_ht", "boom_offset", "l_tb", "m_ht", "m_vt", "m_motor", "m_esc", "m_prop",
-                         ("fcb", "x_cb_frac")])
+        m_tail={"units": "kg"}, m_ht={"units": "kg"}, m_vt={"units": "kg"}),
+        promotes_inputs=["c", "l_ht", "boom_offset", "l_tb", "m_ht", "m_vt", ("fcb", "x_cb_frac")])
     m.add_subsystem("stability", StaticStability(),
                     promotes_inputs=["c", "S", "AR", "S_ht", "AR_ht", "l_ht", "eta_h", "m_wing", "m_tb", "m_cb",
                                      "m_pay", "m_batt", "m_avionics", "m_gear", "x_batt", "x_motor", "x_avionics",
-                                     "x_gear"],
+                                     "x_gear", "m_motor_group"],
                     promotes_outputs=["x_np", "x_cg", "SM"])
     m.connect("cruise.CL_alpha", "stability.a_w")
-    for s in ["x_wing", "x_tail", "x_tb", "m_tail", "m_motor_group"]:
+    for s in ["x_wing", "x_tail", "x_tb", "m_tail"]:
         m.connect(f"stations.{s}", f"stability.{s}")
     m.connect("stations.x_cb", ["stability.x_cb", "stability.x_pay"])
 
@@ -247,6 +281,10 @@ def build_full_model(m, cfg: FullMDOConfig):
         v={"units": "m/s"}),
         promotes=["*"])
     m.connect("rpm_at_v.y", "rpm_v")
+    if pr.pack_I_max is not None:  # shared pack: the pack current can bind before the per-ESC limit
+        m.add_subsystem("pack_limit", om.ExecComp("I_pack_margin = pack_I_max - I_pack_static",
+                                                  I_pack_margin={"units": "A"}, pack_I_max={"units": "A"},
+                                                  I_pack_static={"units": "A"}), promotes=["*"])
     m.add_subsystem("energy_con", om.ExecComp("energy_margin = E_mission - energy_3laps", energy_margin={"units": "J"},
                                               E_mission={"units": "J"}, energy_3laps={"units": "J"}), promotes=["*"])
 
@@ -258,6 +296,7 @@ def build_full_model(m, cfg: FullMDOConfig):
                              ("w_cb", geo.w_cb, "m"), ("h_cb", geo.h_cb, "m"), ("boom_offset", geo.boom_offset, "m"),
                              ("m_motor", cfg.propulsion.m_motor, "kg"), ("m_esc", cfg.propulsion.m_esc, "kg"),
                              ("m_prop", cfg.propulsion.m_prop, "kg"), ("m_avionics", cfg.propulsion.m_avionics, "kg"),
+                             ("m_nacelle", cfg.propulsion.m_nacelle, "kg"),
                              ("m_pay", cfg.mass.inputs.get("m_pay", 1.0), "kg"), ("mu", 1.8e-5, "Pa*s")]:
         m.set_input_defaults(name, val, units=units)
 
@@ -291,9 +330,11 @@ def apply_full_values(prob, cfg: FullMDOConfig):
     apply_aero_mass_values(prob, cfg, exclude={"m_sys"})  # m_sys comes from the powertrain
     pr, st = cfg.propulsion, cfg.stability
     for name in ["throttle", "n_cells", "V_cell", "R_cell", "usable_fraction", "e_spec", "Kv", "Rm", "I0",
-                 "m_motor", "m_esc", "m_prop", "m_avionics"]:
+                 "m_motor", "m_esc", "m_prop", "m_nacelle", "m_avionics"]:
         prob.set_val(name, getattr(pr, name))
     prob.set_val("I_max", pr.I_max, units="A")
+    if pr.pack_I_max is not None:
+        prob.set_val("pack_I_max", pr.pack_I_max, units="A")
     prob.set_val("v_top", pr.v_top, units="m/s")
     for name in ["AR_ht", "AR_vt", "tc_tail", "eta_h", "x_motor", "x_avionics", "x_gear"]:
         prob.set_val(name, getattr(st, name))
