@@ -40,7 +40,7 @@ The builder (`vsp/build.py`) reads **only** `geometry.json`, so it works on any 
 `configs/woombah_2025.yaml` run. Other entry points:
 - `aircrafter2 run <cfg> --vsp` builds right after the run;
 - the Streamlit UI has a "Build OpenVSP model" button;
-- `examples/vsp_mockup.py` rebuilds the twin-study designs and the paper figure.
+- `studies/vsp_mockup.py` rebuilds the twin-study designs and the paper figure.
 
 ## What comes from the result and what is illustrative
 

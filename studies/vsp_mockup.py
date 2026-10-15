@@ -10,7 +10,7 @@ For each case in docs/studies/twin_motor_study_results.json:
 Also re-exports and builds outputs/twin_analyse/ (the plain twin-config analysis), and writes
 outputs/vsp/paper_isometrics.pdf (three isometrics, same scale and camera).
 
-Run: .venv/bin/python examples/vsp_mockup.py
+Run: .venv/bin/python studies/vsp_mockup.py
 """
 
 import json
@@ -88,7 +88,7 @@ def main():
         log.append((cid, check))
         if any(e > TOL for _, _, e in check.values()):
             print(f"{cid}: does not reproduce the stored optimum to {TOL:g}; re-run its optimisation "
-                  "(examples/twin_motor_study.py) before building", file=sys.stderr)
+                  "(studies/twin_motor_study.py) before building", file=sys.stderr)
             return 1
         t = time.perf_counter()
         geom, meshes, res = make_case(cid, cfg, prob, OUT / cid, CFG[r["n"]], True, r["success"])

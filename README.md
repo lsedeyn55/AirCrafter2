@@ -55,7 +55,7 @@ A run writes into its output folder:
 | `n2.html` | the model's N2 diagram |
 | `xdsm.tex` + `xdsm.tikz`, `xdsm.pdf` | XDSM (compile the `.tex` with LaTeX, e.g. Overleaf; the `.pdf` is a quick look) |
 
-For thesis figures including the design-space surface: `.venv/bin/python examples/make_thesis_figures.py`.
+For thesis figures including the design-space surface: `.venv/bin/python studies/make_thesis_figures.py`.
 
 From Python:
 

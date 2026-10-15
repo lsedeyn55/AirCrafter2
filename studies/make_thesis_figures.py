@@ -7,7 +7,7 @@ outputs/thesis_figures/:
 - the XDSM (.tex for LaTeX, .pdf quick look);
 - the N2 diagram.
 
-Run: .venv/bin/python examples/make_thesis_figures.py [prop]
+Run: .venv/bin/python studies/make_thesis_figures.py [prop]
 """
 
 import sys

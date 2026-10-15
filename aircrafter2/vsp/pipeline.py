@@ -1,6 +1,6 @@
 """One call from a saved run to the OpenVSP mock-up: build, consistency check, figures.
 
-Used by `aircrafter2 vsp <run_dir>`, `aircrafter2 run <cfg> --vsp`, the Streamlit UI and examples/vsp_mockup.py.
+Used by `aircrafter2 vsp <run_dir>`, `aircrafter2 run <cfg> --vsp`, the Streamlit UI and studies/vsp_mockup.py.
 """
 
 from pathlib import Path

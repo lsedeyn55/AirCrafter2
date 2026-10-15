@@ -500,7 +500,7 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
   `xdsm.py` (pyXDSM TikZ and a matplotlib quick look; no LaTeX on this machine).
 - `aircrafter2/ui/app.py`: Streamlit, thin over `run_design`. Tested headless with `streamlit.testing`.
 - Docs: README quickstart, `docs/modules/*.md` (one page per module), `docs/how_to_add_a_scoring_plugin.md`.
-  Figures script: `examples/make_thesis_figures.py`.
+  Figures script: `studies/make_thesis_figures.py`.
 
 ## 6h. Twin-motor configurations (D8, in progress)
 
@@ -512,7 +512,7 @@ Brief: `aircrafter2_twin_motor_prompt.md`, which replaces Task A of the step 9 b
 - **Raymer:** *Aircraft Design: A Conceptual Approach*, Ch. 12.
 
 **Status:** all three checkpoints are done: propulsion, airframe integration, and the single-vs-twin study
-(`docs/studies/twin_motor_study.md`, `examples/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
+(`docs/studies/twin_motor_study.md`, `studies/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
 prop. Its doc (`docs/steps/step7_full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
 
 **Decisions 2026-10-13 (checkpoint 1 review):**
@@ -846,7 +846,7 @@ OpenMDAO model.
   - reads back the key parameters, and raises if a body's bounding box differs from `geometry.json` by more than 1%.
 - **`aircrafter2/vsp/render.py`:** matplotlib three-view and isometric from the STL meshes (rasterised mesh, vector
   text and axes, 300 dpi).
-- **`examples/vsp_mockup.py`:** rebuilds the study designs and makes the paper figure.
+- **`studies/vsp_mockup.py`:** rebuilds the study designs and makes the paper figure.
 
 **Rebuilding the study designs:**
 - The three designs come from the stored optimum DVs without re-optimising.
