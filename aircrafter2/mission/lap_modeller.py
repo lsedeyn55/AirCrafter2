@@ -464,7 +464,7 @@ class AirCrafterPerformance(om.ExplicitComponent):
 if __name__ == "__main__":
     # Demo: minimise 3-lap time subject to stall/turn feasibility margins,
     # over the ranges from inputs_file.m.
-    prob = om.Problem()
+    prob = om.Problem(reports=False)
     model = prob.model
 
     model.add_subsystem("perf", AirCrafterPerformance(), promotes=["*"])
