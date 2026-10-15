@@ -90,7 +90,7 @@ with c2:
 
 # --- run ----------------------------------------------------------------------------------------------
 if st.button("Run", type="primary"):
-    out = OUTPUTS / f"ui_{time.strftime('%Y%m%d_%H%M%S')}"
+    out = OUTPUTS / "ui_runs" / time.strftime("%Y%m%d_%H%M%S")  # named studies stay at the top of outputs/
     with st.status("Running AirCrafter 2.0 ...", expanded=True) as status:
         t0 = time.perf_counter()
         try:
