@@ -19,7 +19,7 @@ to a G&G equation unless stated otherwise.
 | `AirCrafter/propSelector.m`, `parse_apc_txt_folder.m` | read | The APC data **is on disk**: `THESIS/PERFILES2/PER3_*.dat` (443 files, `PROP RPM =` blocks, 15 columns). The MATLAB parser globs `*.txt` and hard-codes a macOS path, so neither works here as-is. |
 | `AirCrafter/Josh Kal's Thesis.pdf` Ch. 3 | read | `dbf_performance_modeller.py` matches Eqs. 3.1–3.12 and Table 3.5. |
 | `AirCrafter2/dbf_performance_modeller.py` | read | Reused as the mission core (§5.7). |
-| `AirCrafter2/{rect_wing,quick_example_oas,basic_mdo,basic_perf,draft}.py` | read | Patterns reused (§2). They will be moved to `examples/legacy/` unchanged. They import only external libraries, so the move doesn't break them. |
+| `AirCrafter2/{rect_wing,quick_example_oas,basic_mdo,basic_perf,draft}.py` | read | Patterns reused (§2). They were moved to `examples/legacy/` unchanged (now `archive/legacy/`). They import only external libraries, so the move doesn't break them. |
 | G&G 2022 paper (all of it, including Tables 1–15) | read; key pages rendered to check garbled equations | Mass model spec (§6). Errata and ambiguities are in §7. |
 | `0_DELIVERABLES/Preliminary Report/Thesis_Preliminary_Report.pdf` Ch. 3 | read | Formal problem and XDSM (Fig. 3.1). The XDSM is updated in §4. Two points where the brief supersedes the report are in §9 (B1). |
 | `2_DBF_CODE/Spar Sizer 3.1/…/WingSparSizing_V3_0_1.m` (+ `getDeflection.m`, `runavl_C2.m`, `wing.avl`) | read (reference only) | Notes in §10. One of them conflicts with the single-tube G&G concept (§9, B2). |
@@ -85,7 +85,7 @@ AirCrafter2/
 │   └── verification/{ubi11,gra13,ubi15}.yaml  # paper inputs (Tables 3, 12, 13, 14)
 ├── data/                         # apc cache, airfoil seeds (.dat), motor/battery catalogues (placeholders)
 ├── tests/                        # per-module unit tests + check_partials + check_totals
-├── examples/legacy/              # the five earlier scripts, unchanged
+├── archive/legacy/               # the five earlier scripts, unchanged
 └── docs/                         # README quickstart lives at repo root; one page per module here
 ```
 
@@ -384,7 +384,7 @@ Findings:
 
 - `aircrafter2/mission/oval.py`: `LoadFactor` (n = L_turn/W, KS-capped at n_struct) and `OvalLapTime`
   (R = V²/(g√(n²−1)), lap = (2L_s + 2πR)/V), with analytic partials. Developed from
-  `examples/legacy/basic_perf.py`; its `np.where` floor became a softplus floor.
+  `archive/legacy/basic_perf.py`; its `np.where` floor became a softplus floor.
 - `aircrafter2/problems/oval_lap.py` (config `configs/step4_oval_lap.yaml`): one wing, two aero points
   (cruise with L = W; turn with its own α). The turn C_L margin C_L,max/C_L ≥ 1.21 sets n and R.
 - Results: `docs/steps/step4_oval.md`.

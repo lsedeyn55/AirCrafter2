@@ -114,7 +114,7 @@ shared files (`mass_config:`) and override them. Misspelt keys are errors, not s
 | `aircrafter2/robustness` | sensitivities, worst cases, Monte Carlo |
 | `aircrafter2/plotting`, `api.py`, `cli.py`, `ui/` | figures, API, CLI, Streamlit |
 | `configs/`, `tests/`, `examples/`, `verification/matlab/` | configs, tests, report scripts, MATLAB reference |
-| `examples/legacy/` | earlier experiments, unchanged |
+| `archive/legacy/` | earlier experiments, unchanged |
 
 ## OpenVSP (optional, installed locally)
 

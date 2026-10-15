@@ -1,7 +1,7 @@
 """Simple oval lap at constant speed (step 4).
 
 Two straights of length L_s and two 180-degree level turns at constant speed V and load
-factor n (developed from the LapTime component in examples/legacy/basic_perf.py):
+factor n (developed from the LapTime component in archive/legacy/basic_perf.py):
 
     R     = V^2 / (g sqrt(n^2 - 1))       level coordinated turn radius
     t_lap = (2 L_s + 2 pi R) / V
