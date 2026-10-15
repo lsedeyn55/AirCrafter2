@@ -32,6 +32,10 @@ The APC propeller data is read from `../PERFILES2/` (the same files AirCrafter 1
 # or switch the layout / battery topology of any config from the command line
 .venv/bin/aircrafter2 run configs/step7_full.yaml --n-motors 2 --battery-topology shared
 
+# 3D OpenVSP mock-up of a run (optional OpenVSP, see below): .vsp3, STEP, STL, figures, consistency check
+.venv/bin/aircrafter2 vsp outputs/my_design/
+.venv/bin/aircrafter2 run configs/step7_full_twin.yaml --vsp
+
 # the graphical interface
 .venv/bin/aircrafter2 ui
 
@@ -44,6 +48,8 @@ A run writes into its output folder:
 | File | What |
 |---|---|
 | `summary.md`, `results.json` | optimum, constraints and margins, sensitivities |
+| `geometry.json` | full geometry of the result, for the OpenVSP mock-up (docs/modules/vsp.md) |
+| `vsp/` (with `--vsp`) | `.vsp3`, `.stp`, `.stl`, three-view and isometric figures, `vsp_check.md` |
 | `figures/*.pdf` (+ `.png`) | planform, airfoil, spanwise lift, drag breakdown, mass breakdown, convergence, sensitivities |
 | `cases.sql` | optimiser history (OpenMDAO `CaseReader`) |
 | `n2.html` | the model's N2 diagram |

@@ -115,7 +115,8 @@ def _caption(geom):
             f"{pv['n_cells']:.0f}S\n3-lap time {pv['ThreeLapTime_s']:.2f} s, "
             f"m = {geom['stations']['masses_kg']['m_total']:.2f} kg\n"
             f"b = {W['span_m']:.3f} m, c = {W['chord_m']:.3f} m, t/c = {W['airfoil']['tc_max']:.3f}\n\n"
-            "Illustrative (not from the result): vertical\nplacement, blade and nacelle shape, spinner,\nmotor mount.")
+            "Illustrative (not from the result): vertical\nplacement, blade and nacelle shape, spinner,\nmotor mount"
+            + (", fairings." if geom.get("mockup_options", {}).get("fairings") else "."))
 
 
 def draw_iso(ax, meshes, geom=None, elev=22.0, azim=-128.0, limits=None, zoom=1.35):
@@ -171,15 +172,15 @@ def side_by_side(items, path, labels):
     """Isometrics of several designs at the same scale and camera. items: list of (geom, meshes)."""
     limits = iso_limits([m.reshape(-1, 3) for _, ms in items for m in ms.values()])
     w = TEXT_WIDTH_IN
-    fig = figure(1.0, 0.36)[0]
+    fig = figure(1.0, 0.30)[0]
     fig.clf()
     for i, ((geom, meshes), lab) in enumerate(zip(items, labels)):
         ax = fig.add_subplot(1, len(items), i + 1, projection="3d")
-        draw_iso(ax, meshes, geom, limits=limits, zoom=1.3)
+        draw_iso(ax, meshes, geom, limits=limits, zoom=1.5)
         ax.set_title(lab, fontsize=7.5, y=0.93)
         if i == 0:
             ax.legend(loc="lower left", fontsize=6.5, frameon=False, bbox_to_anchor=(0.02, 0.06))
     fig.subplots_adjust(left=0.0, right=1.0, top=0.95, bottom=0.0, wspace=0.0)
-    fig.set_size_inches(w, w * 0.36)
+    fig.set_size_inches(w, w * 0.30)
     fig.dpi = DPI
     return save(fig, path, dpi=DPI)

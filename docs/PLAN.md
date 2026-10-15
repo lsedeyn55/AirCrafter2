@@ -826,7 +826,7 @@ For the lap-time comparison, where cruise and straights dominate, the omission i
 `thrust_margin_static` or the stall and turn margins are active, it is not. The study (checkpoint 3) will report
 which constraints are active, so the reader can tell which case applies.
 
-## 6i. OpenVSP geometry mock-up (in progress)
+## 6i. OpenVSP geometry mock-up
 
 Brief: OpenVSP mock-up of a framework result. It is a visual and consistency mock-up only and never enters the
 OpenMDAO model.
@@ -865,6 +865,39 @@ OpenMDAO model.
    angles; the bounding-box read-back now matches to < 0.01%.
 4. **POD `FineRatio` is length/radius here, not length/diameter:** a 0.15 m pod at FineRatio 3 measured 0.10 m.
    The builder sets 2L/d and checks the bounding box.
+
+**Checkpoint 2 (done): check, interfaces and docs.**
+- **`vsp/check.py`** writes `vsp_check.md` for each design. It reloads the `.vsp3` from disk, reads back the
+  parameters and the CompGeom wetted areas, and compares them with `geometry.json`. Every parameter matches to
+  < 0.01%, except the x location of maximum t/c (≈ 1%, from the sampling grid).
+- **Wetted areas over 5%** (OPEN_QUESTIONS Q31):
+  - cargo bay −6% (the illustrative rounded corners);
+  - nacelles −26%: the POD shape against the framework's cylinder π d l;
+  - the boom's *trimmed* area −20 to −29% (by design), because that share of its length lies inside the cargo bay. The framework's fuselage
+    drag counts both the box and the full boom, so that overlap is double-counted. This is flagged; the framework
+    is not changed.
+- **Interfaces:**
+  - `vsp/pipeline.py: build_run` does build, check and figures in one call;
+  - `aircrafter2 vsp <run_dir>` and `aircrafter2 run <cfg> --vsp` (both exit 2 with the README pointer without
+    OpenVSP);
+  - the Streamlit "Build OpenVSP model" button, hidden without OpenVSP;
+  - the illustrative `mockup.fairings`.
+- **Tests:** `tests/test_vsp.py` (OpenVSP tests skip without it; tested with `openvsp` made unimportable) and
+  `tests/test_geometry_export.py`.
+- **Docs:** `docs/modules/vsp.md` and the README.
+
+**Using these models for analysis later (out of scope now).** The `.vsp3` is a ready input for VSPAERO, and
+`runavl_C2.m` (PLAN §10) could take the same geometry for AVL. Three cross-checks would be worth running:
+1. **Wing–tail C_L,α and the neutral point:** check them against the framework's VLM a_w and its tail-volume
+   neutral point (`stability/static.py`). The framework's dε/dα = 2a_w/(πA) estimate and its neglect of the
+   fuselage are the likely sources of difference.
+2. **Induced drag and span efficiency at the cruise C_L:** check them against the OAS VLM. These should agree
+   closely; both are potential-flow models.
+3. **For the twin, VSPAERO's actuator-disc propellers:** this is the slipstream model proposed in §6h, at no extra
+   geometry work. It would quantify the twin's take-off and turn C_L gain, and the washed-strip drag, that the
+   single-vs-twin study leaves out.
+
+All three would run outside the optimiser, as post-checks at a fixed design, in the same spirit as `vsp_check.md`.
 
 **Added beyond the brief:** an illustrative motor mount joins the nose prop to the cargo-bay front for n = 1.
 The framework places the motor at x = −0.30 m but has no nose structure, so the prop would otherwise float. It is

@@ -123,3 +123,24 @@ if "last" in st.session_state:
     if (out / "results.json").exists():
         st.download_button("results.json", (out / "results.json").read_bytes(), file_name="results.json")
     st.caption(f"All outputs (incl. n2.html, xdsm.tex, cases.sql): {out}")
+
+    # OpenVSP mock-up (optional dependency: hidden without OpenVSP)
+    from aircrafter2.vsp import have_openvsp
+
+    if have_openvsp() and (out / "geometry.json").exists():
+        st.subheader("OpenVSP mock-up")
+        st.caption("Visual / consistency mock-up only. Placement, blades, spinner and nacelle shape are illustrative; "
+                   "everything else comes from this result (docs/modules/vsp.md).")
+        if st.button("Build OpenVSP model"):
+            from aircrafter2.vsp.pipeline import build_run
+
+            with st.spinner("Building the OpenVSP model ..."):
+                st.session_state["vsp"] = {k: str(v) for k, v in build_run(out)["files"].items()
+                                           if k in ("vsp3", "step", "isometric", "check")}
+        vf = st.session_state.get("vsp")
+        if vf and Path(vf["vsp3"]).parent.parent == out:
+            st.image(str(Path(vf["isometric"]).with_suffix(".png")), caption="isometric")
+            for key, label in (("vsp3", ".vsp3 (OpenVSP)"), ("step", ".stp (CAD)")):
+                pth = Path(vf[key])
+                st.download_button(label, pth.read_bytes(), file_name=pth.name, key=f"dl_{key}")
+            st.markdown(Path(vf["check"]).read_text())

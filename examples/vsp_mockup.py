@@ -51,20 +51,20 @@ def rebuild_case(r):
     return cfg, prob, check
 
 
-def make_case(case_id, cfg, prob, out, config_path, optimised, success):
+def make_case(case_id, cfg, prob, out, config_path, optimised, success, vsp_out=None):
+    """geometry.json, OpenVSP build + vsp_check.md + three-view + isometric, and the planform overlay check."""
     from aircrafter2.geometry.export import export_geometry, write_geometry
     from aircrafter2.plotting import figures as F
     from aircrafter2.vsp import render as Rd
-    from aircrafter2.vsp.build import build
+    from aircrafter2.vsp.pipeline import build_run
 
     geom = export_geometry(prob, cfg, config_path=config_path, optimised=optimised, success=success,
                            case_id=case_id)
     write_geometry(geom, out / "geometry.json")
-    res = build(geom, out, case_id)
-    meshes = Rd.load_meshes(res["files"]["component_stls"])
-    Rd.three_view(geom, meshes, out / f"{case_id}_three_view.pdf")
-    Rd.isometric(geom, meshes, out / f"{case_id}_isometric.pdf")
-    F.planform(prob, out / f"{case_id}_planform_overlay.pdf",
+    vsp_out = vsp_out or out
+    res = build_run(out, out_dir=vsp_out, name=case_id)
+    meshes = res["meshes"]
+    F.planform(prob, vsp_out / f"{case_id}_planform_overlay.pdf",
                underlay=lambda ax: Rd.draw_projection(ax, meshes, "top", alpha=0.55, flat="#b0b0b0"))
     return geom, meshes, res
 
@@ -93,7 +93,8 @@ def main():
         t = time.perf_counter()
         geom, meshes, res = make_case(cid, cfg, prob, OUT / cid, CFG[r["n"]], True, r["success"])
         print(f"  built in {res['build_s']:.2f} s (OpenVSP), {time.perf_counter() - t:.1f} s with figures; "
-              f"readback span {res['readback']['wing_span_m']:.4f} m, props {res['readback']['n_props']}", flush=True)
+              f"readback span {res['readback']['wing_span_m']:.4f} m, props {res['readback']['n_props']}; "
+              f"vsp_check: {len(res['check']['flagged'])} item(s) over 5 %", flush=True)
         done.append((cid, geom, meshes, res))
 
     # the plain twin-config analysis
@@ -102,12 +103,8 @@ def main():
     cfg = load_full_config(ROOT / CFG[2])
     prob = build_full_problem(cfg, driver=False)
     prob.run_model()
-    make_case("twin_analyse", cfg, prob, ROOT / "outputs" / "twin_analyse" / "vsp", CFG[2], False, True)
-    # geometry.json beside results.json, as run_design writes it
-    from aircrafter2.geometry.export import export_geometry, write_geometry
-
-    write_geometry(export_geometry(prob, cfg, config_path=CFG[2], optimised=False, success=True,
-                                   case_id="twin_analyse"), ROOT / "outputs" / "twin_analyse" / "geometry.json")
+    run = ROOT / "outputs" / "twin_analyse"
+    make_case("twin_analyse", cfg, prob, run, CFG[2], False, True, vsp_out=run / "vsp")
 
     labels = []
     for cid, geom, _, _ in done:

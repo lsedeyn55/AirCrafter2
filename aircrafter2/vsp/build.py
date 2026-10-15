@@ -124,6 +124,15 @@ class _Builder:
             self.setp(gid, "CapUMaxOption", "EndCap", vsp.FLAT_END_CAP)
         return gid
 
+    def fairing(self, name, length, w, h, point_first):
+        """Illustrative straight taper between the cargo-bay section and a point (cargo bay component)."""
+        vsp = self.vsp
+        gid = self.body(name, "cargo bay", length, "rect", w, h, caps=False)
+        surf = vsp.GetXSecSurf(gid, 0)
+        vsp.ChangeXSecShape(surf, 0 if point_first else 1, vsp.XS_POINT)
+        self.setp(gid, "CapUMinOption" if not point_first else "CapUMaxOption", "EndCap", vsp.FLAT_END_CAP)
+        return gid
+
     def pod(self, name, component, length, diameter, marker=False):
         gid = self.add("POD", name, component, marker=marker)
         self.setp(gid, "Length", "Design", length)
@@ -179,6 +188,13 @@ def build(geom, out_dir, name=None, incidence=None):
     B.place(cb, x=CB["x_centre_m"] - CB["length_m"] / 2.0, z=z_cb)
     tb = B.body("TailBoom", "tail boom", TB["length_m"], "circle", 2.0 * TB["radius_m"])
     B.place(tb, x=TB["x_start_m"], z=z_cb)
+    if opts.get("fairings", False):  # illustrative nose and tail fairings on the cargo bay (default off)
+        x_front, x_rear = CB["x_centre_m"] - CB["length_m"] / 2.0, CB["x_centre_m"] + CB["length_m"] / 2.0
+        ln, lt = 0.6 * CB["height_m"], 0.9 * CB["height_m"]
+        nose = B.fairing("NoseFairing", ln, CB["width_m"], CB["height_m"], point_first=True)
+        B.place(nose, x=x_front - ln, z=z_cb)
+        tail = B.fairing("TailFairing", lt, CB["width_m"], CB["height_m"], point_first=False)
+        B.place(tail, x=x_rear, z=z_cb)
 
     # propulsion: prop discs at x_motor; blade shape illustrative
     D, xm = P["D_prop_m"], P["x_motor_m"]

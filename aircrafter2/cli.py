@@ -2,6 +2,8 @@
 
     aircrafter2 run configs/step7_full.yaml [--out outputs/run1] [--analyse] [--no-figures]
                 [--design-space] [--prop 11x7E] [--n-motors {1,2}] [--battery-topology {per_motor,shared}]
+    aircrafter2 vsp outputs/<run>/ [--out DIR] [--no-figures] [--incidence {zero,cruise}]
+                                 # OpenVSP mock-up from the run's geometry.json (optional OpenVSP)
     aircrafter2 plugins          # list scoring plug-ins
     aircrafter2 ui               # start the Streamlit app
 """
@@ -26,6 +28,13 @@ def main(argv=None):
                         "configs/step7_full_twin.yaml has the full twin defaults)")
     r.add_argument("--battery-topology", choices=["per_motor", "shared"], default=None,
                    help="one pack per motor (default) or one shared pack; capacity is per pack")
+    r.add_argument("--vsp", action="store_true", help="build the OpenVSP mock-up after the run (needs OpenVSP)")
+    v = sub.add_parser("vsp", help="build the OpenVSP mock-up of a saved run (from its geometry.json)")
+    v.add_argument("run_dir", help="run folder holding geometry.json (or the file)")
+    v.add_argument("--out", default=None, help="output folder (default <run_dir>/vsp)")
+    v.add_argument("--no-figures", action="store_true")
+    v.add_argument("--incidence", choices=["zero", "cruise"], default=None,
+                   help="tilt the model to the cruise AoA (default: the config's mockup.wing_incidence)")
     sub.add_parser("plugins", help="list the registered scoring plug-ins")
     sub.add_parser("ui", help="start the Streamlit UI")
     args = ap.parse_args(argv)
@@ -35,12 +44,16 @@ def main(argv=None):
 
         print("\n".join(available()))
         return 0
+    if args.cmd == "vsp":
+        return _vsp(args.run_dir, args.out, not args.no_figures, args.incidence)
     if args.cmd == "ui":
         import subprocess
 
         app = Path(__file__).parent / "ui" / "app.py"
         return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
 
+    if args.vsp and not _vsp_available():
+        return 2
     from .api import run_design
     from .problems.full_mdo import WOOMBAH_Y_M, PropulsionInputs, load_full_config
 
@@ -61,8 +74,33 @@ def main(argv=None):
     res = run_design(cfg, optimise=not args.analyse, out_dir=out, figures=not args.no_figures,
                      design_space=args.design_space, progress=lambda s: print(f"[aircrafter2] {s} ...", flush=True))
     print(f"success = {res.success}, iterations = {res.iterations}, score = {res.values['score']:.4f}")
-    print(f"outputs in {out}/ (summary.md, results.json, n2.html, figures/)")
+    print(f"outputs in {out}/ (summary.md, results.json, geometry.json, n2.html, figures/)")
+    if args.vsp:
+        rc = _vsp(out, None, not args.no_figures, None)
+        if rc:
+            return rc
     return 0 if res.success else 1
+
+
+def _vsp_available():
+    from .vsp import INSTALL_HINT, have_openvsp
+
+    if not have_openvsp():
+        print(f"[aircrafter2] {INSTALL_HINT}", file=sys.stderr)
+        return False
+    return True
+
+
+def _vsp(run_dir, out, figures, incidence):
+    if not _vsp_available():
+        return 2
+    from .vsp.pipeline import build_run
+
+    res = build_run(run_dir, out_dir=out, figures=figures, incidence=incidence)
+    flagged = res["check"]["flagged"]
+    print(f"[aircrafter2] OpenVSP model built in {res['build_s']:.1f} s: {res['files']['vsp3']}")
+    print(f"[aircrafter2] consistency check: {res['files']['check']} ({len(flagged)} item(s) over 5 %)")
+    return 0
 
 
 if __name__ == "__main__":
