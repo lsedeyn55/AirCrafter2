@@ -16,7 +16,7 @@ BLOCKS = [  # (id, label, kind)
     ("geo", "Geometry", "function"),
     ("af", "Airfoil\n(CST)", "function"),
     ("prop", "Propulsion", "function"),
-    ("aero", "Aero\n(VLM + NeuralFoil)", "function"),
+    ("aero", "Aero\n(VLM +\nNeuralFoil)", "function"),
     ("mass", "Mass\n(G&G 2022)", "function"),
     ("stab", "Stability", "function"),
     ("lap", "Mission\n(lap model)", "function"),
@@ -32,8 +32,9 @@ DATA = [  # (from, to, label)  upper triangle: feed-forward; lower: feedback
     ("aero", "mass", "C_m, C_Lα"), ("aero", "stab", "a_w"), ("aero", "lap", "polar, C_L,max"),
     ("mass", "aero", "W"), ("mass", "stab", "masses"), ("mass", "lap", "m"),
     ("lap", "score", "lap times, laps"),
-    ("score", "opt", "f"), ("stab", "opt", "SM"), ("lap", "opt", "margins"), ("mass", "opt", "tube limits"),
-    ("geo", "opt", "prop clearances (twin)"),
+    ("score", "opt", "f"), ("stab", "opt", "SM"), ("lap", "opt", "stall, turn, thrust, energy margins"),
+    ("mass", "opt", "tube t/r, r_tube"), ("geo", "opt", "V_h, V_v, prop clearances (twin)"),
+    ("aero", "opt", "section c_l margin"), ("prop", "opt", "rpm, v-fit margins"),
 ]
 
 
