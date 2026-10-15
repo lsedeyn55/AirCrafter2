@@ -26,6 +26,11 @@ class MassOptions(BaseModel):
     r_tube_mode: Literal["fixed", "derived", "design_variable"] = "derived"
     n_panels: int = Field(1, ge=1)
     statistical_model: Literal["all", "balsa", "composite"] = "all"
+    motor_inertia_relief: bool = Field(False, description="wing-mounted units relieve root bending and shear "
+                                       "(flight and ground test); off = the published G&G model")
+    nacelle_torsion: bool = Field(True, description="wing-mounted units ahead of the quarter chord add root "
+                                  "torsion (flight and ground test); no effect without wing units")
+    n_motor_pairs: Literal[0, 1] = Field(0, description="set by the full model from propulsion.n_motors")
     standalone_solver: bool = Field(True, description="attach NonlinearBlockGS + DirectSolver for the mass closure")
 
 

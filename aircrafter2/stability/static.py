@@ -56,3 +56,38 @@ class StaticStability(om.ExplicitComponent):
         outputs["V_h"] = V_h
         outputs["a_h"] = a_h
         outputs["downwash_grad"] = deps
+
+
+def oei_check(prob, cfg):
+    """One-engine-inoperative yaw, twin layout: report-only post-check (not a constraint; D8).
+
+    The live unit gives a yawing moment N = T_unit y_m, using the static thrust per unit (the worst case).
+    Windmilling drag of the dead prop is neglected. Required rudder at the check speed
+    V = k V_stall (k = oei_speed_factor), from a tail-volume rudder model:
+
+        C_n,req   = N / (q S b)
+        C_n,dr    = eta_v V_v a_v tau_r            (per rad of rudder; a_v Helmbold on AR_vt)
+        delta_req = C_n,req / C_n,dr
+
+    eta_v, tau_r, delta_max and k are all PLACEHOLDERS (StabilityInputs). Returns None for n_motors = 1.
+    """
+    if cfg.propulsion.n_motors != 2:
+        return None
+    st = cfg.stability
+
+    def val(k):
+        return float(np.ravel(prob.get_val(k))[0])
+
+    T, ym, S, b = val("T_static_unit"), val("y_m"), val("S"), val("b")
+    rho, W, CLmax, V_v = val("rho"), val("W"), val("cruise.CL_max"), val("V_v")
+    V_stall = np.sqrt(2 * W / (rho * S * CLmax))
+    V = st.oei_speed_factor * V_stall
+    q = 0.5 * rho * V**2
+    a_v = 2 * np.pi * st.AR_vt / (2 + np.sqrt(st.AR_vt**2 + 4))
+    N = T * ym
+    Cn_req = N / (q * S * b)
+    Cn_dr = st.eta_v * V_v * a_v * st.rudder_tau
+    d_req = np.degrees(Cn_req / Cn_dr)
+    return {"N_yaw_Nm": N, "V_check_mps": V, "Cn_req": Cn_req, "Cn_per_rad_rudder": Cn_dr,
+            "rudder_req_deg": d_req, "rudder_max_deg": st.rudder_max_deg,
+            "rudder_margin_deg": st.rudder_max_deg - d_req, "ok": bool(d_req <= st.rudder_max_deg)}

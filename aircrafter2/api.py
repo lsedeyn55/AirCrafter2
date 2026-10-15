@@ -76,6 +76,9 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
         success, its = True, 0
     values = {k: v for k, _, _, v in summary_table(prob)}
     values["limits"] = check_fixed_limits(prob)
+    from .stability import oei_check
+
+    values["oei"] = oei_check(prob, cfg)
     result = RunResult(prob=prob, cfg=cfg, success=success, iterations=its, values=values)
     if not out:
         return result
@@ -87,7 +90,11 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
 
         if progress:
             progress("sensitivities")
-        sens = sens_fn(prob, "score", dvs + ["m_pay", "Kv", "Rm", "R_cell", "e_spec", "f_tb", "f_cb", "m_avionics"])
+        extra = []
+        if cfg.propulsion.n_motors == 2:  # twin-layout assumptions
+            extra = ["m_nacelle", "Q_nac", "y_m" if cfg.propulsion.station_mode == "absolute" else "y_motor"]
+        sens = sens_fn(prob, "score", dvs + ["m_pay", "Kv", "Rm", "R_cell", "e_spec", "f_tb", "f_cb", "m_avionics"]
+                       + [k for k in extra if k not in dvs])
         values["sensitivities"] = sens
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
     lines = [f"# AirCrafter 2.0 result\n", f"Config: scoring = `{cfg.scoring.plugin}`, prop = "

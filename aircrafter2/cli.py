@@ -42,7 +42,7 @@ def main(argv=None):
         return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
 
     from .api import run_design
-    from .problems.full_mdo import WOOMBAH_Y_MOTOR, PropulsionInputs, load_full_config
+    from .problems.full_mdo import WOOMBAH_Y_M, PropulsionInputs, load_full_config
 
     cfg = load_full_config(args.config)
     if args.prop:
@@ -51,9 +51,9 @@ def main(argv=None):
         pr = cfg.propulsion.model_dump()
         if args.n_motors is not None:
             pr["n_motors"] = args.n_motors
-            if args.n_motors == 2 and pr["y_motor"] is None:
-                pr["y_motor"] = WOOMBAH_Y_MOTOR
-                print(f"[aircrafter2] n_motors = 2: y_motor = {WOOMBAH_Y_MOTOR:.4f} (Woombah station)")
+            if args.n_motors == 2 and pr["y_motor"] is None and pr["y_motor_m"] is None:
+                pr["y_motor_m"] = WOOMBAH_Y_M
+                print(f"[aircrafter2] n_motors = 2: y_motor_m = {WOOMBAH_Y_M:.4f} m (Woombah station)")
         if args.battery_topology is not None:
             pr["battery_topology"] = args.battery_topology
         cfg.propulsion = PropulsionInputs(**pr)  # re-validated

@@ -10,6 +10,7 @@ from ...smooth import ks_max, smooth_abs
 
 _EPS_CM = 1e-6  # smoothing width for |Cm|
 _EPS_X = 1e-6  # smoothing width for |x_c/4 - x_gd| (chord fraction)
+_EPS_T = 1e-6  # N m, smoothing width for the signed ground torque with a nacelle term
 
 
 class WingLoads(AnalyticComponent):
@@ -25,7 +26,23 @@ class WingLoads(AnalyticComponent):
 
     q is the dynamic pressure at the design speed (Sec. 3.2.1). q_div uses the
     design speed times ``div_speed_factor`` (the paper suggests 1.2, after Eq. 47).
+
+    Wing-mounted propulsion units (twin layout; not in G&G, derivation in docs/modules/mass.md and
+    PLAN 6h). One unit of mass m_u per semi-span at (y_m, x_m), x from the LE (aft +), torsion about
+    the quarter chord (as G&G, Eqs. 46 and 50), with ``n_motor_pairs = 1``:
+      motor_inertia_relief (default off: the published model)
+        Eq. 44  Q_fl = n W / 2 - n g m_u          Eq. 48  Q_gd = W / 2 - g m_u
+        Eq. 45  M_fl = n W b / 8 - n g m_u y_m    Eq. 49  M_gd = W b / 4 - g m_u y_m
+      nacelle_torsion (default on; a no-op without wing units)
+        Eq. 46  T_fl = q |Cm| c^2 b / 2 + n g m_u (c/4 - x_m)      (both nose-down for Cm < 0)
+        Eq. 50  T_gd = | W/2 c (1/4 - x_gd) - g m_u (c/4 - x_m) |  (signed sum, then magnitude)
     """
+
+    def initialize(self):
+        self.options.declare("n_motor_pairs", default=0, values=[0, 1],
+                             desc="symmetric pairs of wing-mounted units (one unit per semi-span per pair)")
+        self.options.declare("motor_inertia_relief", default=False, types=bool)
+        self.options.declare("nacelle_torsion", default=True, types=bool)
 
     def io(self):
         ins = {
@@ -40,6 +57,8 @@ class WingLoads(AnalyticComponent):
             "x_gd": (0.3, None),
             "div_speed_factor": (1.2, None),
         }
+        if self.options["n_motor_pairs"]:
+            ins.update({"m_motor_unit": (0.25, "kg"), "y_m": (0.25, "m"), "x_motor": (-0.14, "m")})
         outs = {name: (1.0, u) for name, u in [
             ("W", "N"), ("q", "Pa"), ("q_div", "Pa"),
             ("Q_fl", "N"), ("M_fl", "N*m"), ("T_fl", "N*m"),
@@ -92,7 +111,39 @@ class WingLoads(AnalyticComponent):
             "M_gd": D({"b": 0.25 * W}) + (0.25 * b) * gW,
             "T_gd": (0.5 * arm * c) * gW + D({"x_gd": -0.5 * W * c * darm, "c_mean": 0.5 * W * arm}),
         }
+        if self.options["n_motor_pairs"]:
+            self._wing_units(x, values, grads, W, gW, T_fl, gT_fl)
         return values, grads
+
+    def _wing_units(self, x, values, grads, W, gW, T_fl, gT_fl):
+        """Add the wing-mounted unit terms (one unit per semi-span) to the root loads in place."""
+        g, n, c, mu, ym, xm = x["g"], x["n"], x["c_mean"], x["m_motor_unit"], x["y_m"], x["x_motor"]
+        if self.options["motor_inertia_relief"]:
+            # flight: inertial load n g m_u at y_m opposes the lift (Eqs. 44, 45)
+            values["Q_fl"] = values["Q_fl"] - n * g * mu
+            grads["Q_fl"] = grads["Q_fl"] + D({"n": -g * mu, "g": -n * mu, "m_motor_unit": -n * g})
+            values["M_fl"] = values["M_fl"] - n * g * mu * ym
+            grads["M_fl"] = grads["M_fl"] + D({"n": -g * mu * ym, "g": -n * mu * ym, "m_motor_unit": -n * g * ym,
+                                               "y_m": -n * g * mu})
+            # ground test: weight g m_u at y_m, tip reaction W/2 at b/2 (Eqs. 48, 49)
+            values["Q_gd"] = values["Q_gd"] - g * mu
+            grads["Q_gd"] = grads["Q_gd"] + D({"g": -mu, "m_motor_unit": -g})
+            values["M_gd"] = values["M_gd"] - g * mu * ym
+            grads["M_gd"] = grads["M_gd"] + D({"g": -mu * ym, "m_motor_unit": -g * ym, "y_m": -g * mu})
+        if self.options["nacelle_torsion"]:
+            arm = 0.25 * c - xm  # unit ahead of the quarter-chord axis: > 0
+            garm = D({"c_mean": 0.25, "x_motor": -1.0})
+            values["T_fl"] = T_fl + n * g * mu * arm  # Eq. 46 + nacelle (both nose-down)
+            grads["T_fl"] = gT_fl + D({"n": g * mu * arm, "g": n * mu * arm, "m_motor_unit": n * g * arm}) \
+                + (n * g * mu) * garm
+            # Eq. 50: signed (nose-up +) tip-reaction torque plus the unit's nose-down torque, then |.|
+            sgd = 0.5 * W * c * (0.25 - x["x_gd"]) - g * mu * arm
+            gsgd = (0.5 * c * (0.25 - x["x_gd"])) * gW + D({"c_mean": 0.5 * W * (0.25 - x["x_gd"]),
+                                                            "x_gd": -0.5 * W * c, "g": -mu * arm,
+                                                            "m_motor_unit": -g * arm}) - (g * mu) * garm
+            T_gd, dT = smooth_abs(sgd, _EPS_T)
+            values["T_gd"] = T_gd
+            grads["T_gd"] = dT * gsgd
 
 
 class CriticalLoads(AnalyticComponent):

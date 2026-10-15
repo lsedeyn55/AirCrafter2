@@ -17,6 +17,18 @@ def v(p, k):
     return float(np.ravel(p.get_val(k))[0])
 
 
+def _has(p, k):
+    try:
+        p.get_val(k)
+        return True
+    except KeyError:
+        return False
+
+
+def _n_motors(p):
+    return int(round(v(p, "m_motor_group") / v(p, "m_motor_unit")))
+
+
 def planform(p, path):
     b, c, l_ht = v(p, "b"), v(p, "c"), v(p, "l_ht")
     Sh, Sv, ARh = v(p, "S_ht"), v(p, "S_vt"), v(p, "AR_ht")
@@ -32,7 +44,12 @@ def planform(p, path):
     ax.add_patch(Rectangle((-wcb / 2, x_cb - lcb / 2), wcb, lcb, fc="none", ec=PALETTE[3], ls="--", label="cargo bay"))
     ax.plot(0, v(p, "x_cg"), "o", color=PALETTE[1], label=f"CG (SM = {v(p, 'SM'):.2f})")
     ax.plot(0, v(p, "x_np"), "^", color="k", label="neutral point")
-    ax.plot(0, v(p, "x_motor"), "s", color=PALETTE[5], label="motor")
+    xm, Dp = v(p, "x_motor"), v(p, "D_prop")
+    ys = [-v(p, "y_m"), v(p, "y_m")] if _has(p, "y_m") else [0.0]
+    for i, y in enumerate(ys):
+        ax.plot(y, xm, "s", color=PALETTE[5], label=f"motor{'s' if len(ys) > 1 else ''}" if i == 0 else None)
+        ax.plot([y - Dp / 2, y + Dp / 2], [xm - 0.01, xm - 0.01], color=PALETTE[5], lw=1.5,
+                label=f"prop disc (D = {Dp * 39.37:.0f} in)" if i == 0 else None)
     ax.set_aspect("equal")
     ax.invert_yaxis()
     ax.set_xlabel("y (m)")
@@ -86,6 +103,8 @@ def drag_breakdown(p, path):
         "tails": v(p, "CD_tail"),
         "fuselage": v(p, "CD_fus"),
     }
+    if v(p, "CD_nac") > 0:
+        parts["nacelles"] = v(p, "CD_nac")
     fig, ax = figure(0.8, 0.5)
     names, vals = list(parts), np.array(list(parts.values()))
     ax.barh(names, vals * 1e4, color=PALETTE[: len(names)])
@@ -105,7 +124,7 @@ def mass_breakdown(p, path):
         "tail boom / fuselage": v(p, "m_tb"),
         "cargo bay": v(p, "m_cb"),
         "landing gear": v(p, "m_gear"),
-        "motor, ESC, prop": v(p, "m_motor") + v(p, "m_esc") + v(p, "m_prop"),
+        f"motors, ESCs, props, nacelles (n = {_n_motors(p)})": v(p, "m_motor_group"),
         "battery": v(p, "m_batt"),
         "avionics": v(p, "m_avionics"),
         "payload": v(p, "m_pay"),

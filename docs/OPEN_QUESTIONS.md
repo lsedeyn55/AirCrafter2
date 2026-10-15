@@ -33,3 +33,4 @@ configs as `PLACEHOLDER`, with a pointer back to this file.
 | Q26 | Twin decisions from PLAN §6h: T2 motor x-station (firewall −5.5" vs Table 34 motor CG −6.5"), T3 one relief switch or a separate nacelle-torsion switch, T4 `y_motor` as a semi-span fraction or an absolute station, T5 shear relief | twin (checkpoint 2) | as briefed: −5.5", one switch, fraction, shear included |
 | Q27 | Wing-mounted batteries (in the nacelles): bending relief from the pack masses. Not modelled; packs stay at the fuselage `x_batt`. Option for later. | later | fuselage packs |
 | Q28 | `pack_I_max` for the shared topology (pack C-rating × capacity, or the wiring/fuse limit) | twin, shared | off |
+| Q29 | Twin placeholders: nacelle length/diameter (0.15/0.05 m), prop clearance c_clear (25 mm; Woombah as built ≈ 2.0" with 11" props), nacelle form factor (body vs Raymer nacelle, PLAN §6h T6), OEI rudder model (η_v 0.9, τ_r 0.5, δ_max 25°, check speed 1.2 V_stall) | twin | as listed |

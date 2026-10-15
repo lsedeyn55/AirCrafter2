@@ -10,6 +10,9 @@ aero: {num_x: 2, num_y: 21, spacing: cosine, model_size: xlarge, n_crit: 9.0}
 
 mass_config: mass_garcia_gamboa_2022.yaml   # base mass-model config, relative to this file
 mass:                    # overrides merged over mass_config
+  options:
+    motor_inertia_relief: false  # wing units relieve root bending/shear: off = conservative (PLAN 6h)
+    nacelle_torsion: true        # nacelles ahead of the quarter chord add root torsion: on = conservative
   inputs:
     n: 5.0               # assumptions_file.m load factor
     m_pay: 1.5           # kg, PLACEHOLDER payload
@@ -47,8 +50,14 @@ require_3lap_energy: true
 propulsion:              # decision B: the powertrain sets the power; cruise speed is where T = D
   n_motors: 2            # symmetric wing-mounted tractor pair (discrete choice, D4)
   battery_topology: per_motor  # one pack per motor (Woombah; 2025 rule C-F2); capacity below is PER PACK
-  y_motor: 0.2793        # nacelle station / semi-span: 9.9 in (Woombah Sec. 5.3.2) / 35.45 in (Table 30 span 70.9 in)
+  y_motor_m: 0.2515      # m, nacelle station from the centreline: 9.9 in (Woombah Sec. 5.3.2). Absolute by
+                         # default (PLAN 6h T4); or y_motor: 0.2793 as a fraction of the semi-span (9.9/35.45 in)
   m_nacelle: 0.0         # kg per nacelle, PLACEHOLDER: Woombah Table 34 has no nacelle row (OPEN_QUESTIONS Q25)
+  c_clear: 0.025         # m, prop-tip clearance, PLACEHOLDER (Woombah as built: ~2.0 in with 11 in props)
+  l_nac: 0.15            # m, nacelle length, PLACEHOLDER (not in the Woombah report)
+  d_nac: 0.05            # m, nacelle diameter, PLACEHOLDER
+  Q_nac: 1.3             # interference factor, Woombah Sec. 4.3.2 (motors 5.5 in ahead of the LE; Raymer)
+  nacelle_ff: body       # Raymer body form factor, as briefed; 'nacelle' = 1 + 0.35/f (PLAN 6h T6)
   prop: 11x7E            # APC PER3 file (discrete choice, D4: enumerate in examples/full_mdo.py)
   throttle: 1.0          # full throttle (the fastest-lap placeholder objective)
   n_cells: 4             # PLACEHOLDER (Q8)

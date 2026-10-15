@@ -27,6 +27,11 @@ The APC propeller data is read from `../PERFILES2/` (the same files AirCrafter 1
 # analyse only (no optimisation), or try another propeller
 .venv/bin/aircrafter2 run configs/step7_full.yaml --analyse --prop 11x7E
 
+# twin wing-mounted tractors, one pack per motor (capacity is per pack)
+.venv/bin/aircrafter2 run configs/step7_full_twin.yaml
+# or switch the layout / battery topology of any config from the command line
+.venv/bin/aircrafter2 run configs/step7_full.yaml --n-motors 2 --battery-topology shared
+
 # the graphical interface
 .venv/bin/aircrafter2 ui
 

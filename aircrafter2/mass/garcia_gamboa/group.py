@@ -43,7 +43,9 @@ class GarciaGamboaMass(om.Group):
         if opts.r_tube_mode == "derived":
             self.add_subsystem("tube_radius", TubeRadius(), promotes=["*"])
         self.add_subsystem("section", SectionCoeffs(), promotes=["*"])
-        self.add_subsystem("wing_loads", WingLoads(), promotes=["*"])
+        self.add_subsystem("wing_loads", WingLoads(n_motor_pairs=opts.n_motor_pairs,
+                                                   motor_inertia_relief=opts.motor_inertia_relief,
+                                                   nacelle_torsion=opts.nacelle_torsion), promotes=["*"])
         self.add_subsystem("critical_loads", CriticalLoads(**smooth), promotes=["*"])
         self.add_subsystem("spar_sizing", TubeSparSizing(
             **smooth, softplus_scale=opts.softplus_scale, deflection_mode=opts.deflection_mode,

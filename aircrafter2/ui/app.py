@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from aircrafter2.api import run_design
-from aircrafter2.problems.full_mdo import load_full_config
+from aircrafter2.problems.full_mdo import WOOMBAH_Y_M, PropulsionInputs, load_full_config
 from aircrafter2.problems.wing_aero import Bounds
 from aircrafter2.propulsion.apc import DEFAULT_DIR
 from aircrafter2.scoring import available
@@ -36,6 +36,32 @@ with st.sidebar:
     props = sorted(p.stem.replace("PER3_", "") for p in DEFAULT_DIR.glob("PER3_*E.dat"))
     cfg.propulsion.prop = st.selectbox("APC propeller", props, index=props.index(cfg.propulsion.prop)
                                        if cfg.propulsion.prop in props else 0)
+    st.subheader("Propulsion layout")
+    pr = cfg.propulsion.model_dump()
+    pr["n_motors"] = st.radio("Layout", [1, 2], index=pr["n_motors"] - 1, horizontal=True,
+                              format_func=lambda n: "1: nose tractor" if n == 1 else "2: wing-mounted pair")
+    pr["battery_topology"] = st.radio("Battery topology", ["per_motor", "shared"],
+                                      index=["per_motor", "shared"].index(pr["battery_topology"]), horizontal=True,
+                                      help="per_motor: one pack per motor; shared: one pack feeds every ESC")
+    st.caption("Battery capacity (design variable `capacity`) is the capacity **per pack**.")
+    if pr["n_motors"] == 2:
+        if pr["y_motor"] is not None:
+            pr["y_motor"] = st.number_input("Motor station y_motor (fraction of semi-span)", 0.05, 0.95,
+                                            float(pr["y_motor"]))
+        else:
+            pr["y_motor_m"] = st.number_input("Motor station y_m (m from centreline; Woombah 0.2515)", 0.05, 2.0,
+                                              float(pr["y_motor_m"] or WOOMBAH_Y_M))
+        pr["m_nacelle"] = st.number_input("Nacelle mass per unit (kg) - PLACEHOLDER", 0.0, 1.0, float(pr["m_nacelle"]))
+        pr["l_nac"] = st.number_input("Nacelle length (m) - PLACEHOLDER", 0.02, 0.5, float(pr["l_nac"]))
+        pr["d_nac"] = st.number_input("Nacelle diameter (m) - PLACEHOLDER", 0.01, 0.2, float(pr["d_nac"]))
+        pr["Q_nac"] = st.number_input("Nacelle interference factor Q (Woombah 1.3)", 1.0, 2.0, float(pr["Q_nac"]))
+        cfg.mass.options.motor_inertia_relief = st.checkbox("Motor inertia relief on the spar",
+                                                            value=cfg.mass.options.motor_inertia_relief)
+    try:
+        cfg.propulsion = PropulsionInputs(**pr)
+    except ValueError as exc:
+        st.error(str(exc))
+        st.stop()
     cfg.energy_reserve = st.slider("Energy reserve (fraction of usable)", 0.0, 0.5, float(cfg.energy_reserve), 0.05)
     cfg.aero.num_y = st.select_slider("Spanwise VLM nodes (half wing)", [11, 21, 41], value=cfg.aero.num_y)
     cfg.fuselage_drag = st.checkbox("Fuselage drag", value=cfg.fuselage_drag)

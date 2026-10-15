@@ -33,11 +33,12 @@ from ..stability import StaticStability
 from .aero_mass import (SHARED_AERO, AeroMassProblemConfig, apply_aero_mass_values)
 from .wing_aero import Bounds
 from ..airfoil import AirfoilGroup, load_seed
-from ..geometry import CargoBay, RectPlanform, TailGeometry
+from ..geometry import CargoBay, MotorPlacement, RectPlanform, TailGeometry
 
 
 # Woombah (USYD 2025 DBF design report, "Project Woombah"): nacelles at 9.9 in along the semi-span
 # (Sec. 5.3.2, "Nacelles"); span 70.9 in (Table 30), so y_motor = 9.9 / 35.45.
+WOOMBAH_Y_M = 9.9 * 0.0254
 WOOMBAH_Y_MOTOR = 9.9 / (70.9 / 2.0)
 
 
@@ -48,8 +49,18 @@ class PropulsionInputs(BaseModel):
     battery_topology: Literal["per_motor", "shared"] = Field(
         "per_motor", description="per_motor: one pack per unit (2025 rule C-F2, Woombah); shared: one pack feeds "
         "every ESC. 'capacity' is the capacity of ONE pack in both")
-    y_motor: Optional[float] = Field(None, description="wing-motor station / semi-span (n_motors = 2 only); "
-                                     f"Woombah {WOOMBAH_Y_MOTOR:.4f}")
+    y_motor_m: Optional[float] = Field(None, description="m, wing-motor station from the centreline (n_motors = 2); "
+                                       f"Woombah 9.9 in = {WOOMBAH_Y_M:.4f} m. Give this OR y_motor")
+    y_motor: Optional[float] = Field(None, description="wing-motor station as a fraction of the semi-span "
+                                     f"(n_motors = 2; Woombah {WOOMBAH_Y_MOTOR:.4f}). Give this OR y_motor_m")
+    c_clear: float = Field(0.025, description="m, prop-tip clearance to the fuselage and between discs, PLACEHOLDER "
+                           "(Woombah as built: ~2.0 in with 11 in props)")
+    l_nac: float = Field(0.15, description="m, nacelle length, PLACEHOLDER (not in the Woombah report)")
+    d_nac: float = Field(0.05, description="m, nacelle diameter, PLACEHOLDER (not in the Woombah report)")
+    Q_nac: float = Field(1.3, description="nacelle interference factor; Woombah Sec. 4.3.2: Q ~ 1.3 with motors "
+                         "5.5 in ahead of the LE (Raymer)")
+    nacelle_ff: Literal["body", "nacelle"] = Field("body", description="form factor: Raymer body (as briefed) or "
+                                                   "Raymer nacelle/store 1 + 0.35/f (PLAN 6h T6)")
     m_nacelle: float = Field(0.0, description="kg per unit; 0 for the nose layout (in G&G's fuselage). "
                              "PLACEHOLDER for twin (OPEN_QUESTIONS Q25)")
     pack_I_max: Optional[float] = Field(None, description="A, pack current limit (shared topology), PLACEHOLDER; "
@@ -75,8 +86,18 @@ class PropulsionInputs(BaseModel):
     @model_validator(mode="after")
     def _check_layout(self):
         if self.n_motors == 2:
-            motor_stations(2, self.y_motor)  # raises a clear error if y_motor is missing or out of (0, 1)
+            if (self.y_motor is None) == (self.y_motor_m is None):
+                raise ValueError("n_motors = 2 needs exactly one of y_motor_m (m, absolute station) or "
+                                 "y_motor (fraction of the semi-span)")
+            if self.y_motor is not None:
+                motor_stations(2, self.y_motor)  # checks 0 < y_motor < 1
+            elif self.y_motor_m <= 0:
+                raise ValueError(f"y_motor_m must be > 0, got {self.y_motor_m}")
         return self
+
+    @property
+    def station_mode(self):
+        return "fraction" if self.y_motor is not None else "absolute"
 
 
 class StabilityInputs(BaseModel):
@@ -90,6 +111,10 @@ class StabilityInputs(BaseModel):
     x_avionics: float = Field(-0.10, description="m, PLACEHOLDER")
     x_gear: float = Field(0.05, description="m, PLACEHOLDER")
     x_cb_frac: float = Field(0.25, description="cargo bay and payload centred at this chord fraction, PLACEHOLDER")
+    eta_v: float = Field(0.9, description="fin dynamic-pressure ratio, PLACEHOLDER (OEI post-check only)")
+    rudder_tau: float = Field(0.5, description="rudder effectiveness d(alpha_v)/d(delta_r), PLACEHOLDER (OEI only)")
+    rudder_max_deg: float = Field(25.0, description="deg, maximum rudder deflection, PLACEHOLDER (OEI only)")
+    oei_speed_factor: float = Field(1.2, description="OEI check speed / V_stall, PLACEHOLDER (OEI only)")
     SM_min: float = Field(0.05, description="PLACEHOLDER (OPEN_QUESTIONS Q9)")
     SM_max: float = Field(0.20, description="PLACEHOLDER")
     V_h_min: float = Field(0.35, description="PLACEHOLDER, around Raymer Table 6.4 values")
@@ -172,10 +197,13 @@ class FullMDA(om.Group):
     def setup(self):
         cfg = self.options["cfg"]
         a = cfg.aero
-        self.add_subsystem("parasite", ParasiteDrag(fuselage_drag=cfg.fuselage_drag),
+        twin = cfg.propulsion.n_motors == 2
+        self.add_subsystem("parasite", ParasiteDrag(fuselage_drag=cfg.fuselage_drag, n_nacelles=2 if twin else 0,
+                                                    nacelle_ff=cfg.propulsion.nacelle_ff),
                            promotes_inputs=["v", "rho", "mu", "S", "S_ht", "S_vt", "AR_ht", "AR_vt", "tc_tail",
-                                            "l_cb", "w_cb", "h_cb", "l_tb", "r_tb"],
-                           promotes_outputs=["CD_extra", "CD_tail", "CD_fus"])
+                                            "l_cb", "w_cb", "h_cb", "l_tb", "r_tb"]
+                           + (["l_nac", "d_nac", "Q_nac"] if twin else []),
+                           promotes_outputs=["CD_extra", "CD_tail", "CD_fus", "CD_nac"])
         self.add_subsystem("cruise", WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
                                               max_mode=a.max_mode, rho_ks=a.rho_ks),
                            promotes_inputs=SHARED_AERO + [("alpha", "alpha_cruise")])
@@ -192,7 +220,8 @@ class FullMDA(om.Group):
         self.connect("cruise.D", "balance.D_cruise")
         self.connect("thrust_at_v.y", "balance.T_cruise")
 
-        mass_opts = cfg.mass.options.model_copy(update={"standalone_solver": True})
+        mass_opts = cfg.mass.options.model_copy(update={"standalone_solver": True,
+                                                        "n_motor_pairs": 1 if twin else 0})
         self.add_subsystem("mass", GarciaGamboaMass(config=mass_opts),
                            promotes_inputs=["*", ("tc", "tc_max"), ("S_wing", "S"), ("V_design", "v")],
                            promotes_outputs=["*"])
@@ -222,6 +251,8 @@ def build_full_model(m, cfg: FullMDOConfig):
                     promotes_outputs=["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "T_static_unit", "I_static",
                                       "I_pack_static", "rpm_max", "rpm_limit", "D_prop", "E_nom_total", "E_usable",
                                       "m_batt", "m_motor_unit", "m_motor_group", "m_sys"])
+    if pr.n_motors == 2:  # wing station and prop clearances (D8)
+        m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
     m.add_subsystem("mda", FullMDA(cfg=cfg), promotes=["*"])
 
     # polar from three coupled aero points (step 6)
@@ -296,15 +327,24 @@ def build_full_model(m, cfg: FullMDOConfig):
                              ("w_cb", geo.w_cb, "m"), ("h_cb", geo.h_cb, "m"), ("boom_offset", geo.boom_offset, "m"),
                              ("m_motor", cfg.propulsion.m_motor, "kg"), ("m_esc", cfg.propulsion.m_esc, "kg"),
                              ("m_prop", cfg.propulsion.m_prop, "kg"), ("m_avionics", cfg.propulsion.m_avionics, "kg"),
-                             ("m_nacelle", cfg.propulsion.m_nacelle, "kg"),
+                             ("m_nacelle", cfg.propulsion.m_nacelle, "kg"), ("x_motor", st.x_motor, "m"),
                              ("m_pay", cfg.mass.inputs.get("m_pay", 1.0), "kg"), ("mu", 1.8e-5, "Pa*s")]:
         m.set_input_defaults(name, val, units=units)
+    if pr.n_motors == 2:
+        if pr.station_mode == "absolute":
+            m.set_input_defaults("y_m", pr.y_motor_m, units="m")
+        else:
+            m.set_input_defaults("y_motor", pr.y_motor)
+        for name, val, units in [("c_clear", pr.c_clear, "m"), ("l_nac", pr.l_nac, "m"), ("d_nac", pr.d_nac, "m"),
+                                 ("Q_nac", pr.Q_nac, None)]:
+            m.set_input_defaults(name, val, units=units)
 
 
 def add_full_driver(prob, cfg: FullMDOConfig):
     m, st = prob.model, cfg.stability
     prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
-    units = {"b": "m", "c": "m", "l_ht": "m", "S_ht": "m**2", "S_vt": "m**2", "x_batt": "m", "capacity": "A*h"}
+    units = {"b": "m", "c": "m", "l_ht": "m", "S_ht": "m**2", "S_vt": "m**2", "x_batt": "m", "capacity": "A*h",
+             "y_m": "m"}
     for name, bd in cfg.design_variables.items():
         m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=units.get(name))
     add_scoring(m, get_plugin(cfg.scoring.plugin, **cfg.scoring.options))
@@ -324,6 +364,9 @@ def add_full_driver(prob, cfg: FullMDOConfig):
     m.add_constraint("wall_ratio", upper=cfg.wall_ratio_max)
     m.add_constraint("r_tube", lower=cfg.r_tube_min, units="m", ref=0.01)
     m.add_constraint("cruise.cl_margin_sec", lower=0.0)
+    if cfg.propulsion.n_motors == 2:  # prop-to-prop clearance is implied by the fuselage one: reported only
+        m.add_constraint("fus_clear_margin", lower=0.0, ref=0.01)
+        m.add_constraint("tip_clear_margin", lower=0.0, ref=0.01)
 
 
 def apply_full_values(prob, cfg: FullMDOConfig):

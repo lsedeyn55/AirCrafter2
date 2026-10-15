@@ -52,3 +52,43 @@ class CargoBay(AnalyticComponent):
         l, w, h = x["l_cb"], x["w_cb"], x["h_cb"]
         return ({"S_cb": 2.0 * (l * w + l * h + w * h)},
                 {"S_cb": D({"l_cb": 2.0 * (w + h), "w_cb": 2.0 * (l + h), "h_cb": 2.0 * (l + w)})})
+
+
+class MotorPlacement(AnalyticComponent):
+    """Wing-motor station and prop clearance margins (n_motors = 2, D8). Continuous, never NaN.
+
+    station_mode="absolute" (default): y_m is an input (m from the centreline).
+    station_mode="fraction": y_m = y_motor b / 2, with y_motor a fraction of the semi-span.
+
+        fus_clear_margin  = y_m - D/2 - (w_cb/2 + c_clear)   >= 0   prop tip clear of the fuselage
+        tip_clear_margin  = b/2 - (y_m + D/2)                >= 0   prop disc inside the wing tip
+        prop_clear_margin = 2 y_m - (D + c_clear)            >= 0   disc to disc (implied by the first)
+    """
+
+    def initialize(self):
+        self.options.declare("station_mode", default="absolute", values=["absolute", "fraction"])
+
+    def io(self):
+        ins = {"b": (1.5, "m"), "D_prop": (0.254, "m"), "w_cb": (0.12, "m"), "c_clear": (0.025, "m")}
+        outs = {"fus_clear_margin": (0.05, "m"), "tip_clear_margin": (0.3, "m"), "prop_clear_margin": (0.2, "m")}
+        if self.options["station_mode"] == "fraction":
+            ins["y_motor"] = (0.28, None)
+            outs["y_m"] = (0.25, "m")
+        else:
+            ins["y_m"] = (0.25, "m")
+        return ins, outs
+
+    def evaluate(self, x):
+        b, Dp, w, cc = x["b"], x["D_prop"], x["w_cb"], x["c_clear"]
+        if self.options["station_mode"] == "fraction":
+            ym, gym = x["y_motor"] * b / 2, D({"y_motor": b / 2, "b": x["y_motor"] / 2})
+        else:
+            ym, gym = x["y_m"], D({"y_m": 1.0})
+        values = {"fus_clear_margin": ym - Dp / 2 - w / 2 - cc, "tip_clear_margin": b / 2 - ym - Dp / 2,
+                  "prop_clear_margin": 2 * ym - Dp - cc}
+        grads = {"fus_clear_margin": gym + D({"D_prop": -0.5, "w_cb": -0.5, "c_clear": -1.0}),
+                 "tip_clear_margin": D({"b": 0.5, "D_prop": -0.5}) - gym,
+                 "prop_clear_margin": 2.0 * gym + D({"D_prop": -1.0, "c_clear": -1.0})}
+        if self.options["station_mode"] == "fraction":
+            values["y_m"], grads["y_m"] = ym, gym
+        return values, grads

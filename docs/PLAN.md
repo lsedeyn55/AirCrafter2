@@ -511,8 +511,84 @@ Brief: `aircrafter2_twin_motor_prompt.md`, which replaces Task A of the step 9 b
   (`3_LITERATURE/state of art/prop-wing interaction.pdf`).
 - **Raymer:** *Aircraft Design: A Conceptual Approach*, Ch. 12.
 
-**Status:** checkpoint 1 done (propulsion, config, CLI). Checkpoints 2 (airframe integration) and 3 (study) are
-still to do.
+**Status:** checkpoints 1 (propulsion, config, CLI) and 2 (airframe integration) are done. Checkpoint 3 (the
+study) is still to do.
+
+**Decisions 2026-10-13 (checkpoint 1 review):**
+- **T3:** two switches. `motor_inertia_relief` (bending and shear) defaults to off; `nacelle_torsion` defaults to
+  on.
+- **T4:** the absolute station `y_motor_m` = 9.9" is the default; the fraction `y_motor` is an option.
+- **T1:** `m_nacelle` stays at the 0 placeholder (Q25).
+
+**Checkpoint 2, MDA convergence over the DV box** (`verification/twin/mda_sweep.py`): 16 random corners, 8
+random interior points and the centre, from the config's cold-start initial guesses.
+
+| Config | Converged | Max Newton iterations |
+|---|---|---|
+| Twin | 22/25 | 20 |
+| Single (same 25 points, existing behaviour) | 21/25 | 30 |
+
+- **All 25 interior and centre points converge for both layouts.** Every failure is at a corner.
+- **Where the failures are:**
+  - single: all at the maximum wing, b = 1.52 m and c = 0.45 m;
+  - twin: two at the maximum wing, and one at the minimum wing (b = 0.9 m, c = 0.15 m) with the maximum capacity
+    (2 × 6 Ah packs).
+- **How they fail:** the cold-start Newton diverges (mass closure and α run away). The model doesn't report that
+  trim is infeasible.
+- So this is an existing robustness limit of the cold-start MDA at extreme corners, not something the twin
+  introduced. The optimiser warm-starts from its previous point and did not hit it in the runs below.
+- Making the MDA more robust (line search, warm start, homotopy) is left for later.
+
+**Checkpoint 2, one twin optimisation** (`verification/twin/opt_twin.py`, 10x7E, placeholder powertrain;
+`opt_twin_10x7E.json`). Both runs converged: 60 and 61 SLSQP iterations, ≈ 145 s each (one analysis ≈ 2.7 s).
+
+The result is the same with relief off and on:
+
+| Quantity | Value |
+|---|---|
+| 3-lap time | 76.96 s |
+| b | 0.90 m (lower bound) |
+| c | 0.359 m |
+| t/c | 0.088 |
+| Capacity | 0.87 Ah per pack (25.7 Wh total) |
+| v | 40.4 m/s |
+| m_total | 2.81 kg |
+
+**Active:**
+- 3-lap energy;
+- SM at its lower bound;
+- V_h at its lower bound;
+- DVs at bounds: b and S_vt, both lower.
+
+**Not active:**
+- fuselage prop clearance (+39.5 mm);
+- tip prop clearance (+71.5 mm);
+- RPM (+457 rpm);
+- static current (+26.9 A).
+
+**Relief on vs off:**
+
+| | Off | On |
+|---|---|---|
+| Root bending M_x (N·m) | 15.50 | 12.54 (−19%) |
+| Spar wall | 0.5 mm, minimum gauge | 0.5 mm, minimum gauge |
+| m_tube (kg) | 0.0544 | 0.0544 |
+| m_wing (kg) | 0.1442 | 0.1442 |
+
+The wall is set by the 0.5 mm minimum-gauge placeholder (Q3), not by the loads (r_tube = 12.3 mm with
+c = 0.36 m). So at this design the conservative default costs nothing. Relief only matters where the loads size
+the wall.
+
+The nacelle torsion term raises T_fl to 4.67 N·m, but t_T does not govern either.
+
+**OEI post-check** (report only): with the static thrust per unit at 1.2 V_stall (13.8 m/s), the placeholder
+rudder would need 247° (C_n,req = 0.164). Full-thrust OEI at low speed is uncontrollable with any realistic fin. A
+twin relies on cutting the live motor; DBF has no OEI requirement that we know of.
+
+**Compared with the single 10x7E:** 76.96 s for the twin against 79.73 s for the single, but the twin has twice
+the installed static thrust (42.3 vs 21.2 N). The matched-power comparison is in checkpoint 3.
+
+
 
 ### Interface changes
 
@@ -687,6 +763,22 @@ I recommend (b), so that the default is conservative in every load.
 
 I recommend (b) for the single-vs-twin study. Otherwise the comparison is decided by the clearance constraint, not
 by the physics.
+
+**T6. Nacelle form factor.**
+- The brief asks for the body form factor already in `parasite.py`: FF = 1 + 60/f³ + f/400. At nacelle fineness
+  (f = l/d ≈ 3) it gives FF ≈ 3.2.
+- Raymer's nacelle / smooth-store form is FF = 1 + 0.35/f ≈ 1.12.
+- Check with the placeholder size (l = 0.15 m, d = 0.05 m, Q = 1.3, 87 mph, Woombah S = 914.5 in²):
+
+| Form | Two-nacelle C_D0 |
+|---|---|
+| nacelle | 0.00062 |
+| body | 0.0018 |
+| Woombah Table 26 (M1) | 0.00069 |
+
+- Woombah's nacelle dimensions are not published, so this is a plausibility check only.
+- Kept as briefed (`nacelle_ff: body`). The switch is `propulsion.nacelle_ff: nacelle`. This matters for the
+  single-vs-twin study: it is ~0.001 in C_D against the twin.
 
 **T5. Shear relief** (above) goes slightly beyond the brief. It is included for consistency. Tell me if you want it
 out.

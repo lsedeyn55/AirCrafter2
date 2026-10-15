@@ -25,13 +25,15 @@ BLOCKS = [  # (id, label, kind)
 DATA = [  # (from, to, label)  upper triangle: feed-forward; lower: feedback
     ("opt", "geo", "b, c, l_ht, S_ht, S_vt, stations"), ("opt", "af", "t/c, camber"), ("opt", "prop", "capacity"),
     ("mda", "aero", "α, V"), ("mda", "mass", "m"),
-    ("geo", "aero", "mesh, S, tails"), ("geo", "mass", "b, c, l_tb, S_cb"), ("geo", "stab", "V_h, stations"),
+    ("geo", "aero", "mesh, S, tails"), ("geo", "mass", "b, c, l_tb, S_cb, y_m"), ("geo", "stab", "V_h, stations"),
     ("af", "aero", "Kulfan"), ("af", "mass", "t/c, A/c², P/c"),
-    ("prop", "aero", "T(V)"), ("prop", "mass", "m_sys"), ("prop", "lap", "T(v), P(v), E"),
+    ("prop", "aero", "T(V)"), ("prop", "geo", "D_prop (twin)"), ("prop", "mass", "m_sys, m_unit (twin)"),
+    ("prop", "lap", "T(v), P(v), E"),
     ("aero", "mass", "C_m, C_Lα"), ("aero", "stab", "a_w"), ("aero", "lap", "polar, C_L,max"),
     ("mass", "aero", "W"), ("mass", "stab", "masses"), ("mass", "lap", "m"),
     ("lap", "score", "lap times, laps"),
     ("score", "opt", "f"), ("stab", "opt", "SM"), ("lap", "opt", "margins"), ("mass", "opt", "tube limits"),
+    ("geo", "opt", "prop clearances (twin)"),
 ]
 
 

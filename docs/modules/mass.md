@@ -48,6 +48,53 @@ Defaults reproduce the paper. Each switch is a `mass.options` key.
 | `use_min_gauge` / `tb_min_gauge` | `true` / `true` | Spar and boom minimum walls (t_tube_min, t_tb_min). |
 | `max_mode`, `rho_ks` | `ks`, 100 | Smooth max (log-space KS, over-estimate ≤ 0.7% for two terms). |
 
+## Wing-mounted propulsion units (twin layout, not in G&G)
+
+G&G size the root for uniform lift with the whole weight on the centreline. With `n_motors: 2`, `WingLoads` gets
+one unit per semi-span. Each unit (motor + ESC + prop + nacelle, mass m_u = `m_motor_unit`) sits at
+y_m = `y_m` and x_m = `x_motor`.
+
+**Free body.** Take the semi-span outboard of the root.
+- x is measured from the LE, positive aft.
+- Torsion is about the quarter-chord line, as G&G do (Eqs. 46 and 50).
+- Signs: shear Q is positive up, bending M positive tip-up, torque T positive nose-up.
+- In flight the semi-span carries:
+  - uniform lift nW/2;
+  - the unit's inertial load n g m_u, downward at (y_m, x_m).
+- In the ground wingtip-suspension test it carries:
+  - the tip reaction W/2, upward at (b/2, x_gd c);
+  - the unit's weight g m_u, downward at (y_m, x_m), with no load factor.
+
+| Switch | Equation | Published (root) | Added term |
+|---|---|---|---|
+| `motor_inertia_relief` (default **off**) | 44 | Q_fl = nW/2 | − n g m_u |
+| | 45 | M_fl = nWb/8 | − n g m_u y_m |
+| | 48 | Q_gd = W/2 | − g m_u |
+| | 49 | M_gd = Wb/4 | − g m_u y_m |
+| `nacelle_torsion` (default **on**, does nothing without wing units) | 46 | T_fl = q\|C_m\|c²b/2 | + n g m_u (c/4 − x_m) |
+| | 50 | T_gd = (W/2) c \|1/4 − x_gd\| | the signed sum \|(W/2) c (1/4 − x_gd) − g m_u (c/4 − x_m)\| |
+
+Notes on the table:
+- **Eq. 46:** a unit ahead of the axis under positive n pitches the section nose-down, the same sense as
+  C_m < 0, so the two torques add. This assumes C_m ≤ 0, the same assumption G&G make when they take |C_m|.
+- **Eq. 50:** the tip-reaction torque changes sign with x_gd. The terms add for x_gd > 1/4 and partly cancel for
+  x_gd < 1/4.
+- **Relief in the ground case:** relative to the root moment, it is twice the flight relief (g m_u y_m on Wb/4,
+  against n g m_u y_m on nWb/8).
+
+Why two switches: at the step 7 scale, the nacelle torque is about 3.5× G&G's aerodynamic torsion. A single
+switch defaulting to off would under-size t_T (PLAN §6h T3). With both defaults, every load is conservative.
+
+**Not modified:**
+- **Eq. 110 deflection:** uses nW and ignores the point relief, which is conservative.
+- **Eq. 117 divergence:** unchanged.
+- **Thrust and motor-torque loads** on the wing are not modelled (limitation).
+- **Batteries** stay at the fuselage `x_batt`. Wing-mounted packs are an option for later (OPEN_QUESTIONS Q27).
+
+The partials of the new terms are analytic (`loads.py`) and checked with complex step
+(`tests/test_twin_motor.py`). With no wing units (`n_motor_pairs = 0`) the component has its original inputs, and
+all the G&G verification tests are unchanged.
+
 ## Defaults and calibration
 
 `configs/mass_garcia_gamboa_2022.yaml` holds the defaults:

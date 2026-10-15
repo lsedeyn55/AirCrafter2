@@ -12,6 +12,12 @@ Fully turbulent C_f is conservative for small RC surfaces. The wing's own profil
 NeuralFoil strips, not from here. Tails: rectangular, chord sqrt(S / AR). Fuselage: the cargo-bay
 box (equivalent diameter from its cross-section area) plus the tail-boom tube; included only with
 fuselage_drag=True (brief: "switchable").
+
+Nacelles (twin wing-mounted layout, n_nacelles = 2): the same body build-up per nacelle, a cylinder
+of length l_nac and diameter d_nac, S_wet ~ pi d l, C_f at Re_l, times the interference factor Q_nac.
+nacelle_ff="body" (default, as briefed) uses the body form factor above; "nacelle" uses Raymer's
+nacelle / smooth external store form FF = 1 + 0.35 / f (Ch. 12). For the nose layout the nose is in
+the fuselage term and CD_nac = 0.
 """
 
 import numpy as np
@@ -25,6 +31,8 @@ def cf_turbulent(Re):
 class ParasiteDrag(om.ExplicitComponent):
     def initialize(self):
         self.options.declare("fuselage_drag", default=True)
+        self.options.declare("n_nacelles", default=0, values=[0, 2])
+        self.options.declare("nacelle_ff", default="body", values=["body", "nacelle"])
 
     def setup(self):
         for name, val, units in [
@@ -35,7 +43,10 @@ class ParasiteDrag(om.ExplicitComponent):
             ("r_tb", 0.008, "m"), ("Q_fus", 1.0, None),
         ]:
             self.add_input(name, val, units=units)
-        for name in ["CD_ht", "CD_vt", "CD_cb", "CD_boom", "CD_tail", "CD_fus", "CD_extra"]:
+        if self.options["n_nacelles"]:
+            for name, val, units in [("l_nac", 0.15, "m"), ("d_nac", 0.05, "m"), ("Q_nac", 1.3, None)]:
+                self.add_input(name, val, units=units)
+        for name in ["CD_ht", "CD_vt", "CD_cb", "CD_boom", "CD_tail", "CD_fus", "CD_nac", "CD_extra"]:
             self.add_output(name, 0.001)
         self.declare_partials("*", "*", method="cs")
 
@@ -67,4 +78,12 @@ class ParasiteDrag(om.ExplicitComponent):
         outputs["CD_cb"] = on * cd_cb
         outputs["CD_boom"] = on * cd_boom
         outputs["CD_fus"] = on * (cd_cb + cd_boom)
-        outputs["CD_extra"] = outputs["CD_tail"] + outputs["CD_fus"]
+        if self.options["n_nacelles"]:
+            ln, dn = x["l_nac"], x["d_nac"]
+            fn = ln / dn
+            FF = (1 + 60 / fn**3 + fn / 400) if self.options["nacelle_ff"] == "body" else (1 + 0.35 / fn)
+            outputs["CD_nac"] = self.options["n_nacelles"] * cf_turbulent(q_over_mu * ln) * FF * x["Q_nac"] \
+                * np.pi * dn * ln / x["S"]
+        else:
+            outputs["CD_nac"] = 0.0
+        outputs["CD_extra"] = outputs["CD_tail"] + outputs["CD_fus"] + outputs["CD_nac"]

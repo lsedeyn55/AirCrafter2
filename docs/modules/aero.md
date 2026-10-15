@@ -33,6 +33,29 @@ Code: `aircrafter2/airfoil/`, `aircrafter2/aero/`.
 6. **Drag polar for the mission** (`aero/polar.py`): CD = CD0 + CD1 C_L + k C_L², fitted exactly through cruise, mid
    and 0.95 C_L,max points, so the lap model interpolates and never extrapolates.
 
+## Nacelle drag (twin layout)
+
+For `n_motors: 2`, `ParasiteDrag` adds C_D,nac = 2 C_f(Re_l) FF Q_nac π d l / S. This is Raymer's Ch. 12
+build-up for a cylinder of length l and diameter d. The output is `CD_nac`, which is included in `CD_extra` and
+drawn in the drag breakdown. For the nose layout, C_D,nac = 0: the nose is in the fuselage term.
+
+| Input | Default | Source |
+|---|---|---|
+| `Q_nac` | 1.3 | Woombah Sec. 4.3.2: Q ≈ 1.3 with motors 5.5" ahead of the LE (≈ 1.5 at the LE), after Raymer |
+| `l_nac`, `d_nac` | 0.15 m, 0.05 m | PLACEHOLDERS: not in the Woombah report |
+| `nacelle_ff` | `body` | as briefed: the body form 1 + 60/f³ + f/400; `nacelle` uses Raymer's nacelle/store form 1 + 0.35/f |
+
+**Cross-check against Woombah Table 26** (M1, two nacelles, C_D0 = 0.00069 on S = 914.5 in², 87 mph), using the
+placeholder size:
+- the `nacelle` form gives 0.00062;
+- the `body` form gives 0.0018, 2.6× more. The body formula is meant for slender bodies; at f = 3 it gives
+  FF = 3.2.
+
+Woombah's nacelle dimensions aren't published, so this only shows the placeholders are plausible (PLAN §6h T6).
+
+**Slipstream is not modelled.** See PLAN §6h for the proposal, and for why leaving it out is only partly neutral
+in a single-versus-twin comparison.
+
 ## Assumptions to know
 
 - **The VLM is a flat plate.** α is measured from zero lift; camber enters only through NeuralFoil. `alpha_sec`
