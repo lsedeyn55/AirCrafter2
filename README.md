@@ -109,3 +109,25 @@ shared files (`mass_config:`) and override them. Misspelt keys are errors, not s
 | `aircrafter2/plotting`, `api.py`, `cli.py`, `ui/` | figures, API, CLI, Streamlit |
 | `configs/`, `tests/`, `examples/`, `verification/matlab/` | configs, tests, report scripts, MATLAB reference |
 | `examples/legacy/` | earlier experiments, unchanged |
+
+## OpenVSP (optional, installed locally)
+
+OpenVSP 3.55.0 is not on PyPI, and openvsp.org publishes Linux builds only as Ubuntu `.deb` packages. It is
+installed into the project without root:
+
+- **Install location:** `third_party/openvsp/` (git-ignored, ~190 MB). This is the contents of
+  `OpenVSP-3.55.0-Ubuntu-26.04_amd64.deb` from openvsp.org, which is built for Python 3.14 like this venv.
+- **Bundled libraries:** `third_party/openvsp/lib/` holds the two libraries Arch lacks, taken from Ubuntu 26.04
+  (resolute) universe and checked against its package index SHA-256:
+  - `libcminpack1` 1.3.11-1 (`libcminpack.so.1`);
+  - `libglew2.2` 2.2.0-4build2 (`libGLEW.so.2.2`; GUI only).
+- **Library path:** the executables and the Python extension have a relative `RUNPATH` (set with
+  `uvx patchelf`), so they find `lib/` without `LD_LIBRARY_PATH`.
+- **Python API:** editable installs of `openvsp`, `openvsp_config`, `degen_geom` and `utilities` from
+  `third_party/openvsp/python/`, with `import openvsp as vsp`. The optional AvlPy, CHARM, pyPMARC and PyVSP
+  packages are not installed.
+- **Executables:** `third_party/openvsp/{vsp,vspscript,vspaero}`.
+
+To recreate it on another machine, repeat these steps. `pyproject.toml` does not list OpenVSP, because it can't
+be installed from an index.
+

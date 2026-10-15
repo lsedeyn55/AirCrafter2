@@ -10,3 +10,4 @@ dist/
 *.db
 *.sql
 outputs/
+third_party/
