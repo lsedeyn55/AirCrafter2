@@ -29,12 +29,15 @@ def _n_motors(p):
     return int(round(v(p, "m_motor_group") / v(p, "m_motor_unit")))
 
 
-def planform(p, path):
+def planform(p, path, underlay=None):
+    """Top view of the design. underlay(ax), if given, draws first (e.g. the OpenVSP mock-up's top view)."""
     b, c, l_ht = v(p, "b"), v(p, "c"), v(p, "l_ht")
     Sh, Sv, ARh = v(p, "S_ht"), v(p, "S_vt"), v(p, "AR_ht")
     bh, ch = np.sqrt(Sh * ARh), np.sqrt(Sh / ARh)
     lcb, wcb = v(p, "l_cb"), v(p, "w_cb")
     fig, ax = figure(0.8, 0.75)
+    if underlay is not None:
+        underlay(ax)
     ax.add_patch(Rectangle((-b / 2, 0), b, c, fc=PALETTE[0], alpha=0.25, ec=PALETTE[0], label="wing"))
     x_tail = 0.25 * c + l_ht - 0.25 * ch
     ax.add_patch(Rectangle((-bh / 2, x_tail), bh, ch, fc=PALETTE[2], alpha=0.25, ec=PALETTE[2], label="horizontal tail"))

@@ -117,3 +117,23 @@ class AirfoilGroup(om.Group):
         self.add_subsystem("shape", AirfoilShape(seed=self.options["seed"], n_modes=self.options["n_modes"]),
                            promotes=["*"])
         self.add_subsystem("geometry", AirfoilGeometry(), promotes=["*"])
+
+
+def recover_tc_scale(seed, tc_max, camber_scale=1.0, x_spar=0.25):
+    """tc_scale that gives section t/c = tc_max (n_modes = 0 family), the inverse of AirfoilShape + section_geometry.
+
+    Thickness y_u - y_l = C(x) B(x) (2 tc_scale w_t) + x te: camber_scale and the LE term cancel, and t/c rises
+    monotonically with tc_scale, so a 1-D root solve recovers it to solver precision. Used to rebuild stored
+    results that kept tc_max but not tc_scale.
+    """
+    from scipy.optimize import brentq
+
+    u0, l0 = np.asarray(seed["upper_weights"], float), np.asarray(seed["lower_weights"], float)
+    wt, wc = 0.5 * (u0 - l0), 0.5 * (u0 + l0)
+    le, te = camber_scale * float(seed["leading_edge_weight"]), float(seed["TE_thickness"])
+
+    def gap(ts):
+        g = cst.section_geometry(camber_scale * wc + ts * wt, camber_scale * wc - ts * wt, le, te, x_spar)
+        return g["tc_max"] - tc_max
+
+    return brentq(gap, 0.05, 5.0, xtol=1e-14, rtol=1e-14)

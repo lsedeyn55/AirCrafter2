@@ -826,6 +826,50 @@ For the lap-time comparison, where cruise and straights dominate, the omission i
 `thrust_margin_static` or the stall and turn margins are active, it is not. The study (checkpoint 3) will report
 which constraints are active, so the reader can tell which case applies.
 
+## 6i. OpenVSP geometry mock-up (in progress)
+
+Brief: OpenVSP mock-up of a framework result. It is a visual and consistency mock-up only and never enters the
+OpenMDAO model.
+
+**Checkpoint 1 (done): Friday renders.**
+- **Environment check:**
+  - `import openvsp` reports "OpenVSP 3.55.0";
+  - a wing builds, saves and reloads headlessly.
+- **`aircrafter2/geometry/export.py`:**
+  - `export_geometry(prob, cfg)` writes `geometry.json`, and `run_design` writes it for every run.
+  - It contains provenance, the wing (with Kulfan weights and Selig coordinates), the tails, boom, cargo bay,
+    propulsion, stations, masses, OEI, and a `mockup_assumptions` block with sources.
+  - New config section `mockup:` (`aircrafter2/geometry/mockup.py`).
+- **`aircrafter2/vsp/build.py`:**
+  - reads only `geometry.json`;
+  - writes `.vsp3`, STEP (export unit metres), STL, the airfoil `.dat`, and one STL per component for the renders;
+  - reads back the key parameters, and raises if a body's bounding box differs from `geometry.json` by more than 1%.
+- **`aircrafter2/vsp/render.py`:** matplotlib three-view and isometric from the STL meshes (rasterised mesh, vector
+  text and axes, 300 dpi).
+- **`examples/vsp_mockup.py`:** rebuilds the study designs and makes the paper figure.
+
+**Rebuilding the study designs:**
+- The three designs come from the stored optimum DVs without re-optimising.
+- `tc_scale` isn't stored. It is recovered from `tc_max` with `airfoil.shape.recover_tc_scale`, an exact 1-D
+  inversion. Camber and the LE term cancel in the thickness distribution, so t/c is monotonic in `tc_scale`.
+- ThreeLapTime and m_total reproduce to ≤ 5e-14 relative (tolerance 1e-4).
+
+**Build time:** OpenVSP 0.5–1.0 s per design, ≈ 2 s with the three figures.
+
+**OpenVSP 3.55.0 findings** (the builder works around each):
+1. **No headless rendering:** `ScreenGrab` needs the FLTK GUI ("VSP_USE_FLTK must be defined").
+2. **No model length unit:** only per-export settings exist (`STEPSettings`/`IGESSettings:LenUnit`), which the
+   builder sets to `LEN_M`. The model is built in metres.
+3. **Default FUSELAGE end sections carry ±45° skinning tangents.** A "constant" section therefore bulged a 16 mm
+   boom to 299 mm and a 0.12 m box to 0.154 m. The builder cuts the body to two sections and zeroes the tangent
+   angles; the bounding-box read-back now matches to < 0.01%.
+4. **POD `FineRatio` is length/radius here, not length/diameter:** a 0.15 m pod at FineRatio 3 measured 0.10 m.
+   The builder sets 2L/d and checks the bounding box.
+
+**Added beyond the brief:** an illustrative motor mount joins the nose prop to the cargo-bay front for n = 1.
+The framework places the motor at x = −0.30 m but has no nose structure, so the prop would otherwise float. It is
+listed in `mockup_assumptions`.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an

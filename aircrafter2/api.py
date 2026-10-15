@@ -3,7 +3,7 @@
     from aircrafter2.api import run_design
     result = run_design("configs/step7_full.yaml", optimise=True, out_dir="outputs/demo")
 
-Writes into out_dir: summary.md, results.json, cases.sql (driver history), n2.html, xdsm.tex,
+Writes into out_dir: summary.md, results.json, geometry.json (3D rebuild data), cases.sql (driver history), n2.html, xdsm.tex,
 xdsm.pdf and figures/*.pdf.
 """
 
@@ -97,6 +97,11 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
                        + [k for k in extra if k not in dvs])
         values["sensitivities"] = sens
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
+    from .geometry.export import export_geometry, write_geometry
+
+    geo = export_geometry(prob, cfg, config_path=None if isinstance(config, FullMDOConfig) else config,
+                          optimised=optimise, success=success, case_id=out.name)
+    result.files.append(write_geometry(geo, out / "geometry.json"))
     lines = [f"# AirCrafter 2.0 result\n", f"Config: scoring = `{cfg.scoring.plugin}`, prop = "
              f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
              f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "

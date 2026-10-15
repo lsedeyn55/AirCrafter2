@@ -34,6 +34,7 @@ from .aero_mass import (SHARED_AERO, AeroMassProblemConfig, apply_aero_mass_valu
 from .wing_aero import Bounds
 from ..airfoil import AirfoilGroup, load_seed
 from ..geometry import CargoBay, MotorPlacement, RectPlanform, TailGeometry
+from ..geometry.mockup import MockupInputs
 
 
 # Woombah (USYD 2025 DBF design report, "Project Woombah"): nacelles at 9.9 in along the semi-span
@@ -142,6 +143,8 @@ class FullMDOConfig(AeroMassProblemConfig):
     energy_reserve: float = Field(0.2, description="fraction of usable battery energy kept in reserve "
                                   "(PLACEHOLDER, OPEN_QUESTIONS Q24)")
     require_3lap_energy: bool = Field(True, description="constrain the reserve-adjusted energy to cover 3 laps")
+    mockup: MockupInputs = Field(MockupInputs(), description="3D mock-up placement only (aircrafter2.vsp); never "
+                                 "enters the model")
 
 
 def default_full_dvs():

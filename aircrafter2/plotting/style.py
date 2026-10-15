@@ -45,11 +45,12 @@ def figure(width=1.0, aspect=0.62, **kw):
 ALSO_PNG = True  # PNG copies for the UI and quick looks; the PDFs are the thesis versions
 
 
-def save(fig, path):
+def save(fig, path, dpi=None):
+    """Save `path` (PDF: vector, rasterised artists at `dpi`) plus a PNG copy (`dpi`, default 200)."""
     from pathlib import Path
 
-    fig.savefig(path)
+    fig.savefig(path, dpi=dpi or "figure")
     if ALSO_PNG and Path(path).suffix == ".pdf":
-        fig.savefig(Path(path).with_suffix(".png"), dpi=200)
+        fig.savefig(Path(path).with_suffix(".png"), dpi=dpi or 200)
     plt.close(fig)
     return path
