@@ -511,8 +511,9 @@ Brief: `aircrafter2_twin_motor_prompt.md`, which replaces Task A of the step 9 b
   (`3_LITERATURE/state of art/prop-wing interaction.pdf`).
 - **Raymer:** *Aircraft Design: A Conceptual Approach*, Ch. 12.
 
-**Status:** checkpoints 1 (propulsion, config, CLI) and 2 (airframe integration) are done. Checkpoint 3 (the
-study) is still to do.
+**Status:** all three checkpoints are done: propulsion, airframe integration, and the single-vs-twin study
+(`docs/twin_motor_study.md`, `examples/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
+prop. Its doc (`docs/step7_full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
 
 **Decisions 2026-10-13 (checkpoint 1 review):**
 - **T3:** two switches. `motor_inertia_relief` (bending and shear) defaults to off; `nacelle_torsion` defaults to
