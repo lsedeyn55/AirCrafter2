@@ -33,7 +33,7 @@ class NFSettings:
     alpha_min: float = -8.0  # deg
     alpha_max: float = 25.0  # deg
     alpha_step: float = 0.5  # deg
-    h_alpha: float = 1e-4  # deg, central-difference step in alpha (docs/neuralfoil_fd_steps.md)
+    h_alpha: float = 1e-4  # deg, central-difference step in alpha (docs/verification/neuralfoil_fd_steps.md)
     h_logre: float = 1e-5  # central-difference step in ln(Re)
     h_k: float = 1e-6  # on each Kulfan parameter; the TE-thickness derivative needs <= 1e-6
     newton_iters: int = 8

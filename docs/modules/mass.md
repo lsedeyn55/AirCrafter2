@@ -100,7 +100,7 @@ all the G&G verification tests are unchanged.
 `configs/mass_garcia_gamboa_2022.yaml` holds the defaults:
 - materials: Table 13;
 - correction factors: Table 14;
-- f_tb = 0.847: refitted for a 1 mm boom wall from the USYD tubes (`docs/tail_boom_calibration.md`). The paper's
+- f_tb = 0.847: refitted for a 1 mm boom wall from the USYD tubes (`docs/studies/tail_boom_calibration.md`). The paper's
   12.81 applies only to load-sized walls.
 
 All of these are placeholders until the model is calibrated on USYD aircraft. Use
@@ -109,7 +109,7 @@ several).
 
 ## Verification
 
-- **Table 15** (UBI11, GRA13, UBI15): every component within 2.3% (`docs/mass_verification.md`). This needed three
+- **Table 15** (UBI11, GRA13, UBI15): every component within 2.3% (`docs/verification/mass.md`). This needed three
   documented readings of the paper (PLAN G19, G22, G23).
 - **Independent reference implementation:** agrees to 1e-8 across all switch combinations.
 - **Calibration:** recovers the paper's Table 14 individual factors from Table 15's real masses.

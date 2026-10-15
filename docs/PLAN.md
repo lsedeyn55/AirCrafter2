@@ -332,7 +332,7 @@ available for cases where minimum gauge creates an interior optimum. Post-proces
 tube size up (catalogue in `data/`, placeholder).
 
 **Verification (step 2, done).** `tests/mass/test_table15.py` reproduces every Table 15 component of UBI11, GRA13
-and UBI15 within ±3% (worst case 2.3%). `docs/mass_verification.md` has the full table. That needed the readings in
+and UBI15 within ±3% (worst case 2.3%). `docs/verification/mass.md` has the full table. That needed the readings in
 G19, G22 and G23.
 
 `tests/mass/test_reference.py` checks the group against an independent plain-Python implementation to 1e-8,
@@ -356,7 +356,7 @@ What's implemented:
 - `aircrafter2/aero/`: rectangular half-wing mesh, OAS AeroPoint (aero-only, `with_viscous=False`),
   NeuralFoil strip profile drag, critical-section C_L,max, and wing totals.
 - `aircrafter2/problems/wing_aero.py`, configured by `configs/step3_wing_aero.yaml`.
-- Report: `docs/aero_verification.md`. FD step study: `docs/neuralfoil_fd_steps.md`.
+- Report: `docs/verification/aero.md`. FD step study: `docs/verification/neuralfoil_fd_steps.md`.
 
 Changes from §5.3:
 - **No polar tables.** Each strip solves C_l,NF(α) = C_l directly (grid bracket, then Newton). Partials use the
@@ -387,7 +387,7 @@ Findings:
   `examples/legacy/basic_perf.py`; its `np.where` floor became a softplus floor.
 - `aircrafter2/problems/oval_lap.py` (config `configs/step4_oval_lap.yaml`): one wing, two aero points
   (cruise with L = W; turn with its own α). The turn C_L margin C_L,max/C_L ≥ 1.21 sets n and R.
-- Results: `docs/step4_oval.md`.
+- Results: `docs/steps/step4_oval.md`.
   - Without a power limit the turn margin is active (lap 33.6 s, R = 9.9 m, n = 4.2). With nothing penalising
     drag, the optimiser maximises the wing and its camber.
   - With a 400 W placeholder on turn power, the power limit becomes active (lap 35.0 s, R = 14.4 m).
@@ -402,7 +402,7 @@ Findings:
 - `aircrafter2/problems/aero_mass.py` (config `configs/step5_aero_mass.yaml`; `mass_config` points at the base
   mass YAML): MDA = Newton (solve_subsystems) + DirectSolver around {cruise aero, `BalanceComp` α for
   L = W, G&G mass with its own NLBGS closure}.
-- Results: `docs/step5_aero_mass.md`.
+- Results: `docs/steps/step5_aero_mass.md`.
   - The MDA converges at all 16 corners of the DV box plus the centre in ≤ 3 Newton iterations.
   - `check_totals` passes through the coupled loop.
   - The cruise-drag optimum is set by the spar: the thinnest section (t/c ≈ 0.08) is where the thin-wall
@@ -413,7 +413,7 @@ Findings:
   - Fix: a separate tail-boom minimum wall (`tb_min_gauge`, t_tb_min = 1 mm from the USYD tubes in Spar
     Sizer 3.1), with an output `t_tb_gauge_margin` (< 0 means the minimum wall governs).
   - f_tb is refitted on that basis to Table 15's real boom masses with the Eq. 128 hook: f_tb = 0.847
-    (`docs/tail_boom_calibration.md`).
+    (`docs/studies/tail_boom_calibration.md`).
   - The step 5 placeholder aircraft now gets m_tb = 0.042 kg.
   - The Table 15 verification keeps the paper's basis (no minimum wall, f_tb = 12.81).
 - **Finding M2:** the G&G LE/TE stringer and rib masses scale with section area, so at DBF scale they outweigh
@@ -442,7 +442,7 @@ Findings:
   - the step 5 MDA (aero + mass);
   - two more aero points (mid, 0.95 C_L,max) feeding a three-point polar CD = CD0 + CD1 CL + k CL²;
   - inputs: m_total, S, V (now a DV), C_L,max; take-off C_L = C_L,max (no flaps).
-  - Results: `docs/step6_lap_mdo.md`.
+  - Results: `docs/steps/step6_lap_mdo.md`.
 - **Finding L1:** AirCrafter's P = D(V)V/η makes lap time *improve* with cruise drag (higher drag means a
   higher throttle setting and more thrust out of the turns). The optimiser exploits it up to the 300 W
   placeholder (cruise L/D ≈ 4). Proposed for step 7: the power setting comes from propulsion, not from
@@ -474,7 +474,7 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
   - the prop is enumerated outside the optimiser (D4).
 - `aircrafter2/robustness/suite.py`: normalised sensitivities (compute_totals), one-at-a-time worst cases
   (mass, thrust, capacity, headwind), and Monte Carlo over the uncertain inputs.
-- Results: `docs/step7_full_mdo.md`.
+- Results: `docs/steps/step7_full_mdo.md`.
 - Notes:
   - The first full run was infeasible: with the placeholder stations the CG was too far forward for
     SM ≤ 0.20 together with V_h ≥ 0.35. Making the cargo-bay station a DV fixed it.
@@ -512,8 +512,8 @@ Brief: `aircrafter2_twin_motor_prompt.md`, which replaces Task A of the step 9 b
 - **Raymer:** *Aircraft Design: A Conceptual Approach*, Ch. 12.
 
 **Status:** all three checkpoints are done: propulsion, airframe integration, and the single-vs-twin study
-(`docs/twin_motor_study.md`, `examples/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
-prop. Its doc (`docs/step7_full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
+(`docs/studies/twin_motor_study.md`, `examples/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
+prop. Its doc (`docs/steps/step7_full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
 
 **Decisions 2026-10-13 (checkpoint 1 review):**
 - **T3:** two switches. `motor_inertia_relief` (bending and shear) defaults to off; `nacelle_torsion` defaults to

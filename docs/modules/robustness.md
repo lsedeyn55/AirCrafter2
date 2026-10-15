@@ -6,4 +6,4 @@
 - **Monte Carlo:** independent uniforms on the uncertain inputs, one full MDA per sample. Reports objective
   statistics and the probability of each constraint being violated.
 
-Results for the step 7 design are in `docs/step7_full_mdo.md`.
+Results for the step 7 design are in `docs/steps/step7_full_mdo.md`.

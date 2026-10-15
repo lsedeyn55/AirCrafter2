@@ -16,7 +16,7 @@ Code: `aircrafter2/airfoil/`, `aircrafter2/aero/`.
   2. c_d and c_m are read there;
   3. c_l,max is the C_l(α) peak.
 - **Derivatives.** Implicit-function theorem: only the network is finite-differenced. Step sizes are α 1e-4°,
-  ln Re 1e-5 and Kulfan weights 1e-6, from `docs/neuralfoil_fd_steps.md` (the TE-thickness derivative needs
+  ln Re 1e-5 and Kulfan weights 1e-6, from `docs/verification/neuralfoil_fd_steps.md` (the TE-thickness derivative needs
   ≤ 1e-6).
 
 ## Wing (`aero/wing.py`)
@@ -63,7 +63,7 @@ in a single-versus-twin comparison.
 - **C_L,max uses the analysis point's Reynolds number**, which is optimistic at stall.
 - **Rectangular wing only** (multi-panel tapered wings were dropped).
 
-## Verification (`docs/aero_verification.md`)
+## Verification (`docs/verification/aero.md`)
 
 | Check | Result |
 |---|---|

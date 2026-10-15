@@ -1,7 +1,7 @@
 """Step 7: full optimisation (outer enumeration of n_motors x prop, D4/D8), then the robustness suite on the
 best design.
 
-Writes docs/step7_full_mdo.md. Run: .venv/bin/python examples/full_mdo.py [prop ...]
+Writes docs/steps/step7_full_mdo.md. Run: .venv/bin/python examples/full_mdo.py [prop ...]
 Layouts: AIRCRAFTER_LAYOUTS="1 2" (default both; 1 = configs/step7_full.yaml, 2 = configs/step7_full_twin.yaml).
 """
 
@@ -76,9 +76,9 @@ def main():
                                                 else "none."))
     best = min(feasible, key=lambda p: v(feasible[p]["prob"], "ThreeLapTime")) if feasible else None
     w(f"\nBest feasible overall: **{best}** (robustness below). Layouts at equal prop have unequal installed power "
-      "with the placeholder unit: see docs/twin_motor_study.md.\n" if best else "\nNo feasible design.\n")
+      "with the placeholder unit: see docs/studies/twin_motor_study.md.\n" if best else "\nNo feasible design.\n")
     if not best:
-        (ROOT / "docs" / "step7_full_mdo.md").write_text("\n".join(L))
+        (ROOT / "docs" / "steps" / "step7_full_mdo.md").write_text("\n".join(L))
         return
 
     prob = runs[best]["prob"]
@@ -136,7 +136,7 @@ def main():
     w("an optimum sits on its active constraints. Conservative margins (e.g. an energy reserve, a static")
     w("margin target inside the band) are the pragmatic fix; the robust variant can be added to the config.")
 
-    (ROOT / "docs" / "step7_full_mdo.md").write_text("\n".join(L))
+    (ROOT / "docs" / "steps" / "step7_full_mdo.md").write_text("\n".join(L))
     print("\n".join(L))
 
 

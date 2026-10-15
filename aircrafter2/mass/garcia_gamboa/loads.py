@@ -185,7 +185,7 @@ class TailBoomLoads(AnalyticComponent):
 
     So the shear is A times smaller than the moment balance of Eq. 54 implies, and
     M_tb != Q_tb l_tb. This reading reproduces the Table 15 tail-boom masses of all three
-    tube-spar aircraft to ~1 % (docs/mass_verification.md). f_tb in Table 14 was
+    tube-spar aircraft to ~1 % (docs/verification/mass.md). f_tb in Table 14 was
     calibrated with it, so it stays the default while those factors are used.
 
     load_mode="eq54" is the self-consistent version:

@@ -48,7 +48,7 @@ class TubeSparSizing(AnalyticComponent):
 
     sizing_radius_mode="paper" sizes with K_tube = r / c_mean (Eq. 15, with c the mean chord as
     defined in Sec. 2.2.2) times the sizing chord c_root (Sec. 3.3), i.e. an effective radius
-    r_s = r c_root / c_mean. That literal reading reproduces Table 15 (docs/mass_verification.md).
+    r_s = r c_root / c_mean. That literal reading reproduces Table 15 (docs/verification/mass.md).
     It is unconservative for tapered wings and identical for rectangular ones.
     "physical" uses r_s = r.
 
@@ -256,7 +256,7 @@ class TailBoomSizing(AnalyticComponent):
     wall is micrometres, so in practice the commercial tube wall governs. The output
     t_tb_gauge_margin = t_tb,req - t_tb_min is < 0 when the minimum wall governs. G&G's f_tb was
     fitted to load-based walls, so with the minimum wall active f_tb must be recalibrated on the
-    same basis (docs/tail_boom_calibration.md).
+    same basis (docs/studies/tail_boom_calibration.md).
     """
 
     def initialize(self):

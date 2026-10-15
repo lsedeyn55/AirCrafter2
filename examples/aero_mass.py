@@ -1,6 +1,6 @@
 """Step 5: coupled aero + mass. MDA convergence grid, t/c trade sweep, optimisation.
 
-Writes docs/step5_aero_mass.md. Run: .venv/bin/python examples/aero_mass.py
+Writes docs/steps/step5_aero_mass.md. Run: .venv/bin/python examples/aero_mass.py
 """
 
 import itertools
@@ -108,10 +108,10 @@ def main():
     w("thinnest section, at t/c ~ 0.08 for this aircraft. That is the drag-vs-spar trade.")
     w("")
     w("Tail boom: both cases use the 1 mm minimum boom wall with the refitted f_tb = 0.847")
-    w("(docs/tail_boom_calibration.md); the gauge switch above affects the spar only.")
+    w("(docs/studies/tail_boom_calibration.md); the gauge switch above affects the spar only.")
     w("")
 
-    out = ROOT / "docs" / "step5_aero_mass.md"
+    out = ROOT / "docs" / "steps" / "step5_aero_mass.md"
     out.write_text("\n".join(L))
     print("\n".join(L))
 

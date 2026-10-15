@@ -1,4 +1,4 @@
-"""Step 3 checks and the step 3 optimisation; writes docs/aero_verification.md.
+"""Step 3 checks and the step 3 optimisation; writes docs/verification/aero.md.
 
 Run: .venv/bin/python examples/aero_verification.py
 """
@@ -117,7 +117,7 @@ def main():
     w("and camber trades section drag against the required c_l. The t/c bound is where step 5's spar")
     w("mass will push back.")
 
-    out = ROOT / "docs" / "aero_verification.md"
+    out = ROOT / "docs" / "verification" / "aero.md"
     out.write_text("\n".join(L))
     print("\n".join(L))
 

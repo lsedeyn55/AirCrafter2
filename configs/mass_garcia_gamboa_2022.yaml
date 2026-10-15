@@ -57,7 +57,7 @@ inputs:
   # Combined correction factors, circular tube spar concept (Table 14)
   f_wing: 1.120
   f_tb: 0.847                  # refitted to Table 15 real boom masses with a 1.0 mm minimum wall
-                               # (docs/tail_boom_calibration.md); G&G Table 14's 12.81 applies only to
+                               # (docs/studies/tail_boom_calibration.md); G&G Table 14's 12.81 applies only to
                                # load-sized walls (tb_min_gauge: false)
   f_ht: 0.6411
   f_vt: 0.3414                 # lower trend; 0.7753 = "heavy/composite tail" option (Table 14, Fig. 11b)

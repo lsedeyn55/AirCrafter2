@@ -6,7 +6,7 @@ tube. With a realistic minimum wall the tube is ~10x heavier, so f_tb must be re
 basis. This refits it with the paper's own data: the *real* tail-boom masses of UBI11, GRA13 and
 UBI15 (Table 15), Eq. 127 per aircraft and Eq. 128 combined.
 
-Writes docs/tail_boom_calibration.md. Run: .venv/bin/python examples/tail_boom_calibration.py
+Writes docs/studies/tail_boom_calibration.md. Run: .venv/bin/python examples/tail_boom_calibration.py
 """
 
 from pathlib import Path
@@ -59,7 +59,7 @@ def main():
           "the boom's diameter and length, times ~1'. Recalibrate on USYD aircraft when data exist",
           "(OPEN_QUESTIONS Q14). The Table 15 verification keeps the paper's basis (no minimum wall,",
           "f_tb = 12.81)."]
-    out = ROOT / "docs" / "tail_boom_calibration.md"
+    out = ROOT / "docs" / "studies" / "tail_boom_calibration.md"
     out.write_text("\n".join(L))
     print("\n".join(L))
 

@@ -1,4 +1,4 @@
-"""Finite-difference step-size study for the NeuralFoil partials; writes docs/neuralfoil_fd_steps.md.
+"""Finite-difference step-size study for the NeuralFoil partials; writes docs/verification/neuralfoil_fd_steps.md.
 
 NeuralFoil is not complex-step safe, so its partials (w.r.t. alpha, ln Re and the 18 Kulfan
 parameters) are central differences. This sweeps the step size and reports the relative change
@@ -68,7 +68,7 @@ def main():
         lines.append("")
     lines.append("## Chosen steps (NFSettings defaults)\n")
     lines.append(f"- alpha: {S.h_alpha} deg; ln Re: {S.h_logre}; Kulfan parameters: {S.h_k} (absolute).")
-    out = ROOT / "docs" / "neuralfoil_fd_steps.md"
+    out = ROOT / "docs" / "verification" / "neuralfoil_fd_steps.md"
     out.write_text("\n".join(lines))
     print("\n".join(lines))
 

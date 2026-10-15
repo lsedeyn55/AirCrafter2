@@ -1,6 +1,6 @@
 """OpenVSP mock-ups of the single-vs-twin study designs (no re-optimisation) and the AIAC paper figure.
 
-For each case in docs/twin_motor_study_results.json:
+For each case in docs/studies/twin_motor_study_results.json:
   1. set the stored optimum design variables (tc_scale is not stored: it is recovered from the stored tc_max with
      airfoil.shape.recover_tc_scale, an exact 1-D inversion of the airfoil shape family) and run the coupled
      analysis with the case's config, prop, cells and options;
@@ -20,7 +20,7 @@ import warnings
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-STUDY = ROOT / "docs" / "twin_motor_study_results.json"
+STUDY = ROOT / "docs" / "studies" / "twin_motor_study_results.json"
 OUT = ROOT / "outputs" / "vsp"
 CFG = {1: "configs/step7_full.yaml", 2: "configs/step7_full_twin.yaml"}
 CASES = ["n1_10x7E_4S", "n2_10x7E_4S", "n2_8x6E_4S_matched"]

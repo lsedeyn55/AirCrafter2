@@ -3,7 +3,7 @@
 Inputs from Tables 3, 12, 13, 14 (configs/verification/*.yaml). This checks the
 implementation against the paper's own numbers; it is not a design validation.
 Interpretation choices needed to reproduce it are documented in
-docs/mass_verification.md and docs/PLAN.md §7.
+docs/verification/mass.md and docs/PLAN.md §7.
 """
 
 import pytest

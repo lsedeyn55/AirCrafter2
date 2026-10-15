@@ -7,7 +7,7 @@ airfoil:
 
 aero:
   num_x: 2                # one chordwise panel
-  num_y: 41               # 40 strips per half wing (docs/aero_verification.md, mesh convergence)
+  num_y: 41               # 40 strips per half wing (docs/verification/aero.md, mesh convergence)
   spacing: cosine
   model_size: xlarge      # NeuralFoil network
   n_crit: 9.0             # PLACEHOLDER: XFoil "average wind tunnel" default

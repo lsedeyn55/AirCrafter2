@@ -1,4 +1,4 @@
-"""Reproduce Garcia & Gamboa (2022) Table 15 and write docs/mass_verification.md.
+"""Reproduce Garcia & Gamboa (2022) Table 15 and write docs/verification/mass.md.
 
 Run from the AirCrafter2 folder:
     .venv/bin/python examples/mass_verification.py
@@ -125,7 +125,7 @@ def main():
         w("| " + " | ".join(row) + " |")
     w("")
 
-    out = ROOT / "docs" / "mass_verification.md"
+    out = ROOT / "docs" / "verification" / "mass.md"
     out.write_text("\n".join(lines))
     print("\n".join(lines))
     print(f"\nwritten to {out}")

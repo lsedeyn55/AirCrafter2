@@ -20,7 +20,7 @@ class AeroConfig(BaseModel):
 
     num_x: int = Field(2, ge=2, description="chordwise VLM nodes (2 = one panel)")
     num_y: int = Field(41, ge=5, description="spanwise VLM nodes on the half wing; 41 is within ~1 % "
-                       "of the converged span efficiency (docs/aero_verification.md)")
+                       "of the converged span efficiency (docs/verification/aero.md)")
     spacing: Literal["cosine", "uniform"] = "cosine"
     max_mode: Literal["ks", "hard"] = "ks"
     rho_ks: float = 100.0
@@ -29,7 +29,7 @@ class AeroConfig(BaseModel):
     alpha_min: float = -8.0
     alpha_max: float = 25.0
     alpha_step: float = 0.5
-    h_alpha: float = 1e-4  # deg; step study: docs/neuralfoil_fd_steps.md
+    h_alpha: float = 1e-4  # deg; step study: docs/verification/neuralfoil_fd_steps.md
     h_logre: float = 1e-5
     h_k: float = 1e-6
 

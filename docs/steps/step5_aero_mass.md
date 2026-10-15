@@ -96,4 +96,4 @@ is that thin, so the 0.5 mm spar gauge is inactive and both columns coincide. Th
 thinnest section, at t/c ~ 0.08 for this aircraft. That is the drag-vs-spar trade.
 
 Tail boom: both cases use the 1 mm minimum boom wall with the refitted f_tb = 0.847
-(docs/tail_boom_calibration.md); the gauge switch above affects the spar only.
+(docs/studies/tail_boom_calibration.md); the gauge switch above affects the spar only.

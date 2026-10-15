@@ -1,6 +1,6 @@
 """Step 4: oval lap-time optimisation, with and without a turn power limit.
 
-Writes docs/step4_oval.md. Run: .venv/bin/python examples/oval_lap.py
+Writes docs/steps/step4_oval.md. Run: .venv/bin/python examples/oval_lap.py
 """
 
 import time
@@ -58,7 +58,7 @@ def main():
           "  returns to the spar floor, and the power constraint (not the C_L margin) sets the radius.",
           "- Step 6 replaces this oval with the full lap modeller. Steps 5 and 7 replace the fixed weight",
           "  and the power placeholder with the coupled mass and propulsion models."]
-    out = ROOT / "docs" / "step4_oval.md"
+    out = ROOT / "docs" / "steps" / "step4_oval.md"
     out.write_text("\n".join(L))
     print("\n".join(L))
 

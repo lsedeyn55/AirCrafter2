@@ -87,10 +87,10 @@ shared files (`mass_config:`) and override them. Misspelt keys are errors, not s
 - `docs/how_to_add_a_scoring_plugin.md`: adding a year-specific score.
 - `docs/OPEN_QUESTIONS.md`: placeholders and open decisions.
 - Verification reports:
-  - `docs/mass_verification.md`: Garcia & Gamboa Table 15 reproduced within 2.3%.
-  - `docs/aero_verification.md`: hand calculations and mesh study.
-  - `docs/step6_lap_mdo.md`: port vs the original MATLAB, matching to ~1e-8.
-  - `docs/step7_full_mdo.md`: full optimisation and robustness.
+  - `docs/verification/mass.md`: Garcia & Gamboa Table 15 reproduced within 2.3%.
+  - `docs/verification/aero.md`: hand calculations and mesh study.
+  - `docs/steps/step6_lap_mdo.md`: port vs the original MATLAB, matching to ~1e-8.
+  - `docs/steps/step7_full_mdo.md`: full optimisation and robustness.
 
 ## Tests
 

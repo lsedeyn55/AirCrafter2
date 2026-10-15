@@ -17,7 +17,7 @@ NaN flags are replaced by continuous margins (`stall_margin`, `turn_speed_margin
 
 `matlab_compat=True` reproduces the MATLAB exactly. That includes its rounded V_stall (PLAN M1) and its unflagged
 NaN when a turn is entered below the deceleration table (M7). The port matches `performance_modeller.m`, run in
-MATLAB R2026a, to ~1e-8 (`docs/step6_lap_mdo.md`, `verification/matlab/run_reference.m`).
+MATLAB R2026a, to ~1e-8 (`docs/steps/step6_lap_mdo.md`, `verification/matlab/run_reference.m`).
 
 ## Smooth twin (`smooth_lap.py`, decision D2)
 

@@ -59,7 +59,7 @@ def test_profile_drag_vs_2d(wing):
 
     Not expected to match exactly: the rectangular wing's tip strips run at lower c_l, where
     NACA 4412's drag is above its minimum, so the strip integral is ~5 % higher than the
-    uniform-loading estimate (docs/aero_verification.md).
+    uniform-loading estimate (docs/verification/aero.md).
     """
     p, seed, a = wing
     CL = p.get_val("vlm.wing_perf.CL")[0]

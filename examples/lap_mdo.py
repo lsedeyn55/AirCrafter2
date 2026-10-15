@@ -1,4 +1,4 @@
-"""Step 6: lap modeller checks and the coupled lap-time optimisation; writes docs/step6_lap_mdo.md.
+"""Step 6: lap modeller checks and the coupled lap-time optimisation; writes docs/steps/step6_lap_mdo.md.
 
 Run: .venv/bin/python examples/lap_mdo.py
 """
@@ -139,7 +139,7 @@ def main():
     w("  bucket), i.e. an unphysical polar extrapolated to C_L,max. The three-point polar interpolates")
     w("  over the whole C_L range the lap model uses and stays convex (k > 0). The lap time is similar")
     w("  either way, because the V bound and the power cap set it.")
-    out = ROOT / "docs" / "step6_lap_mdo.md"
+    out = ROOT / "docs" / "steps" / "step6_lap_mdo.md"
     out.write_text("\n".join(L))
     print("\n".join(L))
 

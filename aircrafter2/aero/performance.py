@@ -15,7 +15,7 @@ class CriticalSectionCLmax(om.ExplicitComponent):
         C_L,max = C_L * min_i ( C_l,max,i / C_l,i )
 
     This is the classical critical-section method used with lifting-line or VLM span loadings
-    (exact textbook reference to be added in docs/aero.md). The min is a KS-min (or hard min). C_l,max,i is evaluated at the strip
+    (exact textbook reference to be added in docs/modules/aero.md). The min is a KS-min (or hard min). C_l,max,i is evaluated at the strip
     Reynolds number of the analysis point, an approximation when the point is not near stall.
     Strips with C_l,i <= 0 are excluded (floored), so the reference point must have C_L > 0.
     """
