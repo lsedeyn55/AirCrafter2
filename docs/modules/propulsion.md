@@ -5,7 +5,7 @@ the speed at which thrust equals drag.
 
 ## Propeller data (`apc.py`)
 
-- APC's published PER3 performance files (`../PERFILES2/PER3_*.dat`), the same data AirCrafter 1.0 used.
+- APC's published PER3 performance files (`../PERFILES2/PER3_*.dat`), the same data AirCrafter 1.0 used. Override the folder with `propulsion.apc_dir` or `AIRCRAFTER2_APC_DIR` (README, Install).
 - Each prop gets least-squares polynomials C_T(J, RPM) and C_P(J, RPM): degree 4 in J, degree 2 in RPM/10⁴. The fit
   is about 0.0002 RMS in C_T and 0.001 in C_P. The windmill branch (C_T < 0) is dropped.
 - RPM limit: 150000 / D[in] (APC, E props), used at 85% as in `propSelector.m`.

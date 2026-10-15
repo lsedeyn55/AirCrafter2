@@ -504,7 +504,7 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
 
 ## 6h. Twin-motor configurations (D8, in progress)
 
-Brief: `aircrafter2_twin_motor_prompt.md`, which replaces Task A of the step 9 brief. Sources:
+Brief: `THESIS/4_PROMPTS/aircrafter2_twin_motor_prompt.md` (all AirCrafter2 briefs live in `THESIS/4_PROMPTS/`), which replaces Task A of the step 9 brief. Sources:
 - **Woombah:** USYD 2025 DBF design report, *Project Woombah*. Used only for cited placeholder defaults.
 - **Bohari et al. (2017):** Bohari, B., Bronz, M., Benard, E. & Borlon, Q., *Conceptual design of distributed
   propeller aircraft: linear aerodynamic model verification of propeller–wing interaction*, EUCASS 2017-445

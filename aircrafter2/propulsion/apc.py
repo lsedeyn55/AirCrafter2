@@ -1,7 +1,7 @@
 """APC propeller performance data (PER3_*.dat) and smooth surrogates.
 
-Data: APC's published performance files (``THESIS/PERFILES2/PER3_*.dat``), the same source
-AirCrafter 1.0 used (parse_apc_txt_folder.m / propSelector.m). Each file has blocks
+Data: APC's published performance files (``THESIS/PERFILES2/PER3_*.dat``, outside the repo), the same
+source AirCrafter 1.0 used (parse_apc_txt_folder.m / propSelector.m). Each file has blocks
 "PROP RPM = N" with columns V (mph), J, Pe, Ct, Cp, PWR (Hp), Torque (in-lbf), Thrust (lbf),
 PWR (W), Torque (N-m), Thrust (N), THR/PWR (g/W), Mach, Reyn, FOM.
 
@@ -11,8 +11,12 @@ Surrogate: least-squares polynomials
 fitted over the tabulated (J, RPM) points with C_T >= ct_floor (the windmill branch is
 dropped). Smooth and complex-step safe, so propulsion partials are exact.
 RPM limit (E props): RPM_max = 150000 / D[in]; AirCrafter 1.0 used 0.85 of it (propSelector.m).
+
+Data folder: the ``folder`` argument (config key ``propulsion.apc_dir``), else the ``AIRCRAFTER2_APC_DIR``
+environment variable, else ``THESIS/PERFILES2`` next to the repo.
 """
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,7 +24,9 @@ from pathlib import Path
 import numpy as np
 
 INCH = 0.0254
-DEFAULT_DIR = Path(__file__).resolve().parents[3] / "PERFILES2"  # THESIS/PERFILES2
+APC_DIR_ENV = "AIRCRAFTER2_APC_DIR"
+REPO_DEFAULT_DIR = Path(__file__).resolve().parents[3] / "PERFILES2"  # THESIS/PERFILES2
+DEFAULT_DIR = Path(os.environ[APC_DIR_ENV]).expanduser() if os.environ.get(APC_DIR_ENV) else REPO_DEFAULT_DIR
 
 
 @dataclass
@@ -107,5 +113,9 @@ def fit_prop(data: APCData, dj=4, dr=2, ct_floor=0.0):
 
 
 def load_prop(name, folder=None):
-    folder = Path(folder) if folder else DEFAULT_DIR
-    return fit_prop(parse_apc_file(folder / f"PER3_{name}.dat"))
+    folder = Path(folder).expanduser() if folder else DEFAULT_DIR
+    path = folder / f"PER3_{name}.dat"
+    if not path.is_file():
+        raise FileNotFoundError(f"APC data file not found: {path}. Point propulsion.apc_dir (config) or the "
+                                f"{APC_DIR_ENV} environment variable at the folder holding the PER3_*.dat files.")
+    return fit_prop(parse_apc_file(path))

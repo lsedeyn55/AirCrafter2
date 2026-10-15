@@ -16,7 +16,12 @@ uv venv --python 3.14 .venv                                   # or use the exist
 uv pip install --python .venv/bin/python -e ".[test,ui,docs]"
 ```
 
-The APC propeller data is read from `../PERFILES2/` (the same files AirCrafter 1.0 used).
+The APC propeller data (`PER3_*.dat`, the same files AirCrafter 1.0 used) is not in this repo. By default it is
+read from `../PERFILES2/`, i.e. `THESIS/PERFILES2` next to the repo. In a clone somewhere else, point at the folder
+in one of two ways (the first that is set wins):
+
+1. the config key `propulsion.apc_dir: /path/to/PERFILES2` (absolute, or relative to the working directory);
+2. the environment variable `export AIRCRAFTER2_APC_DIR=/path/to/PERFILES2`.
 
 ## Quickstart
 

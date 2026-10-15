@@ -67,6 +67,8 @@ class PropulsionInputs(BaseModel):
     pack_I_max: Optional[float] = Field(None, description="A, pack current limit (shared topology), PLACEHOLDER; "
                                         "None = off")
     prop: str = Field("11x7E", description="APC PER3 name (discrete, D4)")
+    apc_dir: Optional[str] = Field(None, description="folder with the APC PER3_*.dat files; None = the "
+                                   "AIRCRAFTER2_APC_DIR environment variable, else THESIS/PERFILES2")
     throttle: float = 1.0
     n_cells: float = Field(4.0, description="series cells (discrete)")
     V_cell: float = Field(3.7, description="V nominal, PLACEHOLDER LiPo")
@@ -247,7 +249,7 @@ def build_full_model(m, cfg: FullMDOConfig):
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
     pr = cfg.propulsion
     m.add_subsystem("propulsion", Powertrain(prop=pr.prop, v_top=pr.v_top, n_motors=pr.n_motors,
-                                             battery_topology=pr.battery_topology),
+                                             battery_topology=pr.battery_topology, apc_dir=pr.apc_dir),
                     promotes_inputs=["rho", "capacity", "throttle", "n_cells", "V_cell", "R_cell", "usable_fraction",
                                      "e_spec", "Kv", "Rm", "I0", "m_motor", "m_esc", "m_prop", "m_nacelle",
                                      "m_avionics"],

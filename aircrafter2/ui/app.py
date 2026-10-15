@@ -33,7 +33,8 @@ with st.sidebar:
     cfg = load_full_config(CONFIGS / cfg_name)
     plugins = available()
     cfg.scoring.plugin = st.selectbox("Scoring plug-in", plugins, index=plugins.index(cfg.scoring.plugin))
-    props = sorted(p.stem.replace("PER3_", "") for p in DEFAULT_DIR.glob("PER3_*E.dat"))
+    apc_dir = Path(cfg.propulsion.apc_dir).expanduser() if cfg.propulsion.apc_dir else DEFAULT_DIR
+    props = sorted(p.stem.replace("PER3_", "") for p in apc_dir.glob("PER3_*E.dat"))
     cfg.propulsion.prop = st.selectbox("APC propeller", props, index=props.index(cfg.propulsion.prop)
                                        if cfg.propulsion.prop in props else 0)
     st.subheader("Propulsion layout")
