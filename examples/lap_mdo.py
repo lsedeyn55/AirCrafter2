@@ -102,7 +102,7 @@ def main():
     w("time) come from the reference's Euler tables (dt = 0.1 s).\n")
 
     # 3. coupled
-    cfg = load_lap_mdo_config(ROOT / "configs" / "step6_lap_mdo.yaml")
+    cfg = load_lap_mdo_config(ROOT / "configs" / "lap_mdo.yaml")
     prob = build_lap_mdo_problem(cfg)
     prob.driver.options["disp"] = False
     prob.run_model()
@@ -114,7 +114,7 @@ def main():
     res = prob.run_driver()
     dt = time.perf_counter() - t
     w("## 3. Coupled lap model: minimise the 3-lap time\n")
-    w("`configs/step6_lap_mdo.yaml`. Mass from the G&G closure, polar CD = CD0 + CD1 CL + k CL^2")
+    w("`configs/lap_mdo.yaml`. Mass from the G&G closure, polar CD = CD0 + CD1 CL + k CL^2")
     w("through three coupled aero points (cruise, mid, 0.95 C_L,max), C_L,max by the critical-section")
     w("method. DVs: b, c, tc_scale, camber_scale, V. Electrical power <= 300 W is a PLACEHOLDER until")
     w("step 7 adds propulsion.\n")

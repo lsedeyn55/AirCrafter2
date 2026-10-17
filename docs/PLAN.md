@@ -355,7 +355,7 @@ What's implemented:
   geometry (t/c, thickness at the spar, A/c², P/c) with cs partials, and a NeuralFoil section solver.
 - `aircrafter2/aero/`: rectangular half-wing mesh, OAS AeroPoint (aero-only, `with_viscous=False`),
   NeuralFoil strip profile drag, critical-section C_L,max, and wing totals.
-- `aircrafter2/problems/wing_aero.py`, configured by `configs/step3_wing_aero.yaml`.
+- `aircrafter2/problems/wing_aero.py`, configured by `configs/wing_aero.yaml`.
 - Report: `docs/verification/aero.md`. FD step study: `docs/verification/neuralfoil_fd_steps.md`.
 
 Changes from §5.3:
@@ -385,7 +385,7 @@ Findings:
 - `aircrafter2/mission/oval.py`: `LoadFactor` (n = L_turn/W, KS-capped at n_struct) and `OvalLapTime`
   (R = V²/(g√(n²−1)), lap = (2L_s + 2πR)/V), with analytic partials. Developed from
   `archive/legacy/basic_perf.py`; its `np.where` floor became a softplus floor.
-- `aircrafter2/problems/oval_lap.py` (config `configs/step4_oval_lap.yaml`): one wing, two aero points
+- `aircrafter2/problems/oval_lap.py` (config `configs/oval_lap.yaml`): one wing, two aero points
   (cruise with L = W; turn with its own α). The turn C_L margin C_L,max/C_L ≥ 1.21 sets n and R.
 - Results: `docs/steps/step4_oval.md`.
   - Without a power limit the turn margin is active (lap 33.6 s, R = 9.9 m, n = 4.2). With nothing penalising
@@ -399,7 +399,7 @@ Findings:
 - `aircrafter2/geometry/`: rectangular planform, tail arm/boom and tail volume coefficients, cargo-bay area.
 - The aero point now also outputs `Cm_wing` (chord-weighted strip C_m) and `CL_alpha` (= C_L/α, exact for
   the flat-plate VLM).
-- `aircrafter2/problems/aero_mass.py` (config `configs/step5_aero_mass.yaml`; `mass_config` points at the base
+- `aircrafter2/problems/aero_mass.py` (config `configs/aero_mass.yaml`; `mass_config` points at the base
   mass YAML): MDA = Newton (solve_subsystems) + DirectSolver around {cruise aero, `BalanceComp` α for
   L = W, G&G mass with its own NLBGS closure}.
 - Results: `docs/steps/step5_aero_mass.md`.
@@ -438,7 +438,7 @@ Findings:
   - Matches the port within 0.65% (3-lap time) on 8 points, including near-stall, with identical lap counts.
   - A first multiplicative speed cap leaked (thrust > drag at V because P includes 1/η) and was replaced
     by a smooth min with relaxation.
-- `aircrafter2/problems/lap_mdo.py` (config `configs/step6_lap_mdo.yaml`) couples the lap model:
+- `aircrafter2/problems/lap_mdo.py` (config `configs/lap_mdo.yaml`) couples the lap model:
   - the step 5 MDA (aero + mass);
   - two more aero points (mid, 0.95 C_L,max) feeding a three-point polar CD = CD0 + CD1 CL + k CL²;
   - inputs: m_total, S, V (now a DV), C_L,max; take-off C_L = C_L,max (no flaps).
@@ -465,7 +465,7 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
 - `aircrafter2/aero/parasite.py`: Raymer component build-up for the tails and a switchable fuselage
   (cargo box + boom).
 - `aircrafter2/stability/static.py`: tail-volume neutral point, CG from component stations, static margin.
-- `aircrafter2/problems/full_mdo.py` (config `configs/step7_full.yaml`):
+- `aircrafter2/problems/full_mdo.py` (config `configs/full_mdo.yaml`):
   - the MDA now also solves v where T(v) = D(v) (that speed is the G&G design speed too), and includes
     parasite drag;
   - DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery station and
@@ -600,7 +600,7 @@ the installed static thrust (42.3 vs 21.2 N). The matched-power comparison is in
 | `Powertrain` outputs | **Totals:** `T_coeffs`, `P_coeffs`, `T_static`, `T_nodes`, `P_nodes`, `E_usable`, `m_batt`, `m_sys`, new `E_nom_total` (Wh), new `m_motor_group`.<br>**Per unit:** `RPM_coeffs`, `rpm_max`, `I_static`, new `T_static_unit`, new `m_motor_unit`, new `D_prop`.<br>**Per pack:** new `I_pack_static`. | identical values |
 | `full_mdo` | The stability motor mass is now the powertrain's `m_motor_group`, no longer an ExecComp sum. Optional `I_pack_margin`, added when `pack_I_max` is set. | identical values |
 | CLI | `--n-motors {1,2}` and `--battery-topology {per_motor,shared}`. `check_fixed_limits` reports the per-ESC and pack current margins. | |
-| Config | New `configs/step7_full_twin.yaml`: `step7_full.yaml` plus the layout fields. | |
+| Config | New `configs/full_mdo_twin.yaml`: `full_mdo.yaml` plus the layout fields. | |
 | *Checkpoint 2* | <br>• G&G `WingLoads` motor terms (option `motor_inertia_relief`, default off)<br>• nacelle `CD_nac`<br>• placement constraints<br>• OEI post-check<br>• plots<br>• UI | |
 
 ### Battery topologies and the shared-pack equation

@@ -22,8 +22,8 @@ def _run_dir(tmp_path_factory, cfg_name, label):
 
 @pytest.fixture(scope="module")
 def runs(tmp_path_factory):
-    return {1: _run_dir(tmp_path_factory, "step7_full.yaml", "single"),
-            2: _run_dir(tmp_path_factory, "step7_full_twin.yaml", "twin")}
+    return {1: _run_dir(tmp_path_factory, "full_mdo.yaml", "single"),
+            2: _run_dir(tmp_path_factory, "full_mdo_twin.yaml", "twin")}
 
 
 # --- without OpenVSP (always runs) ------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ def test_cli_without_openvsp_points_to_readme(monkeypatch, capsys, runs):
 
     monkeypatch.setattr(V, "have_openvsp", lambda: False)
     assert main(["vsp", str(runs[1])]) == 2
-    assert main(["run", str(CONFIGS / "step7_full.yaml"), "--analyse", "--vsp", "--out", "/dev/null/x"]) == 2
+    assert main(["run", str(CONFIGS / "full_mdo.yaml"), "--analyse", "--vsp", "--out", "/dev/null/x"]) == 2
     err = capsys.readouterr().err
     assert "README" in err and "OpenVSP (optional, installed locally)" in err
 

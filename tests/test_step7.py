@@ -129,7 +129,7 @@ def test_lap_propulsion_partials():
 # --- full model -------------------------------------------------------------------------------------
 @pytest.fixture(scope="module")
 def full_coarse():
-    cfg = load_full_config(CONFIGS / "step7_full.yaml")
+    cfg = load_full_config(CONFIGS / "full_mdo.yaml")
     cfg.aero.num_y = 11
     prob = build_full_problem(cfg)
     prob.run_model()

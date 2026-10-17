@@ -1,4 +1,4 @@
-# Step 7, twin layout: identical to step7_full.yaml except for the propulsion layout
+# Step 7, twin layout: identical to full_mdo.yaml except for the propulsion layout
 # (n_motors = 2 wing-mounted tractors, one pack per motor) and the Woombah-cited twin defaults.
 # Woombah = USYD 2025 DBF design report, "Project Woombah". The motor/battery values stay the
 # step 7 PLACEHOLDERS (Q7, Q8, Q23): the T-Motor values come in step 9.

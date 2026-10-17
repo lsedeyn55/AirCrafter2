@@ -49,7 +49,7 @@ def test_wing_moment_is_mean_for_rectangular_wing():
 
 
 def _coarse_cfg(**options):
-    cfg = load_aero_mass_config(CONFIGS / "step5_aero_mass.yaml")
+    cfg = load_aero_mass_config(CONFIGS / "aero_mass.yaml")
     cfg.aero.num_y = 11
     for k, v in options.items():
         setattr(cfg.mass.options, k, v)

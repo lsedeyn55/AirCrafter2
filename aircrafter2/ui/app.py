@@ -28,8 +28,8 @@ st.caption("DBF conceptual-design MDAO: OpenAeroStruct + NeuralFoil aero, Garcia
 full_configs = sorted(p.name for p in CONFIGS.glob("*.yaml") if "propulsion:" in p.read_text())
 with st.sidebar:
     st.header("Setup")
-    cfg_name = st.selectbox("Config", full_configs, index=full_configs.index("step7_full.yaml")
-                            if "step7_full.yaml" in full_configs else 0)
+    cfg_name = st.selectbox("Config", full_configs, index=full_configs.index("full_mdo.yaml")
+                            if "full_mdo.yaml" in full_configs else 0)
     cfg = load_full_config(CONFIGS / cfg_name)
     plugins = available()
     cfg.scoring.plugin = st.selectbox("Scoring plug-in", plugins, index=plugins.index(cfg.scoring.plugin))

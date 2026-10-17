@@ -27,19 +27,19 @@ in one of two ways (the first that is set wins):
 
 ```bash
 # optimise the full design (aero + mass + propulsion + stability + lap model)
-.venv/bin/aircrafter2 run configs/step7_full.yaml --out outputs/my_design
+.venv/bin/aircrafter2 run configs/full_mdo.yaml --out outputs/my_design
 
 # analyse only (no optimisation), or try another propeller
-.venv/bin/aircrafter2 run configs/step7_full.yaml --analyse --prop 11x7E
+.venv/bin/aircrafter2 run configs/full_mdo.yaml --analyse --prop 11x7E
 
 # twin wing-mounted tractors, one pack per motor (capacity is per pack)
-.venv/bin/aircrafter2 run configs/step7_full_twin.yaml
+.venv/bin/aircrafter2 run configs/full_mdo_twin.yaml
 # or switch the layout / battery topology of any config from the command line
-.venv/bin/aircrafter2 run configs/step7_full.yaml --n-motors 2 --battery-topology shared
+.venv/bin/aircrafter2 run configs/full_mdo.yaml --n-motors 2 --battery-topology shared
 
 # 3D OpenVSP mock-up of a run (optional OpenVSP, see below): .vsp3, STEP, STL, figures, consistency check
 .venv/bin/aircrafter2 vsp outputs/my_design/
-.venv/bin/aircrafter2 run configs/step7_full_twin.yaml --vsp
+.venv/bin/aircrafter2 run configs/full_mdo_twin.yaml --vsp
 
 # the graphical interface
 .venv/bin/aircrafter2 ui
@@ -81,13 +81,13 @@ From Python:
 
 ```python
 from aircrafter2.api import run_design
-res = run_design("configs/step7_full.yaml", optimise=True, out_dir="outputs/demo")
+res = run_design("configs/full_mdo.yaml", optimise=True, out_dir="outputs/demo")
 print(res.values["ThreeLapTime"], res.values["m_total"])
 ```
 
 ## Configs
 
-Everything a run needs is in one YAML file (`configs/step7_full.yaml` is the full model). Configs can point at
+Everything a run needs is in one YAML file (`configs/full_mdo.yaml` is the full model). Configs can point at
 shared files (`mass_config:`) and override them. Misspelt keys are errors, not silently ignored values.
 
 | Section | Contents |
@@ -140,7 +140,7 @@ topic in `examples/`, `verification/` or `studies/`; rerun the script rather tha
 | `aircrafter2/robustness` | sensitivities, worst cases, Monte Carlo |
 | `aircrafter2/vsp` | OpenVSP mock-up: build, render, consistency check |
 | `aircrafter2/plotting`, `api.py`, `cli.py`, `ui/` | figures, API, CLI, Streamlit |
-| `configs/` | run configs (`step7_full.yaml` is the full model), shared mass inputs, `verification/` paper cases |
+| `configs/` | run configs (`full_mdo.yaml` is the full model), shared mass inputs, `verification/` paper cases |
 | `examples/` | user-facing demos, one per build step (`oval_lap`, `aero_mass`, `lap_mdo`, `full_mdo`) |
 | `studies/` | thesis and paper scripts (thesis figures, twin-motor study, OpenVSP mock-ups, tail-boom calibration) |
 | `verification/` | verification harnesses (aero, mass, NeuralFoil steps), `matlab/` reference, `twin/` checks |

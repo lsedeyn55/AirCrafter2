@@ -1,6 +1,6 @@
 """Generate the thesis figure set (vector PDFs) from the full model.
 
-Optimises `configs/step7_full.yaml` (with the prop given, default 10x7E), then writes into
+Optimises `configs/full_mdo.yaml` (with the prop given, default 10x7E), then writes into
 outputs/thesis_figures/:
 - the standard figures: planform, airfoil, spanwise lift, drag and mass breakdowns, convergence, sensitivities;
 - a 7x7 design-space surface of the objective over (b, c);
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    cfg = load_full_config(ROOT / "configs" / "step7_full.yaml")
+    cfg = load_full_config(ROOT / "configs" / "full_mdo.yaml")
     cfg.propulsion.prop = sys.argv[1] if len(sys.argv) > 1 else "10x7E"
     out = ROOT / "outputs" / "thesis_figures"
     res = run_design(cfg, optimise=True, out_dir=out, figures=True, sensitivities=True, design_space=True,

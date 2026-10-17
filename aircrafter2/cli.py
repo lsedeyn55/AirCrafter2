@@ -1,6 +1,6 @@
 """Command-line interface.
 
-    aircrafter2 run configs/step7_full.yaml [--out outputs/run1] [--analyse] [--no-figures]
+    aircrafter2 run configs/full_mdo.yaml [--out outputs/run1] [--analyse] [--no-figures]
                 [--design-space] [--prop 11x7E] [--n-motors {1,2}] [--battery-topology {per_motor,shared}]
     aircrafter2 vsp outputs/<run>/ [--out DIR] [--no-figures] [--incidence {zero,cruise}]
                                  # OpenVSP mock-up from the run's geometry.json (optional OpenVSP)
@@ -25,7 +25,7 @@ def main(argv=None):
     r.add_argument("--prop", default=None, help="override the APC prop (e.g. 10x7E)")
     r.add_argument("--n-motors", type=int, choices=[1, 2], default=None,
                    help="1 = nose tractor, 2 = wing-mounted pair (y_motor defaults to the Woombah station; "
-                        "configs/step7_full_twin.yaml has the full twin defaults)")
+                        "configs/full_mdo_twin.yaml has the full twin defaults)")
     r.add_argument("--battery-topology", choices=["per_motor", "shared"], default=None,
                    help="one pack per motor (default) or one shared pack; capacity is per pack")
     r.add_argument("--vsp", action="store_true", help="build the OpenVSP mock-up after the run (needs OpenVSP)")

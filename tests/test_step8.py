@@ -31,7 +31,7 @@ class _PayloadPerTime(ScoringPlugin):
 
 
 def _coarse(plugin):
-    cfg = load_full_config(CONFIGS / "step7_full.yaml")
+    cfg = load_full_config(CONFIGS / "full_mdo.yaml")
     cfg.aero.num_y = 11
     cfg.scoring.plugin = plugin
     return cfg
@@ -58,7 +58,7 @@ def test_cli_analyse_writes_outputs(tmp_path):
     from aircrafter2.cli import main
 
     cfg_file = tmp_path / "cfg.yaml"
-    text = (CONFIGS / "step7_full.yaml").read_text().replace("num_y: 21", "num_y: 11")
+    text = (CONFIGS / "full_mdo.yaml").read_text().replace("num_y: 21", "num_y: 11")
     text = text.replace("mass_config: mass_garcia_gamboa_2022.yaml", f"mass_config: {CONFIGS / 'mass_garcia_gamboa_2022.yaml'}")
     cfg_file.write_text(text)
     out = tmp_path / "out"

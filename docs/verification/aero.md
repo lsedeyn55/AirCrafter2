@@ -38,7 +38,7 @@ Default: 41 nodes (40 strips per half), about 1 % from the finest mesh in e.
 
 ## 3. Step 3 optimisation: minimise C_D at fixed lift and wing area
 
-Config: `configs/step3_wing_aero.yaml`. SLSQP, gradients from analytic/implicit partials.
+Config: `configs/wing_aero.yaml`. SLSQP, gradients from analytic/implicit partials.
 
 Converged: **True** in 9 iterations, 2.7 s, from an infeasible start (lift -67 % of W). Optimum L/D = 23.37.
 

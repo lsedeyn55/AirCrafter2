@@ -24,12 +24,12 @@ def _solved(name):
 
 @pytest.fixture(scope="module")
 def single():
-    return _solved("step7_full.yaml")
+    return _solved("full_mdo.yaml")
 
 
 @pytest.fixture(scope="module")
 def twin():
-    return _solved("step7_full_twin.yaml")
+    return _solved("full_mdo_twin.yaml")
 
 
 def g1(prob, k, units=None):
@@ -95,7 +95,7 @@ def test_export_values_equal_problem(which, request):
 def test_run_design_writes_geometry_json(tmp_path):
     from aircrafter2.api import run_design
 
-    cfg = load_full_config(CONFIGS / "step7_full.yaml")
+    cfg = load_full_config(CONFIGS / "full_mdo.yaml")
     cfg.aero.num_y = 11
     res = run_design(cfg, optimise=False, out_dir=tmp_path, figures=False, sensitivities=False, n2=False)
     g = load_geometry(tmp_path)

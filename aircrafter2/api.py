@@ -1,7 +1,7 @@
 """High-level API used by the CLI and the Streamlit UI.
 
     from aircrafter2.api import run_design
-    result = run_design("configs/step7_full.yaml", optimise=True, out_dir="outputs/demo")
+    result = run_design("configs/full_mdo.yaml", optimise=True, out_dir="outputs/demo")
 
 Writes into out_dir: summary.md, results.json, geometry.json (3D rebuild data), cases.sql (driver history), n2.html, xdsm.tex,
 xdsm.pdf and figures/*.pdf.

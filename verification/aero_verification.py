@@ -90,7 +90,7 @@ def main():
     w("\nDefault: 41 nodes (40 strips per half), about 1 % from the finest mesh in e.\n")
 
     # 3. step 3 optimisation
-    cfg = WingAeroProblemConfig(**load_yaml(ROOT / "configs" / "step3_wing_aero.yaml"))
+    cfg = WingAeroProblemConfig(**load_yaml(ROOT / "configs" / "wing_aero.yaml"))
     prob = build_wing_aero_problem(cfg)
     prob.driver.options["disp"] = False
     prob.run_model()
@@ -99,7 +99,7 @@ def main():
     res = prob.run_driver()
     dt = time.perf_counter() - t
     w("## 3. Step 3 optimisation: minimise C_D at fixed lift and wing area\n")
-    w("Config: `configs/step3_wing_aero.yaml`. SLSQP, gradients from analytic/implicit partials.\n")
+    w("Config: `configs/wing_aero.yaml`. SLSQP, gradients from analytic/implicit partials.\n")
     w(f"Converged: **{res.success}** in {res.iter_count} iterations, {dt:.1f} s, from an infeasible start "
       f"(lift {100 * init['lift_residual']:+.0f} % of W). Optimum L/D = {val(prob, 'L_over_D'):.2f}.\n")
     w("| Variable | Optimum | Bound / constraint |")

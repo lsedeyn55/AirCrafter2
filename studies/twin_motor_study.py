@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "outputs" / "twin_study"
 DOC = ROOT / "docs" / "studies" / "twin_motor_study.md"
 CACHE = ROOT / "docs" / "studies" / "twin_motor_study_results.json"
-CFG = {1: "step7_full.yaml", 2: "step7_full_twin.yaml"}
+CFG = {1: "full_mdo.yaml", 2: "full_mdo_twin.yaml"}
 PROPS = ["10x7E", "11x7E", "12x8E"]
 # matched installed power, from a powertrain-only screen at the single 10x7E / 4S unit (21.4 N, 494 W static):
 # static thrust within ~10 % (3S) and static electrical power within ~5 % (10x7E 3S, 8x6E 4S)
@@ -317,8 +317,8 @@ def write_doc(R):
       "behaves in this model; they are not a design recommendation.\n")
     w("## Setup\n")
     w("- **Configs:**\n"
-      "  - `configs/step7_full.yaml`: n = 1, a nose tractor at x = −0.30 m.\n"
-      "  - `configs/step7_full_twin.yaml`: n = 2 at y_m = 0.2515 m (Woombah 9.9\") and x = −5.5\" (Woombah "
+      "  - `configs/full_mdo.yaml`: n = 1, a nose tractor at x = −0.30 m.\n"
+      "  - `configs/full_mdo_twin.yaml`: n = 2 at y_m = 0.2515 m (Woombah 9.9\") and x = −5.5\" (Woombah "
       "firewall), one pack per motor, Q_nac = 1.3 (Woombah), nacelle 0.15 × 0.05 m (placeholder), m_nacelle = 0 "
       "(placeholder, Q25), `nacelle_torsion` on, `motor_inertia_relief` off, body nacelle form factor.\n"
       "  - The two configs are otherwise identical: same DVs, bounds, tails, payload and mass model.")
@@ -476,7 +476,7 @@ def write_doc(R):
 
     w("## 8. Wall-clock time\n")
     tw = [R[k]["time_s"] for k in R if not k.startswith("_") and R[k]["n"] == 2 and R[k]["success"]]
-    w(f"- **One twin analysis** (`configs/step7_full_twin.yaml`, initial point; num_y = 21, NeuralFoil xlarge):\n"
+    w(f"- **One twin analysis** (`configs/full_mdo_twin.yaml`, initial point; num_y = 21, NeuralFoil xlarge):\n"
       f"  - build and setup: {t['build_s']:.1f} s;\n"
       f"  - coupled MDA, cold start: {t['analysis_cold_s']:.1f} s;\n"
       f"  - re-solve, warm: {t['analysis_warm_s']:.1f} s.")

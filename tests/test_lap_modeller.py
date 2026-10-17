@@ -132,7 +132,7 @@ def test_turn_alpha_partials():
 
 # --- coupled model ------------------------------------------------------------------------------
 def test_coupled_lap_check_totals():
-    cfg = load_lap_mdo_config(CONFIGS / "step6_lap_mdo.yaml")
+    cfg = load_lap_mdo_config(CONFIGS / "lap_mdo.yaml")
     cfg.aero.num_y = 11
     prob = build_lap_mdo_problem(cfg)
     prob.run_model()

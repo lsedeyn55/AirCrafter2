@@ -53,7 +53,7 @@ time) come from the reference's Euler tables (dt = 0.1 s).
 
 ## 3. Coupled lap model: minimise the 3-lap time
 
-`configs/step6_lap_mdo.yaml`. Mass from the G&G closure, polar CD = CD0 + CD1 CL + k CL^2
+`configs/lap_mdo.yaml`. Mass from the G&G closure, polar CD = CD0 + CD1 CL + k CL^2
 through three coupled aero points (cruise, mid, 0.95 C_L,max), C_L,max by the critical-section
 method. DVs: b, c, tc_scale, camber_scale, V. Electrical power <= 300 W is a PLACEHOLDER until
 step 7 adds propulsion.

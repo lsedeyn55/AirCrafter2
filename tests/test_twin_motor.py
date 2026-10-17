@@ -136,8 +136,8 @@ def test_twin_powertrain_partials(n, topology):
 
 # --- full-model plumbing ---------------------------------------------------------------------------------
 def test_twin_config_loads_and_is_step7_plus_layout():
-    one = load_full_config(CONFIGS / "step7_full.yaml")
-    two = load_full_config(CONFIGS / "step7_full_twin.yaml")
+    one = load_full_config(CONFIGS / "full_mdo.yaml")
+    two = load_full_config(CONFIGS / "full_mdo_twin.yaml")
     assert (one.propulsion.n_motors, two.propulsion.n_motors) == (1, 2)
     assert two.propulsion.y_motor_m == pytest.approx(WOOMBAH_Y_M, abs=1e-4)
     d1, d2 = one.model_dump(), two.model_dump()
@@ -152,7 +152,7 @@ def test_twin_config_loads_and_is_step7_plus_layout():
 
 
 def test_full_twin_model_runs_with_two_units():
-    cfg = load_full_config(CONFIGS / "step7_full_twin.yaml")
+    cfg = load_full_config(CONFIGS / "full_mdo_twin.yaml")
     cfg.aero.num_y = 11
     prob = build_full_problem(cfg, driver=False)
     prob.run_model()
@@ -179,7 +179,7 @@ def test_cli_overrides_layout(monkeypatch):
         return Res()
 
     monkeypatch.setattr(api, "run_design", fake_run)
-    main(["run", str(CONFIGS / "step7_full.yaml"), "--analyse", "--n-motors", "2", "--battery-topology", "shared",
+    main(["run", str(CONFIGS / "full_mdo.yaml"), "--analyse", "--n-motors", "2", "--battery-topology", "shared",
           "--out", "/dev/null/x"])
     pr = seen["cfg"].propulsion
     assert (pr.n_motors, pr.battery_topology) == (2, "shared")
@@ -302,7 +302,7 @@ def test_no_nacelle_drag_for_nose_layout():
 # --- full twin model ---------------------------------------------------------------------------------------
 @pytest.fixture(scope="module")
 def twin_coarse():
-    cfg = load_full_config(CONFIGS / "step7_full_twin.yaml")
+    cfg = load_full_config(CONFIGS / "full_mdo_twin.yaml")
     cfg.aero.num_y = 11
     cfg.mass.options.motor_inertia_relief = True  # exercise every new term
     cfg.propulsion.m_nacelle = 0.03
@@ -324,7 +324,7 @@ def test_twin_model_wires_loads_drag_and_cg(twin_coarse):
     a_v = 2 * np.pi * 2.0 / (2 + np.sqrt(8.0))
     d_req = v("T_static_unit") * v("y_m") / (q * v("S") * v("b")) / (0.9 * v("V_v") * a_v * 0.5)
     assert oei["rudder_req_deg"] == pytest.approx(np.degrees(d_req), rel=1e-12)
-    assert oei_check(p, load_full_config(CONFIGS / "step7_full.yaml")) is None
+    assert oei_check(p, load_full_config(CONFIGS / "full_mdo.yaml")) is None
 
 
 def test_twin_model_check_totals(twin_coarse):

@@ -42,7 +42,7 @@ energy_reserve: 0.2      # PLACEHOLDER: keep 20 % of the usable battery energy i
 require_3lap_energy: true
 
 propulsion:              # decision B: the powertrain sets the power; cruise speed is where T = D
-  n_motors: 1            # 1 = centreline nose tractor; 2 = wing pair (configs/step7_full_twin.yaml)
+  n_motors: 1            # 1 = centreline nose tractor; 2 = wing pair (configs/full_mdo_twin.yaml)
   battery_topology: per_motor  # one pack per motor; capacity (a DV) is PER PACK
   prop: 11x7E            # APC PER3 file (discrete choice, D4: enumerate in examples/full_mdo.py)
   throttle: 1.0          # full throttle (the fastest-lap placeholder objective)

@@ -1,4 +1,4 @@
-"""One full twin-motor optimisation (configs/step7_full_twin.yaml), with motor inertia relief off and on.
+"""One full twin-motor optimisation (configs/full_mdo_twin.yaml), with motor inertia relief off and on.
 
 Reports the optimum, the active constraints and DVs at bounds, the spar wall / wing mass for the
 relief comparison, the OEI post-check and the wall-clock time.
@@ -49,7 +49,7 @@ def active(prob, tol=1e-4):
     return out
 
 
-def run(prop="10x7E", relief=False, cfg_name="step7_full_twin.yaml"):
+def run(prop="10x7E", relief=False, cfg_name="full_mdo_twin.yaml"):
     cfg = load_full_config(ROOT / "configs" / cfg_name)
     cfg.propulsion.prop = prop
     cfg.mass.options.motor_inertia_relief = relief
