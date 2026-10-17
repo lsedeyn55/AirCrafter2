@@ -66,7 +66,7 @@ independent root solve.)
 - `I_max` applies to each ESC's input current, δ I (`I_static`).
 - `pack_I_max` (PLACEHOLDER, off by default) adds a pack-current post-check, `I_pack_margin`.
 
-**Energy:** `E_nom_total` is the nominal energy of all packs, in Wh. It is there for the step 9 rule C-F1 cap
+**Energy:** `E_nom_total` is the nominal energy of all packs, in Wh. It is there for the competition rule C-F1 cap
 (≤ 100 Wh) and is not constrained unless a config asks.
 
 ## Constraints in the full model

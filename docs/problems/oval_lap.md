@@ -34,5 +34,5 @@ Reading the results:
   C_L margin active. Drag is irrelevant here, which is why this case is not a realistic design.
 - **With a 400 W turn-power placeholder,** drag comes back into the problem. The wing shrinks, t/c
   returns to the spar floor, and the power constraint (not the C_L margin) sets the radius.
-- Step 6 replaces this oval with the full lap modeller. Steps 5 and 7 replace the fixed weight
+- lap_mdo replaces this oval with the full lap modeller. aero_mass and full_mdo replace the fixed weight
   and the power placeholder with the coupled mass and propulsion models.

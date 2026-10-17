@@ -82,7 +82,7 @@ Notes on the table:
 - **Relief in the ground case:** relative to the root moment, it is twice the flight relief (g m_u y_m on Wb/4,
   against n g m_u y_m on nWb/8).
 
-Why two switches: at the step 7 scale, the nacelle torque is about 3.5× G&G's aerodynamic torsion. A single
+Why two switches: at the scale of the full_mdo optimum, the nacelle torque is about 3.5× G&G's aerodynamic torsion. A single
 switch defaulting to off would under-size t_T (PLAN §6h T3). With both defaults, every load is conservative.
 
 **Not modified:**

@@ -1,5 +1,20 @@
 # AirCrafter 2.0: Build Plan (Step 1: Explore and Plan)
 
+> **Build steps and current names.** This plan is the development record, so it refers to work by build
+> step. The code, configs, tests and reports are named by what they are:
+>
+> | Build step | What it is | Name in the repo |
+> |---|---|---|
+> | 1 | explore and plan (this document) | `docs/PLAN.md` |
+> | 2 | Garcia & Gamboa mass model | `aircrafter2/mass/`, "G&G mass model" |
+> | 3 | aero-only wing at fixed lift | `wing_aero` (`problems/wing_aero.py`, `configs/wing_aero.yaml`) |
+> | 4 | simple oval lap, fixed cruise speed | `oval_lap` (`docs/problems/oval_lap.md`) |
+> | 5 | coupled aero + mass (MDF) | `aero_mass` (`docs/problems/aero_mass.md`) |
+> | 6 | lap modeller coupled to aero + mass | `lap_mdo` (`docs/problems/lap_mdo.md`) |
+> | 7 | full MDF problem (propulsion, stability, lap) | `full_mdo` (`configs/full_mdo.yaml`, `full_mdo_twin.yaml`) |
+> | 8 | scoring plug-ins, CLI, figures, UI | `aircrafter2/scoring/`, `cli.py`, `plotting/`, `ui/` |
+> | 9+ | twin motor, OpenVSP, ... | named by subject (`twin_motor_study`, `vsp/`, ...) |
+
 Status: **draft for review**. No package code has been written yet. Everything below comes
 from reading the sources listed in §1. Two small scratch scripts were also run (outside
 the repo) to check equations from the Garcia & Gamboa (2022) paper; their results are

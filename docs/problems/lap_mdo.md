@@ -55,8 +55,8 @@ time) come from the reference's Euler tables (dt = 0.1 s).
 
 `configs/lap_mdo.yaml`. Mass from the G&G closure, polar CD = CD0 + CD1 CL + k CL^2
 through three coupled aero points (cruise, mid, 0.95 C_L,max), C_L,max by the critical-section
-method. DVs: b, c, tc_scale, camber_scale, V. Electrical power <= 300 W is a PLACEHOLDER until
-step 7 adds propulsion.
+method. DVs: b, c, tc_scale, camber_scale, V. Electrical power <= 300 W is a PLACEHOLDER here
+(no propulsion model; full_mdo adds one).
 
 Converged: **True**, 46 iterations, 152 s.
 
@@ -95,7 +95,7 @@ Reading the optimum:
   the turns. The optimiser exploits this: maximum camber (C_L,max up, tighter stall-limited turns)
   *and* a cruise L/D of ~4, because the extra drag buys power, up to the 300 W cap. A grid search
   over static Cd0 and e (AirCrafter 1.0) cannot see this; coupled gradients do.
-  Proposed fix for step 7: the power setting comes from the propulsion model (throttle or
+  Proposed fix (adopted in full_mdo): the power setting comes from the propulsion model (throttle or
   available power), not from the cruise drag; V is then the speed that power sustains.
 - A two-point polar (CD0 + k CL^2 through cruise and one high-C_L point) was tried first and gave
   k < 0 at this kind of design (a highly cambered section at low cruise C_L is off its drag

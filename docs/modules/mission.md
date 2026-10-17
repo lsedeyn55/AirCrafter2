@@ -40,6 +40,6 @@ optimiser exploited. That's why the full model uses `propulsion` mode.
 Robustness hooks: `wind` (headwind on the 500 ft legs, tailwind on the 1000 ft leg) and `thrust_factor`.
 Agreement with the reference port: ≤ 0.65% on the 3-lap time across 8 points.
 
-## Oval (`oval.py`, step 4)
+## Oval (`oval.py`, used by `oval_lap`)
 
 Constant-speed oval: R = V²/(g√(n² − 1)), lap = (2L_s + 2πR)/V. Kept as a teaching and verification case.
