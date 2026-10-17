@@ -387,7 +387,7 @@ Findings:
   `archive/legacy/basic_perf.py`; its `np.where` floor became a softplus floor.
 - `aircrafter2/problems/oval_lap.py` (config `configs/oval_lap.yaml`): one wing, two aero points
   (cruise with L = W; turn with its own α). The turn C_L margin C_L,max/C_L ≥ 1.21 sets n and R.
-- Results: `docs/steps/step4_oval.md`.
+- Results: `docs/problems/oval_lap.md`.
   - Without a power limit the turn margin is active (lap 33.6 s, R = 9.9 m, n = 4.2). With nothing penalising
     drag, the optimiser maximises the wing and its camber.
   - With a 400 W placeholder on turn power, the power limit becomes active (lap 35.0 s, R = 14.4 m).
@@ -402,7 +402,7 @@ Findings:
 - `aircrafter2/problems/aero_mass.py` (config `configs/aero_mass.yaml`; `mass_config` points at the base
   mass YAML): MDA = Newton (solve_subsystems) + DirectSolver around {cruise aero, `BalanceComp` α for
   L = W, G&G mass with its own NLBGS closure}.
-- Results: `docs/steps/step5_aero_mass.md`.
+- Results: `docs/problems/aero_mass.md`.
   - The MDA converges at all 16 corners of the DV box plus the centre in ≤ 3 Newton iterations.
   - `check_totals` passes through the coupled loop.
   - The cruise-drag optimum is set by the spar: the thinnest section (t/c ≈ 0.08) is where the thin-wall
@@ -442,7 +442,7 @@ Findings:
   - the step 5 MDA (aero + mass);
   - two more aero points (mid, 0.95 C_L,max) feeding a three-point polar CD = CD0 + CD1 CL + k CL²;
   - inputs: m_total, S, V (now a DV), C_L,max; take-off C_L = C_L,max (no flaps).
-  - Results: `docs/steps/step6_lap_mdo.md`.
+  - Results: `docs/problems/lap_mdo.md`.
 - **Finding L1:** AirCrafter's P = D(V)V/η makes lap time *improve* with cruise drag (higher drag means a
   higher throttle setting and more thrust out of the turns). The optimiser exploits it up to the 300 W
   placeholder (cruise L/D ≈ 4). Proposed for step 7: the power setting comes from propulsion, not from
@@ -474,7 +474,7 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
   - the prop is enumerated outside the optimiser (D4).
 - `aircrafter2/robustness/suite.py`: normalised sensitivities (compute_totals), one-at-a-time worst cases
   (mass, thrust, capacity, headwind), and Monte Carlo over the uncertain inputs.
-- Results: `docs/steps/step7_full_mdo.md`.
+- Results: `docs/problems/full_mdo.md`.
 - Notes:
   - The first full run was infeasible: with the placeholder stations the CG was too far forward for
     SM ≤ 0.20 together with V_h ≥ 0.35. Making the cargo-bay station a DV fixed it.
@@ -513,7 +513,7 @@ Brief: `THESIS/4_PROMPTS/aircrafter2_twin_motor_prompt.md` (all AirCrafter2 brie
 
 **Status:** all three checkpoints are done: propulsion, airframe integration, and the single-vs-twin study
 (`docs/studies/twin_motor_study.md`, `studies/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
-prop. Its doc (`docs/steps/step7_full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
+prop. Its doc (`docs/problems/full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
 
 **Decisions 2026-10-13 (checkpoint 1 review):**
 - **T3:** two switches. `motor_inertia_relief` (bending and shear) defaults to off; `nacelle_torsion` defaults to

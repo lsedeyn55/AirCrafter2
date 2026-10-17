@@ -8,7 +8,7 @@ no extrapolation. With CD1 = 0 it reduces to the AirCrafter form CD = CD0 + k CL
 
 A two-point CD0 + k CL^2 fit was tried first and rejected: off-design (e.g. a highly cambered
 section at high speed and low C_L) its k went negative, an unphysical polar that was then
-extrapolated to C_L,max (docs/steps/step6_lap_mdo.md).
+extrapolated to C_L,max (docs/problems/lap_mdo.md).
 """
 
 import numpy as np
