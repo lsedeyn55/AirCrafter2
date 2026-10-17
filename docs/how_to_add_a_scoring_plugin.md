@@ -70,5 +70,5 @@ optimiser's objective smooth:
 
 ## 4. Test it
 
-Copy `tests/test_step8.py::test_custom_plugin_is_wired_as_objective` and change the plug-in name. It checks that
+Copy `tests/test_scoring.py::test_custom_plugin_is_wired_as_objective` and change the plug-in name. It checks that
 the score is computed, is the objective, and has finite derivatives.

@@ -1,4 +1,4 @@
-"""Step 6: lap modeller (reference port, MATLAB check, smooth twin, coupled model)."""
+"""Lap modeller: reference port, MATLAB check, smooth twin, coupled model, propulsion power mode."""
 
 import csv
 from pathlib import Path
@@ -14,7 +14,7 @@ from aircrafter2.mission.lap_modeller import isa_density, performance_modeller
 from aircrafter2.mission.smooth_lap import SmoothLapModel
 from aircrafter2.problems.lap_mdo import build_lap_mdo_problem, load_lap_mdo_config
 
-from .conftest import CONFIGS
+from .conftest import CONFIGS, check_partials_fd
 
 MATLAB_CSV = Path(__file__).parent / "data" / "matlab_reference.csv"
 GRID = [(5, 1.2, 6, 20), (7, 1.5, 9, 25), (4, 1.5, 6, 18), (6, 1.0, 5, 28), (5, 1.5, 8, 15), (3, 1.0, 5, 22),
@@ -153,3 +153,39 @@ def test_turn_below_decel_table_keeps_speed():
     assert v == 20.0 and t == pytest.approx(np.pi / 0.6)
     v, _ = leg_calc_turn(v_dec, om, t_dec, 20.0, np.pi, v_om, matlab_compat=True)
     assert np.isnan(v)
+
+
+# --- lap model, propulsion mode ---------------------------------------------------------------------
+def _lap(power_mode="propulsion", **vals):
+    p = om.Problem(reports=False)
+    p.model.add_subsystem("lap", SmoothLapModel(power_mode=power_mode), promotes=["*"])
+    p.setup(force_alloc_complex=True)
+    base = dict(m=3.0, S=0.3, V=25.0, rho=1.18, CD0=0.025, CD1=0.0, k=0.06, CL_max=1.3, CL_to=1.3,
+                E_avail=1.2e5, g=9.81, T_coeffs=np.array([20.0, -0.3, -0.004, 0.0]),
+                P_coeffs=np.array([400.0, 0.0, 0.0, 0.0]))
+    base.update(vals)
+    for k, v in base.items():
+        if k in ("T_coeffs", "P_coeffs") and power_mode != "propulsion":
+            continue
+        p.set_val(k, v)
+    p.run_model()
+    return p
+
+
+def test_lap_energy_with_constant_battery_power():
+    p = _lap()
+    t3 = p.get_val("ThreeLapTime")[0]
+    assert p.get_val("energy_3laps")[0] == pytest.approx(400.0 * (t3 + 3 * 3.0), rel=1e-9)
+    assert p.get_val("thrust_margin_static")[0] == pytest.approx(20.0 - p.get_val("Tstatic")[0], rel=1e-12)
+
+
+def test_headwind_slows_the_lap():
+    calm = _lap().get_val("ThreeLapTime")[0]
+    windy = _lap(wind=4.0).get_val("ThreeLapTime")[0]
+    assert windy > calm
+    assert _lap(wind=0.0).get_val("ThreeLapTime")[0] == pytest.approx(calm, rel=1e-14)
+
+
+def test_lap_propulsion_partials():
+    p = _lap(wind=2.0)
+    check_partials_fd(p, atol=20.0, rtol=5e-3, skip=("lapCount",))  # FD truncation on the v^3 coefficient

@@ -1,4 +1,4 @@
-"""Step 5: geometry, aero->mass coupling components, coupled MDA."""
+"""Coupled aero + mass (aero_mass): geometry, aero->mass coupling components, coupled MDA."""
 
 import itertools
 

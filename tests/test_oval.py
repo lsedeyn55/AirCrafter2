@@ -1,4 +1,4 @@
-"""Step 4: oval lap model."""
+"""Oval lap model (fixed cruise speed)."""
 
 import numpy as np
 import openmdao.api as om

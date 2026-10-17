@@ -1,4 +1,4 @@
-"""Step 3 sanity check: NeuralFoil + VLM drag against hand calculations for one airfoil.
+"""Aero sanity check (wing_aero problem): NeuralFoil + VLM drag against hand calculations for one airfoil.
 
 Wing: rectangular, AR 6 (b = 1.5 m, c = 0.25 m), NACA 4412, 15 m/s, sea level.
 """

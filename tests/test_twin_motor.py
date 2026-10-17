@@ -135,7 +135,7 @@ def test_twin_powertrain_partials(n, topology):
 
 
 # --- full-model plumbing ---------------------------------------------------------------------------------
-def test_twin_config_loads_and_is_step7_plus_layout():
+def test_twin_config_is_full_mdo_plus_twin_layout():
     one = load_full_config(CONFIGS / "full_mdo.yaml")
     two = load_full_config(CONFIGS / "full_mdo_twin.yaml")
     assert (one.propulsion.n_motors, two.propulsion.n_motors) == (1, 2)
