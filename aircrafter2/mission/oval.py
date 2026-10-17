@@ -1,4 +1,4 @@
-"""Simple oval lap at constant speed (step 4).
+"""Simple oval lap at constant speed (used by the oval_lap problem).
 
 Two straights of length L_s and two 180-degree level turns at constant speed V and load
 factor n (developed from the LapTime component in archive/legacy/basic_perf.py):

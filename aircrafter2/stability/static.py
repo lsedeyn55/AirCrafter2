@@ -1,4 +1,4 @@
-"""Low-fidelity longitudinal static stability (step 7).
+"""Low-fidelity longitudinal static stability (used by full_mdo).
 
 Neutral point (stick-fixed, wing + tail; fuselage contribution neglected), e.g. Nelson,
 Flight Stability and Automatic Control, Ch. 2; Raymer, Ch. 16:

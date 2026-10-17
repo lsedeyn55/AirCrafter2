@@ -1,5 +1,5 @@
 % Reference outputs of the ORIGINAL AirCrafter performance_modeller.m (unchanged) for the
-% step 6 code check. Points span the inputs_file.m ranges. Writes tests/data/matlab_reference.csv.
+% lap modeller code check (lap_mdo). Points span the inputs_file.m ranges. Writes tests/data/matlab_reference.csv.
 % Run from a terminal:  matlab -batch "run('verification/matlab/run_reference.m')"
 here = fileparts(mfilename('fullpath'));            % AirCrafter2/verification/matlab
 repo = fileparts(fileparts(here));                  % AirCrafter2

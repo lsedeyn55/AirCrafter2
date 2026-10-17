@@ -326,7 +326,7 @@ def performance_modeller(assumptions, design, matlab_compat=False):
     matlab_compat=True reproduces the MATLAB exactly where it differs from the cleaned-up port:
     the stall speed is rounded to an integer, Vstall = round(sqrt(W / (0.5 rho Clmax S))), and
     that rounded value drives the stall check (1.2 round(Vstall) >= V), the lookup tables and the
-    Vstall output (PLAN §8, M1). Use it only for the step 6 code check against MATLAB.
+    Vstall output (PLAN §8, M1). Use it only for the code check against MATLAB (lap_mdo report).
 
     `assumptions`: dict with Cd0, Clmax, Clto, e, n, mu, eta, E, payload_fraction.
     `design`: dict with m [kg], b [m], AR, V [m/s], altitude [m],

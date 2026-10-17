@@ -1,4 +1,4 @@
-"""Step 4 problem: minimise the lap time of a simple oval at fixed cruise speed.
+"""Oval-lap problem: minimise the lap time of a simple oval at fixed cruise speed.
 
 One wing and airfoil, two aero points at the same speed:
 
@@ -14,9 +14,9 @@ One wing and airfoil, two aero points at the same speed:
                cl_margin_sec >= 0 at both points
                P_turn = D_turn V / eta <= P_available        (optional)
 
-Mass is fixed (W) until step 5. Without a power limit the problem favours a large wing, because
-at fixed speed only the turn radius matters, and a larger wing has more lift to spare. The
-bounds on b and c, plus the optional power constraint, keep it finite.
+Mass is fixed (W) here; aero_mass couples the G&G mass model. Without a power limit the problem
+favours a large wing, because at fixed speed only the turn radius matters, and a larger wing has
+more lift to spare. The bounds on b and c, plus the optional power constraint, keep it finite.
 """
 
 from typing import Literal
@@ -41,7 +41,7 @@ class OvalLapProblemConfig(BaseModel):
     aero: AeroConfig = AeroConfig()
     altitude: float = 400.0
     V: float = Field(20.0, gt=0, description="m/s, PLACEHOLDER fixed cruise and turn speed")
-    weight: float = Field(49.0, gt=0, description="N, PLACEHOLDER fixed weight until step 5")
+    weight: float = Field(49.0, gt=0, description="N, PLACEHOLDER fixed weight (aero_mass couples the G&G mass model)")
     straight_length: float = Field(1000 * FT, description="m; 1000 ft, the long leg in performance_modeller.m")
     n_struct: float = Field(5.0, description="structural load factor limit, assumptions_file.m")
     turn_clmax_ratio_min: float = Field(1.21, description="PLACEHOLDER: turn at <= C_L,max / 1.21 "

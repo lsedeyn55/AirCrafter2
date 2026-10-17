@@ -1,4 +1,4 @@
-"""Step 5: coupled aero + mass. MDA convergence grid, t/c trade sweep, optimisation.
+"""Coupled aero + mass. MDA convergence grid, t/c trade sweep, optimisation.
 
 Writes docs/problems/aero_mass.md. Run: .venv/bin/python examples/aero_mass.py
 """

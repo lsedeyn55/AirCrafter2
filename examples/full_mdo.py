@@ -1,4 +1,4 @@
-"""Step 7: full optimisation (outer enumeration of n_motors x prop, D4/D8), then the robustness suite on the
+"""Full optimisation (outer enumeration of n_motors x prop, D4/D8), then the robustness suite on the
 best design.
 
 Writes docs/problems/full_mdo.md. Run: .venv/bin/python examples/full_mdo.py [prop ...]

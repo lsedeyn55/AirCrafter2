@@ -1,4 +1,4 @@
-"""Step 6: lap modeller checks and the coupled lap-time optimisation; writes docs/problems/lap_mdo.md.
+"""Lap modeller checks and the coupled lap-time optimisation; writes docs/problems/lap_mdo.md.
 
 Run: .venv/bin/python examples/lap_mdo.py
 """
@@ -116,8 +116,8 @@ def main():
     w("## 3. Coupled lap model: minimise the 3-lap time\n")
     w("`configs/lap_mdo.yaml`. Mass from the G&G closure, polar CD = CD0 + CD1 CL + k CL^2")
     w("through three coupled aero points (cruise, mid, 0.95 C_L,max), C_L,max by the critical-section")
-    w("method. DVs: b, c, tc_scale, camber_scale, V. Electrical power <= 300 W is a PLACEHOLDER until")
-    w("step 7 adds propulsion.\n")
+    w("method. DVs: b, c, tc_scale, camber_scale, V. Electrical power <= 300 W is a PLACEHOLDER here")
+    w("(no propulsion model; full_mdo adds one).\n")
     w(f"Converged: **{res.success}**, {res.iter_count} iterations, {dt:.0f} s.\n")
     w("| Quantity | start | optimum |")
     w("|---|---:|---:|")
@@ -132,7 +132,7 @@ def main():
     w("  the turns. The optimiser exploits this: maximum camber (C_L,max up, tighter stall-limited turns)")
     w("  *and* a cruise L/D of ~4, because the extra drag buys power, up to the 300 W cap. A grid search")
     w("  over static Cd0 and e (AirCrafter 1.0) cannot see this; coupled gradients do.")
-    w("  Proposed fix for step 7: the power setting comes from the propulsion model (throttle or")
+    w("  Proposed fix (adopted in full_mdo): the power setting comes from the propulsion model (throttle or")
     w("  available power), not from the cruise drag; V is then the speed that power sustains.")
     w("- A two-point polar (CD0 + k CL^2 through cruise and one high-C_L point) was tried first and gave")
     w("  k < 0 at this kind of design (a highly cambered section at low cruise C_L is off its drag")

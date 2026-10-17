@@ -1,4 +1,4 @@
-"""Step 5: coupled aero + mass (MDF).
+"""Coupled aero + mass (MDF).
 
     airfoil (shape DVs -> Kulfan, t/c, t at spar, A/c^2, P/c)
     geometry (b, c, l_ht, tails, cargo bay -> S, chords, l_tb, S_cb, V_h, V_v)
@@ -12,7 +12,7 @@ Coupling: W (mass -> aero via the lift balance); C_m and C_L,alpha (aero -> mass
 
 The optimisation minimises cruise drag at fixed speed. With mass in the loop, a thicker section
 costs profile drag but buys a lighter spar (larger tube radius), which lowers W and with it the
-induced drag. That is the step 5 trade.
+induced drag. That is the trade this problem exists to show.
 """
 
 from typing import Literal
@@ -74,7 +74,7 @@ class AeroMassProblemConfig(BaseModel):
 
 
 def load_aero_mass_config(path):
-    """Load a step 5 YAML: ``mass_config`` names the base mass YAML; ``mass`` overrides it."""
+    """Load an aero_mass YAML: ``mass_config`` names the base mass YAML; ``mass`` overrides it."""
     from pathlib import Path
 
     from ..config.loader import _merge, load_yaml

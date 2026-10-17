@@ -111,7 +111,7 @@ class LiftCurveSlope(om.ExplicitComponent):
 
 
 class WingPerformance(om.ExplicitComponent):
-    """CD = CDi (VLM) + CDp (NeuralFoil strips) + CD_extra (parasite, later steps); L, D, L/D."""
+    """CD = CDi (VLM) + CDp (NeuralFoil strips) + CD_extra (parasite; set by full_mdo); L, D, L/D."""
 
     def setup(self):
         for name, val in [("CL", 0.5), ("CDi", 0.01), ("CDp", 0.01), ("CD_extra", 0.0)]:

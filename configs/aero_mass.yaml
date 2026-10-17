@@ -1,4 +1,4 @@
-# Step 5: coupled aero + mass (MDF), minimise cruise drag at fixed speed.
+# Coupled aero + mass (MDF), minimise cruise drag at fixed speed.
 # Schema: aircrafter2/problems/aero_mass.py (AeroMassProblemConfig). SI units.
 # Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md).
 
@@ -9,7 +9,7 @@ mass_config: mass_garcia_gamboa_2022.yaml   # base mass-model config, relative t
 mass:                    # overrides merged over mass_config
   inputs:
     n: 5.0               # assumptions_file.m load factor
-    m_sys: 1.2           # kg, PLACEHOLDER propulsion + battery + avionics (step 7 replaces it)
+    m_sys: 1.2           # kg, PLACEHOLDER propulsion + battery + avionics (full_mdo computes it from the powertrain)
     m_pay: 1.5           # kg, PLACEHOLDER payload
     r_tb: 0.008          # m, PLACEHOLDER tail boom radius (16 mm tube)
     x_gd: 0.25           # PLACEHOLDER ground-test hold point (chord fraction)

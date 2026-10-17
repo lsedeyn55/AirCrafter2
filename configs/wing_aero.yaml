@@ -1,4 +1,4 @@
-# Step 3: aero-only rectangular wing, minimise CD at fixed lift and fixed wing area.
+# Wing aero: aero-only rectangular wing, minimise CD at fixed lift and fixed wing area.
 # Schema: aircrafter2/problems/wing_aero.py (WingAeroProblemConfig). SI units; alpha in deg.
 
 airfoil:
@@ -14,7 +14,7 @@ aero:
 
 altitude: 400.0           # m, inputs_file.m (Wichita ~400 m)
 V: 20.0                   # m/s, PLACEHOLDER cruise speed
-weight: 49.0              # N (5 kg), PLACEHOLDER: fixed lift until step 5 couples mass
+weight: 49.0              # N (5 kg), PLACEHOLDER: fixed lift (aero_mass couples mass)
 S: 0.375                  # m^2, PLACEHOLDER fixed wing area
 tc_min: 0.10              # PLACEHOLDER spar room (OPEN_QUESTIONS Q5)
 clmax_ratio_min: 1.44     # (1.2)^2: cruise at >= 1.2 V_stall, as in the lap modeller

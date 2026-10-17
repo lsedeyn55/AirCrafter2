@@ -1,5 +1,5 @@
-# Step 6: AirCrafter lap modeller coupled to aero + mass (MDF); minimise the 3-lap time.
-# Schema: aircrafter2/problems/lap_mdo.py (LapMDOConfig, extends the step 5 schema). SI units.
+# AirCrafter lap modeller coupled to aero + mass (MDF); minimise the 3-lap time.
+# Schema: aircrafter2/problems/lap_mdo.py (LapMDOConfig, extends the aero_mass schema). SI units.
 # Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md).
 
 airfoil: {seed: naca4412, n_modes: 0}
@@ -9,7 +9,7 @@ mass_config: mass_garcia_gamboa_2022.yaml   # base mass-model config, relative t
 mass:                    # overrides merged over mass_config
   inputs:
     n: 5.0               # assumptions_file.m load factor
-    m_sys: 1.2           # kg, PLACEHOLDER propulsion + battery + avionics (step 7 replaces it)
+    m_sys: 1.2           # kg, PLACEHOLDER propulsion + battery + avionics (full_mdo computes it from the powertrain)
     m_pay: 1.5           # kg, PLACEHOLDER payload
     r_tb: 0.008          # m, PLACEHOLDER tail boom radius (16 mm tube)
     x_gd: 0.25           # PLACEHOLDER ground-test hold point (chord fraction)
@@ -32,13 +32,13 @@ wall_ratio_max: 0.2      # thin-wall validity of the tube equations
 r_tube_min: 0.005        # m, PLACEHOLDER smallest spar tube (10 mm OD); sets the thinnest buildable section
 
 polar_turn_frac: 0.95    # three-point polar: cruise, mid, and C_L = 0.95 C_L,max (no extrapolation)
-eta: 0.7                 # assumptions_file.m, until propulsion (step 7)
+eta: 0.7                 # assumptions_file.m; no propulsion model here (full_mdo uses the powertrain)
 mu_roll: 0.02            # assumptions_file.m
 takeoff_distance: 100.0  # m, inputs_file.m
 mission_time: 300.0      # s, inputs_file.m
 E_avail: 288000.0        # J = 0.8 * 100 Wh, assumptions_file.m
 n_struct: 5.0            # assumptions_file.m
-power_available: 300.0   # W electrical, PLACEHOLDER until propulsion (step 7)
+power_available: 300.0   # W electrical, fixed PLACEHOLDER; full_mdo computes it from the powertrain
 
 design_variables:
   b: {lower: 0.9, upper: 1.52}

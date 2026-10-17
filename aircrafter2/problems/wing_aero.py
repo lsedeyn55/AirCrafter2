@@ -1,10 +1,10 @@
-"""Step 3 problem: aero-only rectangular wing at fixed lift.
+"""Wing-aero problem: aero-only rectangular wing at fixed lift.
 
     minimise   CD                       (= drag, since q and S are fixed)
     w.r.t.     b, c, alpha, tc_scale, camber_scale (and bump modes, if any)
     subject to L = W                    (fixed lift)
                b c = S                  (fixed wing area, i.e. fixed wing loading)
-               tc_max >= tc_min         (room for the spar; PLACEHOLDER until step 5 couples mass)
+               tc_max >= tc_min         (room for the spar; PLACEHOLDER, aero_mass couples mass)
                CL_max / CL >= 1.2^2     (cruise at >= 1.2 V_stall, as in the lap modeller)
                cl_margin_sec >= 0       (no stalled strip)
 """

@@ -1,4 +1,4 @@
-"""XDSM of the AirCrafter 2.0 MDF architecture (docs/PLAN.md §4, as built in step 7).
+"""XDSM of the AirCrafter 2.0 MDF architecture (docs/PLAN.md §4, as built in full_mdo).
 
 write_tex   pyXDSM TikZ source (compile with LaTeX, e.g. Overleaf; needs the pyxdsm .sty files).
 draw_pdf    a matplotlib quick-look version (no LaTeX needed).

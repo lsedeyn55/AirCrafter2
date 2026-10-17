@@ -1,18 +1,19 @@
-"""Step 6: the AirCrafter lap modeller coupled to aero + mass (MDF).
+"""The AirCrafter lap modeller coupled to aero + mass (MDF).
 
-    [step 5 model: airfoil, geometry, MDA{cruise aero, L = W balance, G&G mass}]
+    [aero_mass model: airfoil, geometry, MDA{cruise aero, L = W balance, G&G mass}]
     mid and near-C_L,max aero points -> three-point drag polar CD = CD0 + CD1 CL + k CL^2
     SmoothLapModel(m = m_total, S, V, polar, CL_max)  -> Lap1time, ThreeLapTime, laps_frac, margins
 
     minimise   ThreeLapTime  (placeholder objective; year-specific scoring comes later)
     w.r.t.     b, c, tc_scale, camber_scale, V
     subject to stall_margin >= 0 (V >= 1.2 V_stall), turn_speed_margin >= 0,
-               Preq <= power_available (PLACEHOLDER until propulsion, step 7),
+               Preq <= power_available (fixed PLACEHOLDER: no propulsion model here),
                energy for 3 laps <= usable energy, spar wall ratio and minimum tube radius,
                no stalled strip at cruise.
 
 The lap model replaces the static Cd0, e, Clmax and fixed mass of AirCrafter 1.0 with the
-coupled outputs. The propulsion efficiency eta stays the 1.0 assumption (0.7) until step 7.
+coupled outputs. The propulsion efficiency eta stays the 1.0 assumption (0.7); full_mdo replaces both eta and the
+power limit with the powertrain model.
 """
 
 import openmdao.api as om
@@ -28,14 +29,15 @@ from .wing_aero import Bounds
 
 class LapMDOConfig(AeroMassProblemConfig):
     polar_turn_frac: float = Field(0.95, description="polar's high point at C_L = frac * C_L,max")
-    eta: float = Field(0.7, description="propulsive efficiency, assumptions_file.m (until step 7)")
+    eta: float = Field(0.7, description="propulsive efficiency, assumptions_file.m (no propulsion model here)")
     mu_roll: float = Field(0.02, description="rolling friction, assumptions_file.m")
     takeoff_distance: float = Field(100.0, description="m, inputs_file.m")
     mission_time: float = Field(300.0, description="s, inputs_file.m")
     E_avail: float = Field(0.8 * 100 * 3600.0, description="J, 80 % of 100 Wh (assumptions_file.m)")
     n_struct: float = Field(5.0, description="assumptions_file.m")
-    power_available: float = Field(300.0, description="W electrical, PLACEHOLDER until step 7")
-    lap_objective: str = Field("ThreeLapTime", description="placeholder objective (scoring plug-in, step 8)")
+    power_available: float = Field(300.0, description="W electrical, fixed PLACEHOLDER: this problem has no propulsion "
+                                   "model; full_mdo computes the available power from the powertrain")
+    lap_objective: str = Field("ThreeLapTime", description="placeholder objective (full_mdo uses a scoring plug-in)")
 
 
 def default_lap_dvs():
@@ -99,7 +101,7 @@ def build_lap_mdo_problem(cfg: LapMDOConfig, driver=True):
 
 
 def load_lap_mdo_config(path):
-    """Like load_aero_mass_config, for step 6 YAMLs."""
+    """Like load_aero_mass_config, for lap_mdo YAMLs."""
     from pathlib import Path
 
     from ..config.loader import _merge, load_yaml

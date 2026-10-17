@@ -1,4 +1,4 @@
-"""Step 7: the full AirCrafter 2.0 MDF problem (decision B: propulsion sets the power).
+"""The full AirCrafter 2.0 MDF problem (decision B: propulsion sets the power).
 
     airfoil, geometry (planform, tails, cargo bay)
     powertrain (APC prop + motor + battery at fixed throttle) -> T(v), P(v), T_static, masses
@@ -260,7 +260,7 @@ def build_full_model(m, cfg: FullMDOConfig):
         m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
     m.add_subsystem("mda", FullMDA(cfg=cfg), promotes=["*"])
 
-    # polar from three coupled aero points (step 6)
+    # polar from three coupled aero points (as in lap_mdo)
     m.add_subsystem("turn_alpha", TurnAlpha(frac=cfg.polar_turn_frac))
     m.connect("alpha_cruise", "turn_alpha.alpha_c")
     m.connect("cruise.vlm.wing_perf.CL", "turn_alpha.CL_c")

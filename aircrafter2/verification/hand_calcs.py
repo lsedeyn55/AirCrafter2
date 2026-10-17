@@ -1,4 +1,4 @@
-"""Independent hand calculations used to sanity-check the aero model (step 3).
+"""Independent hand calculations used to sanity-check the aero model (wing_aero problem).
 
 lifting_line_rect
     Prandtl lifting-line theory solved with Glauert's Fourier series for an untwisted

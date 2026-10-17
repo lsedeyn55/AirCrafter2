@@ -1,4 +1,4 @@
-# Step 7: full AirCrafter 2.0 MDF problem: propulsion (decision B), stability, parasite drag.
+# Full AirCrafter 2.0 MDF problem: propulsion (decision B), stability, parasite drag.
 # Schema: aircrafter2/problems/full_mdo.py (FullMDOConfig). SI units. PLACEHOLDER = not USYD data.
 # Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md).
 

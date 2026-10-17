@@ -22,7 +22,7 @@ performance_modeller.m), reformulated so that gradients are exact:
   where laps(t) = 1 + (t - (lap1 + t_r)) / (lap_other + t_r) mirrors the MATLAB counting loop.
   lapCount (integer) is reported only.
 
-power_mode="propulsion" (decision B, step 7) replaces AirCrafter's power rule:
+power_mode="propulsion" (decision B, used by full_mdo) replaces AirCrafter's power rule:
 * thrust T(v) and battery power P(v) come from the powertrain (cubic fits in v, propulsion/
   powertrain.py) at a fixed throttle; there is no speed cap, so the aircraft accelerates on the
   straights towards the speed where T = D. Input V is that equilibrium cruise speed (solved in
