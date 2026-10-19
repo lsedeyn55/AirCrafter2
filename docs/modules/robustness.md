@@ -142,11 +142,13 @@ Run with `aircrafter2 run configs/full_mdo_rdo.yaml`. `--robust` and `--no-robus
 
     uv pip install --python .venv/bin/python "pyoptsparse @ git+https://github.com/mdolab/pyoptsparse@v2.16.1"
 
-IPOPT needs the Ipopt library. Without root, build Ipopt 3.14 and ThirdParty-Mumps from coin-or into a user prefix
-(e.g. `~/.local/opt/ipopt`, using the system BLAS/LAPACK). Then:
+IPOPT needs the Ipopt library, which isn't on PyPI either. `scripts/install_ipopt.sh` builds Ipopt 3.14.20 with
+MUMPS 3.0.14 from coin-or into the virtual environment itself (`.venv/lib`, `.venv/include/coin-or`; no root, system
+BLAS/LAPACK and gfortran, build tree in the git-ignored `third_party/ipopt_build`), then builds cyipopt 1.7.0 against
+it with an rpath to `.venv/lib`. Deleting `.venv` removes it all. The rpath is absolute, so rerun the script after
+moving the project folder.
 
-    PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig LDFLAGS="-Wl,-rpath,$PREFIX/lib" \
-        uv pip install --python .venv/bin/python --no-binary cyipopt cyipopt
+    scripts/install_ipopt.sh
 
 ## References
 
