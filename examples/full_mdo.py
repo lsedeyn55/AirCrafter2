@@ -14,6 +14,7 @@ import numpy as np
 
 from aircrafter2.problems.full_mdo import build_full_problem, check_fixed_limits, load_full_config
 from aircrafter2.robustness.suite import monte_carlo, sensitivities, worst_cases
+from aircrafter2.robustness.uncertainty import load_uncertainty, resolve
 
 ROOT = Path(__file__).resolve().parents[1]
 PROPS = sys.argv[1:] or ["10x7E", "11x7E", "12x8E"]
@@ -106,12 +107,13 @@ def main():
     w("the battery to exactly three laps, so it has no energy reserve by construction. A real mission")
     w("objective (or an explicit reserve constraint) is needed before the battery size means anything.\n")
 
-    w("## 4. Monte Carlo on the best design (n = 40, independent uniforms)\n")
-    spreads = {"f_tb": 0.3, "f_cb": 0.3, "f_gear": 0.3, "f_ht": 0.3, "f_vt": 0.3, "e_spec": 0.1, "R_cell": 0.3,
-               "Kv": 0.05, "Rm": 0.2, "m_avionics": 0.15, "m_motor": 0.1, "eta_h": 0.1}
-    w("Spreads (relative half-widths, PLACEHOLDERS): " + ", ".join(f"{k} +/-{100 * s:.0f} %" for k, s in spreads.items()))
+    w("## 4. Monte Carlo on the best design (n = 40, independent)\n")
+    # one source for the spreads: configs/uncertainty.yaml (also used by robust design optimisation)
+    dists = resolve(load_uncertainty(ROOT / "configs" / "uncertainty.yaml"), lambda name: v(prob, name))
+    w("Distributions (configs/uncertainty.yaml, PLACEHOLDERS, OPEN_QUESTIONS Q32): " + ", ".join(
+        f"{d.name} {d.kind} {d.mean:.4g} +/- {d.scale:.3g}" for d in dists))
     w("")
-    mc = monte_carlo(prob, spreads, CHECK, n=40)
+    mc = monte_carlo(prob, dists, CHECK, n=40)
     S = mc["samples"]
     w(f"Failed analyses: {mc['failed']} of 40.\n")
     w("| Output | mean | std | min | max |")

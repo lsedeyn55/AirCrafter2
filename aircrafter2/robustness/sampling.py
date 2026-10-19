@@ -1,0 +1,101 @@
+"""Parallel evaluation of the deterministic model at many parameter points (Monte Carlo, quadrature checks).
+
+Each worker process builds the deterministic problem once, sets the design, converges the nominal point, and then
+runs its share of the samples, warm-starting each from the previous converged state. A sample whose MDA fails is
+retried once from the nominal converged state; if it fails again it is recorded as MDA non-convergence (its row is
+NaN), never as a constraint violation.
+
+Memory: one problem is ~0.4-2 GB, so keep `workers` small (5 on a 14 GB machine).
+"""
+
+import os
+import time
+from multiprocessing import get_context
+
+import numpy as np
+
+_W = {}
+
+
+def _value(prob, name):
+    return float(np.ravel(prob.get_val(name))[0])
+
+
+def _init(cfg, dv, outputs):
+    import warnings
+
+    warnings.filterwarnings("ignore")
+    from ..problems.full_mdo import build_full_problem
+
+    prob = build_full_problem(cfg, driver=False)
+    for k, v in dv.items():
+        prob.set_val(k, v)
+    prob.run_model()
+    _W.update(prob=prob, outputs=outputs, nominal=prob.model._outputs.asarray(copy=True),
+              inputs={k: _value(prob, k) for k in dv})
+
+
+def _restore_nominal():
+    prob = _W["prob"]
+    prob.model._outputs.set_val(_W["nominal"])  # includes the auto-IVC outputs: reset the design too
+    for k, v in _W["inputs"].items():
+        prob.set_val(k, v)
+
+
+def _run(task):
+    i, vals = task
+    prob = _W["prob"]
+    for attempt in ("warm", "nominal"):
+        if attempt == "nominal":
+            _restore_nominal()
+        for k, v in vals.items():
+            prob.set_val(k, v)
+        try:
+            prob.run_model()
+            return i, [_value(prob, o) for o in _W["outputs"]], attempt
+        except Exception:  # MDA non-convergence (AnalysisError) or NaN residuals
+            continue
+    _restore_nominal()
+    return i, [np.nan] * len(_W["outputs"]), "failed"
+
+
+def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
+    """Run the deterministic model of `cfg` at design `dv` for each {param: value} in `rows`.
+
+    Returns dict(values=(n, len(outputs)) array with NaN rows for MDA failures, failed=[indices],
+    retried=[indices recovered from the nominal state], wall=s, cpu_workers=workers).
+    """
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
+    n = len(rows)
+    chunksize = chunksize or max(1, n // (4 * workers))
+    t = time.perf_counter()
+    with get_context("forkserver").Pool(workers, initializer=_init, initargs=(cfg, dv, list(outputs))) as pool:
+        res = list(pool.imap_unordered(_run, list(enumerate(rows)), chunksize=chunksize))
+    wall = time.perf_counter() - t
+    values = np.full((n, len(outputs)), np.nan)
+    failed, retried = [], []
+    for i, row, how in res:
+        values[i] = row
+        if how == "failed":
+            failed.append(i)
+        elif how == "nominal":
+            retried.append(i)
+    return dict(values=values, failed=sorted(failed), retried=sorted(retried), wall=wall, workers=workers)
+
+
+def violation_probabilities(values, outputs, constraints):
+    """P(violation) per constraint over the converged rows. constraints: [(name, kwargs)] (full_constraints)."""
+    idx = {o: j for j, o in enumerate(outputs)}
+    ok = ~np.isnan(values).any(axis=1)
+    out = {}
+    for name, kw in constraints:
+        if name not in idx:
+            continue
+        col = values[ok, idx[name]]
+        bad = np.zeros(len(col), bool)
+        if kw.get("lower") is not None:
+            bad |= col < kw["lower"]
+        if kw.get("upper") is not None:
+            bad |= col > kw["upper"]
+        out[name] = float(bad.mean()) if len(col) else float("nan")
+    return out

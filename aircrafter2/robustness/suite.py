@@ -6,9 +6,12 @@ worst_cases     one-at-a-time perturbations, re-analysed with the full MDA:
                   empty mass + X % (ballast), thrust - Y % (lap model), battery capacity - Z %, headwind.
                 Thrust is scaled in the lap model only; the MDA's level-speed balance keeps the nominal thrust
                 (that speed sets the stall margin and the structural design speed).
-monte_carlo     random sampling of uncertain inputs (independent uniforms, +/- spread), full MDA per
-                sample; returns objective statistics and constraint-violation probabilities. Run it on final
-                candidates only (each sample is a full coupled analysis).
+monte_carlo     random sampling of uncertain inputs (independent; relative uniform spreads, or the
+                distributions of configs/uncertainty.yaml), full MDA per sample; returns objective statistics
+                and constraint-violation probabilities. Run it on final candidates only (each sample is a
+                full coupled analysis).
+
+Robust design optimisation (robustness inside the optimiser) is in rdo_problem.py.
 """
 
 import numpy as np
@@ -53,16 +56,23 @@ def worst_cases(prob, outputs, mass_pct=10.0, thrust_pct=10.0, capacity_pct=10.0
 
 
 def monte_carlo(prob, spreads, outputs, n=40, seed=0):
-    """spreads: {input: relative half-width}; each input ~ U(x (1 - s), x (1 + s)).
+    """spreads: {input: relative half-width}, each input ~ U(x (1 - s), x (1 + s)); or a list of
+    uncertainty.Dist (e.g. resolve(load_uncertainty("configs/uncertainty.yaml"), ...)), sampled by inverse CDF.
 
     Returns dict(samples=array (n, len(outputs)), names=outputs, failed=count).
     """
     rng = np.random.default_rng(seed)
-    nominal = {k: _val(prob, k) for k in spreads}
+    if isinstance(spreads, dict):
+        names = list(spreads)
+        draw = {k: (lambda u, k=k, s=s: nominal[k] * (1 + s * (2 * u - 1))) for k, s in spreads.items()}
+    else:
+        names = [d.name for d in spreads]
+        draw = {d.name: d.ppf for d in spreads}
+    nominal = {k: _val(prob, k) for k in names}
     rows, failed = [], 0
     for _ in range(n):
-        for k, s in spreads.items():
-            prob.set_val(k, nominal[k] * (1 + s * rng.uniform(-1, 1)))
+        for k in names:
+            prob.set_val(k, draw[k](rng.uniform()))
         try:
             prob.run_model()
             rows.append([_val(prob, o) for o in outputs])

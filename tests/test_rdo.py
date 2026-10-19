@@ -143,3 +143,20 @@ def test_rdo_off_matches_pre_rdo_reference(cfg_name):
         assert now[part].keys() == ref[part].keys(), part
         for k in ref[part]:
             np.testing.assert_allclose(now[part][k], ref[part][k], rtol=1e-9, atol=1e-12, err_msg=f"{part}: {k}")
+
+
+# --- post-optimality Monte Carlo: relative spreads (old form) and distributions (shared spreads) ---------
+def test_monte_carlo_accepts_spreads_and_distributions():
+    from aircrafter2.robustness.suite import monte_carlo
+
+    p = om.Problem(reports=False)
+    p.model.add_subsystem("c", om.ExecComp("y = 2 * a + w"), promotes=["*"])
+    p.setup()
+    p.set_val("a", 10.0)
+    p.set_val("w", 0.0)
+    old = monte_carlo(p, {"a": 0.1}, ["y"], n=200)
+    assert old["failed"] == 0 and np.all(np.abs(old["samples"][:, 0] - 20.0) <= 2.0 + 1e-12)
+    new = monte_carlo(p, [Dist("a", "uniform", 10.0, 1.0), Dist("w", "uniform", 1.5, 1.5)], ["y"], n=200)
+    y = new["samples"][:, 0]
+    assert y.min() >= 18.0 - 1e-12 and y.max() <= 25.0 + 1e-12 and abs(y.mean() - 21.5) < 0.3
+    assert p.get_val("a")[0] == 10.0 and p.get_val("w")[0] == 0.0  # inputs restored
