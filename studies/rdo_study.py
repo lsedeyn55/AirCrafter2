@@ -467,6 +467,8 @@ def report_pareto(w):
     pts = [p for p in pareto_points() if p["ok"]]
     if not pts:
         return
+    if (OUT / "robust_single_10x7E.json").exists():
+        pts.append(dict(load("robust_single_10x7E"), tag="robust_single_10x7E (k = 1)"))
     det = load("det_single_10x7E_r02")
     w("## 4. Pareto front: μ against σ of the 3-lap time (checkpoint 4)\n")
     w("ε-constraint: minimise μ subject to σ ≤ ε (robust constraints as in §2), plus the k = 0 (min μ) and k = 10 "
@@ -484,6 +486,15 @@ def report_pareto(w):
         w(f"| deterministic optimum | - | {m[0]:.3f} | {m[1]:.3f} | {det['dv']['capacity']:.3f} | "
           f"{det['dv']['b']:.3f} | {det['its']} | {det['time'] / 60:.1f} | {det['ok']} |")
     w("")
+    lo, hi = rows[0]["summary"]["score"], rows[-1]["summary"]["score"]
+    lo_b, hi_b = rows[0]["dv"]["b"], rows[-1]["dv"]["b"]
+    w(f"**Reading.** The front is short and flat: from min μ to min σ, σ falls by {hi['sigma'] - lo['sigma']:.3f} s "
+      f"({100 * (1 - lo['sigma'] / hi['sigma']):.0f} %) for {lo['mu'] - hi['mu']:.3f} s of μ. Along it the capacity "
+      f"hardly moves (the robust energy constraint sets it); σ is bought with span (b {hi_b:.2f} → {lo_b:.2f} m). "
+      "Every point is far from the deterministic "
+      "optimum in σ: most of the σ reduction comes from the robust constraints (§2), not from the weight k, so the "
+      "choice of k matters little here. The front is in UDR estimates, about 13 % low on σ against the Monte Carlo "
+      "(§1-2); the shape, not the level, is the result.\n")
 
 
 def report_enumeration(w):
@@ -520,11 +531,38 @@ def report_enumeration(w):
     rank = lambda f: [lab for lab, d, r in sorted(rows, key=f)]  # noqa: E731
     w("\nRanking, deterministic (nominal 3-lap time): " + " < ".join(rank(lambda x: x[1]["nominal"]["ThreeLapTime"])))
     w("\nRanking, robust (μ + σ): " + " < ".join(rank(lambda x: x[2]["summary"]["score"]["robust"])) + "\n")
+    from scipy.stats import norm
+    beta = load_full_config(ROOT / "configs" / "full_mdo_rdo.yaml").robust.beta
+    same = rank(lambda x: x[1]["nominal"]["ThreeLapTime"]) == rank(lambda x: x[2]["summary"]["score"]["robust"])
+    w("**Reading.** " + ("The ranking does not change: robustness costs every case a little, and none enough to "
+                         "swap places. " if same else "**The ranking changes** under RDO. ")
+      + "σ reduction (deterministic → robust, same estimator for both): " + ", ".join(
+          f"{lab} {100 * (1 - ms(r)[1] / ms(d)[1]):.0f} %" for lab, d, r in rows)
+      + ". The source of risk differs by case: at the deterministic optima the binding uncertain "
+      "constraints for the 10x7E designs are the energy margin and the static margin (each violated about half the "
+      "time), while the 8x6E twin has energy to spare and only the static margin is at risk.\n")
+    flag = []
+    for lab, d, r in rows:
+        if "mc" in r:
+            flag += [f"{lab}: {n} {100 * x:.1f} %" + (f" (deterministic {100 * d['mc']['all']['p_violation'][n]:.1f} %)"
+                                                      if "mc" in d else "")
+                     for n, x in r["mc"]["all"]["p_violation"].items() if x > norm.cdf(-beta)]
+    if flag:
+        w(f"Constraints violated more often than Φ(−{beta:g}) = {100 * norm.cdf(-beta):.1f} % in the robust designs "
+          "(Monte Carlo over all 15): " + "; ".join(flag) + ". Constraints outside `robust.robust_constraints` "
+          "(e.g. rpm_margin) are only enforced at the reference node, so nothing bounds their probability, and RDO "
+          "can make them worse, as it does for rpm_margin on the 10x7E twin. Adding one to the list is a config "
+          "change, not done here so that every case uses the same settings (OPEN_QUESTIONS Q33). On the 10x7E "
+          "twin the robust μ + σ lead over the single motor is about 3 s, far more than a robust rpm_margin is "
+          "likely to cost, but that is not verified.\n")
     if (OUT / "screen_twin.json").exists():
         sc = load("screen_twin")
         w("**5a. Screening check on the twin designs.** First-order variance covered by the single design's 7 "
           "parameters, at each twin's deterministic optimum: " + "; ".join(
-              f"{k}: " + ", ".join(f"{q} {100 * c:.0f} %" for q, c in v.items()) for k, v in sc.items()) + ".\n")
+              f"{k}: " + ", ".join(f"{q} {100 * c:.0f} %" for q, c in v.items()) for k, v in sc.items())
+          + ". The static margin is below the 90 % target on both twins (the screened-out parameters matter more for "
+          "it there), so a set screened on each twin could differ; the Monte Carlo above, over all 15 parameters, "
+          "includes what the screening leaves out.\n")
 
 
 def report_cost(w):
@@ -539,14 +577,20 @@ def report_cost(w):
     if not pairs:
         return
     w("## 6. Cost: deterministic vs robust (checkpoint 4)\n")
-    w("Wall time on this machine (16 cores, 14 GB), each optimisation one process with 3 BLAS threads (two ran at "
-      "once, so these are upper bounds), from the config start point, SLSQP. Robust: UDR, d = 7, N = 15 nodes, "
+    w("Wall time on this machine (16 cores, 14 GB), each optimisation one process with 3 BLAS threads (two or three "
+      "robust runs and a Monte Carlo ran at once, so these are upper bounds), from the config start point, SLSQP. Robust: UDR, d = 7, N = 15 nodes, "
       "serial (no MPI).\n")
     w("| Case | det. time | det. SLSQP its | robust time | robust SLSQP its | time ratio | per-iteration ratio |")
     w("|---|---:|---:|---:|---:|---:|---:|")
     for lab, d, r in pairs:
         w(f"| {lab} | {d['time']:.0f} s | {d['its']} | {r['time'] / 60:.1f} min | {r['its']} | "
           f"{r['time'] / d['time']:.1f} | {(r['time'] / r['its']) / (d['time'] / d['its']):.1f} |")
+    cli = ROOT / "outputs" / "rdo" / "cli_full_mdo_rdo" / "results.json"
+    if cli.exists():
+        rc = json.loads(cli.read_text())["robust"]
+        w(f"\nThe same single 10x7E robust problem run through the CLI (`aircrafter2 run configs/full_mdo_rdo.yaml`, "
+          f"with less running alongside) took {rc['time_s'] / 60:.1f} min and reached the same optimum "
+          f"(μ + σ = {rc['objective_value']:.4f} s).")
     w("\nFor scale: the 1024-sample Monte Carlo used to *check* one design took about 6 min on 5 worker processes "
       "(≈ 30 CPU-min), and a Monte-Carlo-in-the-loop optimisation at that sample size would be roughly 1024/15 ≈ "
       "70 times the robust cost above.\n")
@@ -575,7 +619,7 @@ def figures():
         bounds = dict(full_constraints(cfg))
         panels = [("energy_margin", 1 / 3600, "energy margin (Wh)"), ("SM", 1, "static margin"),
                   ("thrust_margin_static", 1, "take-off thrust margin (N)"), ("stall_margin", 1, "stall margin (m/s)")]
-        fig, axs = figure(1.0, 0.55, nrows=2, ncols=2)
+        fig, axs = figure(1.0, 0.7, nrows=2, ncols=2, layout="constrained")
         for ax, (q, sc, lab) in zip(axs.ravel(), panels):
             for (t, name), c in zip(cases, PALETTE):
                 _, V, outs = _mc(t)
@@ -586,13 +630,18 @@ def figures():
                     ax.axvline(bounds[q][side] * sc, color="k", lw=0.9, ls="--")
             ax.set_xlabel(lab)
             ax.set_yticks([])
-        axs[0, 0].legend(frameon=False)
+        h, lab = axs[0, 0].get_legend_handles_labels()
+        fig.legend(h, lab + [], loc="outside upper center", ncols=2, frameon=False)
         files.append(save(fig, fdir / "constraint_margins.pdf"))
     pts = [p for p in pareto_points() if p["ok"]]
     if pts:
         fig, ax = figure(0.6, 0.75)
         P = sorted(((p["summary"]["score"]["sigma"], p["summary"]["score"]["mu"]) for p in pts))
-        ax.plot([x for x, _ in P], [y for _, y in P], "o-", color=PALETTE[0], label="robust (ε-constraint)")
+        if (OUT / "robust_single_10x7E.json").exists():
+            sc = load("robust_single_10x7E")["summary"]["score"]
+            P = sorted(P + [(sc["sigma"], sc["mu"])])
+            ax.plot([sc["sigma"]], [sc["mu"]], "D", color=PALETTE[2], ms=7, zorder=3, label="k = 1 (§2)")
+        ax.plot([x for x, _ in P], [y for _, y in P], "o-", color=PALETTE[0], label="robust (ε-constraint, k = 0, 10)")
         det = load("det_single_10x7E_r02")
         if "udr" in det:
             m = det["udr"]["moments"]["ThreeLapTime"]
@@ -627,16 +676,67 @@ def rescore():
         dump(f.stem, d)
 
 
+def results_json():
+    """Compact copy of the results in git (docs/studies/rdo_study_results.json; outputs/ is not tracked)."""
+    keep = {}
+    for f in sorted(OUT.glob("*.json")):
+        d = json.loads(f.read_text())
+        if not isinstance(d, dict) or "dv" not in d or f.stem.startswith("node_check"):
+            continue
+        r = {k: d[k] for k in ("cfg", "overrides", "ok", "its", "time", "N", "k", "beta", "objective", "sigma_cap",
+                               "dv") if k in d}
+        if "summary" in d:
+            r["udr_at_optimum"] = {q: {o: x[o] for o in ("mu", "sigma", "lo", "hi") if o in x}
+                                   for q, x in d["summary"].items()}
+        if "nominal" in d:
+            r["nominal"] = d["nominal"]
+        if "mc" in d:
+            r["mc"] = {lab: dict(N=m["N"], failed=len(m["failed"]), p_violation=m["p_violation"],
+                                 moments={q: m["moments"][q][:2] for q in ("ThreeLapTime", "energy_margin", "SM")
+                                          if q in m["moments"]})
+                       for lab, m in d["mc"].items()}
+        keep[f.stem] = r
+    (ROOT / "docs" / "studies" / "rdo_study_results.json").write_text(
+        json.dumps(keep, indent=1, default=lambda o: o.item() if hasattr(o, "item") else o.tolist()))
+
+
+def report_summary(w):
+    need = ["det_single_10x7E_r02", "robust_single_10x7E", "robust_twin_10x7E", "robust_twin_8x6E"]
+    if not all((OUT / f"{t}.json").exists() and "mc" in load(t) for t in need):
+        return
+    d, r = load("det_single_10x7E_r02"), load("robust_single_10x7E")
+    pd_, pr = d["mc"]["all"]["p_violation"], r["mc"]["all"]["p_violation"]
+    md, mr = d["mc"]["all"]["moments"]["ThreeLapTime"], r["mc"]["all"]["moments"]["ThreeLapTime"]
+    w("## Summary\n")
+    w(f"- **Single 10x7E 4S:** the robust design (μ + σ, β = 2) cuts P(energy margin violated) from "
+      f"{100 * pd_['energy_margin']:.0f} % to {100 * pr['energy_margin']:.1f} % and P(SM violated) from "
+      f"{100 * pd_['SM']:.0f} % to {100 * pr['SM']:.1f} %, and σ of the 3-lap time by "
+      f"{100 * (1 - mr[1] / md[1]):.0f} %, for {mr[0] - md[0]:+.2f} s of μ and "
+      f"{r['nominal']['ThreeLapTime'] - d['nominal']['ThreeLapTime']:+.2f} s nominal (§2).")
+    w("- **Normality assumption:** P(violation) is at or below Φ(−2) = 2.3 % for the energy margin, slightly above "
+      "it for SM (mostly the screening error, §2). A constraint outside the robust list (rpm_margin on the 10x7E twin) gets "
+      "worse under RDO (§5, Q33).")
+    w("- **Energy reserve:** β σ alone gives most of the protection of the 20 % reserve with less battery (§3).")
+    w("- **Pareto front:** short and flat; most of the σ reduction comes from the robust constraints, not k (§4).")
+    w("- **Enumeration:** the ranking twin 10x7E < single 10x7E < twin 8x6E holds under RDO (§5).")
+    w("- **Propagation:** UDR (N = 15) is exact enough for the constraints and about 10 % low on σ of the lap "
+      "time; Smolyak level 2 fixes that at 8.5 times the nodes (§1).")
+    w("- **Cost:** a robust optimisation costs 17-25 times a deterministic one, about 16-19 times per iteration "
+      "(N = 15 nodes, serial) (§6).\n")
+
+
 def report():
     rescore()
     L = []
     w = L.append
     w("# Robust design optimisation: AirCrafter 2.0 study\n")
-    w("Generated by `studies/rdo_study.py report` from `outputs/rdo/*.json` (the raw results, not in git). Plan, "
+    w("Generated by `studies/rdo_study.py report` from `outputs/rdo/*.json` (the raw results, not in git; a compact "
+      "copy is in `docs/studies/rdo_study_results.json`). Plan, "
       "screening and node-convergence check: `docs/RDO_PLAN.md`. Formulation: `docs/modules/robustness.md`.\n")
     w("**Read this first.** Every spread is a PLACEHOLDER (`configs/uncertainty.yaml`, OPEN_QUESTIONS Q32), as are the "
       "motor, battery and payload values. The objective is the placeholder 3-lap time with the 20 % energy reserve "
       "unless stated. The results show how the model behaves under RDO and what RDO costs, not a design.\n")
+    report_summary(w)
     if (OUT / "propagation.json").exists():
         report_propagation(w)
     report_robust(w)
@@ -644,9 +744,18 @@ def report():
     report_pareto(w)
     report_enumeration(w)
     report_cost(w)
+    caps = dict(lap_time_cdf="3-lap time CDF, deterministic vs robust (single 10x7E 4S, 20 % reserve), Monte Carlo "
+                "over all 15 parameters; dotted: nominal lap time.",
+                constraint_margins="Constraint distributions of the same two designs (same Monte Carlo); dashed: "
+                "bounds. The robust design moves the energy margin and the static margin off their bounds.",
+                pareto_mu_sigma="μ against σ of the 3-lap time (UDR estimates): ε-constraint front, k = 0 and k = 10 "
+                "end points, the k = 1 design of §2, and the deterministic optimum.")
+    w("## 7. Figures\n")
     for f in figures():
-        w(f"![{Path(f).stem}](../../outputs/rdo/figures/{Path(f).stem}.png)\n")
+        st = Path(f).stem
+        w(f"![{st}](../../outputs/rdo/figures/{st}.png)\n\n*{caps.get(st, st)}*\n")
     (ROOT / "docs" / "studies" / "rdo_study.md").write_text("\n".join(L) + "\n")
+    results_json()
     print("\n".join(L))
 
 
