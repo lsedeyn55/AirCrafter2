@@ -83,8 +83,12 @@ def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
     return dict(values=values, failed=sorted(failed), retried=sorted(retried), wall=wall, workers=workers)
 
 
-def violation_probabilities(values, outputs, constraints):
-    """P(violation) per constraint over the converged rows. constraints: [(name, kwargs)] (full_constraints)."""
+def violation_probabilities(values, outputs, constraints, rtol=1e-6):
+    """P(violation) per constraint over the converged rows. constraints: [(name, kwargs)] (full_constraints).
+
+    A sample violates a bound by more than rtol * max(|bound|, ref, 1): an active constraint that no uncertain
+    parameter moves (e.g. V_h at its lower bound) sits on the bound to the optimiser's tolerance and is not counted.
+    """
     idx = {o: j for j, o in enumerate(outputs)}
     ok = ~np.isnan(values).any(axis=1)
     out = {}
@@ -93,9 +97,10 @@ def violation_probabilities(values, outputs, constraints):
             continue
         col = values[ok, idx[name]]
         bad = np.zeros(len(col), bool)
-        if kw.get("lower") is not None:
-            bad |= col < kw["lower"]
-        if kw.get("upper") is not None:
-            bad |= col > kw["upper"]
+        for side, sgn in (("lower", -1.0), ("upper", 1.0)):
+            bound = kw.get(side)
+            if bound is not None:
+                tol = rtol * max(abs(bound), abs(kw.get("ref") or 0.0), 1.0)
+                bad |= sgn * (col - bound) > tol
         out[name] = float(bad.mean()) if len(col) else float("nan")
     return out

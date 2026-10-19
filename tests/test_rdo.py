@@ -139,10 +139,13 @@ def test_rdo_off_matches_pre_rdo_reference(cfg_name):
     assert list(now) == list(ref)
     assert [c[0] for c in now["cons"]] == [c[0] for c in ref["cons"]]  # same constraints, same order
     assert now["cons"] == ref["cons"] and now["dvs"] == ref["dvs"] and now["objs"] == ref["objs"]
-    for part in ["outputs", "con_values", "totals", "after_3_iterations"]:
+    # The totals depend on the BLAS thread count at the 1e-9 level (summation order in the linear solves: e.g.
+    # stall_margin|tc_scale differs by 2.5e-9 relative between OMP_NUM_THREADS=1 and 3 on the same code), and three
+    # SLSQP iterations amplify that to ~1.3e-7 in the design; a real change to the model moves them by far more.
+    for part, rtol in [("outputs", 1e-9), ("con_values", 1e-9), ("totals", 1e-7), ("after_3_iterations", 1e-6)]:
         assert now[part].keys() == ref[part].keys(), part
         for k in ref[part]:
-            np.testing.assert_allclose(now[part][k], ref[part][k], rtol=1e-9, atol=1e-12, err_msg=f"{part}: {k}")
+            np.testing.assert_allclose(now[part][k], ref[part][k], rtol=rtol, atol=1e-12, err_msg=f"{part}: {k}")
 
 
 # --- post-optimality Monte Carlo: relative spreads (old form) and distributions (shared spreads) ---------

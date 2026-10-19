@@ -66,6 +66,35 @@ with st.sidebar:
     cfg.energy_reserve = st.slider("Energy reserve (fraction of usable)", 0.0, 0.5, float(cfg.energy_reserve), 0.05)
     cfg.aero.num_y = st.select_slider("Spanwise VLM nodes (half wing)", [11, 21, 41], value=cfg.aero.num_y)
     cfg.fuselage_drag = st.checkbox("Fuselage drag", value=cfg.fuselage_drag)
+    st.subheader("Robust design (RDO)")
+    robust_on = st.checkbox("Robust design optimisation", value=cfg.robust.enabled,
+                            help="minimise mu + k sigma of the score with mu -/+ beta sigma constraints over fixed "
+                            "uncertainty nodes (docs/modules/robustness.md). Spreads: configs/uncertainty.yaml "
+                            "(PLACEHOLDERS)")
+    if robust_on:
+        if not cfg.robust.parameters:  # e.g. full_mdo.yaml: take the robust block of the RDO config
+            cfg.robust = load_full_config(CONFIGS / "full_mdo_rdo.yaml").robust
+        rob = cfg.robust
+        names = [p.name for p in rob.parameters]
+        rob.active = st.multiselect("Propagated parameters (others at their means)", names,
+                                    default=rob.active if rob.active is not None else names)
+        rob.quadrature = st.radio("Quadrature", ["udr", "smolyak"], index=0 if rob.quadrature != "smolyak" else 1,
+                                  horizontal=True, help="udr: 2d + 1 nodes (no cross terms); smolyak level 2: "
+                                  "cross terms, many more nodes")
+        rob.k = st.slider("k in mu + k sigma", 0.0, 3.0, float(rob.k), 0.25)
+        rob.beta = st.slider("beta (constraint margin, ~97.7 % at 2 if normal)", 0.0, 3.0, float(rob.beta), 0.25)
+        try:
+            import cyipopt  # noqa: F401
+            opts = ["slsqp", "ipopt"]
+        except ImportError:
+            opts = ["slsqp"]
+        rob.optimizer = st.radio("Optimiser", opts, index=opts.index(rob.optimizer) if rob.optimizer in opts else 0,
+                                 horizontal=True)
+        d = len(rob.active)
+        n_nodes = 2 * d + 1 if rob.quadrature == "udr" else None
+        st.caption(f"{d} parameters: " + (f"{n_nodes} analysis nodes, about {n_nodes} x the deterministic cost."
+                                          if n_nodes else "Smolyak level 2: many nodes (127 for d = 7); slow."))
+    cfg.robust.enabled = robust_on
     mode = st.radio("Run", ["Analyse (no optimisation)", "Optimise"], index=0)
     figs = st.checkbox("Make figures", value=True)
 

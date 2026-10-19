@@ -2,6 +2,7 @@
 
     aircrafter2 run configs/full_mdo.yaml [--out outputs/run1] [--analyse] [--no-figures]
                 [--design-space] [--prop 11x7E] [--n-motors {1,2}] [--battery-topology {per_motor,shared}]
+                [--robust | --no-robust]   # robust design optimisation (configs/full_mdo_rdo.yaml has it on)
     aircrafter2 vsp outputs/<run>/ [--out DIR] [--no-figures] [--incidence {zero,cruise}]
                                  # OpenVSP mock-up from the run's geometry.json (optional OpenVSP)
     aircrafter2 plugins          # list scoring plug-ins
@@ -29,6 +30,10 @@ def main(argv=None):
     r.add_argument("--battery-topology", choices=["per_motor", "shared"], default=None,
                    help="one pack per motor (default) or one shared pack; capacity is per pack")
     r.add_argument("--vsp", action="store_true", help="build the OpenVSP mock-up after the run (needs OpenVSP)")
+    rob = r.add_mutually_exclusive_group()
+    rob.add_argument("--robust", action="store_true", help="robust design optimisation (needs a robust: block with "
+                     "parameters, e.g. configs/full_mdo_rdo.yaml)")
+    rob.add_argument("--no-robust", action="store_true", help="deterministic, even if the config enables robust")
     v = sub.add_parser("vsp", help="build the OpenVSP mock-up of a saved run (from its geometry.json)")
     v.add_argument("run_dir", help="run folder holding geometry.json (or the file)")
     v.add_argument("--out", default=None, help="output folder (default <run_dir>/vsp)")
@@ -70,10 +75,21 @@ def main(argv=None):
         if args.battery_topology is not None:
             pr["battery_topology"] = args.battery_topology
         cfg.propulsion = PropulsionInputs(**pr)  # re-validated
+    if args.robust or args.no_robust:
+        if args.robust and not cfg.robust.parameters:
+            print("[aircrafter2] --robust needs a robust: block with uncertain parameters "
+                  "(see configs/full_mdo_rdo.yaml)", file=sys.stderr)
+            return 2
+        cfg.robust.enabled = bool(args.robust)
     out = args.out or str(Path("outputs") / Path(args.config).stem)
     res = run_design(cfg, optimise=not args.analyse, out_dir=out, figures=not args.no_figures,
                      design_space=args.design_space, progress=lambda s: print(f"[aircrafter2] {s} ...", flush=True))
-    print(f"success = {res.success}, iterations = {res.iterations}, score = {res.values['score']:.4f}")
+    print(f"success = {res.success}, iterations = {res.iterations}, score = {res.values['score']:.4f}"
+          + (" (nominal)" if "robust" in res.values else ""))
+    if "robust" in res.values:
+        st = res.values["robust"]["stats"]["score"]
+        print(f"robust: score mu = {st['mu']:.4f}, sigma = {st['sigma']:.4f}, mu + k sigma = {st['robust']:.4f}"
+              + (f"; {res.values['robust']['error']}" if res.values["robust"].get("error") else ""))
     print(f"outputs in {out}/ (summary.md, results.json, geometry.json, n2.html, figures/)")
     if args.vsp:
         rc = _vsp(out, None, not args.no_figures, None)

@@ -1,9 +1,161 @@
-# Robustness (`aircrafter2/robustness/suite.py`)
+# Robustness (`aircrafter2/robustness/`)
+
+Two levels:
+
+1. **Post-optimality checks** (`suite.py`), run on a converged design: sensitivities, one-at-a-time worst cases
+   and a Monte Carlo. They report how robust a design is; they don't change it.
+2. **Robust design optimisation (RDO)** (`uncertainty.py`, `quadrature.py`, `stats.py`, `rdo_problem.py`):
+   statistics of the objective and probabilistic constraints inside the optimiser, so robustness shapes the design.
+   It's optional: a config without an enabled `robust:` block is the deterministic problem, unchanged (regression
+   test `tests/test_rdo.py::test_rdo_off_matches_pre_rdo_reference`).
+
+Plan, screening and node-convergence check: `docs/RDO_PLAN.md`. Study results: `docs/studies/rdo_study.md`.
+
+## 1. Post-optimality checks (`suite.py`)
 
 - **Sensitivities:** normalised (x/f) df/dx from `compute_totals`, for design variables and assumptions.
-- **Worst cases:** empty mass +X% (ballast), lap thrust −Y%, capacity −Z%, headwind. Each is a full MDA
+- **Worst cases:** empty mass +X % (ballast), lap thrust −Y %, capacity −Z %, headwind. Each one is a full MDA
   re-analysis.
-- **Monte Carlo:** independent uniforms on the uncertain inputs, one full MDA per sample. Reports objective
-  statistics and the probability of each constraint being violated.
+- **Monte Carlo:** independent inputs, one full MDA per sample. The inputs are either relative uniform spreads or
+  the distributions of `configs/uncertainty.yaml`, the same source RDO uses. It reports the objective statistics
+  and the probability of each constraint being violated. `sampling.evaluate` is the parallel version used by the
+  study, with MDA failures recorded separately.
 
-Results for the full_mdo design are in `docs/problems/full_mdo.md`.
+## 2. Robust design optimisation
+
+### Uncertain parameters
+
+An uncertain parameter is a model input p_i (a promoted name, or `lap.<name>` on the lap model) with an independent
+distribution, x = mean + scale · ξ:
+
+| Distribution | ξ | scale | σ |
+|---|---|---|---|
+| uniform | U(−1, 1) | half-width | scale/√3 |
+| normal | N(0, 1) | σ | scale |
+| triangular (symmetric) | density 1 − \|ξ\| on [−1, 1] | half-width | scale/√6 |
+
+Design variables are never uncertain parameters. `robust.dv_tolerances` is a hook for manufacturing tolerances
+(x + δ at the nodes), not implemented yet. **Every spread in `configs/uncertainty.yaml` is a PLACEHOLDER
+(OPEN_QUESTIONS Q32).**
+
+**Screening** (`uncertainty.screen`): at the reference point p̄ (all means), the first-order variance contributions
+are V_qi = (∂q/∂p_i · σ_i)², from one `compute_totals` call. The active set is the smallest set (≤ `max_dim`) covering
+`screening_threshold` of Σ_i V_qi for the objective and every active constraint with nonzero variance. The other
+parameters are held at their means.
+
+### Propagation: multi-point model at fixed nodes
+
+N copies of the full analysis (`build_full_model`) sit in one `om.ParallelGroup` (serial without MPI) and share the
+design variables. Node j has the parameters at p_j, and node 0 is always the reference point p̄. Fixed nodes (common
+random numbers) make every statistic a deterministic, smooth function of x. The totals come through each node's
+coupled derivatives (a DirectSolver on every MDA), exactly as in the deterministic problem.
+
+Every rule is written as
+
+    μ_q = Σ_j a_j q_j,      Var_q = qᵀ Q q,      Q = diag(D) − U diag(c) Uᵀ,
+
+with q_j the value at node j. That makes the statistics partials analytic for every rule:
+∂μ/∂q = a, ∂Var/∂q = 2 Q q.
+
+- **Univariate dimension reduction** (`udr`, default; Rahman & Xu 2004):
+
+      q(p) ≈ q̂(p) = Σ_{i=1}^{d} q(p̄₁, …, p_i, …, p̄_d) − (d − 1) q(p̄),
+
+  with an n-point Gauss rule in each dimension. Gauss–Legendre is used for uniform inputs, Gauss–Hermite
+  (probabilists') for normal ones, and the Gauss rule of the triangular density, computed by Stieltjes and
+  Golub–Welsch, for triangular ones. With n = 3, the middle point of every symmetric rule is the mean, so
+  **N = 2d + 1**. μ = E[q̂] and Var = Σ_i Var_i[q(p̄₁ … p_i … p̄_d)], the exact variance of the additive
+  approximation, which is never negative. Rahman & Xu apply the decomposition to the raw moments E[qⁿ] instead;
+  the two differ by cross products of the univariate deviations, and the raw-moment form can come out negative.
+  Neither represents interaction (cross) terms between parameters.
+- **Smolyak sparse grid** (`smolyak`, level L): the combination technique on Gauss rules with 1, 3, 5, … points.
+  It is exact to total degree 2L + 1 and represents cross terms. Level 2 has 71 nodes for d = 5 and 127 for d = 7.
+  Its weights can be negative, so a smooth positive part is taken (below).
+- **Sobol'** (`sobol`): a fixed scrambled sample with equal weights and the unbiased variance. It's the Monte
+  Carlo reference.
+
+### Statistics component (`stats.RobustStats`)
+
+    Var⁺ = Var                                  (positive semi-definite Q: udr, sobol)
+         = ½ (Var + sqrt(Var² + ε⁴))            (otherwise)
+    σ    = sqrt(Var⁺ + ε²)                      (finite derivative at zero variance)
+    lo   = μ − β σ,      hi = μ + β σ,      robust objective = μ + s k σ   (s = +1 minimised, −1 maximised)
+
+ε = `sigma_eps` × the constraint's `ref` (or the plug-in's `ref` for the score). Partials are analytic, and are
+checked with complex step in `tests/test_rdo.py`.
+
+### Robust problem (`rdo_problem.build_robust_problem`)
+
+In the notation of the preliminary report §3.2, with nodes p_j and coupled states y_j:
+
+    minimise    μ_f(x) + k σ_f(x)                  [or: minimise μ_f(x) subject to σ_f(x) ≤ ε  (Pareto sweep)]
+    w.r.t.      x_L ≤ x ≤ x_U   (the deterministic design variables)
+    subject to  R(x, y_j; p_j) = 0,                j = 0 … N−1   (one coupled MDA per node)
+                μ_g(x) − β σ_g(x) ≥ g_lower,  μ_g(x) + β σ_g(x) ≤ g_upper,   g ∈ robust constraints
+                g(x, y_0; p̄) within its bounds,    every other constraint (reference node)
+
+- **f** is the scoring plug-in output. The default robust constraints are the energy margin, take-off thrust
+  margin, stall margin, static margin (both sides), spar wall ratio and r_tube.
+- **The (n_motors, prop, cells) choice** stays in the outer enumeration, as in the deterministic problem.
+- **The normality assumption.** For a normally distributed g, μ − βσ ≥ lower means P(g < lower) ≤ Φ(−β): about
+  2.3 % for β = 2. Nothing guarantees g is normal. The inputs here are independent uniforms, so a near-linear g is
+  close to a sum of uniforms, with lighter tails than a normal. A strongly nonlinear g can have heavier ones. The
+  study checks the actual P(violation) of each robust design with a Monte Carlo over all parameters.
+
+### MDA failures at the nodes
+
+Each node's Newton solver is a `RetryNewton`:
+- It warm-starts from the node's last converged state.
+- A node that has never converged starts from the reference node's state.
+- A failed solve is retried from the node's last converged state, then from the reference node's state, then from
+  the cold start. Every attempt is logged (`node_report`).
+
+If all of those fail, the node raises `AnalysisError`:
+- **SLSQP** (the default, `ScipyOptimizeDriver`) then stops, and the run is reported as MDA non-convergence, not
+  as an infeasible design.
+- **IPOPT** through pyOptSparse (`robust.optimizer: ipopt`) instead receives a fail flag and backs off in its line
+  search. pyOptSparse's own SLSQP ignores the flag, so it isn't offered.
+- No penalty values are used: they aren't differentiable and would mislead SLSQP's quasi-Newton model.
+
+### Configuration
+
+`configs/full_mdo_rdo.yaml` (single 10x7E 4S) and `configs/full_mdo_twin_rdo.yaml` set these `robust:` keys:
+
+| Key | Meaning |
+|---|---|
+| `enabled` | turns RDO on |
+| `uncertainty_config` | the shared parameter list |
+| `active` | the screened parameters |
+| `quadrature` | `udr`, `smolyak` or `sobol` |
+| `points` | Gauss points per dimension (udr) |
+| `smolyak_level`, `sobol_n` | settings of the other two rules |
+| `objective` | `mean_plus_k_sigma` or `mean_sigma_cap` |
+| `k`, `sigma_cap` | the objective's weight, or its σ cap |
+| `beta` | the constraint margin |
+| `robust_constraints` | which constraints use the robust form |
+| `optimizer` | `slsqp` or `ipopt` |
+| `screening_threshold`, `max_dim` | the screening settings |
+
+Run with `aircrafter2 run configs/full_mdo_rdo.yaml`. `--robust` and `--no-robust` override the config.
+
+**Installing pyOptSparse and IPOPT** (optional, for `optimizer: ipopt`). pyOptSparse isn't on PyPI:
+
+    uv pip install --python .venv/bin/python "pyoptsparse @ git+https://github.com/mdolab/pyoptsparse@v2.16.1"
+
+IPOPT needs the Ipopt library. Without root, build Ipopt 3.14 and ThirdParty-Mumps from coin-or into a user prefix
+(e.g. `~/.local/opt/ipopt`, using the system BLAS/LAPACK). Then:
+
+    PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig LDFLAGS="-Wl,-rpath,$PREFIX/lib" \
+        uv pip install --python .venv/bin/python --no-binary cyipopt cyipopt
+
+## References
+
+- Rahman, S. & Xu, H. (2004). A univariate dimension-reduction method for multi-dimensional integration in
+  stochastic mechanics. *Probabilistic Engineering Mechanics* 19(4), 393–408. doi:10.1016/j.probengmech.2004.04.003.
+- Beyer, H.-G. & Sendhoff, B. (2007). Robust optimization – a comprehensive survey. *Computer Methods in Applied
+  Mechanics and Engineering* 196(33–34), 3190–3218.
+- Yao, W., Chen, X., Luo, W., van Tooren, M. & Guo, J. (2011). Review of uncertainty-based multidisciplinary design
+  optimization methods for aerospace vehicles. *Progress in Aerospace Sciences* 47(6), 450–479.
+- Smolyak sparse grids: Smolyak, S. A. (1963), *Soviet Mathematics Doklady* 4 [CITATION NEEDED: full title and
+  pages not verified]. Golub–Welsch: Golub, G. H. & Welsch, J. H. (1969), Calculation of Gauss quadrature rules,
+  *Mathematics of Computation* 23(106) [CITATION NEEDED: pages not verified].

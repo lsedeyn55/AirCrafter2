@@ -244,6 +244,10 @@ def validate(tags, n=N_MC):
         dists, act = resolved_dists(cfg, lambda name: v(prob, name))
         del prob
         outputs, cons = tracked(cfg), full_constraints(cfg)
+        from aircrafter2.robustness.quadrature import make_rule
+        rule = make_rule(cfg.robust, act)
+        ev = evaluate(cfg, d["dv"], sample_rows(dists, act, rule), outputs, WORKERS)
+        d["udr"] = dict(moments=moments(ev["values"], outputs, rule), failed=ev["failed"])
         d["mc"] = {}
         for label, sub in [("all", dists), ("active", act)]:
             rule = sobol(sub, n, seed=0)
@@ -256,6 +260,30 @@ def validate(tags, n=N_MC):
                   f"P(viol) {d['mc'][label]['p_violation']}", flush=True)
         d["mc_outputs"] = outputs
         dump(tag, d)
+
+
+def screen_twin():
+    """Deterministic twin optima (10x7E, 8x6E) and the variance the single design's screened set covers there."""
+    from aircrafter2.robustness.uncertainty import first_order_contributions
+
+    out = {}
+    for key, cfg_name, prop, _ in ENUM[1:]:
+        tag = f"det_{key}"
+        d = load(tag) if (OUT / f"{tag}.json").exists() else det_run(tag, cfg_name, prop=prop)
+        cfg = _cfg(cfg_name, prop=prop)
+        prob = build_full_problem(cfg, driver=False)
+        for k, x in d["dv"].items():
+            prob.set_val(k, x)
+        dists, act = resolved_dists(cfg, lambda name: v(prob, name))
+        for di in dists:
+            prob.set_val(di.name, di.mean)
+        prob.run_model()
+        qs = ["ThreeLapTime", "energy_margin", "SM", "thrust_margin_static", "stall_margin"]
+        C = first_order_contributions(prob, dists, qs)
+        names = {a.name for a in act}
+        out[key] = {q: sum(c[n] for n in names) / sum(c.values()) for q, c in C.items() if sum(c.values()) > 0}
+    dump("screen_twin", out)
+    print(out)
 
 
 # --- report -----------------------------------------------------------------------------------------
@@ -320,7 +348,287 @@ def report_propagation(w):
       "constraints fail about half the time, as an optimum on its constraints must.\n")
 
 
+def _mc(tag, label="all"):
+    d = load(tag)
+    return d, np.load(OUT / f"mc_{tag}_{label}.npy"), d["mc_outputs"]
+
+
+def report_robust(w):
+    cases = [("det_single_10x7E_r02", "deterministic"), ("robust_single_10x7E", "robust")]
+    cases = [(t, lab) for t, lab in cases if (OUT / f"{t}.json").exists() and "mc" in load(t)]
+    if len(cases) < 2:
+        return
+    cfg = load_full_config(ROOT / "configs" / "full_mdo_rdo.yaml")
+    k, beta = cfg.robust.k, cfg.robust.beta
+    w("## 2. Deterministic vs robust optimum, single 10x7E 4S (checkpoint 3)\n")
+    w(f"Robust: minimise μ + {k:g}σ of the 3-lap time (UDR, d = 7, N = 15), robust constraints μ − {beta:g}σ ≥ lower "
+      "/ μ + βσ ≤ upper for energy, take-off thrust, stall margin, SM, wall ratio and r_tube, the rest at the "
+      "reference node. Both from the config start point, SLSQP, 20 % energy reserve. 'Nominal' = the config's own "
+      "parameter values (wind 0). μ, σ and P(violation) from the Monte Carlo over all 15 parameters "
+      f"({load(cases[0][0])['mc']['all']['N']} Sobol' points); 'UDR' = the quadrature estimate.\n")
+    D = {t: _mc(t) for t, _ in cases}
+    hdr = [lab for _, lab in cases]
+    w("| Quantity | " + " | ".join(hdr) + " |")
+    w("|---|" + "---:|" * len(hdr))
+    for name in cfg.design_variables:
+        w(f"| {name} | " + " | ".join(_g(D[t][0]["dv"][name]) for t, _ in cases) + " |")
+    row = lambda lab, f: w(f"| {lab} | " + " | ".join(f(t) for t, _ in cases) + " |")  # noqa: E731
+    row("3-lap time, nominal (s)", lambda t: f"{D[t][0]['nominal']['ThreeLapTime']:.3f}")
+    row("μ (s), MC / UDR", lambda t: f"{D[t][0]['mc']['all']['moments']['ThreeLapTime'][0]:.3f} / "
+                                     f"{D[t][0]['udr']['moments']['ThreeLapTime'][0]:.3f}")
+    row("σ (s), MC / UDR", lambda t: f"{D[t][0]['mc']['all']['moments']['ThreeLapTime'][1]:.3f} / "
+                                     f"{D[t][0]['udr']['moments']['ThreeLapTime'][1]:.3f}")
+    row(f"μ + {k:g}σ (s), MC / UDR", lambda t: " / ".join(
+        f"{m[0] + k * m[1]:.3f}" for m in (D[t][0]['mc']['all']['moments']['ThreeLapTime'],
+                                          D[t][0]['udr']['moments']['ThreeLapTime'])))
+    row("total mass, nominal (kg)", lambda t: f"{D[t][0]['nominal']['m_total']:.3f}")
+    row("cruise speed, nominal (m/s)", lambda t: f"{D[t][0]['nominal']['v']:.2f}")
+    for name, _ in full_constraints(cfg):
+        row(f"P({name} violated)", lambda t, name=name: f"{100 * D[t][0]['mc']['all']['p_violation'][name]:.1f} %")
+    row("MDA failures in the MC", lambda t: str(len(D[t][0]["mc"]["all"]["failed"])))
+    row("converged / SLSQP iterations / model evaluations",
+        lambda t: f"{D[t][0]['ok']} / {D[t][0]['its']} / {D[t][0]['evaluations']}")
+    row("wall time", lambda t: f"{D[t][0]['time'] / 60:.1f} min")
+    w("")
+    (dd, _, _), (dr, _, _) = D[cases[0][0]], D[cases[1][0]]
+    md, mr = (x["mc"]["all"]["moments"]["ThreeLapTime"] for x in (dd, dr))
+    w(f"**What changed.** The robust design trades {1000 * (dr['nominal']['m_total'] - dd['nominal']['m_total']):.0f} g "
+      f"and {dr['nominal']['ThreeLapTime'] - dd['nominal']['ThreeLapTime']:+.2f} s of nominal lap time for a "
+      f"{100 * (1 - mr[1] / md[1]):.0f} % smaller σ (MC, {md[1]:.3f} → {mr[1]:.3f} s); μ moves by "
+      f"{mr[0] - md[0]:+.3f} s, so μ + {k:g}σ improves by {(md[0] + k * md[1]) - (mr[0] + k * mr[1]):.3f} s. "
+      f"Most of the change is in the constraints, not the objective: capacity +"
+      f"{100 * (dr['dv']['capacity'] / dd['dv']['capacity'] - 1):.0f} % so that μ − {beta:g}σ of the energy margin is "
+      "zero, and the battery and cargo move to their aft bounds (x_batt, x_cb_frac) to pull the mean static margin "
+      f"down to {dr['mc']['all']['moments']['SM'][0]:.3f}, so that μ + {beta:g}σ ≤ 0.2. The span grows "
+      f"({dd['dv']['b']:.3f} → {dr['dv']['b']:.3f} m) with the mass.\n")
+    sm = dict(udr=dr["udr"]["moments"]["SM"][1], act=dr["mc"]["active"]["moments"]["SM"][1],
+              all=dr["mc"]["all"]["moments"]["SM"][1])
+    smu = dr["mc"]["all"]["moments"]["SM"][0]
+    from scipy.stats import norm
+    pe, ps = dr["mc"]["all"]["p_violation"]["energy_margin"], dr["mc"]["all"]["p_violation"]["SM"]
+    w(f"**P(violation) against the normality assumption.** β = {beta:g} would give Φ(−{beta:g}) = "
+      f"{100 * norm.cdf(-beta):.1f} % for a normal g. The energy margin comes out at {100 * pe:.1f} %. The static "
+      f"margin comes out at {100 * ps:.1f} %, above it. The quadrature is not the cause: UDR's σ of SM "
+      f"({sm['udr']:.4f}) matches the Monte Carlo over the same 7 parameters ({sm['act']:.4f}). The 8 screened-out "
+      f"parameters add {100 * (sm['all'] / sm['act'] - 1):.0f} % to σ ({sm['all']:.4f}), which puts the upper bound "
+      f"{(0.2 - smu) / sm['all']:.2f} σ from the mean instead of {beta:g} σ (normal: "
+      f"{100 * norm.sf((0.2 - smu) / sm['all']):.1f} %); the rest is the shape of the distribution. Both are "
+      "known, quantified costs of the choices in the brief (screening, β σ with a normal reading).\n")
+
+
+def report_reserve(w):
+    tags = [("det_single_10x7E_r0", "det., reserve 0"), ("det_single_10x7E_r02", "det., reserve 0.2"),
+            ("robust_single_10x7E_r0", "robust, reserve 0"), ("robust_single_10x7E", "robust, reserve 0.2")]
+    tags = [(t, lab) for t, lab in tags if (OUT / f"{t}.json").exists() and "mc" in load(t)]
+    if len(tags) < 4:
+        return
+    w("## 3. Energy margin: does βσ replace the hand-picked 20 % reserve? (checkpoint 3)\n")
+    w("The energy constraint is (1 − reserve) E_usable − E_3laps ≥ 0 (deterministic) or its μ − 2σ form (robust). "
+      "Probabilities from the Monte Carlo over all 15 parameters, on what the battery physically delivers: "
+      "'3 laps' = E_3laps ≤ E_usable, '20 % left' = E_3laps ≤ 0.8 E_usable.\n")
+    w("| Design | capacity (Ah) | E_usable, nominal (Wh) | E_3laps μ ± σ (Wh) | μ of usable energy left | "
+      "P(not 3 laps) | P(less than 20 % left) | 3-lap time μ ± σ (s) |")
+    w("|---|---:|---:|---:|---:|---:|---:|---:|")
+    for t, lab in tags:
+        d, V, outs = _mc(t)
+        ok = ~np.isnan(V).any(axis=1)
+        E, E3, T = (V[ok, outs.index(n)] for n in ("E_usable", "energy_3laps", "ThreeLapTime"))
+        w(f"| {lab} | {d['dv']['capacity']:.3f} | {d['nominal']['E_usable'] / 3600:.2f} | "
+          f"{E3.mean() / 3600:.2f} ± {E3.std(ddof=1) / 3600:.2f} | {100 * np.mean(1 - E3 / E):.1f} % | "
+          f"{100 * np.mean(E3 > E):.1f} % | {100 * np.mean(E3 > 0.8 * E):.1f} % | {T.mean():.2f} ± {T.std(ddof=1):.2f} |")
+    w("")
+    c = {t: load(t)["dv"]["capacity"] for t, _ in tags}
+    w(f"**Reading.** With no reserve, the deterministic optimum finishes 3 laps only about half the time: it is "
+      "designed for the nominal parameters. The 20 % reserve fixes that with a large margin (no Monte Carlo sample "
+      "fails to finish). The robust design with no reserve gets close to the same protection from β σ alone, with "
+      f"{100 * (1 - c['robust_single_10x7E_r0'] / c['det_single_10x7E_r02']):.0f} % less capacity than the "
+      "deterministic design with the reserve, and the risk it accepts is stated (the P(not 3 laps) column) rather "
+      "than implicit. Stacking both (robust with the 20 % reserve) is the most conservative design. Which "
+      "one is right depends on what the reserve is for: if it only covers the uncertainty in the model, β σ "
+      "replaces it; if it is a rule or a safety allowance for things the model does not include, it stays. "
+      "The σ here comes from placeholder spreads (Q32), so the size of the saving is not a result.\n")
+
+
+ENUM = [("single_10x7E", "full_mdo_rdo.yaml", "10x7E", "1 x 10x7E 4S"),
+        ("twin_10x7E", "full_mdo_twin_rdo.yaml", "10x7E", "2 x 10x7E 4S"),
+        ("twin_8x6E", "full_mdo_twin_rdo.yaml", "8x6E", "2 x 8x6E 4S (matched power)")]
+
+
+def pareto_points():
+    pts = []
+    for f in sorted(OUT.glob("pareto_*.json")):
+        d = json.loads(f.read_text())
+        if d.get("ok") is not None:
+            pts.append(d)
+    return pts
+
+
+def report_pareto(w):
+    pts = [p for p in pareto_points() if p["ok"]]
+    if not pts:
+        return
+    det = load("det_single_10x7E_r02")
+    w("## 4. Pareto front: μ against σ of the 3-lap time (checkpoint 4)\n")
+    w("ε-constraint: minimise μ subject to σ ≤ ε (robust constraints as in §2), plus the k = 0 (min μ) and k = 10 "
+      "(≈ min σ) end points; UDR estimates (N = 15). Single 10x7E 4S, 20 % reserve. Each run starts from the "
+      "k = 1 robust design.\n")
+    w("| Point | ε (s) | μ (s) | σ (s) | capacity (Ah) | b (m) | SLSQP its | time (min) | converged |")
+    w("|---|---:|---:|---:|---:|---:|---:|---:|---|")
+    rows = sorted(pts, key=lambda p: p["summary"]["score"]["sigma"])
+    for p in rows:
+        sc = p["summary"]["score"]
+        w(f"| {p['tag']} | {p['sigma_cap'] if p['sigma_cap'] else '-'} | {sc['mu']:.3f} | {sc['sigma']:.3f} | "
+          f"{p['dv']['capacity']:.3f} | {p['dv']['b']:.3f} | {p['its']} | {p['time'] / 60:.1f} | {p['ok']} |")
+    if "udr" in det:
+        m = det["udr"]["moments"]["ThreeLapTime"]
+        w(f"| deterministic optimum | - | {m[0]:.3f} | {m[1]:.3f} | {det['dv']['capacity']:.3f} | "
+          f"{det['dv']['b']:.3f} | {det['its']} | {det['time'] / 60:.1f} | {det['ok']} |")
+    w("")
+
+
+def report_enumeration(w):
+    rows = []
+    for key, _, _, lab in ENUM:
+        dt, rt = f"det_{key}" if key != "single_10x7E" else "det_single_10x7E_r02", \
+            f"robust_{key}" if key != "single_10x7E" else "robust_single_10x7E"
+        if (OUT / f"{dt}.json").exists() and (OUT / f"{rt}.json").exists():
+            rows.append((lab, load(dt), load(rt)))
+    if len(rows) < 2:
+        return
+    w("## 5. Robust enumeration: does the layout and prop ranking change? (checkpoint 4)\n")
+    w("Same robust settings for every case (the d = 7 set screened on the single design; §5a checks it on the "
+      "twins). μ, σ from the Monte Carlo over all 15 parameters where it was run, else the UDR estimate.\n")
+    w("| Case | det.: nominal 3-lap (s) | det.: μ ± σ (s) | robust: nominal (s) | robust: μ ± σ (s) | robust: μ + σ (s) "
+      "| robust: P(energy) / P(SM) violated | det.: P(energy) / P(SM) violated |")
+    w("|---|---:|---:|---:|---:|---:|---:|---:|")
+    for lab, d, r in rows:
+        def ms(x):
+            if "mc" in x:
+                return x["mc"]["all"]["moments"]["ThreeLapTime"]
+            if "summary" in x:
+                return (x["summary"]["score"]["mu"], x["summary"]["score"]["sigma"])
+            return x["udr"]["moments"]["ThreeLapTime"] if "udr" in x else (np.nan, np.nan)
+
+        def pv(x):
+            if "mc" not in x:
+                return "-"
+            p = x["mc"]["all"]["p_violation"]
+            return f"{100 * p['energy_margin']:.1f} % / {100 * p['SM']:.1f} %"
+        md, mr = ms(d), ms(r)
+        w(f"| {lab} | {d['nominal']['ThreeLapTime']:.2f} | {md[0]:.2f} ± {md[1]:.2f} | {r['nominal']['ThreeLapTime']:.2f} "
+          f"| {mr[0]:.2f} ± {mr[1]:.2f} | {mr[0] + mr[1]:.2f} | {pv(r)} | {pv(d)} |")
+    rank = lambda f: [lab for lab, d, r in sorted(rows, key=f)]  # noqa: E731
+    w("\nRanking, deterministic (nominal 3-lap time): " + " < ".join(rank(lambda x: x[1]["nominal"]["ThreeLapTime"])))
+    w("\nRanking, robust (μ + σ): " + " < ".join(rank(lambda x: x[2]["summary"]["score"]["robust"])) + "\n")
+    if (OUT / "screen_twin.json").exists():
+        sc = load("screen_twin")
+        w("**5a. Screening check on the twin designs.** First-order variance covered by the single design's 7 "
+          "parameters, at each twin's deterministic optimum: " + "; ".join(
+              f"{k}: " + ", ".join(f"{q} {100 * c:.0f} %" for q, c in v.items()) for k, v in sc.items()) + ".\n")
+
+
+def report_cost(w):
+    pairs = []
+    for key, _, _, lab in ENUM:
+        dt = f"det_{key}" if key != "single_10x7E" else "det_single_10x7E_r02"
+        rt = f"robust_{key}" if key != "single_10x7E" else "robust_single_10x7E"
+        if (OUT / f"{dt}.json").exists() and (OUT / f"{rt}.json").exists():
+            pairs.append((lab, load(dt), load(rt)))
+    if (OUT / "robust_single_10x7E_r0.json").exists():
+        pairs.append(("1 x 10x7E 4S, reserve 0", load("det_single_10x7E_r0"), load("robust_single_10x7E_r0")))
+    if not pairs:
+        return
+    w("## 6. Cost: deterministic vs robust (checkpoint 4)\n")
+    w("Wall time on this machine (16 cores, 14 GB), each optimisation one process with 3 BLAS threads (two ran at "
+      "once, so these are upper bounds), from the config start point, SLSQP. Robust: UDR, d = 7, N = 15 nodes, "
+      "serial (no MPI).\n")
+    w("| Case | det. time | det. SLSQP its | robust time | robust SLSQP its | time ratio | per-iteration ratio |")
+    w("|---|---:|---:|---:|---:|---:|---:|")
+    for lab, d, r in pairs:
+        w(f"| {lab} | {d['time']:.0f} s | {d['its']} | {r['time'] / 60:.1f} min | {r['its']} | "
+          f"{r['time'] / d['time']:.1f} | {(r['time'] / r['its']) / (d['time'] / d['its']):.1f} |")
+    w("\nFor scale: the 1024-sample Monte Carlo used to *check* one design took about 6 min on 5 worker processes "
+      "(≈ 30 CPU-min), and a Monte-Carlo-in-the-loop optimisation at that sample size would be roughly 1024/15 ≈ "
+      "70 times the robust cost above.\n")
+
+
+def figures():
+    from aircrafter2.plotting.style import PALETTE, figure, save
+
+    fdir = OUT / "figures"
+    fdir.mkdir(parents=True, exist_ok=True)
+    files = []
+    cases = [(t, lab) for t, lab in [("det_single_10x7E_r02", "deterministic"), ("robust_single_10x7E", "robust")]
+             if (OUT / f"mc_{t}_all.npy").exists()]
+    if len(cases) == 2:
+        fig, ax = figure(0.6, 0.75)
+        for (t, lab), c in zip(cases, PALETTE):
+            _, V, outs = _mc(t)
+            x = np.sort(V[~np.isnan(V).any(axis=1), outs.index("ThreeLapTime")])
+            ax.step(x, np.arange(1, len(x) + 1) / len(x), where="post", color=c, label=lab)
+            ax.axvline(load(t)["nominal"]["ThreeLapTime"], color=c, ls=":", lw=0.9)
+        ax.set_xlabel("3-lap time (s)")
+        ax.set_ylabel("cumulative probability")
+        ax.legend(frameon=False)
+        files.append(save(fig, fdir / "lap_time_cdf.pdf"))
+        cfg = load_full_config(ROOT / "configs" / "full_mdo_rdo.yaml")
+        bounds = dict(full_constraints(cfg))
+        panels = [("energy_margin", 1 / 3600, "energy margin (Wh)"), ("SM", 1, "static margin"),
+                  ("thrust_margin_static", 1, "take-off thrust margin (N)"), ("stall_margin", 1, "stall margin (m/s)")]
+        fig, axs = figure(1.0, 0.55, nrows=2, ncols=2)
+        for ax, (q, sc, lab) in zip(axs.ravel(), panels):
+            for (t, name), c in zip(cases, PALETTE):
+                _, V, outs = _mc(t)
+                x = V[~np.isnan(V).any(axis=1), outs.index(q)] * sc
+                ax.hist(x, bins=40, color=c, alpha=0.5, label=name, density=True)
+            for side in ("lower", "upper"):
+                if bounds[q].get(side) is not None:
+                    ax.axvline(bounds[q][side] * sc, color="k", lw=0.9, ls="--")
+            ax.set_xlabel(lab)
+            ax.set_yticks([])
+        axs[0, 0].legend(frameon=False)
+        files.append(save(fig, fdir / "constraint_margins.pdf"))
+    pts = [p for p in pareto_points() if p["ok"]]
+    if pts:
+        fig, ax = figure(0.6, 0.75)
+        P = sorted(((p["summary"]["score"]["sigma"], p["summary"]["score"]["mu"]) for p in pts))
+        ax.plot([x for x, _ in P], [y for _, y in P], "o-", color=PALETTE[0], label="robust (ε-constraint)")
+        det = load("det_single_10x7E_r02")
+        if "udr" in det:
+            m = det["udr"]["moments"]["ThreeLapTime"]
+            ax.plot([m[1]], [m[0]], "s", color=PALETTE[1], label="deterministic optimum")
+        ax.set_xlabel("σ of the 3-lap time (s)")
+        ax.set_ylabel("μ of the 3-lap time (s)")
+        ax.legend(frameon=False)
+        files.append(save(fig, fdir / "pareto_mu_sigma.pdf"))
+    return files
+
+
+def rescore():
+    """Recompute every stored P(violation) from the saved Monte Carlo arrays (after a change to the counting rule)."""
+    if (OUT / "propagation.json").exists():
+        r = load("propagation")
+        for label in ("mc_active", "mc_all"):
+            f = OUT / f"propagation_{label}.npy"
+            if label in r and f.exists():
+                r[label]["p_violation"] = violation_probabilities(np.load(f), r["outputs"], r["constraints"])
+        dump("propagation", r)
+    for f in sorted(OUT.glob("*.json")):
+        d = json.loads(f.read_text())
+        if not isinstance(d, dict) or "mc" not in d or "mc_outputs" not in d:
+            continue
+        cfg = _cfg(d.get("cfg", "full_mdo_rdo.yaml"), **{k: x for k, x in d.get("overrides", {}).items()
+                                                          if k in ("reserve", "prop")})
+        for label in d["mc"]:
+            a = OUT / f"mc_{f.stem}_{label}.npy"
+            if a.exists():
+                d["mc"][label]["p_violation"] = violation_probabilities(np.load(a), d["mc_outputs"],
+                                                                        full_constraints(cfg))
+        dump(f.stem, d)
+
+
 def report():
+    rescore()
     L = []
     w = L.append
     w("# Robust design optimisation: AirCrafter 2.0 study\n")
@@ -329,17 +637,22 @@ def report():
     w("**Read this first.** Every spread is a PLACEHOLDER (`configs/uncertainty.yaml`, OPEN_QUESTIONS Q32), as are the "
       "motor, battery and payload values. The objective is the placeholder 3-lap time with the 20 % energy reserve "
       "unless stated. The results show how the model behaves under RDO and what RDO costs, not a design.\n")
-    sections = [("propagation", report_propagation)]
-    for name, fn in sections:
-        if (OUT / f"{name}.json").exists():
-            fn(w)
+    if (OUT / "propagation.json").exists():
+        report_propagation(w)
+    report_robust(w)
+    report_reserve(w)
+    report_pareto(w)
+    report_enumeration(w)
+    report_cost(w)
+    for f in figures():
+        w(f"![{Path(f).stem}](../../outputs/rdo/figures/{Path(f).stem}.png)\n")
     (ROOT / "docs" / "studies" / "rdo_study.md").write_text("\n".join(L) + "\n")
     print("\n".join(L))
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("part", choices=["propagation", "optimise", "det", "validate", "report"])
+    ap.add_argument("part", choices=["propagation", "optimise", "det", "validate", "report", "screen-twin"])
     ap.add_argument("--tag")
     ap.add_argument("--tags", nargs="*")
     ap.add_argument("--cfg", default="full_mdo_rdo.yaml")
@@ -361,5 +674,7 @@ if __name__ == "__main__":
         det_run(a.tag, a.cfg, **over)
     elif a.part == "validate":
         validate(a.tags)
+    elif a.part == "screen-twin":
+        screen_twin()
     else:
         report()

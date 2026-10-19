@@ -5,6 +5,11 @@
 
 Writes into out_dir: summary.md, results.json, geometry.json (3D rebuild data), cases.sql (driver history), n2.html, xdsm.tex,
 xdsm.pdf and figures/*.pdf.
+
+With an enabled ``robust:`` block (e.g. configs/full_mdo_rdo.yaml) the robust problem is optimised instead
+(aircrafter2.robustness.rdo_problem); the summary adds the robust statistics (mu, sigma, mu -/+ beta sigma) and the
+per-node MDA report, and the geometry, N2 and figures describe the robust design analysed at the config's nominal
+parameter values.
 """
 
 import json
@@ -50,12 +55,57 @@ def summary_table(p):
     return [(k, unit, desc, _val(p, k)) for k, unit, desc in SUMMARY_KEYS]
 
 
+def _run_robust(cfg, optimise, progress):
+    """Robust problem: returns (deterministic problem at the robust design, success, iterations, robust values)."""
+    import time
+
+    from openmdao.core.analysis_error import AnalysisError
+
+    from .robustness.rdo_problem import build_robust_problem, node_report, robust_summary
+
+    rp = build_robust_problem(cfg, driver=optimise)
+    if progress:
+        progress(f"robust problem: {rp.rdo['N']} nodes, {cfg.robust.quadrature}, d = {len(rp.rdo['active'])}")
+    t = time.perf_counter()
+    error = None
+    if optimise:
+        if cfg.robust.optimizer == "slsqp":
+            rp.driver.options["disp"] = False
+        try:
+            res = rp.run_driver()
+            success, its = bool(res.success), int(res.iter_count)
+        except AnalysisError as exc:  # every fallback of some node failed
+            success, its, error = False, int(rp.driver.iter_count), f"MDA non-convergence: {str(exc)[:300]}"
+    else:
+        rp.run_model()
+        success, its = True, 0
+    robust = dict(N=rp.rdo["N"], rule=rp.rdo["rule"].name, active=[d.name for d in rp.rdo["active"]],
+                  k=cfg.robust.k, beta=cfg.robust.beta, objective=cfg.robust.objective,
+                  sigma_cap=cfg.robust.sigma_cap, time_s=time.perf_counter() - t, error=error,
+                  stats={q: {k: v for k, v in d.items()} for q, d in robust_summary(rp).items()},
+                  nodes=node_report(rp))
+    if optimise and not error:
+        robust["objective_value"] = float(np.ravel(rp.get_val("stats.score_robust" if cfg.robust.objective ==
+                                                            "mean_plus_k_sigma" else "stats.score_mu"))[0])
+    prob = build_full_problem(cfg, driver=False)  # the robust design, at the config's nominal parameter values
+    for name in cfg.design_variables:
+        prob.set_val(name, rp.get_val(name))
+    prob.run_model()
+    return prob, success, its, robust
+
+
 def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=True, design_space=False,
                record=True, n2=True, progress=None):
     cfg = config if isinstance(config, FullMDOConfig) else load_full_config(config)
     out = Path(out_dir) if out_dir else None
     if out:
         out.mkdir(parents=True, exist_ok=True)
+    if cfg.robust.enabled:
+        if progress:
+            progress("solving (robust)")
+        prob, success, its, robust = _run_robust(cfg, optimise, progress)
+        return _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, None, n2,
+                       progress, optimise, robust)
     prob = build_full_problem(cfg, driver=optimise)
     case_file = None
     if optimise and record and out:
@@ -74,7 +124,15 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
     else:
         prob.run_model()
         success, its = True, 0
+    return _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, case_file, n2,
+                   progress, optimise)
+
+
+def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, case_file, n2, progress,
+            optimise, robust=None):
     values = {k: v for k, _, _, v in summary_table(prob)}
+    if robust is not None:
+        values["robust"] = robust
     values["limits"] = check_fixed_limits(prob)
     from .stability import oei_check
 
@@ -106,6 +164,10 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
              f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
              f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "
              f"iterations = {its}.\n", "| Quantity | Value | Unit |", "|---|---:|---|"]
+    if robust is not None:
+        lines[1] = lines[1].replace("Optimised", "Robust-optimised")
+        lines[2:2] = _robust_lines(robust)
+        lines.insert(len(_robust_lines(robust)) + 2, "Design analysed at the config's nominal parameter values:\n")
     lines += [f"| {desc} (`{k}`) | {v:.5g} | {unit} |" for k, unit, desc, v in summary_table(prob)]
     (out / "summary.md").write_text("\n".join(lines) + "\n")
     result.files += [out / "results.json", out / "summary.md"]
@@ -130,3 +192,19 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
                                    sens=sens, dvs=dvs, design_space_args=ds)
         result.files += [xdsm.write_tex(out / "xdsm.tex"), xdsm.draw_pdf(out / "xdsm.pdf")]
     return result
+
+
+def _robust_lines(robust):
+    L = [f"Robust statistics: {robust['rule']} over {', '.join(robust['active'])} ({robust['N']} nodes), "
+         f"objective {robust['objective']} (k = {robust['k']:g}"
+         + (f", sigma cap {robust['sigma_cap']:g}" if robust['sigma_cap'] else "")
+         + f"), beta = {robust['beta']:g}; {robust['time_s']:.0f} s."
+         + (f" **{robust['error']}**" if robust.get("error") else "") + "\n",
+         "| Quantity | mu | sigma | mu - beta sigma | mu + beta sigma |", "|---|---:|---:|---:|---:|"]
+    L += [f"| `{q}` | {d['mu']:.5g} | {d['sigma']:.4g} | {d['lo']:.5g} | {d['hi']:.5g} |"
+          for q, d in robust["stats"].items()]
+    fails = sum(n["failed_attempts"] for n in robust["nodes"])
+    L.append(f"\nNode MDAs: {fails} failed attempt(s) over {sum(n['attempts'] for n in robust['nodes'])}, all "
+             "recovered by a warm-start fallback.\n" if fails else "\nNode MDAs: every solve converged at the first "
+             "attempt.\n")
+    return L

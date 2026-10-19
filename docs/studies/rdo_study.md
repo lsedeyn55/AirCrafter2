@@ -46,3 +46,85 @@ The robust model's 15 node outputs equal the deterministic model's at the same p
 
 P(violation) at the deterministic optimum, Monte Carlo over all 15: energy_margin 52.2 %, rpm_margin 0.4 %, SM 49.7 %; every other constraint 0 %. The two active constraints fail about half the time, as an optimum on its constraints must.
 
+## 2. Deterministic vs robust optimum, single 10x7E 4S (checkpoint 3)
+
+Robust: minimise μ + 1σ of the 3-lap time (UDR, d = 7, N = 15), robust constraints μ − 2σ ≥ lower / μ + βσ ≤ upper for energy, take-off thrust, stall margin, SM, wall ratio and r_tube, the rest at the reference node. Both from the config start point, SLSQP, 20 % energy reserve. 'Nominal' = the config's own parameter values (wind 0). μ, σ and P(violation) from the Monte Carlo over all 15 parameters (1024 Sobol' points); 'UDR' = the quadrature estimate.
+
+| Quantity | deterministic | robust |
+|---|---:|---:|
+| b | 1.275 | 1.361 |
+| c | 0.15 | 0.1516 |
+| tc_scale | 0.7886 | 0.7801 |
+| camber_scale | 0.2237 | 0.2029 |
+| capacity | 0.8862 | 1.016 |
+| l_ht | 0.5021 | 0.5478 |
+| S_ht | 0.02 | 0.02 |
+| S_vt | 0.01 | 0.01026 |
+| x_batt | 0.1339 | 0.2 |
+| x_cb_frac | 0.5838 | 0.6 |
+| 3-lap time, nominal (s) | 79.728 | 79.814 |
+| μ (s), MC / UDR | 80.122 / 80.097 | 80.131 / 80.072 |
+| σ (s), MC / UDR | 0.923 / 0.781 | 0.798 / 0.692 |
+| μ + 1σ (s), MC / UDR | 81.045 / 80.878 | 80.929 / 80.765 |
+| total mass, nominal (kg) | 2.371 | 2.394 |
+| cruise speed, nominal (m/s) | 38.37 | 38.27 |
+| P(stall_margin violated) | 0.0 % | 0.0 % |
+| P(turn_speed_margin violated) | 0.0 % | 0.0 % |
+| P(thrust_margin_static violated) | 0.0 % | 0.0 % |
+| P(energy_margin violated) | 52.2 % | 1.6 % |
+| P(rpm_margin violated) | 0.4 % | 0.1 % |
+| P(v_fit_margin violated) | 0.0 % | 0.0 % |
+| P(SM violated) | 49.7 % | 3.7 % |
+| P(V_h violated) | 0.0 % | 0.0 % |
+| P(V_v violated) | 0.0 % | 0.0 % |
+| P(wall_ratio violated) | 0.0 % | 0.0 % |
+| P(r_tube violated) | 0.0 % | 0.0 % |
+| P(cruise.cl_margin_sec violated) | 0.0 % | 0.0 % |
+| MDA failures in the MC | 0 | 0 |
+| converged / SLSQP iterations / model evaluations | True / 39 / 39 | True / 41 / 41 |
+| wall time | 1.4 min | 24.8 min |
+
+**What changed.** The robust design trades 23 g and +0.09 s of nominal lap time for a 14 % smaller σ (MC, 0.923 → 0.798 s); μ moves by +0.010 s, so μ + 1σ improves by 0.115 s. Most of the change is in the constraints, not the objective: capacity +15 % so that μ − 2σ of the energy margin is zero, and the battery and cargo move to their aft bounds (x_batt, x_cb_frac) to pull the mean static margin down to 0.160, so that μ + 2σ ≤ 0.2. The larger span (b) carries the extra mass and lowers the lap time's sensitivity to the powertrain parameters.
+
+**P(violation) against the normality assumption.** β = 2 would give Φ(−2) = 2.3 % for a normal g. The energy margin comes out at 1.6 %. The static margin comes out at 3.7 %, above it. The quadrature is not the cause: UDR's σ of SM (0.0197) matches the Monte Carlo over the same 7 parameters (0.0197). The 8 screened-out parameters add 6 % to σ (0.0209), which puts the upper bound 1.89 σ from the mean instead of 2 σ (normal: 2.9 %); the rest is the shape of the distribution. Both are known, quantified costs of the choices in the brief (screening, β σ with a normal reading).
+
+## 3. Energy margin: does βσ replace the hand-picked 20 % reserve? (checkpoint 3)
+
+The energy constraint is (1 − reserve) E_usable − E_3laps ≥ 0 (deterministic) or its μ − 2σ form (robust). Probabilities from the Monte Carlo over all 15 parameters, on what the battery physically delivers: '3 laps' = E_3laps ≤ E_usable, '20 % left' = E_3laps ≤ 0.8 E_usable.
+
+| Design | capacity (Ah) | E_usable, nominal (Wh) | E_3laps μ ± σ (Wh) | μ of usable energy left | P(not 3 laps) | P(less than 20 % left) | 3-lap time μ ± σ (s) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| det., reserve 0 | 0.708 | 8.38 | 8.43 ± 0.56 | -0.6 % | 52.2 % | 100.0 % | 80.09 ± 0.92 |
+| det., reserve 0.2 | 0.886 | 10.49 | 8.45 ± 0.56 | 19.5 % | 0.0 % | 52.2 % | 80.12 ± 0.92 |
+| robust, reserve 0 | 0.812 | 9.61 | 8.48 ± 0.57 | 11.7 % | 1.6 % | 91.8 % | 80.11 ± 0.80 |
+| robust, reserve 0.2 | 1.016 | 12.03 | 8.50 ± 0.57 | 29.4 % | 0.0 % | 1.6 % | 80.13 ± 0.80 |
+
+**Reading.** With no reserve, the deterministic optimum finishes 3 laps only about half the time: it is designed for the nominal parameters. The 20 % reserve fixes that with a large margin (no Monte Carlo sample fails to finish). The robust design with no reserve gets close to the same protection from β σ alone, with 8 % less capacity than the deterministic design with the reserve, and the risk it accepts is stated (the P(not 3 laps) column) rather than implicit. Stacking both (robust with the 20 % reserve) is the most conservative design. Which one is right depends on what the reserve is for: if it only covers the uncertainty in the model, β σ replaces it; if it is a rule or a safety allowance for things the model does not include, it stays. The σ here comes from placeholder spreads (Q32), so the size of the saving is not a result.
+
+## 4. Pareto front: μ against σ of the 3-lap time (checkpoint 4)
+
+ε-constraint: minimise μ subject to σ ≤ ε (robust constraints as in §2), plus the k = 0 (min μ) and k = 10 (≈ min σ) end points; UDR estimates (N = 15). Single 10x7E 4S, 20 % reserve. Each run starts from the k = 1 robust design.
+
+| Point | ε (s) | μ (s) | σ (s) | capacity (Ah) | b (m) | SLSQP its | time (min) | converged |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| pareto_k10 | - | 80.113 | 0.680 | 1.014 | 1.486 | 13 | 6.3 | True |
+| pareto_k0 | - | 80.068 | 0.700 | 1.016 | 1.331 | 12 | 6.1 | True |
+| deterministic optimum | - | 80.097 | 0.781 | 0.886 | 1.275 | 39 | 1.4 | True |
+
+## 6. Cost: deterministic vs robust (checkpoint 4)
+
+Wall time on this machine (16 cores, 14 GB), each optimisation one process with 3 BLAS threads (two ran at once, so these are upper bounds), from the config start point, SLSQP. Robust: UDR, d = 7, N = 15 nodes, serial (no MPI).
+
+| Case | det. time | det. SLSQP its | robust time | robust SLSQP its | time ratio | per-iteration ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 x 10x7E 4S | 85 s | 39 | 24.8 min | 41 | 17.4 | 16.6 |
+| 1 x 10x7E 4S, reserve 0 | 77 s | 40 | 25.0 min | 41 | 19.4 | 18.9 |
+
+For scale: the 1024-sample Monte Carlo used to *check* one design took about 6 min on 5 worker processes (≈ 30 CPU-min), and a Monte-Carlo-in-the-loop optimisation at that sample size would be roughly 1024/15 ≈ 70 times the robust cost above.
+
+![lap_time_cdf](../../outputs/rdo/figures/lap_time_cdf.png)
+
+![constraint_margins](../../outputs/rdo/figures/constraint_margins.png)
+
+![pareto_mu_sigma](../../outputs/rdo/figures/pareto_mu_sigma.png)
+
