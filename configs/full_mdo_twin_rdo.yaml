@@ -1,0 +1,18 @@
+# Robust design optimisation, twin 10x7E 4S. Everything not listed here is configs/full_mdo_twin.yaml; the
+# robust settings are those of configs/full_mdo_rdo.yaml (screened on the single design, docs/RDO_PLAN.md).
+extends: full_mdo_twin.yaml
+
+propulsion: {prop: 10x7E}
+
+robust:
+  enabled: true
+  uncertainty_config: uncertainty.yaml
+  active: [Kv, Rm, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]
+  quadrature: udr
+  points: 3
+  objective: mean_plus_k_sigma
+  k: 1.0
+  beta: 2.0
+  robust_constraints: [energy_margin, thrust_margin_static, stall_margin, SM, wall_ratio, r_tube]
+  screening_threshold: 0.9
+  max_dim: 7

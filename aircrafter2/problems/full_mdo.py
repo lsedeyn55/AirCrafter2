@@ -28,6 +28,7 @@ from ..aero.polar import ThreePointPolar, TurnAlpha
 from ..mass.garcia_gamboa import GarciaGamboaMass
 from ..mission.smooth_lap import SmoothLapModel
 from ..propulsion.powertrain import Powertrain, motor_stations
+from ..robustness.uncertainty import RobustConfig
 from ..scoring import add_scoring, get_plugin
 from ..stability import StaticStability
 from .aero_mass import (SHARED_AERO, AeroMassProblemConfig, apply_aero_mass_values)
@@ -147,6 +148,8 @@ class FullMDOConfig(AeroMassProblemConfig):
     require_3lap_energy: bool = Field(True, description="constrain the reserve-adjusted energy to cover 3 laps")
     mockup: MockupInputs = Field(MockupInputs(), description="3D mock-up placement only (aircrafter2.vsp); never "
                                  "enters the model")
+    robust: RobustConfig = Field(RobustConfig(), description="robust design optimisation (off by default; "
+                                 "aircrafter2.robustness.rdo_problem)")
 
 
 def default_full_dvs():
@@ -198,6 +201,8 @@ class PolyAt(om.ExplicitComponent):
 class FullMDA(om.Group):
     def initialize(self):
         self.options.declare("cfg")
+        self.options.declare("retry", default=False, types=bool,
+                             desc="Newton with warm-start fallbacks (robust nodes, robustness.rdo_problem.RetryNewton)")
 
     def setup(self):
         cfg = self.options["cfg"]
@@ -233,14 +238,19 @@ class FullMDA(om.Group):
         self.connect("cruise.Cm_wing", "Cm")
         self.connect("cruise.CL_alpha", "CL_alpha")
 
-        newton = om.NewtonSolver(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
+        if self.options["retry"]:
+            from ..robustness.rdo_problem import RetryNewton
+            newton = RetryNewton(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
                                  iprint=-1, err_on_non_converge=True)
+        else:
+            newton = om.NewtonSolver(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
+                                     iprint=-1, err_on_non_converge=True)
         newton.linesearch = om.BoundsEnforceLS()
         self.nonlinear_solver = newton
         self.linear_solver = om.DirectSolver()
 
 
-def build_full_model(m, cfg: FullMDOConfig):
+def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
     a, st = cfg.aero, cfg.stability
     m.add_subsystem("airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes),
                     promotes=["*"])
@@ -258,7 +268,7 @@ def build_full_model(m, cfg: FullMDOConfig):
                                       "m_batt", "m_motor_unit", "m_motor_group", "m_sys"])
     if pr.n_motors == 2:  # wing station and prop clearances (D8)
         m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
-    m.add_subsystem("mda", FullMDA(cfg=cfg), promotes=["*"])
+    m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry), promotes=["*"])
 
     # polar from three coupled aero points (as in lap_mdo)
     m.add_subsystem("turn_alpha", TurnAlpha(frac=cfg.polar_turn_frac))
@@ -345,33 +355,43 @@ def build_full_model(m, cfg: FullMDOConfig):
             m.set_input_defaults(name, val, units=units)
 
 
-def add_full_driver(prob, cfg: FullMDOConfig):
-    m, st = prob.model, cfg.stability
-    prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
-    units = {"b": "m", "c": "m", "l_ht": "m", "S_ht": "m**2", "S_vt": "m**2", "x_batt": "m", "capacity": "A*h",
-             "y_m": "m"}
-    for name, bd in cfg.design_variables.items():
-        m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=units.get(name))
-    add_scoring(m, get_plugin(cfg.scoring.plugin, **cfg.scoring.options))
-    m.add_constraint("stall_margin", lower=0.0, ref=1.0)
-    m.add_constraint("turn_speed_margin", lower=0.0, ref=1.0)
-    m.add_constraint("thrust_margin_static", lower=0.0, ref=10.0)
+DV_UNITS = {"b": "m", "c": "m", "l_ht": "m", "S_ht": "m**2", "S_vt": "m**2", "x_batt": "m", "capacity": "A*h",
+            "y_m": "m"}
+
+
+def full_constraints(cfg: FullMDOConfig):
+    """The full problem's constraints, in order: [(promoted output, add_constraint kwargs)]."""
+    st = cfg.stability
+    cons = [("stall_margin", dict(lower=0.0, ref=1.0)),
+            ("turn_speed_margin", dict(lower=0.0, ref=1.0)),
+            ("thrust_margin_static", dict(lower=0.0, ref=10.0))]
     if cfg.require_3lap_energy:
-        m.add_constraint("energy_margin", lower=0.0, ref=1e4)
+        cons.append(("energy_margin", dict(lower=0.0, ref=1e4)))
     # rpm at the top speed depends on the design (through v): a real constraint.
-    m.add_constraint("rpm_margin", lower=0.0, ref=1000.0)
+    cons.append(("rpm_margin", dict(lower=0.0, ref=1000.0)))
     # The static current depends only on the powertrain (fixed prop, cells, throttle), not on the DVs,
     # so it is checked after the optimisation (check_fixed_limits), not passed to SLSQP.
-    m.add_constraint("v_fit_margin", lower=0.0, ref=10.0)
-    m.add_constraint("SM", lower=st.SM_min, upper=st.SM_max)
-    m.add_constraint("V_h", lower=st.V_h_min, upper=st.V_h_max)
-    m.add_constraint("V_v", lower=st.V_v_min, upper=st.V_v_max)
-    m.add_constraint("wall_ratio", upper=cfg.wall_ratio_max)
-    m.add_constraint("r_tube", lower=cfg.r_tube_min, units="m", ref=0.01)
-    m.add_constraint("cruise.cl_margin_sec", lower=0.0)
+    cons += [("v_fit_margin", dict(lower=0.0, ref=10.0)),
+             ("SM", dict(lower=st.SM_min, upper=st.SM_max)),
+             ("V_h", dict(lower=st.V_h_min, upper=st.V_h_max)),
+             ("V_v", dict(lower=st.V_v_min, upper=st.V_v_max)),
+             ("wall_ratio", dict(upper=cfg.wall_ratio_max)),
+             ("r_tube", dict(lower=cfg.r_tube_min, units="m", ref=0.01)),
+             ("cruise.cl_margin_sec", dict(lower=0.0))]
     if cfg.propulsion.n_motors == 2:  # prop-to-prop clearance is implied by the fuselage one: reported only
-        m.add_constraint("fus_clear_margin", lower=0.0, ref=0.01)
-        m.add_constraint("tip_clear_margin", lower=0.0, ref=0.01)
+        cons += [("fus_clear_margin", dict(lower=0.0, ref=0.01)),
+                 ("tip_clear_margin", dict(lower=0.0, ref=0.01))]
+    return cons
+
+
+def add_full_driver(prob, cfg: FullMDOConfig):
+    m = prob.model
+    prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
+    for name, bd in cfg.design_variables.items():
+        m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=DV_UNITS.get(name))
+    add_scoring(m, get_plugin(cfg.scoring.plugin, **cfg.scoring.options))
+    for name, kw in full_constraints(cfg):
+        m.add_constraint(name, **kw)
 
 
 def apply_full_values(prob, cfg: FullMDOConfig):
@@ -416,4 +436,9 @@ def load_full_config(path):
     data["mass"] = _merge(base, data.get("mass", {}))
     if "design_variables" not in data:
         data["design_variables"] = default_full_dvs()
+    rob = data.get("robust") or {}
+    if rob.get("uncertainty_config"):  # parameter list from a shared YAML; 'parameters' entries override by name
+        shared = {p["name"]: p for p in load_yaml(path.parent / rob["uncertainty_config"])["parameters"]}
+        shared.update({p["name"]: p for p in rob.get("parameters", [])})
+        rob["parameters"] = list(shared.values())
     return FullMDOConfig(**data)

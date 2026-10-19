@@ -1,0 +1,34 @@
+# Uncertain model parameters for robust design optimisation (robust: block of the full_mdo configs) and for
+# the post-optimality Monte Carlo (examples/full_mdo.py). One source for both.
+# Schema: aircrafter2/robustness/uncertainty.py (UncertainParam). Every spread is a PLACEHOLDER
+# (docs/OPEN_QUESTIONS.md Q32) until it is replaced with Woombah or measured data.
+#
+#   name      promoted model input (lap-model inputs as lap.<name>)
+#   dist      uniform | normal | triangular (symmetric, mode = nominal)
+#   nominal   centre (uniform), mean (normal), mode (triangular); omitted = the config's own value
+#   spread    half-width (uniform, triangular) or standard deviation (normal)
+#   relative  true: spread is a fraction of the nominal value
+#
+# The first twelve are the placeholder spreads of the post-optimality Monte Carlo
+# (examples/full_mdo.py, section 4, until this file existed). The last three match the
+# robustness.suite.worst_cases() defaults: thrust -10 %, headwind 3 m/s, mass +10 %.
+parameters:
+  - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G tail-boom factor
+  - {name: f_cb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G cargo-bay areal mass
+  - {name: f_gear,     dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G landing-gear fraction
+  - {name: f_ht,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G HT mass factor
+  - {name: f_vt,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G VT mass factor
+  - {name: e_spec,     dist: uniform, spread: 0.10, relative: true, source: PLACEHOLDER}  # pack specific energy
+  - {name: R_cell,     dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # cell resistance
+  - {name: Kv,         dist: uniform, spread: 0.05, relative: true, source: PLACEHOLDER}  # motor Kv
+  - {name: Rm,         dist: uniform, spread: 0.20, relative: true, source: PLACEHOLDER}  # motor resistance
+  - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}
+  - {name: m_motor,    dist: uniform, spread: 0.10, relative: true, source: PLACEHOLDER}
+  - {name: eta_h,      dist: uniform, spread: 0.10, relative: true, source: PLACEHOLDER}  # tail q ratio
+  # thrust in the lap model (the MDA's level-speed balance keeps the nominal thrust, as in worst_cases)
+  - {name: lap.thrust_factor, dist: uniform, nominal: 1.0, spread: 0.10, source: PLACEHOLDER}
+  # steady wind along the straights, 0 to the 3 m/s worst case (the course is laid out into the wind, so the
+  # first straight is upwind); centre 1.5 m/s
+  - {name: lap.wind,   dist: uniform, nominal: 1.5, spread: 1.5, units: m/s, source: PLACEHOLDER}
+  # payload mass, +/-10 % (the worst-case mass step is 10 %)
+  - {name: m_pay,      dist: uniform, spread: 0.10, relative: true, units: kg, source: PLACEHOLDER}

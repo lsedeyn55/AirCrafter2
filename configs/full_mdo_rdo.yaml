@@ -1,0 +1,22 @@
+# Robust design optimisation (RDO) of the full MDF problem, single 10x7E 4S (the best deterministic single design).
+# Everything not listed here is configs/full_mdo.yaml. Formulation: docs/modules/robustness.md; plan and
+# screening: docs/RDO_PLAN.md. Every spread is a PLACEHOLDER (configs/uncertainty.yaml, OPEN_QUESTIONS Q32).
+extends: full_mdo.yaml
+
+propulsion: {prop: 10x7E}
+
+robust:
+  enabled: true
+  uncertainty_config: uncertainty.yaml   # the uncertain parameters (shared with examples/full_mdo.py)
+  # Screened at the deterministic optimum (studies/rdo_screening.py, docs/RDO_PLAN.md section 2): the smallest set
+  # covering 90 % of the first-order variance of the lap time and the active robust constraints (energy, SM)
+  # has 7 parameters; no 5-parameter set reaches 90 % (best: 81 % / 95 % / 77 %). The others are held at their means.
+  active: [Kv, Rm, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]
+  quadrature: udr        # univariate dimension reduction, 3 Gauss points per dimension: N = 2d + 1 = 15 nodes
+  points: 3
+  objective: mean_plus_k_sigma
+  k: 1.0
+  beta: 2.0              # ~97.7 % one-sided if the constraint is normally distributed (an assumption)
+  robust_constraints: [energy_margin, thrust_margin_static, stall_margin, SM, wall_ratio, r_tube]
+  screening_threshold: 0.9
+  max_dim: 7             # raised from the briefed 5: see 'active' above
