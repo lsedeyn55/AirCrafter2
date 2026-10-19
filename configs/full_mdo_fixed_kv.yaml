@@ -1,0 +1,5 @@
+# configs/full_mdo.yaml with a fixed motor (Kv not a design variable): the 10-DV problem as it was before Kv became a
+# design variable, and the configuration of the pinned studies (docs/studies/twin_motor_study.md, rdo_study.md).
+# Resolves to exactly the old full_mdo.yaml: same DVs, constraints and values (tests/test_rdo.py regression).
+extends: full_mdo.yaml
+fixed_design_variables: [Kv]   # drop the inherited Kv DV: propulsion.Kv/Rm/I0 are the motor, I_max a post-check

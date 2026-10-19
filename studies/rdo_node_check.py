@@ -26,7 +26,7 @@ import numpy as np  # noqa: E402
 warnings.filterwarnings("ignore")
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "outputs" / "rdo"
-CFG = ROOT / "configs" / "full_mdo_rdo.yaml"
+CFG = ROOT / "configs" / "full_mdo_rdo_fixed_kv.yaml"  # pinned: docs/RDO_PLAN.md (fixed motor)
 
 
 def v(p, k):

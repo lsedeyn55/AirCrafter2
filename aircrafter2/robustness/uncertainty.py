@@ -40,6 +40,14 @@ class UncertainParam(BaseModel):
     relative: bool = Field(False, description="spread as a fraction of the nominal value")
     units: Optional[str] = None
     source: str = "PLACEHOLDER"
+    kv_mode: Literal["both", "fixed", "dv"] = Field(
+        "both", description="motor mode the parameter applies to: 'fixed' (Kv fixed: Kv, Rm), 'dv' (Kv a design "
+        "variable: Kv_factor, Rm_ref), or both")
+
+
+def for_kv_mode(params, kv_dv):
+    """The parameters that apply to the motor mode (kv_dv: Kv is a design variable), in list order."""
+    return [p for p in params if p.kv_mode == "both" or p.kv_mode == ("dv" if kv_dv else "fixed")]
 
 
 class RobustConfig(BaseModel):
@@ -77,11 +85,13 @@ class RobustConfig(BaseModel):
                                 "variables (e.g. b, c, tc_scale perturbed as x + delta at the nodes)")
 
 
-def load_uncertainty(path):
-    """The parameter list of an uncertainty YAML (configs/uncertainty.yaml)."""
+def load_uncertainty(path, kv_dv=None):
+    """The parameter list of an uncertainty YAML (configs/uncertainty.yaml); kv_dv True/False keeps only the
+    parameters of that motor mode (for_kv_mode), None keeps all."""
     from ..config.loader import load_yaml
 
-    return [UncertainParam(**p) for p in load_yaml(Path(path))["parameters"]]
+    params = [UncertainParam(**p) for p in load_yaml(Path(path))["parameters"]]
+    return params if kv_dv is None else for_kv_mode(params, kv_dv)
 
 
 @dataclass

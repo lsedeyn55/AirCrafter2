@@ -22,7 +22,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STUDY = ROOT / "docs" / "studies" / "twin_motor_study_results.json"
 OUT = ROOT / "outputs" / "vsp"
-CFG = {1: "configs/full_mdo.yaml", 2: "configs/full_mdo_twin.yaml"}
+# pinned to the fixed motor, as the twin study it re-analyses (studies/twin_motor_study.py)
+CFG = {1: "configs/full_mdo_fixed_kv.yaml", 2: "configs/full_mdo_twin_fixed_kv.yaml"}
 CASES = ["n1_10x7E_4S", "n2_10x7E_4S", "n2_8x6E_4S_matched"]
 DVS = ["b", "c", "camber_scale", "capacity", "l_ht", "S_ht", "S_vt", "x_batt", "x_cb_frac"]
 TOL = 1e-4

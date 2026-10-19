@@ -103,7 +103,7 @@ def test_stats_partials(rule):
 def robust_small():
     from aircrafter2.robustness.rdo_problem import build_robust_problem
 
-    cfg = load_full_config(CONFIGS / "full_mdo_rdo.yaml")
+    cfg = load_full_config(CONFIGS / "full_mdo_rdo_fixed_kv.yaml")  # the fixed-motor RDO problem (Kv uncertain)
     cfg.aero.num_y = 11
     cfg.robust.active = ["Kv"]  # d = 1, N = 3
     prob = build_robust_problem(cfg)
@@ -129,12 +129,15 @@ def test_robust_check_totals(robust_small):
 
 
 # --- regression: with RDO off, the deterministic problem is unchanged ---------------------------------
-@pytest.mark.parametrize("cfg_name", ["full_mdo.yaml", "full_mdo_twin.yaml"])
-def test_rdo_off_matches_pre_rdo_reference(cfg_name):
+# The reference was made from full_mdo.yaml / full_mdo_twin.yaml before Kv became a design variable; their fixed-Kv
+# versions must still reproduce it (the reference file is never regenerated for this).
+@pytest.mark.parametrize("cfg_name,ref_name", [("full_mdo_fixed_kv.yaml", "full_mdo.yaml"),
+                                               ("full_mdo_twin_fixed_kv.yaml", "full_mdo_twin.yaml")])
+def test_rdo_off_matches_pre_rdo_reference(cfg_name, ref_name):
     from .rdo_off_snapshot import snapshot
 
     assert not load_full_config(CONFIGS / cfg_name).robust.enabled
-    ref = json.loads(REFERENCE.read_text())[cfg_name]
+    ref = json.loads(REFERENCE.read_text())[ref_name]
     now = snapshot(cfg_name)
     assert list(now) == list(ref)
     assert [c[0] for c in now["cons"]] == [c[0] for c in ref["cons"]]  # same constraints, same order

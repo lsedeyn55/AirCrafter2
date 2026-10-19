@@ -65,14 +65,14 @@ propulsion:              # decision B: the powertrain sets the power; cruise spe
   R_cell: 0.005          # ohm, PLACEHOLDER (Q8)
   usable_fraction: 0.8   # assumptions_file.m
   e_spec: 150.0          # Wh/kg pack-level, PLACEHOLDER (Q8)
-  Kv: 900.0              # rpm/V, PLACEHOLDER motor (Q7)
-  Rm: 0.05               # ohm, PLACEHOLDER (Q7)
-  I0: 1.0                # A, PLACEHOLDER (Q7)
+  Kv: 900.0              # rpm/V, PLACEHOLDER motor (Q7); the reference motor when Kv is a design variable
+  Rm: 0.05               # ohm, PLACEHOLDER (Q7); reference motor (scaled as (Kv_ref/Kv)^2 when Kv is a DV)
+  I0: 1.0                # A, PLACEHOLDER (Q7); reference motor (scaled as Kv/Kv_ref when Kv is a DV)
   m_motor: 0.15          # kg, PLACEHOLDER (Q7)
   m_esc: 0.06            # kg, PLACEHOLDER (Q7)
   m_prop: 0.03           # kg, PLACEHOLDER
   m_avionics: 0.25       # kg, PLACEHOLDER
-  I_max: 60.0            # A, PLACEHOLDER motor/ESC limit (Q7)
+  I_max: 60.0            # A, PLACEHOLDER motor/ESC limit (Q7); a constraint when Kv is a DV
   rpm_fraction: 0.85     # of APC's 150000/D, propSelector.m
   v_top: 50.0            # m/s, T(v) fit range (above the full-throttle level speed)
 
@@ -104,6 +104,9 @@ design_variables:
   S_vt: {lower: 0.01, upper: 0.10}       # m^2
   x_batt: {lower: -0.35, upper: 0.2}     # m, battery station (trims the CG)
   x_cb_frac: {lower: 0.0, upper: 0.6}    # cargo bay / payload centre as a chord fraction (trims the CG)
+  Kv: {lower: 500.0, upper: 1500.0}      # rpm/V, motor Kv (the reference motor above rewound), PLACEHOLDER bounds
+                                         # (Q34); starts at propulsion.Kv unless initial gives Kv. Drop it (e.g.
+                                         # fixed_design_variables: [Kv], configs/*_fixed_kv.yaml) for a fixed motor
 
 initial: {b: 1.2, c: 0.3, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 6.0, v: 22.0, capacity: 3.0,
           l_ht: 0.8, S_ht: 0.06, S_vt: 0.03, x_batt: -0.1}

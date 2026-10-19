@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-from aircrafter2.problems.full_mdo import build_full_problem, check_fixed_limits, load_full_config
+from aircrafter2.problems.full_mdo import build_full_problem, check_fixed_limits, kv_is_dv, load_full_config
 from aircrafter2.robustness.suite import monte_carlo, sensitivities, worst_cases
 from aircrafter2.robustness.uncertainty import load_uncertainty, resolve
 
@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PROPS = sys.argv[1:] or ["10x7E", "11x7E", "12x8E"]
 LAYOUTS = [int(n) for n in os.environ.get("AIRCRAFTER_LAYOUTS", "1 2").split()]
 CFG = {1: "full_mdo.yaml", 2: "full_mdo_twin.yaml"}
-REPORT = ["b", "c", "tc_max", "camber_scale", "capacity", "l_ht", "S_ht", "S_vt", "x_batt", "x_cb_frac", "v",
+REPORT = ["b", "c", "tc_max", "camber_scale", "capacity", "l_ht", "S_ht", "S_vt", "x_batt", "x_cb_frac", "Kv", "Rm",
+          "I0", "v",
           "m_total", "m_empty", "m_wing", "m_tb", "m_sys", "m_batt", "m_motor_group", "E_nom_total", "cruise.L_over_D", "CD_extra", "T_static",
           "thrust_margin_static", "I_static", "rpm_max", "energy_margin", "stall_margin", "turn_speed_margin",
           "Lap1time", "ThreeLapTime", "laps_frac", "Preq", "SM", "V_h", "V_v", "wall_ratio", "r_tube",
@@ -85,9 +86,11 @@ def main():
     prob = runs[best]["prob"]
     w("## 2. Sensitivities of the 3-lap time at the best design\n")
     w("Normalised: (x / t) dt/dx, i.e. % change of the 3-lap time per % change of x.\n")
-    dvs = list(load_full_config(ROOT / "configs" / CFG[runs[best]["n"]]).design_variables)
-    assumptions = ["m_pay", "f_tb", "f_cb", "f_gear", "f_ht", "f_vt", "e_spec", "R_cell", "Kv", "Rm", "m_avionics",
-                   "m_motor", "eta_h", "rho"]
+    best_cfg = load_full_config(ROOT / "configs" / CFG[runs[best]["n"]])
+    dvs = list(best_cfg.design_variables)
+    motor = ["Kv_factor", "Rm_ref"] if kv_is_dv(best_cfg) else ["Kv", "Rm"]  # Kv a DV: Rm is computed from Rm_ref
+    assumptions = [k for k in ["m_pay", "f_tb", "f_cb", "f_gear", "f_ht", "f_vt", "e_spec", "R_cell", *motor,
+                               "m_avionics", "m_motor", "eta_h", "rho"] if k not in dvs]
     sens = sensitivities(prob, "ThreeLapTime", dvs + assumptions)
     w("| Variable | kind | sensitivity |")
     w("|---|---|---:|")
@@ -109,7 +112,8 @@ def main():
 
     w("## 4. Monte Carlo on the best design (n = 40, independent)\n")
     # one source for the spreads: configs/uncertainty.yaml (also used by robust design optimisation)
-    dists = resolve(load_uncertainty(ROOT / "configs" / "uncertainty.yaml"), lambda name: v(prob, name))
+    dists = resolve(load_uncertainty(ROOT / "configs" / "uncertainty.yaml", kv_dv=kv_is_dv(best_cfg)),
+                    lambda name: v(prob, name))
     w("Distributions (configs/uncertainty.yaml, PLACEHOLDERS, OPEN_QUESTIONS Q32): " + ", ".join(
         f"{d.name} {d.kind} {d.mean:.4g} +/- {d.scale:.3g}" for d in dists))
     w("")

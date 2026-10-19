@@ -26,7 +26,7 @@ from openmdao.core.analysis_error import AnalysisError
 
 from .quadrature import make_rule
 from .stats import RobustStats, key_of
-from .uncertainty import Dist, resolve
+from .uncertainty import Dist, for_kv_mode, resolve
 
 
 def _value(prob, name):
@@ -35,8 +35,10 @@ def _value(prob, name):
 
 def resolved_dists(cfg, current_value):
     """(all Dists, active Dists) of cfg.robust; current_value(name) supplies config values for nominal = None."""
+    from ..problems.full_mdo import kv_is_dv
+
     rob = cfg.robust
-    dists = resolve(rob.parameters, current_value)
+    dists = resolve(for_kv_mode(rob.parameters, kv_is_dv(cfg)), current_value)
     names = [d.name for d in dists]
     active = names if rob.active is None else list(rob.active)
     unknown = sorted(set(active) - set(names))
@@ -130,8 +132,11 @@ class _NodeSetter:
 
 def _template_dists(cfg):
     """Distributions with the right kinds but placeholder numbers: the rule's size before setup."""
+    from ..problems.full_mdo import kv_is_dv
+
     act = cfg.robust.active
-    return [Dist(p.name, p.dist, 1.0, 0.1) for p in cfg.robust.parameters if act is None or p.name in act]
+    return [Dist(p.name, p.dist, 1.0, 0.1) for p in for_kv_mode(cfg.robust.parameters, kv_is_dv(cfg))
+            if act is None or p.name in act]
 
 
 def build_robust_problem(cfg, driver=True):
@@ -139,11 +144,12 @@ def build_robust_problem(cfg, driver=True):
 
     Returns the set-up problem; ``prob.rdo`` holds dict(rule, dists, active, values, solvers, quantities).
     """
-    from ..problems.full_mdo import (DV_UNITS, add_full_driver, apply_full_values, build_full_model,
-                                     full_constraints)
+    from ..problems.full_mdo import (DV_REF, DV_UNITS, add_full_driver, apply_full_values, build_full_model,
+                                     check_kv_robust, full_constraints)
     from ..scoring import get_plugin
 
     rob = cfg.robust
+    check_kv_robust(cfg)  # again: the UI edits a validated config
     if rob.dv_tolerances:
         raise NotImplementedError("robust.dv_tolerances (manufacturing tolerances on design variables) is a hook "
                                   "for later; leave it empty")
@@ -168,10 +174,10 @@ def build_robust_problem(cfg, driver=True):
         g.add_subsystem("scoring", plugin.component(), promotes_inputs=list(plugin.inputs),
                         promotes_outputs=["score"])
         nodes.add_subsystem(f"n{j}", g, promotes_inputs=dvs)
-    for name in dvs:
-        m.set_input_defaults(name, cfg.initial.get(name, 0.5 * (cfg.design_variables[name].lower
-                                                                + cfg.design_variables[name].upper)),
-                             units=DV_UNITS.get(name))
+    for name in dvs:  # start: cfg.initial, else the reference motor's Kv, else the middle of the bounds
+        bd = cfg.design_variables[name]
+        start = cfg.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper)
+        m.set_input_defaults(name, cfg.initial.get(name, start), units=DV_UNITS.get(name))
 
     ref_of = {n: kw.get("ref") or 1.0 for n, kw in cons}
     quantities = {"score": rob.sigma_eps * plugin.ref}
@@ -193,7 +199,7 @@ def build_robust_problem(cfg, driver=True):
         else:
             prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
         for name, bd in cfg.design_variables.items():
-            m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=DV_UNITS.get(name))
+            m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=DV_UNITS.get(name), ref=DV_REF.get(name))
         oref = plugin.ref if plugin.sense == "min" else -plugin.ref
         if rob.objective == "mean_plus_k_sigma":
             m.add_objective("stats.score_robust", ref=oref)

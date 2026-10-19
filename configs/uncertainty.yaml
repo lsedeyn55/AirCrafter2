@@ -20,8 +20,14 @@ parameters:
   - {name: f_vt,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G VT mass factor
   - {name: e_spec,     dist: uniform, spread: 0.10, relative: true, source: PLACEHOLDER}  # pack specific energy
   - {name: R_cell,     dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # cell resistance
-  - {name: Kv,         dist: uniform, spread: 0.05, relative: true, source: PLACEHOLDER}  # motor Kv
-  - {name: Rm,         dist: uniform, spread: 0.20, relative: true, source: PLACEHOLDER}  # motor resistance
+  # The motor entries depend on whether Kv is a design variable (kv_mode; for_kv_mode keeps one pair): a fixed motor
+  # has Kv and Rm; with Kv a DV the design Kv cannot also be uncertain, so the same spreads act as a winding factor on
+  # the design Kv (Kv_factor, before the rewind scaling of Rm and I0) and on the reference-motor resistance (Rm_ref).
+  # Each pair sits in the same list position, so either mode resolves to 15 parameters in the same order.
+  - {name: Kv,         dist: uniform, spread: 0.05, relative: true, kv_mode: fixed, source: PLACEHOLDER}  # motor Kv
+  - {name: Kv_factor,  dist: uniform, nominal: 1.0, spread: 0.05, kv_mode: dv, source: PLACEHOLDER}  # Kv tolerance
+  - {name: Rm,         dist: uniform, spread: 0.20, relative: true, kv_mode: fixed, source: PLACEHOLDER}  # resistance
+  - {name: Rm_ref,     dist: uniform, spread: 0.20, relative: true, kv_mode: dv, source: PLACEHOLDER}  # ref. motor Rm
   - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}
   - {name: m_motor,    dist: uniform, spread: 0.10, relative: true, source: PLACEHOLDER}
   - {name: eta_h,      dist: uniform, spread: 0.10, relative: true, source: PLACEHOLDER}  # tail q ratio

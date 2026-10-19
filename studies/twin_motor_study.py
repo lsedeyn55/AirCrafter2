@@ -33,7 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "outputs" / "twin_study"
 DOC = ROOT / "docs" / "studies" / "twin_motor_study.md"
 CACHE = ROOT / "docs" / "studies" / "twin_motor_study_results.json"
-CFG = {1: "full_mdo.yaml", 2: "full_mdo_twin.yaml"}
+# pinned to the fixed motor: the AIAC paper numbers (commit 58344f2) were made before Kv became a design variable;
+# the *_fixed_kv configs resolve to exactly the configs used then
+CFG = {1: "full_mdo_fixed_kv.yaml", 2: "full_mdo_twin_fixed_kv.yaml"}
 PROPS = ["10x7E", "11x7E", "12x8E"]
 # matched installed power, from a powertrain-only screen at the single 10x7E / 4S unit (21.4 N, 494 W static):
 # static thrust within ~10 % (3S) and static electrical power within ~5 % (10x7E 3S, 8x6E 4S)

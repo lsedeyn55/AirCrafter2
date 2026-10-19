@@ -38,6 +38,19 @@ Design variables are never uncertain parameters. `robust.dv_tolerances` is a hoo
 (x + δ at the nodes), not implemented yet. **Every spread in `configs/uncertainty.yaml` is a PLACEHOLDER
 (OPEN_QUESTIONS Q32).**
 
+**Motor Kv a design variable (the default).** The design variables are promoted once and shared by every node, so a
+node cannot set its own `Kv` (the writes would all land on the one shared input). The motor's uncertainty is then:
+- `Kv_factor` (nominal 1, the same ±5 % as `Kv`): the effective Kv is `Kv · Kv_factor`, applied before the rewind
+  scaling, so a winding tolerance moves Kv, Rm and I0 consistently (docs/modules/propulsion.md);
+- `Rm_ref` (the same ±20 % as `Rm`): the reference motor's resistance.
+
+`configs/uncertainty.yaml` lists both pairs with a `kv_mode` tag (`fixed`: Kv, Rm; `dv`: Kv_factor, Rm_ref) in the
+same list positions, and `for_kv_mode` keeps the pair of the config's mode, so either mode has the same 15
+parameters in the same order (the fixed-Kv list is exactly the old one). Explicit names are checked, not remapped:
+a config with Kv a DV and `Kv` or `Rm` in `robust.active` fails validation (and `Kv_factor` / `Rm_ref` with a fixed
+motor). `configs/full_mdo_rdo.yaml` uses Kv_factor / Rm_ref; `configs/full_mdo_rdo_fixed_kv.yaml` keeps Kv / Rm and is
+the problem of docs/studies/rdo_study.md.
+
 **Screening** (`uncertainty.screen`): at the reference point p̄ (all means), the first-order variance contributions
 are V_qi = (∂q/∂p_i · σ_i)², from one `compute_totals` call. The active set is the smallest set (≤ `max_dim`) covering
 `screening_threshold` of Σ_i V_qi for the objective and every active constraint with nonzero variance. The other
@@ -119,7 +132,8 @@ If all of those fail, the node raises `AnalysisError`:
 
 ### Configuration
 
-`configs/full_mdo_rdo.yaml` (single 10x7E 4S) and `configs/full_mdo_twin_rdo.yaml` set these `robust:` keys:
+`configs/full_mdo_rdo.yaml` (single 10x7E 4S, Kv a DV), `configs/full_mdo_twin_rdo.yaml`, and their fixed-motor
+versions `*_rdo_fixed_kv.yaml` (the RDO study) set these `robust:` keys:
 
 | Key | Meaning |
 |---|---|

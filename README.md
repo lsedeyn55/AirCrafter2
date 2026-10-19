@@ -26,8 +26,11 @@ in one of two ways (the first that is set wins):
 ## Quickstart
 
 ```bash
-# optimise the full design (aero + mass + propulsion + stability + lap model)
+# optimise the full design (aero + mass + propulsion + stability + lap model); the motor Kv is a design variable
+# (the config's motor is rewound to it: docs/modules/propulsion.md)
 .venv/bin/aircrafter2 run configs/full_mdo.yaml --out outputs/my_design
+# the same with a fixed motor (Kv = propulsion.Kv): the 10-DV problem of the pinned studies
+.venv/bin/aircrafter2 run configs/full_mdo_fixed_kv.yaml
 
 # analyse only (no optimisation), or try another propeller
 .venv/bin/aircrafter2 run configs/full_mdo.yaml --analyse --prop 11x7E
@@ -93,7 +96,14 @@ print(res.values["ThreeLapTime"], res.values["m_total"])
 ## Configs
 
 Everything a run needs is in one YAML file (`configs/full_mdo.yaml` is the full model). Configs can point at
-shared files (`mass_config:`) and override them. Misspelt keys are errors, not silently ignored values.
+shared files (`mass_config:`) and override them, or extend another config (`extends:`); `fixed_design_variables:
+[Kv]` removes inherited design variables (the `*_fixed_kv.yaml` configs). Misspelt keys are errors, not silently
+ignored values.
+
+Design variables of the full model: span `b`, chord `c`, `tc_scale`, `camber_scale`, battery `capacity` (per pack),
+tail arm `l_ht`, `S_ht`, `S_vt`, battery station `x_batt`, cargo-bay station `x_cb_frac`, and motor `Kv` (default;
+PLACEHOLDER bounds 500-1500 rpm/V, OPEN_QUESTIONS Q34). Prop, cell count and number of motors are enumerated outside
+the optimiser.
 
 | Section | Contents |
 |---|---|

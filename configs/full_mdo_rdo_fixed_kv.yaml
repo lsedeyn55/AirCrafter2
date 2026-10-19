@@ -1,0 +1,6 @@
+# configs/full_mdo_rdo.yaml with a fixed motor: the RDO problem of docs/studies/rdo_study.md (Kv and Rm uncertain
+# directly). Resolves to exactly the old full_mdo_rdo.yaml.
+extends: full_mdo_rdo.yaml
+fixed_design_variables: [Kv]
+robust:
+  active: [Kv, Rm, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]

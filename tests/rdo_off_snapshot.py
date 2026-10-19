@@ -3,6 +3,8 @@
 Uses only APIs that existed before RDO was added, so the reference (tests/data/rdo_off_reference.json) was made
 by this same file on the pre-RDO commit. Regenerate (only if the deterministic model is meant to change):
     .venv/bin/python tests/rdo_off_snapshot.py tests/data/rdo_off_reference.json
+The fixed-Kv configs (full_mdo_fixed_kv.yaml, full_mdo_twin_fixed_kv.yaml) are compared with this reference; the
+Kv-as-design-variable defaults have their own (tests/data/kv_dv_reference.json, same script).
 """
 
 import json
@@ -48,6 +50,7 @@ def snapshot(cfg_name, iters=3):
     return out
 
 
-if __name__ == "__main__":
-    ref = {c: snapshot(c) for c in CONFIGS}
+if __name__ == "__main__":  # [output.json [config ...]]; the Kv-DV reference: tests/data/kv_dv_reference.json
+    names = sys.argv[2:] or CONFIGS
+    ref = {c: snapshot(c) for c in names}
     Path(sys.argv[1]).write_text(json.dumps(ref, indent=1))

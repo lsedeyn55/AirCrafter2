@@ -23,7 +23,7 @@ def _get(prob, k):
         return float("nan")
 
 
-def main(n_corners=16, n_random=8, seed=0, relief=False, cfg_name="full_mdo_twin.yaml"):
+def main(n_corners=16, n_random=8, seed=0, relief=False, cfg_name="full_mdo_twin_fixed_kv.yaml"):
     cfg = load_full_config(ROOT / "configs" / cfg_name)
     cfg.mass.options.motor_inertia_relief = relief
     dvs = cfg.design_variables
@@ -60,4 +60,4 @@ def main(n_corners=16, n_random=8, seed=0, relief=False, cfg_name="full_mdo_twin
 if __name__ == "__main__":
     import sys
 
-    main(cfg_name=sys.argv[1] if len(sys.argv) > 1 else "full_mdo_twin.yaml")
+    main(cfg_name=sys.argv[1] if len(sys.argv) > 1 else "full_mdo_twin_fixed_kv.yaml")

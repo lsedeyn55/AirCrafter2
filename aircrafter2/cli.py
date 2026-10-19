@@ -3,6 +3,7 @@
     aircrafter2 run configs/full_mdo.yaml [--out outputs/run1] [--analyse] [--no-figures]
                 [--design-space] [--prop 11x7E] [--n-motors {1,2}] [--battery-topology {per_motor,shared}]
                 [--robust | --no-robust]   # robust design optimisation (configs/full_mdo_rdo.yaml has it on)
+                                 # the motor Kv is a design variable in configs/full_mdo*.yaml; *_fixed_kv.yaml: fixed
     aircrafter2 vsp outputs/<run>/ [--out DIR] [--no-figures] [--incidence {zero,cruise}]
                                  # OpenVSP mock-up from the run's geometry.json (optional OpenVSP)
     aircrafter2 plugins          # list scoring plug-ins

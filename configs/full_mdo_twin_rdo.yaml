@@ -7,7 +7,8 @@ propulsion: {prop: 10x7E}
 robust:
   enabled: true
   uncertainty_config: uncertainty.yaml
-  active: [Kv, Rm, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]
+  active: [Kv_factor, Rm_ref, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]  # Kv is a DV here: the
+  # motor pair is the winding factor and the reference-motor Rm (screened as Kv, Rm on the fixed-Kv design)
   quadrature: udr
   points: 3
   objective: mean_plus_k_sigma

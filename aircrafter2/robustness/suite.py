@@ -22,10 +22,23 @@ def _val(prob, name):
 
 
 def sensitivities(prob, of, wrt):
-    """{name: (x / f) df/dx} at the current point; wrt are promoted input or DV names."""
+    """{name: (x / f) df/dx} at the current point; wrt are promoted input or DV names (each once)."""
+    if len(set(wrt)) != len(list(wrt)):
+        raise ValueError(f"duplicate names in wrt: {sorted(n for n in set(wrt) if list(wrt).count(n) > 1)}")
+    check_settable(prob, wrt)
     J = prob.compute_totals(of=[of], wrt=list(wrt), return_format="dict")[of]
     f = _val(prob, of)
     return {w: float(np.ravel(J[w])[0]) * _val(prob, w) / f for w in wrt}
+
+
+def check_settable(prob, names):
+    """Raise if any name is computed by the model: setting it would be silently overwritten by the next run (e.g. Rm
+    and I0 when Kv is a design variable: perturb Rm_ref, Kv_factor instead)."""
+    res = prob.model._resolver
+    computed = [n for n in names if res.is_prom(n, "output")]
+    if computed:
+        hint = " (Kv is a design variable: use Rm_ref / I0_ref / Kv_factor)" if set(computed) & {"Rm", "I0"} else ""
+        raise ValueError(f"{computed} are computed by the model, not inputs; setting them has no effect{hint}")
 
 
 def _snapshot(prob, outputs):
@@ -44,6 +57,7 @@ def worst_cases(prob, outputs, mass_pct=10.0, thrust_pct=10.0, capacity_pct=10.0
         f"capacity -{capacity_pct:g} %": [("capacity", cap * (1 - 0.01 * capacity_pct), cap)],
         f"headwind {headwind:g} m/s": [("lap.wind", headwind, 0.0)],
     }
+    check_settable(prob, [name for changes in cases.values() for name, _, _ in changes])
     for label, changes in cases.items():
         for name, new, _ in changes:
             prob.set_val(name, new)
@@ -68,6 +82,7 @@ def monte_carlo(prob, spreads, outputs, n=40, seed=0):
     else:
         names = [d.name for d in spreads]
         draw = {d.name: d.ppf for d in spreads}
+    check_settable(prob, names)
     nominal = {k: _val(prob, k) for k in names}
     rows, failed = [], 0
     for _ in range(n):

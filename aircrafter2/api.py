@@ -19,7 +19,8 @@ from pathlib import Path
 import numpy as np
 import openmdao.api as om
 
-from .problems.full_mdo import FullMDOConfig, build_full_problem, check_fixed_limits, load_full_config
+from .problems.full_mdo import (FullMDOConfig, build_full_problem, check_fixed_limits, full_constraints, kv_is_dv,
+                                 load_full_config)
 
 SUMMARY_KEYS = [
     ("score", "-", "objective (scoring plug-in)"), ("ThreeLapTime", "s", "3-lap time"),
@@ -53,6 +54,89 @@ def _val(p, k):
 
 def summary_table(p):
     return [(k, unit, desc, _val(p, k)) for k, unit, desc in SUMMARY_KEYS]
+
+
+# placeholder model assumptions for the sensitivity report, by motor mode (design variables are never repeated here)
+ASSUMPTIONS = ["m_pay", "Kv", "Rm", "R_cell", "e_spec", "f_tb", "f_cb", "m_avionics"]
+ASSUMPTIONS_KV_DV = ["m_pay", "Kv_factor", "Rm_ref", "R_cell", "e_spec", "f_tb", "f_cb", "m_avionics"]
+
+
+def sensitivity_assumptions(cfg, extra=()):
+    """The assumption list for `cfg`'s motor mode, without its design variables or duplicates."""
+    base = ASSUMPTIONS_KV_DV if kv_is_dv(cfg) else ASSUMPTIONS
+    out = []
+    for k in list(base) + list(extra):
+        if k not in cfg.design_variables and k not in out:
+            out.append(k)
+    return out
+
+
+def motor_report(prob, cfg, tol=1e-4):
+    """Kv, the (scaled) Rm and I0, the static current against its limit, and what set Kv.
+
+    'set by' names a Kv bound within tol (relative to the bound range) or the current / pack-current / rpm
+    constraints that are active (|margin| / ref < tol); otherwise 'interior'.
+    """
+    v = lambda k: _val(prob, k)  # noqa: E731
+    pr = cfg.propulsion
+    out = dict(kv_dv=kv_is_dv(cfg), Kv=v("Kv"), Rm=v("Rm"), I0=v("I0"), I_static=v("I_static"), I_max=pr.I_max,
+               I_margin=v("I_margin"), rpm_margin=v("rpm_margin"), Kv_ref=pr.Kv, Rm_ref=pr.Rm, I0_ref=pr.I0)
+    if not out["kv_dv"]:
+        out["set_by"] = "fixed (not a design variable)"
+        return out
+    bd = cfg.design_variables["Kv"]
+    span = bd.upper - bd.lower
+    why = [f"{side} bound ({b:g} rpm/V)" for side, b in (("lower", bd.lower), ("upper", bd.upper))
+           if abs(out["Kv"] - b) <= tol * span]
+    refs = dict(full_constraints(cfg))
+    for name in ("I_margin", "I_pack_margin", "rpm_margin"):
+        if name in refs and abs(v(name)) / (refs[name].get("ref") or 1.0) < tol:
+            why.append(f"{name} = 0 (active)")
+    out["set_by"] = ", ".join(why) if why else "interior (no Kv bound or current/rpm constraint active)"
+    return out
+
+
+KV_INPUT_RANGE = (100.0, 5000.0)  # rpm/V, the range the UI accepts for any Kv entry
+
+
+def validate_kv_dv(lower, upper, start, allowed=KV_INPUT_RANGE):
+    """Messages for invalid Kv design-variable settings (empty list = valid)."""
+    errs = []
+    if not lower < upper:
+        errs.append(f"Kv lower bound ({lower:g}) must be below the upper bound ({upper:g}).")
+    if not lower <= start <= upper:
+        errs.append(f"Kv start ({start:g}) must lie within the bounds [{lower:g}, {upper:g}].")
+    if lower < allowed[0] or upper > allowed[1]:
+        errs.append(f"Kv bounds must lie within {allowed[0]:g}-{allowed[1]:g} rpm/V.")
+    return errs
+
+
+def reanalyse_with_motor(cfg, dv, Kv, Rm, I0, m_motor, reference=None):
+    """Re-analyse a design (no optimiser) with a real motor (Kv, Rm, I0, m_motor) instead of the continuous-Kv one.
+
+    cfg: the config the design came from; dv: {design variable: value} (Kv, if present, is replaced by the real
+    motor). Builds the fixed-motor problem, runs the coupled analysis and returns dict(score, constraints, motor,
+    and, if `reference` ({output: value} of the original design) is given, the changes). No motor catalogue is
+    built in: the caller supplies the motor (OPEN_QUESTIONS Q7).
+    """
+    c = cfg.model_copy(deep=True)
+    c.design_variables.pop("Kv", None)
+    c.initial.pop("Kv", None)
+    c.robust.enabled = False
+    c.robust.active = None
+    c.propulsion.Kv, c.propulsion.Rm, c.propulsion.I0, c.propulsion.m_motor = Kv, Rm, I0, m_motor
+    prob = build_full_problem(c, driver=False)
+    for name, val in dv.items():
+        if name != "Kv":
+            prob.set_val(name, val)
+    prob.run_model()
+    names = [n for n, _ in full_constraints(cfg)] + ["I_margin"]
+    vals = {"score": _val(prob, "score"), "ThreeLapTime": _val(prob, "ThreeLapTime"), "m_total": _val(prob, "m_total")}
+    vals.update({n: _val(prob, n) for n in dict.fromkeys(names)})
+    out = dict(values=vals, motor=dict(Kv=Kv, Rm=Rm, I0=I0, m_motor=m_motor), limits=check_fixed_limits(prob))
+    if reference:
+        out["change"] = {k: vals[k] - reference[k] for k in vals if k in reference}
+    return out
 
 
 def _run_robust(cfg, optimise, progress):
@@ -134,6 +218,7 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
     if robust is not None:
         values["robust"] = robust
     values["limits"] = check_fixed_limits(prob)
+    values["motor"] = motor_report(prob, cfg)
     from .stability import oei_check
 
     values["oei"] = oei_check(prob, cfg)
@@ -151,8 +236,7 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
         extra = []
         if cfg.propulsion.n_motors == 2:  # twin-layout assumptions
             extra = ["m_nacelle", "Q_nac", "y_m" if cfg.propulsion.station_mode == "absolute" else "y_motor"]
-        sens = sens_fn(prob, "score", dvs + ["m_pay", "Kv", "Rm", "R_cell", "e_spec", "f_tb", "f_cb", "m_avionics"]
-                       + [k for k in extra if k not in dvs])
+        sens = sens_fn(prob, "score", dvs + sensitivity_assumptions(cfg, extra))
         values["sensitivities"] = sens
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
     from .geometry.export import export_geometry, write_geometry
@@ -169,6 +253,7 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
         lines[2:2] = _robust_lines(robust)
         lines.insert(len(_robust_lines(robust)) + 2, "Design analysed at the config's nominal parameter values:\n")
     lines += [f"| {desc} (`{k}`) | {v:.5g} | {unit} |" for k, unit, desc, v in summary_table(prob)]
+    lines += _motor_lines(values["motor"])
     (out / "summary.md").write_text("\n".join(lines) + "\n")
     result.files += [out / "results.json", out / "summary.md"]
     if n2:
@@ -192,6 +277,18 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
                                    sens=sens, dvs=dvs, design_space_args=ds)
         result.files += [xdsm.write_tex(out / "xdsm.tex"), xdsm.draw_pdf(out / "xdsm.pdf")]
     return result
+
+
+def _motor_lines(mr):
+    head = ("Motor Kv (design variable; the reference motor rewound, docs/modules/propulsion.md)" if mr["kv_dv"]
+            else "Motor (fixed)")
+    L = [f"\n**{head}.** Kv = {mr['Kv']:.1f} rpm/V, set by: {mr['set_by']}.\n", "| Quantity | Value | Unit |",
+         "|---|---:|---|", f"| Kv | {mr['Kv']:.5g} | rpm/V |", f"| Rm | {mr['Rm']:.5g} | ohm |",
+         f"| I0 | {mr['I0']:.5g} | A |", f"| static current per motor `I_static` | {mr['I_static']:.4g} | A |",
+         f"| current limit `I_max` | {mr['I_max']:.4g} | A |", f"| `rpm_margin` | {mr['rpm_margin']:.4g} | rpm |"]
+    if mr["kv_dv"]:
+        L.append(f"| reference motor (Kv, Rm, I0) | {mr['Kv_ref']:g}, {mr['Rm_ref']:g}, {mr['I0_ref']:g} | rpm/V, ohm, A |")
+    return L
 
 
 def _robust_lines(robust):

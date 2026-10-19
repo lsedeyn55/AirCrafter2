@@ -1,0 +1,4 @@
+# configs/full_mdo_twin.yaml with a fixed motor (Kv not a design variable): the twin problem as used by the AIAC
+# twin study (docs/studies/twin_motor_study.md, commit 58344f2). Resolves to exactly the old full_mdo_twin.yaml.
+extends: full_mdo_twin.yaml
+fixed_design_variables: [Kv]   # drop the inherited Kv DV

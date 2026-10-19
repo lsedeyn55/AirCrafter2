@@ -49,7 +49,7 @@ def active(prob, tol=1e-4):
     return out
 
 
-def run(prop="10x7E", relief=False, cfg_name="full_mdo_twin.yaml"):
+def run(prop="10x7E", relief=False, cfg_name="full_mdo_twin_fixed_kv.yaml"):
     cfg = load_full_config(ROOT / "configs" / cfg_name)
     cfg.propulsion.prop = prop
     cfg.mass.options.motor_inertia_relief = relief

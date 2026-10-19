@@ -12,7 +12,10 @@
     lap model (propulsion mode): T(v) and P(v) on every leg, battery energy, laps
     static stability: neutral point, CG, static margin
 
-DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery and cargo-bay stations.
+DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery and cargo-bay stations, and the
+motor Kv (default; leave "Kv" out of design_variables, e.g. configs/full_mdo_fixed_kv.yaml, for a fixed motor).
+With Kv a DV the config's motor is a reference motor and a MotorRewind component scales Rm and I0 with Kv (the same
+frame rewound; propulsion/motor_scaling.py), and the static current limit becomes a constraint.
 Objective: a scoring plug-in (aircrafter2.scoring; placeholder default three_lap_time).
 """
 
@@ -27,6 +30,7 @@ from ..aero.parasite import ParasiteDrag
 from ..aero.polar import ThreePointPolar, TurnAlpha
 from ..mass.garcia_gamboa import GarciaGamboaMass
 from ..mission.smooth_lap import SmoothLapModel
+from ..propulsion.motor_scaling import MotorRewind
 from ..propulsion.powertrain import Powertrain, motor_stations
 from ..robustness.uncertainty import RobustConfig
 from ..scoring import add_scoring, get_plugin
@@ -76,9 +80,9 @@ class PropulsionInputs(BaseModel):
     R_cell: float = Field(0.005, description="ohm per cell, PLACEHOLDER")
     usable_fraction: float = Field(0.8, description="assumptions_file.m: use 80 % of the pack")
     e_spec: float = Field(150.0, description="Wh/kg pack-level, PLACEHOLDER")
-    Kv: float = Field(900.0, description="rpm/V, PLACEHOLDER motor")
-    Rm: float = Field(0.05, description="ohm, PLACEHOLDER motor")
-    I0: float = Field(1.0, description="A, PLACEHOLDER motor")
+    Kv: float = Field(900.0, description="rpm/V, PLACEHOLDER motor; the reference motor's Kv when Kv is a DV")
+    Rm: float = Field(0.05, description="ohm, PLACEHOLDER motor; the reference motor's Rm when Kv is a DV")
+    I0: float = Field(1.0, description="A, PLACEHOLDER motor; the reference motor's I0 when Kv is a DV")
     m_motor: float = Field(0.15, description="kg, PLACEHOLDER")
     m_esc: float = Field(0.06, description="kg, PLACEHOLDER")
     m_prop: float = Field(0.03, description="kg, PLACEHOLDER")
@@ -151,6 +155,32 @@ class FullMDOConfig(AeroMassProblemConfig):
     robust: RobustConfig = Field(RobustConfig(), description="robust design optimisation (off by default; "
                                  "aircrafter2.robustness.rdo_problem)")
 
+    @model_validator(mode="after")
+    def _check_kv_robust(self):
+        check_kv_robust(self)
+        return self
+
+
+KV_DV_ONLY = ("Kv_factor", "Rm_ref")  # uncertain parameters of the rewound motor (Kv a DV)
+KV_FIXED_ONLY = ("Kv", "Rm")          # uncertain parameters of the fixed motor
+
+
+def kv_is_dv(cfg):
+    """True when the motor Kv is a design variable (then MotorRewind scales Rm and I0)."""
+    return "Kv" in cfg.design_variables
+
+
+def check_kv_robust(cfg):
+    """Robust parameters must match the motor mode; raises ValueError (never remaps names)."""
+    act = set(cfg.robust.active or [])
+    if kv_is_dv(cfg) and act & set(KV_FIXED_ONLY):
+        raise ValueError(f"Kv is a design variable, so robust.active cannot contain {sorted(act & set(KV_FIXED_ONLY))}: "
+                         "use Kv_factor (winding tolerance, multiplies the design Kv) and Rm_ref (reference-motor "
+                         "resistance) instead (docs/modules/robustness.md)")
+    if not kv_is_dv(cfg) and act & set(KV_DV_ONLY):
+        raise ValueError(f"Kv is fixed (not in design_variables), so robust.active cannot contain "
+                         f"{sorted(act & set(KV_DV_ONLY))}: those act on the rewound motor; use Kv and Rm instead")
+
 
 def default_full_dvs():
     return {
@@ -164,12 +194,15 @@ def default_full_dvs():
         "S_vt": Bounds(lower=0.01, upper=0.10),
         "x_batt": Bounds(lower=-0.35, upper=0.2),
         "x_cb_frac": Bounds(lower=0.0, upper=0.6),
+        "Kv": Bounds(lower=500.0, upper=1500.0),  # rpm/V, PLACEHOLDER bounds (OPEN_QUESTIONS Q34)
     }
 
 
 def check_fixed_limits(prob):
-    """Static current per motor/ESC (fixed by the powertrain choice), the optional pack current, and the RPM
-    constraint value, after optimising."""
+    """Static current per motor/ESC, the optional pack current, and the RPM constraint value, after a run.
+
+    With a fixed motor the static current is set by the powertrain choice alone, so this post-check is the only
+    current check; with Kv a design variable I_margin (and I_pack_margin) are optimiser constraints as well."""
     out = {"I_margin_A": float(prob.get_val("I_margin")[0]), "rpm_margin": float(prob.get_val("rpm_margin")[0])}
     ok = out["I_margin_A"] >= 0 and out["rpm_margin"] >= -1.0
     try:
@@ -258,11 +291,14 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
     m.add_subsystem("tail", TailGeometry(), promotes=["*"])
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
     pr = cfg.propulsion
+    if kv_is_dv(cfg):  # the reference motor rewound to the design Kv: Rm, I0 follow Kv
+        m.add_subsystem("motor", MotorRewind(), promotes_inputs=["Kv", "Kv_factor", "Kv_ref", "Rm_ref", "I0_ref"],
+                        promotes_outputs=["Kv_eff", "Rm", "I0"])
     m.add_subsystem("propulsion", Powertrain(prop=pr.prop, v_top=pr.v_top, n_motors=pr.n_motors,
                                              battery_topology=pr.battery_topology, apc_dir=pr.apc_dir),
                     promotes_inputs=["rho", "capacity", "throttle", "n_cells", "V_cell", "R_cell", "usable_fraction",
-                                     "e_spec", "Kv", "Rm", "I0", "m_motor", "m_esc", "m_prop", "m_nacelle",
-                                     "m_avionics"],
+                                     "e_spec", ("Kv", "Kv_eff") if kv_is_dv(cfg) else "Kv", "Rm", "I0", "m_motor",
+                                     "m_esc", "m_prop", "m_nacelle", "m_avionics"],
                     promotes_outputs=["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "T_static_unit", "I_static",
                                       "I_pack_static", "rpm_max", "rpm_limit", "D_prop", "E_nom_total", "E_usable",
                                       "m_batt", "m_motor_unit", "m_motor_group", "m_sys"])
@@ -356,7 +392,8 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
 
 
 DV_UNITS = {"b": "m", "c": "m", "l_ht": "m", "S_ht": "m**2", "S_vt": "m**2", "x_batt": "m", "capacity": "A*h",
-            "y_m": "m"}
+            "y_m": "m", "Kv": "rpm/V"}
+DV_REF = {"Kv": 1000.0}  # optimiser scaling (O(1) for SLSQP); DVs not listed keep ref = None
 
 
 def full_constraints(cfg: FullMDOConfig):
@@ -369,8 +406,13 @@ def full_constraints(cfg: FullMDOConfig):
         cons.append(("energy_margin", dict(lower=0.0, ref=1e4)))
     # rpm at the top speed depends on the design (through v): a real constraint.
     cons.append(("rpm_margin", dict(lower=0.0, ref=1000.0)))
-    # The static current depends only on the powertrain (fixed prop, cells, throttle), not on the DVs,
-    # so it is checked after the optimisation (check_fixed_limits), not passed to SLSQP.
+    # The static current depends only on the powertrain and the motor. With a fixed motor (prop, cells, throttle
+    # and Kv fixed) no DV moves it, so it is only checked after the optimisation (check_fixed_limits). With Kv a
+    # DV it moves with Kv, so it is a constraint (and the pack current, when a pack limit is set).
+    if kv_is_dv(cfg):
+        cons.append(("I_margin", dict(lower=0.0, ref=10.0)))
+        if cfg.propulsion.pack_I_max is not None:
+            cons.append(("I_pack_margin", dict(lower=0.0, ref=10.0)))
     cons += [("v_fit_margin", dict(lower=0.0, ref=10.0)),
              ("SM", dict(lower=st.SM_min, upper=st.SM_max)),
              ("V_h", dict(lower=st.V_h_min, upper=st.V_h_max)),
@@ -388,7 +430,7 @@ def add_full_driver(prob, cfg: FullMDOConfig):
     m = prob.model
     prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
     for name, bd in cfg.design_variables.items():
-        m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=DV_UNITS.get(name))
+        m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=DV_UNITS.get(name), ref=DV_REF.get(name))
     add_scoring(m, get_plugin(cfg.scoring.plugin, **cfg.scoring.options))
     for name, kw in full_constraints(cfg):
         m.add_constraint(name, **kw)
@@ -397,7 +439,13 @@ def add_full_driver(prob, cfg: FullMDOConfig):
 def apply_full_values(prob, cfg: FullMDOConfig):
     apply_aero_mass_values(prob, cfg, exclude={"m_sys"})  # m_sys comes from the powertrain
     pr, st = cfg.propulsion, cfg.stability
-    for name in ["throttle", "n_cells", "V_cell", "R_cell", "usable_fraction", "e_spec", "Kv", "Rm", "I0",
+    motor = ["Kv", "Rm", "I0"]
+    if kv_is_dv(cfg):  # reference motor; the design Kv starts at Kv_ref (cfg.initial["Kv"] overrides below)
+        motor = []
+        for name in ["Kv", "Rm", "I0"]:
+            prob.set_val(f"{name}_ref", getattr(pr, name))
+        prob.set_val("Kv", pr.Kv)
+    for name in ["throttle", "n_cells", "V_cell", "R_cell", "usable_fraction", "e_spec", *motor,
                  "m_motor", "m_esc", "m_prop", "m_nacelle", "m_avionics"]:
         prob.set_val(name, getattr(pr, name))
     prob.set_val("I_max", pr.I_max, units="A")
@@ -436,6 +484,14 @@ def load_full_config(path):
     data["mass"] = _merge(base, data.get("mass", {}))
     if "design_variables" not in data:
         data["design_variables"] = default_full_dvs()
+    fixed = data.pop("fixed_design_variables", None) or []  # e.g. [Kv]: drop DVs inherited through extends:
+    dvs = dict(data["design_variables"])
+    unknown = [n for n in fixed if n not in dvs]
+    if unknown:
+        raise ValueError(f"fixed_design_variables {unknown} are not design variables of {path.name}")
+    data["design_variables"] = {k: b for k, b in dvs.items() if k not in fixed}
+    for n in fixed:
+        (data.get("initial") or {}).pop(n, None)
     rob = data.get("robust") or {}
     if rob.get("uncertainty_config"):  # parameter list from a shared YAML; 'parameters' entries override by name
         shared = {p["name"]: p for p in load_yaml(path.parent / rob["uncertainty_config"])["parameters"]}

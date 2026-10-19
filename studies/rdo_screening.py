@@ -47,7 +47,7 @@ def active_constraints(prob, tol=1e-4):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_full_config(ROOT / "configs" / "full_mdo.yaml")
+    cfg = load_full_config(ROOT / "configs" / "full_mdo_fixed_kv.yaml")  # pinned: docs/RDO_PLAN.md (fixed motor)
     cfg.propulsion.prop = "10x7E"
     prob = build_full_problem(cfg)
     prob.driver.options["disp"] = False
@@ -59,7 +59,7 @@ def main():
     print("det opt", res.success, res.iter_count, f"{t_opt:.0f}s", v(prob, "ThreeLapTime"), active, flush=True)
     det_vals = {q: v(prob, q) for q in QUANT}
 
-    dists = resolve(load_uncertainty(ROOT / "configs" / "uncertainty.yaml"), lambda n: v(prob, n))
+    dists = resolve(load_uncertainty(ROOT / "configs" / "uncertainty.yaml", kv_dv=False), lambda n: v(prob, n))
     nominal_cfg = {d.name: v(prob, d.name) for d in dists}
     t = time.perf_counter()
     sc = screen(prob, dists, QUANT, threshold=cfg.robust.screening_threshold, max_dim=cfg.robust.max_dim)

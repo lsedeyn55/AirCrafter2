@@ -29,6 +29,14 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "outputs" / "rdo"
 WORKERS = int(os.environ.get("RDO_WORKERS", "5"))
 N_MC = 1024  # Sobol' points (a power of 2, ~1000)
+# Pinned to the fixed motor: this study (docs/studies/rdo_study.md) was made before Kv became a design variable. Its
+# JSON files keep the config names used then; they load as the *_fixed_kv configs, which resolve to exactly those.
+PINNED = {"full_mdo.yaml": "full_mdo_fixed_kv.yaml", "full_mdo_twin.yaml": "full_mdo_twin_fixed_kv.yaml",
+          "full_mdo_rdo.yaml": "full_mdo_rdo_fixed_kv.yaml", "full_mdo_twin_rdo.yaml": "full_mdo_twin_rdo_fixed_kv.yaml"}
+
+
+def config_path(name):
+    return ROOT / "configs" / PINNED.get(name, name)
 
 
 def v(p, k):
@@ -93,7 +101,7 @@ def sample_rows(dists, act, rule):
 
 # --- checkpoint 2 ------------------------------------------------------------------------------------
 def propagation(cfg_name="full_mdo_rdo.yaml", tag="single_10x7E"):
-    cfg = load_full_config(ROOT / "configs" / cfg_name)
+    cfg = load_full_config(config_path(cfg_name))
     det = deterministic_optimum(cfg, tag)
     outputs = tracked(cfg)
     cons = full_constraints(cfg)
@@ -154,7 +162,7 @@ def propagation(cfg_name="full_mdo_rdo.yaml", tag="single_10x7E"):
 
 # --- checkpoint 3 ------------------------------------------------------------------------------------
 def _cfg(cfg_name, reserve=None, prop=None, k=None, sigma_cap=None, optimizer=None):
-    cfg = load_full_config(ROOT / "configs" / cfg_name)
+    cfg = load_full_config(config_path(cfg_name))
     if reserve is not None:
         cfg.energy_reserve = reserve
     if prop is not None:
@@ -358,7 +366,7 @@ def report_robust(w):
     cases = [(t, lab) for t, lab in cases if (OUT / f"{t}.json").exists() and "mc" in load(t)]
     if len(cases) < 2:
         return
-    cfg = load_full_config(ROOT / "configs" / "full_mdo_rdo.yaml")
+    cfg = load_full_config(config_path("full_mdo_rdo.yaml"))
     k, beta = cfg.robust.k, cfg.robust.beta
     w("## 2. Deterministic vs robust optimum, single 10x7E 4S (checkpoint 3)\n")
     w(f"Robust: minimise μ + {k:g}σ of the 3-lap time (UDR, d = 7, N = 15), robust constraints μ − {beta:g}σ ≥ lower "
@@ -532,7 +540,7 @@ def report_enumeration(w):
     w("\nRanking, deterministic (nominal 3-lap time): " + " < ".join(rank(lambda x: x[1]["nominal"]["ThreeLapTime"])))
     w("\nRanking, robust (μ + σ): " + " < ".join(rank(lambda x: x[2]["summary"]["score"]["robust"])) + "\n")
     from scipy.stats import norm
-    beta = load_full_config(ROOT / "configs" / "full_mdo_rdo.yaml").robust.beta
+    beta = load_full_config(config_path("full_mdo_rdo.yaml")).robust.beta
     same = rank(lambda x: x[1]["nominal"]["ThreeLapTime"]) == rank(lambda x: x[2]["summary"]["score"]["robust"])
     w("**Reading.** " + ("The ranking does not change: robustness costs every case a little, and none enough to "
                          "swap places. " if same else "**The ranking changes** under RDO. ")
@@ -615,7 +623,7 @@ def figures():
         ax.set_ylabel("cumulative probability")
         ax.legend(frameon=False)
         files.append(save(fig, fdir / "lap_time_cdf.pdf"))
-        cfg = load_full_config(ROOT / "configs" / "full_mdo_rdo.yaml")
+        cfg = load_full_config(config_path("full_mdo_rdo.yaml"))
         bounds = dict(full_constraints(cfg))
         panels = [("energy_margin", 1 / 3600, "energy margin (Wh)"), ("SM", 1, "static margin"),
                   ("thrust_margin_static", 1, "take-off thrust margin (N)"), ("stall_margin", 1, "stall margin (m/s)")]

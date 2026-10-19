@@ -11,7 +11,8 @@ robust:
   # Screened at the deterministic optimum (studies/rdo_screening.py, docs/RDO_PLAN.md section 2): the smallest set
   # covering 90 % of the first-order variance of the lap time and the active robust constraints (energy, SM)
   # has 7 parameters; no 5-parameter set reaches 90 % (best: 81 % / 95 % / 77 %). The others are held at their means.
-  active: [Kv, Rm, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]
+  active: [Kv_factor, Rm_ref, m_avionics, m_motor, eta_h, lap.thrust_factor, m_pay]  # Kv is a DV here: the
+  # motor pair is the winding factor and the reference-motor Rm (screened as Kv, Rm on the fixed-Kv design)
   quadrature: udr        # univariate dimension reduction, 3 Gauss points per dimension: N = 2d + 1 = 15 nodes
   points: 3
   objective: mean_plus_k_sigma
