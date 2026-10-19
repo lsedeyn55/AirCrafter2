@@ -1,0 +1,608 @@
+{
+ "compare": {
+  "fixed": {
+   "label": "fixed Kv = 900",
+   "ok": true,
+   "its": 39,
+   "time": 63.681968359989696,
+   "dv": {
+    "b": 1.2752494694483283,
+    "c": 0.15,
+    "tc_scale": 0.7886347608414203,
+    "camber_scale": 0.22370187233867714,
+    "capacity": 0.886184913124962,
+    "l_ht": 0.5021294785952791,
+    "S_ht": 0.02,
+    "S_vt": 0.010000000000000035,
+    "x_batt": 0.13388920248351716,
+    "x_cb_frac": 0.5837695912346409
+   },
+   "values": {
+    "ThreeLapTime": 79.72774369940615,
+    "score": 79.72774369940615,
+    "m_total": 2.3708660390553007,
+    "v": 38.365406607884886,
+    "I_static": 33.10878423973065,
+    "I_margin": 26.891215760269347,
+    "rpm_margin": 621.6735088141941,
+    "energy_margin": 0.022889936280989787,
+    "thrust_margin_static": 14.54295504160512,
+    "T_static": 21.15958282581884,
+    "capacity": 0.886184913124962,
+    "Kv": 900.0,
+    "Rm": 0.05,
+    "I0": 1.0,
+    "laps_frac": 3.000002377891151
+   },
+   "motor": {
+    "kv_dv": false,
+    "Kv": 900.0,
+    "Rm": 0.05,
+    "I0": 1.0,
+    "I_static": 33.10878423973065,
+    "I_max": 60.0,
+    "I_margin": 26.891215760269347,
+    "rpm_margin": 621.6735088141941,
+    "Kv_ref": 900.0,
+    "Rm_ref": 0.05,
+    "I0_ref": 1.0,
+    "set_by": "fixed (not a design variable)"
+   },
+   "active_constraints": [
+    "energy_margin (lower)",
+    "SM (upper)",
+    "V_h (lower)",
+    "r_tube (lower)"
+   ],
+   "active_bounds": [
+    "c (lower)",
+    "S_ht (lower)",
+    "S_vt (lower)"
+   ],
+   "I_max": 60.0,
+   "prop": "10x7E",
+   "threads": "3"
+  },
+  "kv": {
+   "label": "Kv a design variable",
+   "ok": true,
+   "its": 40,
+   "time": 76.79783000500174,
+   "dv": {
+    "b": 1.2472707460342725,
+    "c": 0.15,
+    "tc_scale": 0.7886347608414205,
+    "camber_scale": 0.0,
+    "capacity": 0.9996912836380563,
+    "l_ht": 0.4911128562509981,
+    "S_ht": 0.02,
+    "S_vt": 0.01,
+    "x_batt": 0.11563327140949832,
+    "x_cb_frac": 0.5997982860108133,
+    "Kv": 951.964993468309
+   },
+   "values": {
+    "ThreeLapTime": 78.52041043252697,
+    "score": 78.52041043252697,
+    "m_total": 2.375942353076417,
+    "v": 40.425347083962876,
+    "I_static": 38.13981179164509,
+    "I_margin": 21.860188208354913,
+    "rpm_margin": 1.3642420526593924e-10,
+    "energy_margin": -1.9550498109310865e-08,
+    "thrust_margin_static": 16.052855707795395,
+    "T_static": 23.1531950667904,
+    "capacity": 0.9996912836380563,
+    "Kv": 951.964993468309,
+    "Rm": 0.04469027904678027,
+    "I0": 1.0577388816314544,
+    "laps_frac": 2.9999999999982014
+   },
+   "motor": {
+    "kv_dv": true,
+    "Kv": 951.964993468309,
+    "Rm": 0.04469027904678027,
+    "I0": 1.0577388816314544,
+    "I_static": 38.13981179164509,
+    "I_max": 60.0,
+    "I_margin": 21.860188208354913,
+    "rpm_margin": 1.3642420526593924e-10,
+    "Kv_ref": 900.0,
+    "Rm_ref": 0.05,
+    "I0_ref": 1.0,
+    "set_by": "rpm_margin = 0 (active)"
+   },
+   "active_constraints": [
+    "energy_margin (lower)",
+    "rpm_margin (lower)",
+    "V_h (lower)",
+    "r_tube (lower)"
+   ],
+   "active_bounds": [
+    "c (lower)",
+    "camber_scale (lower)",
+    "S_ht (lower)",
+    "S_vt (lower)"
+   ],
+   "I_max": 60.0,
+   "prop": "10x7E",
+   "threads": "3"
+  },
+  "git": "a0f0043"
+ },
+ "sweep": {
+  "rows": [
+   {
+    "label": "I_max = 40 A",
+    "ok": true,
+    "its": 40,
+    "time": 80.14941294200253,
+    "dv": {
+     "b": 1.2472707460342725,
+     "c": 0.15,
+     "tc_scale": 0.7886347608414205,
+     "camber_scale": 0.0,
+     "capacity": 0.9996912836380563,
+     "l_ht": 0.4911128562509981,
+     "S_ht": 0.02,
+     "S_vt": 0.01,
+     "x_batt": 0.11563327140949832,
+     "x_cb_frac": 0.5997982860108133,
+     "Kv": 951.964993468309
+    },
+    "values": {
+     "ThreeLapTime": 78.52041043252697,
+     "score": 78.52041043252697,
+     "m_total": 2.375942353076417,
+     "v": 40.425347083962876,
+     "I_static": 38.13981179164509,
+     "I_margin": 1.8601882083549128,
+     "rpm_margin": 1.3642420526593924e-10,
+     "energy_margin": -1.9550498109310865e-08,
+     "thrust_margin_static": 16.052855707795395,
+     "T_static": 23.1531950667904,
+     "capacity": 0.9996912836380563,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "laps_frac": 2.9999999999982014
+    },
+    "motor": {
+     "kv_dv": true,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "I_static": 38.13981179164509,
+     "I_max": 40.0,
+     "I_margin": 1.8601882083549128,
+     "rpm_margin": 1.3642420526593924e-10,
+     "Kv_ref": 900.0,
+     "Rm_ref": 0.05,
+     "I0_ref": 1.0,
+     "set_by": "rpm_margin = 0 (active)"
+    },
+    "active_constraints": [
+     "energy_margin (lower)",
+     "rpm_margin (lower)",
+     "V_h (lower)",
+     "r_tube (lower)"
+    ],
+    "active_bounds": [
+     "c (lower)",
+     "camber_scale (lower)",
+     "S_ht (lower)",
+     "S_vt (lower)"
+    ],
+    "I_max": 40.0,
+    "prop": "10x7E",
+    "threads": "3"
+   },
+   {
+    "label": "I_max = 50 A",
+    "ok": true,
+    "its": 40,
+    "time": 81.57901566600776,
+    "dv": {
+     "b": 1.2472707460342725,
+     "c": 0.15,
+     "tc_scale": 0.7886347608414205,
+     "camber_scale": 0.0,
+     "capacity": 0.9996912836380563,
+     "l_ht": 0.4911128562509981,
+     "S_ht": 0.02,
+     "S_vt": 0.01,
+     "x_batt": 0.11563327140949832,
+     "x_cb_frac": 0.5997982860108133,
+     "Kv": 951.964993468309
+    },
+    "values": {
+     "ThreeLapTime": 78.52041043252697,
+     "score": 78.52041043252697,
+     "m_total": 2.375942353076417,
+     "v": 40.425347083962876,
+     "I_static": 38.13981179164509,
+     "I_margin": 11.860188208354913,
+     "rpm_margin": 1.3642420526593924e-10,
+     "energy_margin": -1.9550498109310865e-08,
+     "thrust_margin_static": 16.052855707795395,
+     "T_static": 23.1531950667904,
+     "capacity": 0.9996912836380563,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "laps_frac": 2.9999999999982014
+    },
+    "motor": {
+     "kv_dv": true,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "I_static": 38.13981179164509,
+     "I_max": 50.0,
+     "I_margin": 11.860188208354913,
+     "rpm_margin": 1.3642420526593924e-10,
+     "Kv_ref": 900.0,
+     "Rm_ref": 0.05,
+     "I0_ref": 1.0,
+     "set_by": "rpm_margin = 0 (active)"
+    },
+    "active_constraints": [
+     "energy_margin (lower)",
+     "rpm_margin (lower)",
+     "V_h (lower)",
+     "r_tube (lower)"
+    ],
+    "active_bounds": [
+     "c (lower)",
+     "camber_scale (lower)",
+     "S_ht (lower)",
+     "S_vt (lower)"
+    ],
+    "I_max": 50.0,
+    "prop": "10x7E",
+    "threads": "3"
+   },
+   {
+    "label": "I_max = 60 A",
+    "ok": true,
+    "its": 40,
+    "time": 82.27066875300079,
+    "dv": {
+     "b": 1.2472707460342725,
+     "c": 0.15,
+     "tc_scale": 0.7886347608414205,
+     "camber_scale": 0.0,
+     "capacity": 0.9996912836380563,
+     "l_ht": 0.4911128562509981,
+     "S_ht": 0.02,
+     "S_vt": 0.01,
+     "x_batt": 0.11563327140949832,
+     "x_cb_frac": 0.5997982860108133,
+     "Kv": 951.964993468309
+    },
+    "values": {
+     "ThreeLapTime": 78.52041043252697,
+     "score": 78.52041043252697,
+     "m_total": 2.375942353076417,
+     "v": 40.425347083962876,
+     "I_static": 38.13981179164509,
+     "I_margin": 21.860188208354913,
+     "rpm_margin": 1.3642420526593924e-10,
+     "energy_margin": -1.9550498109310865e-08,
+     "thrust_margin_static": 16.052855707795395,
+     "T_static": 23.1531950667904,
+     "capacity": 0.9996912836380563,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "laps_frac": 2.9999999999982014
+    },
+    "motor": {
+     "kv_dv": true,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "I_static": 38.13981179164509,
+     "I_max": 60.0,
+     "I_margin": 21.860188208354913,
+     "rpm_margin": 1.3642420526593924e-10,
+     "Kv_ref": 900.0,
+     "Rm_ref": 0.05,
+     "I0_ref": 1.0,
+     "set_by": "rpm_margin = 0 (active)"
+    },
+    "active_constraints": [
+     "energy_margin (lower)",
+     "rpm_margin (lower)",
+     "V_h (lower)",
+     "r_tube (lower)"
+    ],
+    "active_bounds": [
+     "c (lower)",
+     "camber_scale (lower)",
+     "S_ht (lower)",
+     "S_vt (lower)"
+    ],
+    "I_max": 60.0,
+    "prop": "10x7E",
+    "threads": "3"
+   },
+   {
+    "label": "I_max = 70 A",
+    "ok": true,
+    "its": 40,
+    "time": 81.68089987599524,
+    "dv": {
+     "b": 1.2472707460342725,
+     "c": 0.15,
+     "tc_scale": 0.7886347608414205,
+     "camber_scale": 0.0,
+     "capacity": 0.9996912836380563,
+     "l_ht": 0.4911128562509981,
+     "S_ht": 0.02,
+     "S_vt": 0.01,
+     "x_batt": 0.11563327140949832,
+     "x_cb_frac": 0.5997982860108133,
+     "Kv": 951.964993468309
+    },
+    "values": {
+     "ThreeLapTime": 78.52041043252697,
+     "score": 78.52041043252697,
+     "m_total": 2.375942353076417,
+     "v": 40.425347083962876,
+     "I_static": 38.13981179164509,
+     "I_margin": 31.860188208354913,
+     "rpm_margin": 1.3642420526593924e-10,
+     "energy_margin": -1.9550498109310865e-08,
+     "thrust_margin_static": 16.052855707795395,
+     "T_static": 23.1531950667904,
+     "capacity": 0.9996912836380563,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "laps_frac": 2.9999999999982014
+    },
+    "motor": {
+     "kv_dv": true,
+     "Kv": 951.964993468309,
+     "Rm": 0.04469027904678027,
+     "I0": 1.0577388816314544,
+     "I_static": 38.13981179164509,
+     "I_max": 70.0,
+     "I_margin": 31.860188208354913,
+     "rpm_margin": 1.3642420526593924e-10,
+     "Kv_ref": 900.0,
+     "Rm_ref": 0.05,
+     "I0_ref": 1.0,
+     "set_by": "rpm_margin = 0 (active)"
+    },
+    "active_constraints": [
+     "energy_margin (lower)",
+     "rpm_margin (lower)",
+     "V_h (lower)",
+     "r_tube (lower)"
+    ],
+    "active_bounds": [
+     "c (lower)",
+     "camber_scale (lower)",
+     "S_ht (lower)",
+     "S_vt (lower)"
+    ],
+    "I_max": 70.0,
+    "prop": "10x7E",
+    "threads": "3"
+   }
+  ],
+  "git": "3bd961f"
+ },
+ "robust": {
+  "ok": true,
+  "its": 40,
+  "error": null,
+  "time": 1176.6154196589923,
+  "N": 15,
+  "active": [
+   "Kv_factor",
+   "Rm_ref",
+   "m_avionics",
+   "m_motor",
+   "eta_h",
+   "lap.thrust_factor",
+   "m_pay"
+  ],
+  "dv": {
+   "b": 1.3397221198206934,
+   "c": 0.15,
+   "tc_scale": 0.7886374073483483,
+   "camber_scale": 0.0,
+   "capacity": 1.1664174439253363,
+   "l_ht": 0.5275155846793962,
+   "S_ht": 0.02,
+   "S_vt": 0.010207406627187327,
+   "x_batt": 0.1955478563612203,
+   "x_cb_frac": 0.5999215264189011,
+   "Kv": 952.6835622336694
+  },
+  "summary": {
+   "score": {
+    "mu": 78.82995336784475,
+    "sigma": 0.6417151509224622,
+    "lo": 77.54652306599982,
+    "hi": 80.11338366968968,
+    "robust": 79.47166851876722
+   },
+   "stall_margin": {
+    "mu": 22.853938974476282,
+    "sigma": 1.2377727400763825,
+    "lo": 20.378393494323518,
+    "hi": 25.329484454629046
+   },
+   "thrust_margin_static": {
+    "mu": 16.38168412563978,
+    "sigma": 1.8562143174327999,
+    "lo": 12.66925549077418,
+    "hi": 20.09411276050538
+   },
+   "energy_margin": {
+    "mu": 5172.0637970835105,
+    "sigma": 2586.031683940029,
+    "lo": 0.0004292034527679789,
+    "hi": 10344.127164963567
+   },
+   "SM": {
+    "mu": 0.16014806960233674,
+    "sigma": 0.019718194272602445,
+    "lo": 0.12071168105713184,
+    "hi": 0.19958445814754164
+   },
+   "wall_ratio": {
+    "mu": 0.12113589950136547,
+    "sigma": 0.004694371541037195,
+    "lo": 0.11174715641929107,
+    "hi": 0.13052464258343985
+   },
+   "r_tube": {
+    "mu": 0.005000019997289309,
+    "sigma": 9.9959334149975e-09,
+    "lo": 0.0050000000054224785,
+    "hi": 0.005000039989156139
+   }
+  },
+  "reference_node": {
+   "ThreeLapTime": 78.77316104038451,
+   "score": 78.77316104038451,
+   "m_total": 2.402329276423864,
+   "v": 40.354539346032524,
+   "I_static": 38.212088526384626,
+   "I_margin": 21.787911473615374,
+   "rpm_margin": 2.413924448774196e-06,
+   "energy_margin": 5265.168989494814,
+   "thrust_margin_static": 16.37199451676092,
+   "T_static": 23.18086998558299,
+   "capacity": 1.1664174439253363,
+   "Kv": 952.6835622336694,
+   "Rm": 0.04462288851090886,
+   "I0": 1.0585372913707438,
+   "laps_frac": 3.4792981484692196
+  },
+  "k": 1.0,
+  "beta": 2.0,
+  "threads": "3",
+  "git": "3bd961f",
+  "mc": {
+   "N": 1024,
+   "failed": 0,
+   "wall": 393.94299460199545,
+   "mu": 78.88891018769435,
+   "sigma": 0.7525570809805643,
+   "p_violation": {
+    "stall_margin": 0.0,
+    "turn_speed_margin": 0.0,
+    "thrust_margin_static": 0.0,
+    "energy_margin": 0.013671875,
+    "rpm_margin": 0.49609375,
+    "I_margin": 0.0,
+    "v_fit_margin": 0.0,
+    "SM": 0.0361328125,
+    "V_h": 0.0,
+    "V_v": 0.0,
+    "wall_ratio": 0.0,
+    "r_tube": 0.0,
+    "cruise.cl_margin_sec": 0.0
+   }
+  }
+ },
+ "corners": {
+  "rows": [
+   {
+    "point": "start",
+    "converged": true,
+    "ThreeLapTime": 126.96604421830335,
+    "score": 126.96604421830335,
+    "m_total": 2.7412153555229635,
+    "v": 18.214136886521114,
+    "I_static": 7.255409871651025,
+    "I_margin": 52.744590128348975,
+    "rpm_margin": 5814.161717651567,
+    "energy_margin": 89461.72478199945,
+    "thrust_margin_static": -8.122824899865073,
+    "T_static": 7.510255603412801,
+    "capacity": 3.0,
+    "Kv": 500.0,
+    "Rm": 0.16200000000000003,
+    "I0": 0.5555555555555556,
+    "laps_frac": 6.632451489527116
+   },
+   {
+    "point": "start",
+    "converged": true,
+    "ThreeLapTime": 83.2243531586498,
+    "score": 83.2243531586498,
+    "m_total": 2.7412153555229635,
+    "v": 35.67257869212666,
+    "I_static": 33.10878423973065,
+    "I_margin": 26.891215760269347,
+    "rpm_margin": 827.2326151844009,
+    "energy_margin": 64097.61947596312,
+    "thrust_margin_static": 13.878065072629205,
+    "T_static": 21.15958282581884,
+    "capacity": 3.0,
+    "Kv": 900.0,
+    "Rm": 0.05,
+    "I0": 1.0,
+    "laps_frac": 8.232234384311674
+   },
+   {
+    "point": "start",
+    "Kv": 1500.0,
+    "converged": false,
+    "error": "Solver 'NL: Newton' on system 'mda': residuals contain 'inf' or 'NaN' after 26 iterations."
+   },
+   {
+    "point": "fixed-Kv optimum",
+    "converged": true,
+    "ThreeLapTime": 161.61577111029501,
+    "score": 161.61577111029501,
+    "m_total": 2.3677531191693895,
+    "v": 18.426631208390777,
+    "I_static": 7.255409871651025,
+    "I_margin": 52.744590128348975,
+    "rpm_margin": 5760.69927770479,
+    "energy_margin": 17501.893563950714,
+    "thrust_margin_static": -8.120646155759495,
+    "T_static": 7.510255603412801,
+    "capacity": 0.8861848969098989,
+    "Kv": 500.0,
+    "Rm": 0.16200000000000003,
+    "I0": 0.5555555555555556,
+    "laps_frac": 5.277413829033144
+   },
+   {
+    "point": "fixed-Kv optimum",
+    "converged": true,
+    "ThreeLapTime": 79.7277436989888,
+    "score": 79.7277436989888,
+    "m_total": 2.370866057388743,
+    "v": 38.365406263773885,
+    "I_static": 33.10878423973065,
+    "I_margin": 26.891215760269347,
+    "rpm_margin": 621.673536327331,
+    "energy_margin": 0.02288533297905815,
+    "thrust_margin_static": 14.542955180774014,
+    "T_static": 21.15958282581884,
+    "capacity": 0.8861848969098989,
+    "Kv": 900.0,
+    "Rm": 0.05,
+    "I0": 1.0,
+    "laps_frac": 3.0000023774129865
+   },
+   {
+    "point": "fixed-Kv optimum",
+    "Kv": 1500.0,
+    "converged": false,
+    "error": "Solver 'NL: Newton' on system 'mda' failed to converge in 30 iterations."
+   }
+  ],
+  "git": "a0f0043"
+ }
+}

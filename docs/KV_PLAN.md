@@ -136,3 +136,17 @@ Pinning a study script changes no numbers. The docs keep naming `full_mdo.yaml`,
 - `test_ui.py` robust toggle: updated to `Kv_factor` (default).
 - `rdo_off_snapshot.py`: config list becomes a parameter.
 - Run on the default and expected to pass unchanged (analysis or plumbing only, not the DV list): `test_twin_motor.py`, `test_geometry_export.py`, `test_scoring.py`, `test_cli.py`, `test_vsp.py`. Each one I have to change will be listed in checkpoint 2.
+
+## 6. Decisions and status
+
+Decisions A-E: all as recommended (user, 2026-10-20). D: `examples/full_mdo.py` (`docs/problems/full_mdo.md`,
+regenerated) and `studies/make_thesis_figures.py` (`outputs/thesis_figures/`, regenerated) follow the new default.
+
+Deviations from §3:
+- UI: dedicated Kv lower / upper / start inputs in the sidebar (Motor section), not the bounds-table row:
+  Streamlit's AppTest cannot drive a `data_editor`, so the briefed UI tests would not reach the table.
+- Found in checkpoint 2: the MDA does not converge above Kv ≈ 1205 (10x7E 4S): the level speed passes `v_top` =
+  50 m/s. The 500-1500 bounds are kept (settled); recorded in Q34 and docs/studies/kv_study.md §1.
+
+Results (docs/studies/kv_study.md): Kv rides `rpm_margin` in every run (fixed-vs-DV comparison, all four I_max values
+from 40 to 70 A, the robust run, every prop of the enumeration); the current limit never binds (I_static ≈ 38 A).
