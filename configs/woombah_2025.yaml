@@ -1,0 +1,38 @@
+# Project Woombah (USYD DBF 2024-25) as built, for analysis-only validation (studies/validation_2025.py).
+# Everything not listed here is configs/dbf2025_multipoint.yaml (Woombah's powertrain and component masses).
+# [W] = 2025 USYD DBF Design Report, PDF page / table. Modelling differences are flagged in the comments and in
+# docs/studies/results/validation_2025.md.
+extends: dbf2025_multipoint.yaml
+
+geometry:
+  l_ht: 1.100                    # m, tail arm 3.61 ft [W p. 21 Table 21]
+  S_ht: 0.1525                   # m^2, 236.4 in^2 [W p. 31 Table 30] (Table 21: 1.66 ft^2 = 0.154 m^2)
+  S_vt: 0.0670                   # m^2, 103.85 in^2 [W Table 30] (Table 21: 0.72 ft^2)
+  l_cb: 1.00                     # m, PLACEHOLDER: the model's fuselage is a cargo box + tail boom; Woombah has an 82 in
+                                 # fuselage (nose 1.64 ft [W p. 19]); modelling difference
+  w_cb: 0.120                    # m, 4.72 in [W Table 30]
+  h_cb: 0.120                    # m, 4.72 in [W Table 30]
+
+stability:
+  AR_ht: 4.0                     # [W Table 30] (Table 21: 3.99)
+  AR_vt: 1.38                    # [W Table 30] (Table 21: 1.1, inconsistent)
+  tc_tail: 0.12                  # NACA0012 tails [W p. 20]
+
+# The as-built design (rectangular-equivalent wing: same span and area; the 0.8 taper is a modelling difference)
+initial: {b: 1.801, c: 0.3276, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 4.0, v: 30.0, l_ht: 1.100,
+          S_ht: 0.1525, S_vt: 0.0670, x_cb_frac: 0.438, Kv: 1050.0}
+          # b = 70.9 in, S = 914.5 in^2 [W Table 30]: c = S / b = 12.90 in. Clark Y as seeded (tc, camber scale 1).
+          # x_cb_frac: fuselage CG 5.65 in aft of the LE [W Table 34] / 12.90 in
+
+multipoint:
+  per_point_initial:
+    capacity_M2: 2.25            # Ah, Dualsky 2250 mAh 6S per motor [W p. 22]
+    capacity_M3: 2.25
+    x_batt_M2: -0.0211           # m, batteries at -0.83 in in M2 [W Table 34]
+    x_batt_M3: -0.746            # m, -29.37 in in M3 [W Table 34]
+    throttle_M2: 1.0             # design case; the validation also runs the logged currents [W p. 59 Table 38]
+    throttle_M3: 1.0
+  fuel_initial: 5.987            # kg = 13.2 lb actual [W p. 59 Table 39] (13 lb design)
+  stores:
+    fill_density: 2.994          # kg/L = 6.6 lb/L: 13.2 lb flown in 2 x 1 L bottles [W Table 39, p. 18] (6.5 lb/L
+                                 # measured packed density, p. 18)

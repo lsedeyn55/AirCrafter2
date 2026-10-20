@@ -14,6 +14,7 @@ framework). No component iterates internally. The statistical model
 (Eq. 124) provides the initial guess for m.
 """
 
+import numpy as np
 import openmdao.api as om
 
 from ...config.mass import MassConfig, MassOptions
@@ -32,6 +33,9 @@ MASS_OUTPUTS = ["m_tube", "m_rib", "m_le", "m_te", "m_film", "m_wing", "m_ht", "
 class GarciaGamboaMass(om.Group):
     def initialize(self):
         self.options.declare("config", default=None, types=(MassOptions, type(None)))
+        self.options.declare("external_sizing", default=False, types=bool,
+                             desc="the loads see an external sizing mass m (no closure m = m_total): a mission point "
+                             "that flies an airframe sized at another point (problems/multipoint.py)")
 
     def setup(self):
         opts = self.options["config"] or MassOptions()
@@ -65,7 +69,8 @@ class GarciaGamboaMass(om.Group):
             self.add_subsystem("tube_fit", TubeFitMargin(), promotes=["*"])
 
         # mass closure: the loads and the gear mass see the converged total mass
-        self.connect("m_total", "m")
+        if not self.options["external_sizing"]:
+            self.connect("m_total", "m")
 
         for name in active_inputs(opts):
             units, val, _ = INPUTS[name]
@@ -80,9 +85,10 @@ class GarciaGamboaMass(om.Group):
 
     def guess_nonlinear(self, inputs, outputs, residuals):
         # Initial guess of the closure from the statistical model (Eq. 124-126), first solve only.
-        if not self._guessed:
+        if not self._guessed and not self.options["external_sizing"]:
+            m_pay = inputs["statistical.m_pay"]  # computed payloads (stores) may not be transferred yet: floor it
             outputs["m_total"] = statistical_mass(inputs["statistical.b"], inputs["statistical.c_mean"],
-                                                  inputs["statistical.m_pay"],
+                                                  m_pay if np.real(m_pay).min() > 0.0 else 0.5 + 0.0 * m_pay,
                                                   self._opts.statistical_model)
             self._guessed = True
 

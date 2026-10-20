@@ -24,6 +24,15 @@ number of units. ``battery_topology``:
                (derivation: docs/modules/propulsion.md).
 ``capacity`` is the capacity of one pack in both topologies.
 
+Fit range (option ``fit_range``):
+    fixed     nodes in [0, v_top] (default; every existing config)
+    throttle  nodes in [0, v_fit_max], v_fit_max = KSmin(v_top, f_fit J_max n0 D), with n0 = Kv delta V_oc / 2 pi the
+              no-load rotor speed at this throttle and J_max the largest advance ratio with C_T >= 0 in the APC data.
+              At part throttle the [0, v_top] nodes reach advance ratios past windmilling, where the C_T / C_P
+              polynomials extrapolate (e.g. 138 N at 40 m/s at throttle 0.5, 6S 1050 KV, 10x7E) and the cubic fit
+              is wrong everywhere. The fit is done in s = v / v_fit_max on fixed nodes, so it stays analytic.
+              v_fit_max is an output: keep the operating speed below it (v_fit_margin).
+
 Outputs for the lap model: cubic least-squares fits through the nodes
     T(v)      = sum_i t_i v^i         thrust (N)
     P_batt(v) = sum_i p_i v^i         power drawn from the battery chemistry, V_oc I_batt (W)
@@ -68,6 +77,9 @@ class Powertrain(om.ExplicitComponent):
         self.options.declare("n_motors", default=1, types=int, desc="identical propulsion units (1 or 2)")
         self.options.declare("battery_topology", default="per_motor", values=BATTERY_TOPOLOGIES,
                              desc="one pack per unit, or one pack shared by every ESC")
+        self.options.declare("fit_range", default="fixed", values=["fixed", "throttle"],
+                             desc="T(v) fit nodes in [0, v_top], or in [0, v_fit_max(throttle)] (part throttle)")
+        self.options.declare("f_fit", default=0.8, desc="v_fit_max = f_fit J_max n0 D (fit_range = throttle)")
 
     def setup(self):
         motor_stations(self.options["n_motors"], 0.5)  # validates n_motors
@@ -79,7 +91,9 @@ class Powertrain(om.ExplicitComponent):
         self._prop = load_prop(self.options["prop"], self.options["apc_dir"])
         n = self.options["n_nodes"]
         self._v = np.linspace(0.0, self.options["v_top"], n)
-        V = np.stack([self._v**i for i in range(self.options["deg"] + 1)], axis=1)
+        self._s = np.linspace(0.0, 1.0, n)  # fit_range = throttle: nodes s = v / v_fit_max
+        nodes = self._v if self.options["fit_range"] == "fixed" else self._s
+        V = np.stack([nodes**i for i in range(self.options["deg"] + 1)], axis=1)
         self._pinv = np.linalg.pinv(V)  # real: keeps the fit complex-step analytic
         d = self.options["deg"] + 1
 
@@ -114,10 +128,13 @@ class Powertrain(om.ExplicitComponent):
         self.add_output("P_nodes", np.zeros(n), units="W", desc="total")
         self.add_output("eta_prop_nodes", np.zeros(n))
         self.add_output("fit_residual_T", 0.0, units="N", desc="max |fit - node| (report)")
+        self.add_output("v_fit_max", self.options["v_top"], units="m/s", desc="top of the T(v) fit range")
         elec = ["throttle", "rho", "n_cells", "V_cell", "R_cell", "Kv", "Rm", "I0"]
         for out in ["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "T_static_unit", "I_static", "I_pack_static",
                     "rpm_max", "T_nodes", "P_nodes", "eta_prop_nodes"]:
             self.declare_partials(out, elec, method="cs")
+        if self.options["fit_range"] == "throttle":
+            self.declare_partials("v_fit_max", elec, method="cs")
         pack = ["n_cells", "V_cell", "capacity"]
         self.declare_partials("E_nom_total", pack, method="cs")
         self.declare_partials("E_usable", pack + ["usable_fraction"], method="cs")
@@ -144,7 +161,7 @@ class Powertrain(om.ExplicitComponent):
             Qp = p.cp(J, om_ / RPM2RADS) * rho * n**2 * D**5 / (2 * np.pi)
             return Qm - Qp, I, n, J
 
-        v = self._v
+        v = self._v if self.options["fit_range"] == "fixed" else self._s * self.v_fit_max(x)
         om_ = 0.7 * kv * dl * Voc * np.ones_like(v)  # start below no-load speed
         h = 1e-3
         for _ in range(self.options["newton_iters"]):
@@ -156,7 +173,17 @@ class Powertrain(om.ExplicitComponent):
         P_batt = Voc * dl * I
         P_shaft = p.cp(J, om_ / RPM2RADS) * rho * n**3 * D**5
         eta_prop = np.where(np.real(P_shaft) > 0, T * v / P_shaft, 0.0 * T)
-        return dict(omega=om_, I_motor=I, T=T, P_batt=P_batt, eta_prop=eta_prop, J=J, Voc=Voc)
+        return dict(omega=om_, I_motor=I, T=T, P_batt=P_batt, eta_prop=eta_prop, J=J, Voc=Voc, v=v)
+
+    def v_fit_max(self, x):
+        """Top of the fit range: v_top, or (fit_range = throttle) KSmin(v_top, f_fit J_max n0 D)."""
+        if self.options["fit_range"] == "fixed":
+            return self.options["v_top"]
+        from ..smooth import ks_min
+
+        n0 = x["Kv"] * RPM2RADS * x["throttle"] * x["n_cells"] * x["V_cell"] / (2 * np.pi)
+        v_wm = self.options["f_fit"] * self._prop.J_max * n0 * self._prop.diameter
+        return ks_min([self.options["v_top"] * np.ones_like(v_wm), v_wm], rho=50.0)[0]
 
     def compute(self, inputs, outputs):
         x = {k: inputs[k] for k in inputs}
@@ -166,12 +193,24 @@ class Powertrain(om.ExplicitComponent):
         outputs["T_nodes"] = T
         outputs["P_nodes"] = P
         outputs["eta_prop_nodes"] = r["eta_prop"]
-        tc = self._pinv @ T
-        outputs["T_coeffs"] = tc
-        outputs["P_coeffs"] = self._pinv @ P
-        outputs["RPM_coeffs"] = self._pinv @ (r["omega"] / RPM2RADS)
-        V = np.stack([self._v**i for i in range(len(tc))], axis=1)
-        outputs["fit_residual_T"] = np.max(np.abs(np.real(V @ tc - T)))
+        if self.options["fit_range"] == "fixed":
+            tc = self._pinv @ T
+            outputs["T_coeffs"] = tc
+            outputs["P_coeffs"] = self._pinv @ P
+            outputs["RPM_coeffs"] = self._pinv @ (r["omega"] / RPM2RADS)
+            V = np.stack([self._v**i for i in range(len(tc))], axis=1)
+            outputs["fit_residual_T"] = np.max(np.abs(np.real(V @ tc - T)))
+            outputs["v_fit_max"] = self.options["v_top"]
+        else:  # fit in s = v / vmax on fixed nodes (analytic), then t_i = a_i / vmax^i
+            vmax = self.v_fit_max(x)
+            scale = np.array([vmax**-i for i in range(self.options["deg"] + 1)]).ravel()
+            tc = (self._pinv @ T) * scale
+            outputs["T_coeffs"] = tc
+            outputs["P_coeffs"] = (self._pinv @ P) * scale
+            outputs["RPM_coeffs"] = (self._pinv @ (r["omega"] / RPM2RADS)) * scale
+            S = np.stack([self._s**i for i in range(len(tc))], axis=1)
+            outputs["fit_residual_T"] = np.max(np.abs(np.real(S @ (self._pinv @ T) - T)))
+            outputs["v_fit_max"] = vmax
         outputs["T_static"] = T[0]
         outputs["T_static_unit"] = r["T"][0]
         outputs["I_static"] = x["throttle"] * r["I_motor"][0]

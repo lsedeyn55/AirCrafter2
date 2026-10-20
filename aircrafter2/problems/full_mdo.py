@@ -90,6 +90,8 @@ class PropulsionInputs(BaseModel):
     I_max: float = Field(60.0, description="A, PLACEHOLDER motor/ESC current limit")
     rpm_fraction: float = Field(0.85, description="of APC's 150000/D limit (propSelector.m)")
     v_top: float = Field(40.0, description="m/s, top of the T(v) fit range")
+    fit_range: Literal["fixed", "throttle"] = Field("fixed", description="T(v) fit nodes in [0, v_top], or scaled "
+                                                    "below the windmill speed at this throttle (part throttle)")
 
     @model_validator(mode="after")
     def _check_layout(self):
@@ -236,6 +238,10 @@ class FullMDA(om.Group):
         self.options.declare("cfg")
         self.options.declare("retry", default=False, types=bool,
                              desc="Newton with warm-start fallbacks (robust nodes, robustness.rdo_problem.RetryNewton)")
+        self.options.declare("sizing", default="own", values=["own", "external"],
+                             desc="own: the structure is sized at this point's mass and speed (closure m = m_total); "
+                             "external: sized at m_sizing, v_sizing from another point (multipoint M3)")
+        self.options.declare("stores", default=None, desc="(StoreConfig, dict of Stores flags) or None")
 
     def setup(self):
         cfg = self.options["cfg"]
@@ -247,10 +253,23 @@ class FullMDA(om.Group):
                                             "l_cb", "w_cb", "h_cb", "l_tb", "r_tb"]
                            + (["l_nac", "d_nac", "Q_nac"] if twin else []),
                            promotes_outputs=["CD_extra", "CD_tail", "CD_fus", "CD_nac"])
+        stores = self.options["stores"]
+        if stores is not None:  # external stores: mass, CG and drag (stores.py)
+            from ..stores import Stores
+
+            scfg, flags = stores
+            self.add_subsystem("stores", Stores(config=scfg, **flags),
+                               promotes_inputs=["v", "rho", "mu", "S", "c", "store_drag_factor"]
+                               + (["fuel_mass"] if flags.get("fuel") else []),
+                               promotes_outputs=["m_pay", "x_pay", "CD_stores", "CD_tanks", "CD_pylons", "CD_x1",
+                                                 "fuel_capacity"])
+            self.add_subsystem("cd_extra_total", om.ExecComp("CD_extra_total = CD_extra + CD_stores"),
+                               promotes=["*"])
+        cd_extra = "CD_extra_total" if stores is not None else "CD_extra"
         self.add_subsystem("cruise", WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
                                               max_mode=a.max_mode, rho_ks=a.rho_ks),
                            promotes_inputs=SHARED_AERO + [("alpha", "alpha_cruise")])
-        self.connect("CD_extra", "cruise.perf.CD_extra")
+        self.connect(cd_extra, "cruise.perf.CD_extra")
         self.add_subsystem("thrust_at_v", PolyAt(), promotes_inputs=[("coeffs", "T_coeffs"), "v"])
 
         bal = om.BalanceComp()
@@ -265,11 +284,22 @@ class FullMDA(om.Group):
 
         mass_opts = cfg.mass.options.model_copy(update={"standalone_solver": True,
                                                         "n_motor_pairs": 1 if twin else 0})
-        self.add_subsystem("mass", GarciaGamboaMass(config=mass_opts),
-                           promotes_inputs=["*", ("tc", "tc_max"), ("S_wing", "S"), ("V_design", "v")],
-                           promotes_outputs=["*"])
-        self.connect("cruise.Cm_wing", "Cm")
-        self.connect("cruise.CL_alpha", "CL_alpha")
+        if self.options["sizing"] == "own":
+            self.add_subsystem("mass", GarciaGamboaMass(config=mass_opts),
+                               promotes_inputs=["*", ("tc", "tc_max"), ("S_wing", "S"), ("V_design", "v")],
+                               promotes_outputs=["*"])
+        else:  # the airframe of another point: loads at m_sizing, v_sizing; this point's own weight for the balance
+            self.add_subsystem("mass", GarciaGamboaMass(config=mass_opts, external_sizing=True),
+                               promotes_inputs=["*", ("tc", "tc_max"), ("S_wing", "S"), ("V_design", "v_sizing"),
+                                                ("m", "m_sizing"), ("W", "W_sizing"), ("Cm", "Cm_sizing"),
+                                                ("CL_alpha", "CL_alpha_sizing")],
+                               promotes_outputs=["*", ("W", "W_sizing")])
+            self.add_subsystem("weight", om.ExecComp("W = m_total * g", W={"units": "N"}, m_total={"units": "kg"},
+                                                     g={"units": "m/s**2", "val": 9.80665}),
+                               promotes=["*"])
+        if self.options["sizing"] == "own":  # external: the sizing point's Cm and CL_alpha (Cm_sizing, CL_alpha_sizing)
+            self.connect("cruise.Cm_wing", "Cm")
+            self.connect("cruise.CL_alpha", "CL_alpha")
 
         if self.options["retry"]:
             from ..robustness.rdo_problem import RetryNewton
@@ -283,7 +313,14 @@ class FullMDA(om.Group):
         self.linear_solver = om.DirectSolver()
 
 
-def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
+def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", stores=None):
+    """The coupled analysis of one mission point.
+
+    sizing  "own" (default): the structure is sized at this point; "external": at the promoted inputs m_sizing and
+            v_sizing (another point's m_total and v: problems/multipoint.py)
+    stores  None (default), or (StoreConfig, Stores flags): external stores replace the payload input m_pay and
+            its station (stores.py), and add their drag to CD_extra
+    """
     a, st = cfg.aero, cfg.stability
     m.add_subsystem("airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes),
                     promotes=["*"])
@@ -295,16 +332,18 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
         m.add_subsystem("motor", MotorRewind(), promotes_inputs=["Kv", "Kv_factor", "Kv_ref", "Rm_ref", "I0_ref"],
                         promotes_outputs=["Kv_eff", "Rm", "I0"])
     m.add_subsystem("propulsion", Powertrain(prop=pr.prop, v_top=pr.v_top, n_motors=pr.n_motors,
-                                             battery_topology=pr.battery_topology, apc_dir=pr.apc_dir),
+                                             battery_topology=pr.battery_topology, apc_dir=pr.apc_dir,
+                                             fit_range=pr.fit_range),
                     promotes_inputs=["rho", "capacity", "throttle", "n_cells", "V_cell", "R_cell", "usable_fraction",
                                      "e_spec", ("Kv", "Kv_eff") if kv_is_dv(cfg) else "Kv", "Rm", "I0", "m_motor",
                                      "m_esc", "m_prop", "m_nacelle", "m_avionics"],
                     promotes_outputs=["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "T_static_unit", "I_static",
                                       "I_pack_static", "rpm_max", "rpm_limit", "D_prop", "E_nom_total", "E_usable",
-                                      "m_batt", "m_motor_unit", "m_motor_group", "m_sys"])
+                                      "m_batt", "m_motor_unit", "m_motor_group", "m_sys", "v_fit_max"])
     if pr.n_motors == 2:  # wing station and prop clearances (D8)
         m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
-    m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry), promotes=["*"])
+    m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry, sizing=sizing, stores=stores), promotes=["*"])
+    cd_extra = "CD_extra_total" if stores is not None else "CD_extra"
 
     # polar from three coupled aero points (as in lap_mdo)
     m.add_subsystem("turn_alpha", TurnAlpha(frac=cfg.polar_turn_frac))
@@ -316,7 +355,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
         m.add_subsystem(name, WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
                                        max_mode=a.max_mode, rho_ks=a.rho_ks), promotes_inputs=SHARED_AERO)
         m.connect(src, f"{name}.alpha")
-        m.connect("CD_extra", f"{name}.perf.CD_extra")
+        m.connect(cd_extra, f"{name}.perf.CD_extra")
     m.add_subsystem("polar", ThreePointPolar(), promotes_outputs=["CD0", "CD1", "k"])
     m.connect("cruise.vlm.wing_perf.CL", "polar.CL_0")
     m.connect("cruise.CD", "polar.CD_0")
@@ -351,15 +390,20 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
     m.connect("cruise.CL_alpha", "stability.a_w")
     for s in ["x_wing", "x_tail", "x_tb", "m_tail"]:
         m.connect(f"stations.{s}", f"stability.{s}")
-    m.connect("stations.x_cb", ["stability.x_cb", "stability.x_pay"])
+    if stores is not None:  # payload = the stores, at their own CG station
+        m.connect("stations.x_cb", "stability.x_cb")
+        m.connect("x_pay", "stability.x_pay")
+    else:
+        m.connect("stations.x_cb", ["stability.x_cb", "stability.x_pay"])
 
     # rotor speed rises with flight speed, so the RPM limit is checked at the top (full-throttle level) speed
     m.add_subsystem("rpm_at_v", PolyAt(), promotes_inputs=[("coeffs", "RPM_coeffs"), "v"])
+    top = "v_fit_max" if pr.fit_range == "throttle" else "v_top"  # part throttle: the fit range moves with throttle
     m.add_subsystem("limits", om.ExecComp(
-        ["I_margin = I_max - I_static", "rpm_margin = frac * rpm_limit - rpm_v", "v_fit_margin = v_top - v"],
+        ["I_margin = I_max - I_static", "rpm_margin = frac * rpm_limit - rpm_v", f"v_fit_margin = {top} - v"],
         I_margin={"units": "A"}, I_max={"units": "A"}, I_static={"units": "A"},
         rpm_margin={"units": "rpm"}, rpm_limit={"units": "rpm"}, rpm_v={"units": "rpm"},
-        frac={"val": cfg.propulsion.rpm_fraction}, v_fit_margin={"units": "m/s"}, v_top={"units": "m/s"},
+        frac={"val": cfg.propulsion.rpm_fraction}, v_fit_margin={"units": "m/s"}, **{top: {"units": "m/s"}},
         v={"units": "m/s"}),
         promotes=["*"])
     m.connect("rpm_at_v.y", "rpm_v")
@@ -380,6 +424,8 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False):
                              ("m_prop", cfg.propulsion.m_prop, "kg"), ("m_avionics", cfg.propulsion.m_avionics, "kg"),
                              ("m_nacelle", cfg.propulsion.m_nacelle, "kg"), ("x_motor", st.x_motor, "m"),
                              ("m_pay", cfg.mass.inputs.get("m_pay", 1.0), "kg"), ("mu", 1.8e-5, "Pa*s")]:
+        if name == "m_pay" and stores is not None:
+            continue  # computed by the stores
         m.set_input_defaults(name, val, units=units)
     if pr.n_motors == 2:
         if pr.station_mode == "absolute":
@@ -436,8 +482,10 @@ def add_full_driver(prob, cfg: FullMDOConfig):
         m.add_constraint(name, **kw)
 
 
-def apply_full_values(prob, cfg: FullMDOConfig):
-    apply_aero_mass_values(prob, cfg, exclude={"m_sys"})  # m_sys comes from the powertrain
+def apply_full_values(prob, cfg: FullMDOConfig, stores=False, skip=()):
+    """Config values onto a set-up full model. stores: m_pay is computed (stores.py); skip: names not to set
+    (e.g. inputs connected from another mission point)."""
+    apply_aero_mass_values(prob, cfg, exclude={"m_sys"} | ({"m_pay"} if stores else set()) | set(skip))
     pr, st = cfg.propulsion, cfg.stability
     motor = ["Kv", "Rm", "I0"]
     if kv_is_dv(cfg):  # reference motor; the design Kv starts at Kv_ref (cfg.initial["Kv"] overrides below)
@@ -451,14 +499,16 @@ def apply_full_values(prob, cfg: FullMDOConfig):
     prob.set_val("I_max", pr.I_max, units="A")
     if pr.pack_I_max is not None:
         prob.set_val("pack_I_max", pr.pack_I_max, units="A")
-    prob.set_val("v_top", pr.v_top, units="m/s")
+    if pr.fit_range == "fixed":
+        prob.set_val("v_top", pr.v_top, units="m/s")
     for name in ["AR_ht", "AR_vt", "tc_tail", "eta_h", "x_motor", "x_avionics", "x_gear"]:
         prob.set_val(name, getattr(st, name))
     for name in ["mu_roll", "takeoff_distance", "mission_time", "n_struct"]:
         prob.set_val(f"lap.{name}", getattr(cfg, name))
     prob.set_val("x_cb_frac", st.x_cb_frac)
     for name, val in cfg.initial.items():
-        prob.set_val(name, val)
+        if name not in skip:
+            prob.set_val(name, val)
 
 
 def build_full_problem(cfg: FullMDOConfig, driver=True):
@@ -476,10 +526,20 @@ def build_full_problem(cfg: FullMDOConfig, driver=True):
 def load_full_config(path):
     from pathlib import Path
 
+    from ..config.loader import load_yaml
+
+    path = Path(path)
+    return full_config_from_dict(load_yaml(path), path)
+
+
+def full_config_from_dict(data, path):
+    """FullMDOConfig from loaded YAML data (extends: resolved); relative file references resolve against path."""
+    from pathlib import Path
+
     from ..config.loader import _merge, load_yaml
 
     path = Path(path)
-    data = load_yaml(path)
+    data = dict(data)
     base = load_yaml(path.parent / data.pop("mass_config")) if "mass_config" in data else {}
     data["mass"] = _merge(base, data.get("mass", {}))
     if "design_variables" not in data:

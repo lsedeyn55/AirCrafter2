@@ -10,6 +10,8 @@ are outside that range, so the model is used only as the initial guess of the
 mass closure and as a sanity-check column (PLAN G21).
 """
 
+import numpy as np
+
 from ..analytic import AnalyticComponent, D
 
 COEFFS = {
@@ -35,5 +37,8 @@ class StatisticalMass(AnalyticComponent):
     def evaluate(self, x):
         _, eb, ec, ep = COEFFS[self.options["model"]]
         b, c, mp = x["b"], x["c_mean"], x["m_pay"]
+        # report-only column, but its row is in the coupled Newton matrix: keep it finite if an intermediate Newton
+        # iterate makes a computed payload (stores) non-positive (values > 1e-6 kg are untouched)
+        mp = np.where(np.real(mp) > 1e-6, mp, 1e-6 + 0.0 * mp)
         m = statistical_mass(b, c, mp, self.options["model"])
         return {"m_stat": m}, {"m_stat": D({"b": eb * m / b, "c_mean": ec * m / c, "m_pay": ep * m / mp})}

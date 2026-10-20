@@ -1,0 +1,66 @@
+# 2024-25 DBF ruleset (X-1 Supersonic Flight Program): multipoint design problem, M2 + M3 on one airframe.
+# Problem: aircrafter2/problems/multipoint.py; plan and sources: docs/RESULTS_PLAN.md.
+# Citations: [R] Rules_2025.pdf page; [W] 2025 USYD DBF Design Report (Project Woombah) page/table;
+# [TM] THESIS/3_LITERATURE/25 competition/T-Motor V3115/ (manufacturer spec table). PLACEHOLDER = not sourced
+# (docs/OPEN_QUESTIONS.md). The propulsion layout and components are Woombah's; the airframe is the design.
+extends: full_mdo_twin.yaml
+
+airfoil: {seed: clarky, n_modes: 0}          # Clark Y: Woombah's wing airfoil [W p. 20, Table 18]
+altitude: 800.0                              # m, Tucson elevation 2625 ft [W p. 25]; fly-off at TIMPA, Tucson [R p. 7]
+takeoff_distance: 106.68                     # m = 350 ft: Woombah's runway limit [W p. 10 Table 4]. Engineering
+                                             # PLACEHOLDER constraint: there is no take-off distance rule [R p. 10]
+mission_time: 300.0                          # s, 5-minute windows [R p. 11-12]
+mass:
+  inputs:
+    n: 5.0                                   # design load factor 5 g, FOS 1.5 [W p. 3, p. 20]; the same for every design
+
+propulsion:
+  n_motors: 2                                # twin wing tractors [W p. 14]
+  battery_topology: per_motor                # one pack per propulsion system [R p. 14]
+  n_cells: 6                                 # 6S [W p. 22] (cells are enumerated: 4S, 5S, 6S)
+  V_cell: 3.7
+  R_cell: 0.005                              # ohm, PLACEHOLDER (Dualsky 70C internal resistance not reported; Q8)
+  e_spec: 134.3                              # Wh/kg: 49.95 Wh per 2250 mAh 6S pack [W p. 22] / 0.82 lb per pack
+                                             # (batteries x2 = 1.64 lb [W p. 45 Table 34])
+  Kv: 1050.0                                 # reference motor: T-Motor V3115 1050 KV [W p. 22]
+  Rm: 0.03384                                # ohm, V3115 KV1050 winding resistance 33.84 mOhm [TM]
+  I0: 1.79                                   # A, idle current at 10 V [TM]
+  m_motor: 0.1127                            # kg, 112.7 g incl. cable [TM]; Table 34: 0.50 lb for two [W p. 45]
+  m_esc: 0.127                               # kg, ESC x2 = 0.56 lb [W p. 45 Table 34]
+  m_prop: 0.018                              # kg, propeller x2 = 0.08 lb [W Table 34]
+  m_avionics: 0.222                          # kg, receiver 0.19 lb + receiver battery 0.30 lb [W Table 34]
+  m_nacelle: 0.0                             # Table 34 has no nacelle row (Q25)
+  I_max: 60.0                                # A, Hargrave microDrive LP ESC continuous limit [W p. 22] (the fuse
+                                             # rule, min(100 A, C x capacity) [R p. 15], is a separate constraint)
+  v_top: 80.0                                # m/s: above every level speed inside the Kv bounds (corner sweep,
+                                             # docs/studies/results/validation_2025.md)
+  fit_range: throttle                        # T(v) fit below the windmill speed at each throttle (part throttle)
+
+stability:
+  x_motor: -0.1397                           # m, motors 5.5 in ahead of the LE [W p. 20]
+
+design_variables:
+  b: {lower: 0.9, upper: 1.829}              # m, span <= 6 ft [R p. 8]
+  Kv: {lower: 400.0, upper: 1050.0}          # rpm/V: the V3115 family's catalogue windings 400-1050 KV [TM]
+  capacity: {lower: 0.5, upper: 4.0}         # Ah per pack; the 100 Wh total [R p. 14] is a constraint
+  x_batt: {lower: -0.8, upper: 0.2}          # m; Woombah moves the batteries to -29.37 in for M3 [W Table 34]
+
+initial: {b: 1.6, c: 0.3, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 4.0, v: 30.0, capacity: 2.0,
+          l_ht: 0.9, S_ht: 0.12, S_vt: 0.05, x_batt: -0.1, Kv: 900.0}
+
+multipoint:
+  points:
+    M2: {prop: 10x7E}                        # enumerated: 9x6E, 10x7E, 11x8E [W p. 22]; the prop may change per
+    M3: {prop: 10x7E}                        # flight attempt [R p. 14]
+  per_point: [capacity, x_batt, throttle]
+  per_point_bounds:
+    throttle: {lower: 0.3, upper: 1.0}       # pilot setting per flight
+  per_point_initial: {throttle_M2: 1.0, throttle_M3: 0.6}
+  fuel: {lower: 0.5, upper: 100.0}           # kg; capped at the declared tanks' capacity (stores)
+  fuel_initial: 4.0
+  stores: {}                                 # stores.StoreConfig defaults: 2 x 1 L bottles, steel powder, Woombah data
+  scoring:                                   # dbf2025 (aircrafter2/scoring/dbf2025.py)
+    R2: 0.20                                 # lb/s, best team's fuel weight / time: PLACEHOLDER (Q35)
+    R3: 27.0                                 # best team's laps + bonus / X-1 weight: PLACEHOLDER (Q35)
+    bonus: 0.0                               # main scenario B = 0 (the X-1's flight is not modelled)
+    x1_weight_lb: 0.37                       # Woombah's X-1 as flown [W p. 59 Table 39]
