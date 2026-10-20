@@ -47,6 +47,7 @@ class DBF2025(ScoringPlugin):
     """Flight score M1 + M2 + M3 of the 2024-25 rules, from the multipoint problem's M2 and M3 points."""
     sense = "max"
     ref = 5.0
+    multipoint = True  # reads two mission points: problems/multipoint.py only (not offered for single-point runs)
     inputs = {"fuel_mass": "kg", "t3_M2": "s", "laps_M3": None}
 
     def __init__(self, R2=0.20, R3=27.0, bonus=0.0, x1_weight_lb=0.37, w2=1.0, w3=1.0, m1=1.0):

@@ -33,7 +33,9 @@ with st.sidebar:
     cfg_name = st.selectbox("Config", full_configs, index=full_configs.index("full_mdo.yaml")
                             if "full_mdo.yaml" in full_configs else 0)
     cfg = load_full_config(CONFIGS / cfg_name)
-    plugins = available()
+    from aircrafter2.scoring.base import _REGISTRY
+
+    plugins = [n for n in available() if not getattr(_REGISTRY.get(n), "multipoint", False)]  # single-point only
     cfg.scoring.plugin = st.selectbox("Scoring plug-in", plugins, index=plugins.index(cfg.scoring.plugin))
     apc_dir = Path(cfg.propulsion.apc_dir).expanduser() if cfg.propulsion.apc_dir else DEFAULT_DIR
     props = sorted(p.stem.replace("PER3_", "") for p in apc_dir.glob("PER3_*E.dat"))

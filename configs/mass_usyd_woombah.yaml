@@ -1,0 +1,16 @@
+# Garcia & Gamboa correction factors refitted on ONE aircraft, Project Woombah (USYD DBF 2025), with the
+# Eq. 127 hook (aircrafter2/mass/calibration.py; studies/validation_2025.py calibrate).
+# One aircraft is one data point, and five factors against five component masses is an exact fit, not
+# evidence: use for the validation comparison only, never in the optimisations.
+# Real masses: 2025 USYD DBF Design Report, Table 34 (p. 45). n_panels = 3 (Woombah's three-piece wing,
+# Design Report p. 20): with n_panels = 1 the f_wing correction vanishes (f_wing^(n_panels-1), PLAN G5)
+# and the wing stays 75 % below Table 34 (docs/studies/results/validation_2025.md).
+extends: mass_garcia_gamboa_2022.yaml
+options:
+  n_panels: 3
+inputs:
+  f_wing: 1.9595
+  f_ht: 0.46518
+  f_vt: 0.49066
+  f_cb: 1.111
+  f_gear: 0.027823
