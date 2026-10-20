@@ -134,3 +134,43 @@ def test_existing_configs_unchanged(cfg_name):
         assert now[k] == pytest.approx(x, rel=1e-9, abs=1e-12), k
 
 
+
+
+# --- RDO composed with multipoint (small d) --------------------------------------------------------------------------
+def test_rdo_multipoint_nodes_differ_and_designs_are_shared():
+    from aircrafter2.problems.multipoint import load_multipoint_config
+    from aircrafter2.robustness.rdo_multipoint import build_robust_multipoint, mp_params
+
+    mcfg = load_multipoint_config(CONFIGS / "dbf2025_multipoint_rdo.yaml")
+    names = [p.name for p in mp_params(mcfg)]
+    assert "m_pay" not in names and "store_drag_factor" in names and "Kv_factor" in names and "Kv" not in names
+    mcfg.base.aero.num_y = 11
+    mcfg.base.robust.active = ["store_drag_factor"]  # d = 1, N = 3 nodes x 2 points
+    p = build_robust_multipoint(mcfg, driver=False)
+    p.run_model()
+    assert p.rdo["N"] == 3
+    f = [p.get_val(f"nodes.n{j}.points.M2.store_drag_factor")[0] for j in range(3)]
+    assert f[0] == pytest.approx(1.0) and f[1] < 1.0 < f[2]
+    for j in range(3):
+        assert p.get_val(f"nodes.n{j}.points.M3.store_drag_factor")[0] == f[j]  # same aircraft at both points
+        for dv in ("b", "Kv", "capacity_M3", "fuel_mass"):
+            assert p.get_val(f"nodes.n{j}.points.{'M3' if dv != 'fuel_mass' else 'M2'}.{dv.replace('_M3', '')}")[0] \
+                == p.get_val(dv)[0], dv
+    cd = [p.get_val(f"nodes.n{j}.points.M2.CD_stores")[0] for j in range(3)]
+    assert cd[1] < cd[0] < cd[2]  # the nodes really differ
+    assert p.get_val("stats.flight_score_sigma")[0] > 0.0
+
+
+def test_sampling_worker_with_a_failed_nominal_point_reports_mda_failures():
+    """A design whose own nominal MDA fails: every sample is MDA non-convergence (not a pool that respawns forever)."""
+    from aircrafter2.robustness import sampling
+
+    saved = dict(sampling._W)
+    try:
+        sampling._W.clear()
+        sampling._W.update(prob=None, outputs=["flight_score", "M2"])
+        i, row, how = sampling._run((3, {"Kv_factor": 1.02}))
+        assert (i, how) == (3, "failed") and np.isnan(row).all()
+    finally:
+        sampling._W.clear()
+        sampling._W.update(saved)

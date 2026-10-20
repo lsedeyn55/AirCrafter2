@@ -4,7 +4,10 @@
     .venv/bin/python studies/results_2025.py optimise --tag mp_6S_10x7E_10x7E [--cells 6] [--m2 10x7E] [--m3 10x7E]
                                                        [--w2 1 --w3 1] [--R2 0.2 --R3 27] [--start TAG]
     .venv/bin/python studies/results_2025.py bookends --case mp_6S_10x7E_10x7E      # M2-only and M3-only optima
-    .venv/bin/python studies/results_2025.py report
+    .venv/bin/python studies/results_2025.py screen | node_check | rdo --tag T [--index i] | multistart --case C --index i
+    .venv/bin/python studies/results_2025.py normalisation --case C --f2 2 --f3 1
+    .venv/bin/python studies/results_2025.py mc | common | robust_eval    # common evaluation, UDR at every design
+    .venv/bin/python studies/results_2025.py report                        # results_2025.{md,json} + figures
 
 Bookends: the same multipoint problem (both missions flown, every constraint at both points) with the objective
 reduced to one mission's score (dbf2025 weights w2, w3), so the difference to the multipoint optimum is what the
@@ -131,7 +134,7 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
     mcfg = config(cells, m2, m3, scoring, cfg, fixed, bottle)
     if maxiter:
         mcfg.base.maxiter = maxiter
-    p = build_multipoint_problem(mcfg, driver=True)
+    p = build_multipoint_problem(mcfg, driver=True, mda_retry=True)  # warm-start fallbacks (RDO's RetryNewton)
     p.driver.options["disp"] = False
     if start:
         for k, x in load(start)["dv"].items():
@@ -158,6 +161,214 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
     return out
 
 
+RDO_CFG = ROOT / "configs" / "dbf2025_multipoint_rdo.yaml"
+MC_N = 1024
+
+
+def best_case(prefix="mp_"):
+    """The best feasible deterministic multipoint run (highest flight score) among outputs/results/runs/<prefix>*."""
+    best = None
+    for f in RUNS.glob(f"{prefix}*.json"):
+        if any(s in f.stem for s in ("_M2only", "_M3only", "_ms", "_norm", "rdo", "_bottle")):
+            continue
+        d = json.loads(f.read_text())
+        if d.get("ok") and "score" in d and (best is None or d["score"]["flight_score"] > best["score"]["flight_score"]):
+            best = d
+    return best
+
+
+def _mcfg_for(run, cfg=RDO_CFG):
+    return config(run["cells"], run["props"]["M2"], run["props"]["M3"], cfg=cfg, bottle=run.get("bottle"))
+
+
+def screen(case=None):
+    """First-order variance screening of the flight score and the robust constraints at the deterministic optimum."""
+    from aircrafter2.problems.multipoint import build_multipoint_problem
+    from aircrafter2.robustness.rdo_multipoint import first_order_contributions_mp, resolved_dists_mp, robust_names
+    from aircrafter2.robustness.uncertainty import select_parameters
+
+    run = load(case) if case else best_case()
+    mcfg = _mcfg_for(run)
+    p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+    for k, x in run["dv"].items():
+        p.set_val(k, x)
+    dists, _ = resolved_dists_mp(mcfg, lambda n: v(p, f"points.M2.{n}"))
+    for d in dists:
+        for inp in (f"points.M2.{d.name}", f"points.M3.{d.name}"):
+            p.set_val(inp, d.mean)
+    p.run_model()
+    of = ["flight_score"] + robust_names(mcfg, extra=("points.M2.laps_frac",))
+    contrib = first_order_contributions_mp(p, dists, of)
+    rob = mcfg.base.robust
+    sel, cov, reached = select_parameters(contrib, rob.screening_threshold, rob.max_dim)
+    out = dict(case=run["tag"], selected=sel, coverage=cov, reached=reached, d=len(sel), git=git_hash(),
+               contrib=contrib, values={q: v(p, q) for q in of})
+    (OUT / "screen.json").write_text(json.dumps(out, indent=1, default=float))
+    print(f"screen {run['tag']}: d = {len(sel)} {sel} reached={reached} min coverage "
+          f"{min(cov.values()) if cov else float('nan'):.3f}", flush=True)
+    return out
+
+
+def _sobol_designs(mcfg, n, seed=0):
+    from scipy.stats import qmc
+
+    dvs = mcfg.all_dvs()
+    names = list(dvs)
+    up = {k: (min(b.upper, mcfg.mp.rules.span_max_ft * 0.3048) if k == "b" else b.upper) for k, b in dvs.items()}
+    u = qmc.Sobol(len(names), scramble=True, seed=seed).random(n)
+    return [{k: dvs[k].lower + ui * (up[k] - dvs[k].lower) for k, ui in zip(names, row)} for row in u]
+
+
+def node_check(case=None, workers=5):
+    """Every UDR node of the screened set at the optimum, the start point and 6 Sobol designs (both points)."""
+    from aircrafter2.problems.multipoint import build_multipoint_problem
+    from aircrafter2.robustness.quadrature import make_rule
+    from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp
+    from aircrafter2.robustness.sampling import evaluate
+
+    sc = json.loads((OUT / "screen.json").read_text())
+    run = load(case or sc["case"])
+    mcfg = _mcfg_for(run)
+    mcfg.base.robust.active = sc["selected"]
+    p = build_multipoint_problem(mcfg, driver=False)
+    dists, act = resolved_dists_mp(mcfg, lambda n: v(p, f"points.M2.{n}"))
+    rule = make_rule(mcfg.base.robust, act)
+    base = {d.name: d.mean for d in dists}
+    rows = [dict(base, **{d.name: float(x) for d, x in zip(act, r)}) for r in rule.nodes]
+    start = {k: float(np.ravel(p.get_val(k))[0]) for k in mcfg.all_dvs()}
+    designs = [("optimum", run["dv"]), ("start", start)] + [(f"sobol{i}", d) for i, d in
+                                                            enumerate(_sobol_designs(mcfg, 6))]
+    res = []
+    for label, dv in designs:
+        ev = evaluate(mcfg, dv, rows, ["flight_score"], workers)
+        res.append(dict(design=label, failed=ev["failed"], retried=ev["retried"], wall=ev["wall"]))
+        print(f"node check {label}: failed {ev['failed']} retried {ev['retried']} {ev['wall']:.0f}s", flush=True)
+    (OUT / "node_check.json").write_text(json.dumps(dict(case=run["tag"], N=len(rows), d=len(act), results=res,
+                                                         git=git_hash()), indent=1, default=float))
+
+
+def rdo(tag, case=None, start=None, x0=None, maxiter=None, index=None):
+    """One robust optimisation of the screened case; index: start from that Sobol' design (multistart)."""
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.robustness.rdo_multipoint import build_robust_multipoint, node_report_mp, robust_summary_mp
+
+    sc = json.loads((OUT / "screen.json").read_text())
+    run = load(case or sc["case"])
+    mcfg = _mcfg_for(run)
+    mcfg.base.robust.active = sc["selected"]
+    if maxiter:
+        mcfg.base.maxiter = maxiter
+    if index is not None:
+        x0 = _sobol_designs(mcfg, 10)[index]
+    p = build_robust_multipoint(mcfg, driver=True, extra_robust=("points.M2.laps_frac",))
+    p.driver.options["disp"] = False
+    for k, x in (load(start)["dv"] if start else run["dv"]).items():
+        p.set_val(k, x)
+    for k, x in (x0 or {}).items():
+        p.set_val(k, x)
+    t = time.perf_counter()
+    err = None
+    try:
+        res = p.run_driver()
+        ok, its = bool(res.success), int(res.iter_count)
+    except AnalysisError as exc:
+        ok, its, err = False, int(p.driver.iter_count), f"MDA non-convergence: {str(exc)[:200]}"
+    wall = time.perf_counter() - t
+    from aircrafter2.problems.multipoint import design_values
+
+    out = dict(tag=tag, case=run["tag"], ok=ok, its=its, error=err, time=wall, N=p.rdo["N"],
+               active=[d.name for d in p.rdo["active"]], dv=design_values(p, mcfg),
+               start=start or (f"sobol{index}" if index is not None else run["tag"]),
+               summary=robust_summary_mp(p), nodes=node_report_mp(p), props=run["props"], cells=run["cells"],
+               k=mcfg.base.robust.k, beta=mcfg.base.robust.beta, git=git_hash(),
+               threads=os.environ.get("OMP_NUM_THREADS"))
+    dump(tag, out)
+    print(f"{tag}: ok={ok} its={its} {wall:.0f}s mu={out['summary']['flight_score']['mu']:.4f} "
+          f"sigma={out['summary']['flight_score']['sigma']:.4f} {err or ''}", flush=True)
+
+
+def monte_carlo(designs, n=MC_N, workers=5):
+    """1024 scrambled Sobol' points (seed 0) over all uncertain parameters, the same points for every design.
+    designs: [(label, MultipointConfig, dv)]. Writes outputs/results/mc_<label>.npz and mc.json."""
+    from scipy.stats import qmc
+
+    from aircrafter2.problems.multipoint import build_multipoint_problem, multipoint_constraints
+    from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp
+    from aircrafter2.robustness.sampling import evaluate, violation_probabilities
+
+    summary = json.loads((OUT / "mc.json").read_text()) if (OUT / "mc.json").exists() else {}
+    for label, mcfg, dv in designs:
+        p = build_multipoint_problem(mcfg, driver=False)
+        for k, x in dv.items():
+            p.set_val(k, x)
+        dists, _ = resolved_dists_mp(mcfg, lambda nm: v(p, f"points.M2.{nm}"))
+        u = qmc.Sobol(len(dists), scramble=True, seed=0).random(n)  # common random numbers: the same u for all
+        rows = [{d.name: float(d.ppf(ui)) for d, ui in zip(dists, row)} for row in u]
+        cons = multipoint_constraints(mcfg)
+        outputs = ["flight_score", "M2", "M3"] + [c for c, _ in cons]
+        ev = evaluate(mcfg, dv, rows, outputs, workers)
+        V = ev["values"]
+        np.savez(OUT / f"mc_{label}.npz", values=V, outputs=np.array(outputs), u=u)
+        ok = ~np.isnan(V).any(axis=1)
+        stats = {}
+        for j, o in enumerate(outputs[:3]):
+            col = V[ok, j]
+            stats[o] = dict(mu=float(col.mean()), sigma=float(col.std(ddof=1)), p5=float(np.percentile(col, 5)))
+        summary[label] = dict(N=n, failed=len(ev["failed"]), retried=len(ev["retried"]), wall=ev["wall"],
+                              stats=stats, p_violation=violation_probabilities(V, outputs, cons),
+                              params=[d.name for d in dists], git=git_hash())
+        (OUT / "mc.json").write_text(json.dumps(summary, indent=1, default=float))
+        print(f"MC {label}: failed {len(ev['failed'])}, F mu {stats['flight_score']['mu']:.4f} "
+              f"sigma {stats['flight_score']['sigma']:.4f} p5 {stats['flight_score']['p5']:.4f}", flush=True)
+
+
+def mc_designs(labels=None):
+    """The common-evaluation designs: [(label, MultipointConfig with the RDO parameter list, dv)]."""
+    from aircrafter2.problems.multipoint import load_multipoint_config
+
+    rob = load_multipoint_config(RDO_CFG).base.robust
+    out = []
+    w = json.loads((OUT / "validation_woombah.json").read_text())
+    if "logged_current" in w["cases"]:  # Woombah as built, at the throttles it was flown at (Table 38 currents)
+        wm = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+        wm.base.robust = rob.model_copy(deep=True)
+        out.append(("woombah", wm, w["cases"]["logged_current"]["dv"]))
+    for tag in ("ac1_direct", "ac1_completed"):
+        if (RUNS / f"{tag}.json").exists():
+            d = load(tag)
+            out.append((tag, config(d["cells"], d["props"]["M2"], d["props"]["M3"], cfg=RDO_CFG,
+                                    bottle=d.get("bottle")), d["dv"]))
+    b = best_case()
+    out.append(("multipoint", _mcfg_for(b), b["dv"]))
+    if (RUNS / f"{b['tag']}_bottle2L.json").exists():  # the same case with 2 L bottles (AirCrafter 1.0 (b)'s tanks)
+        d = load(f"{b['tag']}_bottle2L")
+        if d.get("ok"):
+            out.append(("multipoint_2L", _mcfg_for(d), d["dv"]))
+    r = best_rdo()
+    if r:
+        out.append(("rdo", _mcfg_for(load(r["case"])), r["dv"]))
+    return [d for d in out if labels is None or d[0] in labels]
+
+
+def multistart(case, index, n=10):
+    """Start `index` of n scrambled Sobol' points (seed 0) in the design-variable box, same case as `case`."""
+    d = load(case)
+    mcfg = config(d["cells"], d["props"]["M2"], d["props"]["M3"])
+    x0 = _sobol_designs(mcfg, n)[index]
+    optimise(f"{case}_ms{index}", d["cells"], d["props"]["M2"], d["props"]["M3"], x0=x0)
+
+
+def normalisation(case, f2, f3):
+    """The case re-optimised with R2 x f2 and R3 x f3 (from its own optimum)."""
+    from aircrafter2.problems.multipoint import load_multipoint_config
+
+    d = load(case)
+    sc = load_multipoint_config(CFG).mp.scoring
+    optimise(f"{case}_norm_{f2:g}_{f3:g}", d["cells"], d["props"]["M2"], d["props"]["M3"],
+             scoring={"R2": sc["R2"] * f2, "R3": sc["R3"] * f3}, start=case)
+
+
 def bookends(case):
     d = load(case)
     kw = dict(cells=d["cells"], m2=d["props"]["M2"], m3=d["props"]["M3"])
@@ -165,10 +376,717 @@ def bookends(case):
     # M3's laps are capped by the 100 Wh rule, so its objective is nearly flat in the airframe: more iterations
     optimise(f"{case}_M3only", scoring={"w2": 0.0, "w3": 1.0}, start=case, maxiter=300, **kw)
 
+DOCS = ROOT / "docs" / "studies" / "results"
+EXCLUDE = ("_M2only", "_M3only", "_ms", "_norm", "rdo", "_bottle")
+
+
+def deterministic_cases():
+    """The propulsion-enumeration runs (every outputs/results/runs/mp_* that is not a bookend/multistart/grid run)."""
+    return sorted((json.loads(f.read_text()) for f in RUNS.glob("mp_*.json") if not any(s in f.stem for s in EXCLUDE)),
+                  key=lambda d: d["tag"])
+
+
+def best_rdo():
+    """The best converged RDO run (highest mu - k sigma) among outputs/results/runs/rdo_*."""
+    runs = [json.loads(f.read_text()) for f in RUNS.glob("rdo_*.json")]
+    ok = [r for r in runs if r.get("ok") or (r.get("error") is None and r.get("summary"))]
+    return max(ok, key=lambda r: r["summary"]["flight_score"]["robust"]) if ok else None
+
+
+def common(labels=None):
+    """Common evaluation 2: every design in the AirCrafter 2.0 multipoint analysis at nominal inputs (summarise())."""
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.problems.multipoint import build_multipoint_problem
+
+    out = json.loads((OUT / "common_nominal.json").read_text()) if (OUT / "common_nominal.json").exists() else {}
+    for label, mcfg, dv in mc_designs(labels):
+        p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+        for k, x in dv.items():
+            p.set_val(k, x)
+        try:
+            p.run_model()
+            out[label] = dict(ok=True, **summarise(p, mcfg))
+        except AnalysisError as exc:
+            out[label] = dict(ok=False, error=f"MDA non-convergence: {str(exc)[:200]}")
+        print(f"common {label}: {out[label].get('score', {}).get('flight_score', out[label].get('error'))}",
+              flush=True)
+    (OUT / "common_nominal.json").write_text(json.dumps(out, indent=1, default=float))
+
+
+def robust_eval(workers=5):
+    """UDR moments over the screened set (the RDO's nodes) of the flight score and the robust constraints at every
+    deterministic optimum and every common-evaluation design: does the propulsion ranking change under uncertainty?"""
+    from aircrafter2.problems.multipoint import build_multipoint_problem, multipoint_constraints
+    from aircrafter2.robustness.quadrature import make_rule
+    from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp, robust_names
+    from aircrafter2.robustness.sampling import evaluate
+
+    sc = json.loads((OUT / "screen.json").read_text())
+    designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in deterministic_cases() if d.get("ok")]
+    designs += [d for d in mc_designs() if d[0] != "multipoint"]
+    out = {}
+    for label, mcfg, dv in designs:
+        mcfg.base.robust.active = sc["selected"]
+        rob = mcfg.base.robust
+        p = build_multipoint_problem(mcfg, driver=False)
+        dists, act = resolved_dists_mp(mcfg, lambda n: v(p, f"points.M2.{n}"))
+        rule = make_rule(rob, act)
+        base = {d.name: d.mean for d in dists}
+        rows = [dict(base, **{d.name: float(x) for d, x in zip(act, r)}) for r in rule.nodes]
+        cons = dict(multipoint_constraints(mcfg))
+        rn = robust_names(mcfg, extra=("points.M2.laps_frac",))
+        ev = evaluate(mcfg, dv, rows, ["flight_score"] + rn, workers)
+        res = dict(N=rule.n, failed=len(ev["failed"]), robust_violated=[])
+        if not ev["failed"]:
+            mu, var = rule.moments(ev["values"][:, 0])
+            sig = float(np.sqrt(max(var, 0.0)))
+            res.update(mu=mu, sigma=sig, robust=mu - rob.k * sig)
+            for j, n in enumerate(rn, start=1):
+                m_, var_ = rule.moments(ev["values"][:, j])
+                s_ = np.sqrt(max(var_, 0.0))
+                kw = cons[n]
+                tol = 1e-6 * max(abs(kw.get("lower") or kw.get("upper") or 0.0), kw.get("ref") or 0.0, 1.0)
+                if (kw.get("lower") is not None and m_ - rob.beta * s_ < kw["lower"] - tol) or \
+                        (kw.get("upper") is not None and m_ + rob.beta * s_ > kw["upper"] + tol):
+                    res["robust_violated"].append(n)
+        out[label] = res
+        print(f"robust eval {label}: {res}", flush=True)
+    (OUT / "robust_eval.json").write_text(json.dumps(dict(selected=sc["selected"], results=out, git=git_hash()),
+                                                     indent=1, default=float))
+
+
+# ---------------------------------------------------------------------------------------------------------- report
+LB_ = 0.45359237
+
+
+def _own_claims():
+    """Common evaluation 1: what each method claims in its own model."""
+    from aircrafter2.scoring.dbf2025 import m2_verbatim, m3_verbatim
+    import sys
+
+    sys.path.insert(0, str(ROOT / "studies"))
+    from validation_2025 import TABLE39
+
+    sc = load(best_case()["tag"])["scoring"]
+    out = {}
+    d = TABLE39["M2"]["design"]
+    t3 = 3 * d["avg_lap_s"]
+    m2 = m2_verbatim(d["fuel_lb"], t3, sc["R2"])
+    m3 = m3_verbatim(TABLE39["M3"]["design"]["laps"] - 1, 0.0, TABLE39["M3"]["design"]["x1_lb"], sc["R3"])
+    out["woombah"] = dict(source="Table 39 'Design' column [W p. 59]; M2 time = 3 x the 33 s average lap", fuel_lb=
+                          d["fuel_lb"], t3=t3, laps=TABLE39["M3"]["design"]["laps"], M2=m2, M3=m3, F=1 + m2 + m3)
+    a = json.loads((DOCS / "aircrafter1_2025.json").read_text())["aircrafter1_2025"]["DP"]
+    ac = load("ac1_direct")["ac1"]
+    for tag in ("ac1_direct", "ac1_completed"):
+        fuel = ac["fuel_kg"] / LB_
+        out[tag] = dict(source="AirCrafter 1.0 '2025' mode, its selected design point (the same for both mappings); "
+                        "t3 from its M2 score", fuel_lb=fuel, t3=fuel / ((a["M2score"] - 1.0) * sc["R2"]),
+                        laps=a["M3_LapCount"],
+                        M2=a["M2score"], M3=a["M3score"], F=1 + a["M2score"] + a["M3score"])
+    b = best_case()
+    out["multipoint"] = dict(source="AirCrafter 2.0 nominal (its own model)", fuel_lb=b["fuel_lb"],
+                             t3=b["M2"]["ThreeLapTime"], laps=b["M3"]["laps_frac"], M2=b["score"]["M2"],
+                             M3=b["score"]["M3"], F=b["score"]["flight_score"])
+    r = best_rdo()
+    if r:
+        s = r["summary"]["flight_score"]
+        out["rdo"] = dict(source="AirCrafter 2.0 RDO: UDR mean, sigma and mu - k sigma of the flight score",
+                          fuel_lb=r["dv"]["fuel_mass"] / LB_, F=s["mu"], sigma=s["sigma"], robust=s["robust"])
+    return out
+
+
+def _fig(name, fn):
+    from aircrafter2.plotting.style import figure, save
+
+    fdir = DOCS / "figures"
+    fdir.mkdir(parents=True, exist_ok=True)
+    fig, ax = figure(*fn.size) if hasattr(fn, "size") else figure(0.8, 0.6)
+    fn(fig, ax)
+    save(fig, fdir / f"{name}.pdf")
+    return f"figures/{name}.pdf"
+
+
+def _figures(R):
+    from aircrafter2.plotting.style import PALETTE
+
+    files = []
+    enum = [c for c in R["enumeration"] if c["ok"]]
+
+    def f_enum(fig, ax):
+        lab = [f"{c['cells']:g}S {c['props']['M2']}/{c['props']['M3']}" for c in enum]
+        ax.barh(range(len(enum)), [c["F"] for c in enum], color=PALETTE[0])
+        ax.set_yticks(range(len(enum)), lab)
+        lo = min(c["F"] for c in enum)
+        ax.set_xlim(lo - 0.05, max(c["F"] for c in enum) + 0.02)
+        ax.set_xlabel("flight score F = M1 + M2 + M3 (nominal)")
+        ax.set_ylabel("cells, M2 prop / M3 prop")
+    files.append(_fig("results_enumeration", f_enum))
+
+    g = R["normalisation"]["grid"]
+    if g:
+        def f_norm(fig, ax):
+            fs = sorted({r["f2"] for r in g})
+            gs = sorted({r["f3"] for r in g})
+            Z = np.full((len(fs), len(gs)), np.nan)
+            for r in g:
+                Z[fs.index(r["f2"]), gs.index(r["f3"])] = r["fuel_lb"]
+            im = ax.imshow(Z, origin="lower", cmap="Blues")
+            for r in g:
+                ax.text(gs.index(r["f3"]), fs.index(r["f2"]), f"{r['fuel_lb']:.1f} lb\n{r['laps']:.2f} laps",
+                        ha="center", va="center", fontsize=7)
+            ax.set_xticks(range(len(gs)), [f"R3 x{x:g}" for x in gs])
+            ax.set_yticks(range(len(fs)), [f"R2 x{x:g}" for x in fs])
+            ax.grid(False)
+            fig.colorbar(im, ax=ax, label="M2 fuel weight (lb)")
+        f_norm.size = (0.7, 0.75)
+        files.append(_fig("results_normalisation", f_norm))
+
+    mc = R["common"]["monte_carlo"]
+    if mc:
+        def f_mc(fig, ax):
+            for i, lab in enumerate(mc):
+                f = OUT / f"mc_{lab}.npz"
+                if not f.exists():
+                    continue
+                z = np.load(f)
+                col = z["values"][:, 0]
+                col = np.sort(col[~np.isnan(col)])
+                ax.plot(col, np.arange(1, len(col) + 1) / len(col), color=PALETTE[i % len(PALETTE)],
+                        label=lab.replace("_", " "))
+            ax.set_xlabel("flight score F (Monte Carlo, 1024 Sobol' points, converged samples)")
+            ax.set_ylabel("cumulative probability")
+            ax.legend(frameon=False)
+        files.append(_fig("results_mc_cdf", f_mc))
+
+    def f_common(fig, ax):
+        labs = [d for d in R["common"]["designs"]]
+        cols = [("own model", lambda d: R["common"]["own"].get(d, {}).get("F")),
+                ("AC2 nominal", lambda d: R["common"]["nominal"].get(d, {}).get("score", {}).get("flight_score")),
+                ("MC mean", lambda d: mc.get(d, {}).get("stats", {}).get("flight_score", {}).get("mu")),
+                ("MC 5th pct.", lambda d: mc.get(d, {}).get("stats", {}).get("flight_score", {}).get("p5"))]
+        w = 0.2
+        for j, (name, fn) in enumerate(cols):
+            ys = [fn(d) for d in labs]
+            ax.bar([i + (j - 1.5) * w for i in range(len(labs))], [y if y is not None else 0 for y in ys], w,
+                   label=name, color=PALETTE[j])
+        ax.set_xticks(range(len(labs)), [d.replace("_", "\n") for d in labs])
+        ax.set_ylim(4.0, None)
+        ax.set_ylabel("flight score F")
+        ax.legend(frameon=False, ncol=2)
+    files.append(_fig("results_common_evaluation", f_common))
+    return files
+
+
+def _fmt(x, nd=3):
+    if x is None:
+        return "–"
+    if isinstance(x, str):
+        return x
+    if isinstance(x, (bool, np.bool_)):
+        return "yes" if x else "no"
+    if not np.isfinite(x):
+        return "nan"
+    return f"{x:.{nd}f}"
+
+
+def _table(header, rows):
+    s = "| " + " | ".join(header) + " |\n|" + "|".join("---" if i == 0 else "---:" for i in range(len(header))) + "|\n"
+    return s + "".join("| " + " | ".join(str(c) for c in r) + " |\n" for r in rows)
+
+
+def collect():
+    """Everything the report needs, from outputs/results (JSON only: the numbers in the markdown come from here)."""
+    from aircrafter2.problems.multipoint import load_multipoint_config, multipoint_constraints
+
+    R = dict(git=git_hash())
+    base = best_case()
+    R["best_case"] = base["tag"]
+    R["scoring"] = base["scoring"]
+    R["enumeration"] = []
+    for d in deterministic_cases():
+        row = dict(tag=d["tag"], cells=d["cells"], props=d["props"], ok=d["ok"], its=d["its"], time=d["time"],
+                   error=d.get("error"))
+        if "score" in d:
+            row.update(F=d["score"]["flight_score"], M2=d["score"]["M2"], M3=d["score"]["M3"], fuel_lb=d["fuel_lb"],
+                       t3=d["M2"]["ThreeLapTime"], laps=d["M3"]["laps_frac"], Kv=d["dv"]["Kv"], kv_set_by=d["kv_set_by"],
+                       active=d["active_constraints"], bounds=d["active_bounds"], M1_passed=d["M1_check"]["passed"],
+                       M1_violated=d["M1_check"].get("violated"))
+        R["enumeration"].append(row)
+    R["bottles"] = []
+    for tag, bottle in ((f"{base['tag']}_bottle0.5L", "0.5L"), (base["tag"], "1L"), (f"{base['tag']}_bottle2L", "2L")):
+        f = RUNS / f"{tag}.json"
+        if f.exists():
+            d = json.loads(f.read_text())
+            row = dict(tag=tag, bottle=bottle, ok=d["ok"], its=d["its"], error=d.get("error"))
+            if "score" in d:
+                row.update(F=d["score"]["flight_score"], M2=d["score"]["M2"], M3=d["score"]["M3"],
+                           fuel_lb=d["fuel_lb"], t3=d["M2"]["ThreeLapTime"], laps=d["M3"]["laps_frac"],
+                           m2_total=d["M2"]["m_total"], cd_stores=d["M2"]["CD_stores"], bounds=d["active_bounds"],
+                           M1_passed=d["M1_check"]["passed"])
+            R["bottles"].append(row)
+    R["screen"] = json.loads((OUT / "screen.json").read_text())
+    R["node_check"] = json.loads((OUT / "node_check.json").read_text())
+
+    ms = []
+    for i in range(10):
+        f = RUNS / f"{base['tag']}_ms{i}.json"
+        if f.exists():
+            d = json.loads(f.read_text())
+            ms.append(dict(index=i, ok=d["ok"], its=d["its"], time=d["time"], error=d.get("error"),
+                           F=d.get("score", {}).get("flight_score")))
+    R["multistart"] = dict(default=base["score"]["flight_score"], runs=ms)
+
+    bk = {}
+    for s in ("M2only", "M3only"):
+        f = RUNS / f"{base['tag']}_{s}.json"
+        if f.exists():
+            d = json.loads(f.read_text())
+            bk[s] = dict(ok=d["ok"], its=d["its"], maxiter=d.get("maxiter"), error=d.get("error"),
+                         **({k: d["score"][k] for k in ("flight_score", "M2", "M3")} if "score" in d else {}),
+                         **(dict(fuel_lb=d["fuel_lb"], laps=d["M3"]["laps_frac"], t3=d["M2"]["ThreeLapTime"],
+                                 dv=d["dv"], active=d["active_constraints"], bounds=d["active_bounds"])
+                            if "score" in d else {}))
+    R["bookends"] = bk
+
+    grid = [dict(f2=1.0, f3=1.0, tag=base["tag"], ok=True, its=base["its"], F=base["score"]["flight_score"],
+                 M2=base["score"]["M2"], M3=base["score"]["M3"], fuel_lb=base["fuel_lb"], t3=base["M2"]["ThreeLapTime"],
+                 laps=base["M3"]["laps_frac"], dv=base["dv"])]
+    for f in RUNS.glob(f"{base['tag']}_norm_*.json"):
+        d = json.loads(f.read_text())
+        f2, f3 = (float(x) for x in f.stem.split("_norm_")[1].split("_"))
+        row = dict(f2=f2, f3=f3, tag=d["tag"], ok=d["ok"], its=d["its"], error=d.get("error"))
+        if "score" in d:
+            row.update(F=d["score"]["flight_score"], M2=d["score"]["M2"], M3=d["score"]["M3"], fuel_lb=d["fuel_lb"],
+                       t3=d["M2"]["ThreeLapTime"], laps=d["M3"]["laps_frac"], dv=d["dv"])
+        grid.append(row)
+    R["normalisation"] = dict(grid=sorted(grid, key=lambda r: (r["f2"], r["f3"])))
+
+    rdo_runs = []
+    for f in sorted(RUNS.glob("rdo_*.json")):
+        d = json.loads(f.read_text())
+        rdo_runs.append({k: d.get(k) for k in ("tag", "ok", "its", "error", "time", "N", "active", "start", "dv",
+                                              "summary", "nodes", "k", "beta")})
+    R["rdo"] = rdo_runs
+    br = best_rdo()
+    R["rdo_best"] = br["tag"] if br else None
+
+    designs = [d[0] for d in mc_designs()]
+    R["common"] = dict(designs=designs, own=_own_claims(),
+                       nominal=json.loads((OUT / "common_nominal.json").read_text())
+                       if (OUT / "common_nominal.json").exists() else {},
+                       monte_carlo=json.loads((OUT / "mc.json").read_text()) if (OUT / "mc.json").exists() else {})
+    R["robust_eval"] = json.loads((OUT / "robust_eval.json").read_text()) if (OUT / "robust_eval.json").exists() \
+        else None
+    mcfg = load_multipoint_config(CFG)
+    R["constraints"] = {n: kw for n, kw in multipoint_constraints(mcfg)}
+    x1 = mcfg.mp.scoring.get("x1_weight_lb", 0.37)
+    R["bonus"] = dict(B=2.5, x1_lb=x1, dM3=2.5 / x1 / R["scoring"]["R3"])
+    return R
+
+
+def report():
+    R = collect()
+    R["figures"] = _figures(R)
+    DOCS.mkdir(parents=True, exist_ok=True)
+    (DOCS / "results_2025.json").write_text(json.dumps(R, indent=1, default=float))
+    (DOCS / "results_2025.md").write_text(render(R))
+    print("wrote docs/studies/results/results_2025.{md,json}", flush=True)
+
+
+GEOM = [("b", "span b (m)"), ("c", "chord c (m)"), ("tc_scale", "t/c scale"), ("camber_scale", "camber scale"),
+        ("l_ht", "tail arm l_ht (m)"), ("S_ht", "S_ht (m²)"), ("S_vt", "S_vt (m²)"), ("x_cb_frac", "x_cb / l"),
+        ("Kv", "Kv (rpm/V)"), ("capacity_M2", "M2 pack (Ah)"), ("capacity_M3", "M3 pack (Ah)"),
+        ("throttle_M2", "M2 throttle"), ("throttle_M3", "M3 throttle"), ("x_batt_M2", "M2 battery station (m)"),
+        ("x_batt_M3", "M3 battery station (m)")]
+MASSES = ["m_total", "m_empty", "m_wing", "m_ht", "m_vt", "m_fus", "m_gear", "m_sys", "m_batt", "m_pay"]
+PERF = [("v", "cruise speed (m/s)", 1), ("ThreeLapTime", "3-lap time (s)", 1), ("laps_frac", "laps in 10 min", 2),
+        ("CD0", "C_D0 (with stores)", 4), ("CD_stores", "C_D stores", 4), ("cruise.L_over_D", "cruise L/D", 1),
+        ("I_static", "static current (A)", 1), ("rpm_margin", "rpm margin", 0), ("I_margin", "current margin (A)", 1),
+        ("SM", "static margin", 3), ("energy_margin", "energy margin", 0), ("stall_margin", "stall margin (m/s)", 1)]
+
+
+def render(R):
+    L = []
+    w = L.append
+    sc = R["scoring"]
+    base = R["best_case"]
+    enum = R["enumeration"]
+    ok = [c for c in enum if c["ok"]]
+    best = max(ok, key=lambda c: c["F"])
+    com = R["common"]
+    nom, own, mc = com["nominal"], com["own"], com["monte_carlo"]
+    designs = com["designs"]
+    w("# 2024-25 results: AirCrafter 1.0 vs multipoint vs RDO\n")
+    w(f"Generated by `studies/results_2025.py report` (git `{R['git']}`) from `outputs/results/` (runs, screening, node "
+      "check, Monte Carlo); every number below is read from `docs/studies/results/results_2025.json`. Configs: "
+      "`configs/dbf2025_multipoint.yaml` (deterministic), `configs/dbf2025_multipoint_rdo.yaml` (robust), "
+      "`configs/woombah_2025.yaml` (Woombah as built). Scoring `dbf2025`: F = M1 + M2 + M3, "
+      f"M2 = 1 + (W_fuel/t_3laps)/R2, M3 = 2 + (n_pre + B/W_X1)/R3 with **R2 = {sc['R2']:g} lb/s and R3 = "
+      f"{sc['R3']:g} (PLACEHOLDERS, OPEN_QUESTIONS Q35)**, B = {sc.get('bonus', 0):g}. Validation of Woombah: "
+      "`validation_2025.md`; AirCrafter 1.0's run: `aircrafter1_2025.json`.\n")
+    w("**Biases stated up front.** (i) The lap model has no take-off, so every 3-lap time is fast and every M2 high "
+      "(validation_2025.md). (ii) The common evaluation in the AirCrafter 2.0 analysis favours the AirCrafter 2.0 "
+      "designs (they were optimised in it); the Monte Carlo favours RDO by construction (it optimised a statistic of "
+      "the same model). (iii) MDA non-convergence is counted separately from constraint violation everywhere.\n")
+
+    # ------------------------------------------------------------------ headline
+    w("## Findings\n")
+    F = []
+    F.append(f"**Best propulsion case: {best['cells']:g}S, {best['props']['M2']} (M2) / {best['props']['M3']} (M3), "
+             f"F = {best['F']:.4f}** (M2 {best['M2']:.4f}, M3 {best['M3']:.4f}, {best['fuel_lb']:.1f} lb of fuel, "
+             f"{best['laps']:.2f} M3 laps). Kv is set by {best['kv_set_by']}.")
+    capped = [c for c in ok if "fuel_mass (upper)" in c["bounds"]]
+    if capped:
+        F.append(f"**The fuel weight sits at its upper bound in {len(capped)} of {len(ok)} cases**: "
+                 f"{best['fuel_lb']:.1f} lb, the capacity of the two 1 L bottles (OPEN_QUESTIONS Q36). M2 is "
+                 "tank-limited, so the bottle choice (kept at Woombah's 1 L) is an active design decision: a larger "
+                 "bottle buys M2 at the cost of tank drag and mass. The main results keep 1 L (decision); the bottle "
+                 "sensitivity (section 1b) gives " + ", ".join(f"{b['bottle']} F = {b['F']:.4f} ({b['fuel_lb']:.1f} lb)"
+                                                               for b in R["bottles"] if "F" in b) + ".")
+    cells = sorted((c for c in ok if c["props"] == best["props"]), key=lambda c: c["cells"])
+    if len(cells) > 1:
+        F.append("Cell count barely matters: " + ", ".join(f"{c['cells']:g}S {c['F']:.4f}" for c in cells) +
+                 f" (spread {max(c['F'] for c in cells) - min(c['F'] for c in cells):.4f}); Kv absorbs the voltage.")
+    s6 = [c for c in ok if c["cells"] == best["cells"]]
+    m2best = {}
+    for c in s6:
+        m2best.setdefault(c["props"]["M2"], []).append(c["F"])
+    spread_m3 = max(max(v_) - min(v_) for v_ in m2best.values())
+    spread_m2 = max(max(v_) for v_ in m2best.values()) - min(max(v_) for v_ in m2best.values())
+    F.append(f"The M2 prop decides the ranking (best-per-M2-prop spread {spread_m2:.3f}); the M3 prop hardly moves F "
+             f"(at most {spread_m3:.4f} for a given M2 prop): M3's laps are capped by the 100 Wh pack rule, not by "
+             "the prop.")
+    msr = R["multistart"]["runs"]
+    if msr:
+        good = [r for r in msr if r["ok"]]
+        F.append(f"Multistart ({len(msr)} scrambled Sobol' starts): {len(good)}/{len(msr)} converge, all to "
+                 f"F = {min(r['F'] for r in good):.4f}–{max(r['F'] for r in good):.4f} (default start "
+                 f"{R['multistart']['default']:.4f}); the {len(msr) - len(good)} failures are MDA non-convergence "
+                 "at a random start design, not optimiser failures.")
+    bk = R["bookends"]
+    if "M2only" in bk and "M3only" in bk and bk["M3only"].get("M2") is not None:
+        F.append(f"Bookends: the M2-only optimum gains {bk['M2only']['M2'] - best['M2']:+.4f} in M2 and the "
+                 f"M3-only optimum {bk['M3only']['M3'] - best['M3']:+.4f} in M3 over the multipoint design; the "
+                 f"M3-only design gives up {best['M2'] - bk['M3only']['M2']:.3f} in M2 for it. **The multipoint "
+                 "optimum is effectively the M2 optimum**: M2 (fuel/time) is the only mission with real leverage "
+                 "at these normalisations.")
+    rb = R["rdo_best"]
+    rruns = [r for r in R["rdo"] if r.get("summary")]
+    if rb:
+        r = next(x for x in R["rdo"] if x["tag"] == rb)
+        s = r["summary"]["flight_score"]
+        re_ = (R["robust_eval"] or {}).get("results", {}).get(base, {})
+        F.append(f"RDO ({rb}, d = {len(r['active'])}, N = {r['N']} nodes x 2 points): mu - k sigma = "
+                 f"{s['robust']:.4f} (mu {s['mu']:.4f}, sigma {s['sigma']:.4f}); the deterministic optimum has "
+                 f"mu - k sigma {_fmt(re_.get('robust'), 4)} at the same nodes"
+                 + (f" and violates {len(re_['robust_violated'])} robust constraints there"
+                    if re_.get("robust_violated") else "") + ". Nominal cost of robustness: "
+                 f"{_fmt(nom.get('multipoint', {}).get('score', {}).get('flight_score', np.nan) - nom.get('rdo', {}).get('score', {}).get('flight_score', np.nan), 4)}"
+                 " in F.")
+        mc_ = mc
+        if "multipoint" in mc_ and "rdo" in mc_:
+            pa, pb = (max(mc_[k]["p_violation"].values()) for k in ("multipoint", "rdo"))
+            rob = [x["summary"]["flight_score"]["robust"] for x in R["rdo"] if x.get("ok")]
+            same = (f"All {len(rob)} converged RDO starts reach the same mu - k sigma (spread "
+                    f"{max(rob) - min(rob):.1e}). " if len(rob) > 1 else "")
+            F.append(same + f"In the Monte Carlo (all parameters) the largest "
+                     f"probability of violating a constraint falls from {pa:.3f} (multipoint) to {pb:.3f} (RDO), and "
+                     f"the 5th percentile of F moves from {mc_['multipoint']['stats']['flight_score']['p5']:.4f} to "
+                     f"{mc_['rdo']['stats']['flight_score']['p5']:.4f}: robustness here buys feasibility, not score.")
+    w("".join(f"{i + 1}. {s}\n" for i, s in enumerate(F)))
+    w("\n")
+
+    # ------------------------------------------------------------------ enumeration
+    w("## 1. Propulsion enumeration (deterministic multipoint)\n")
+    w("Every run from the same start, SLSQP, warm-start MDA fallbacks. `ok` = SLSQP converged; a failed MDA is "
+      "reported as such, never as infeasible. `its` = OpenMDAO driver iterations, i.e. objective evaluations "
+      "(line-search steps included), here and in every table below.\n")
+    rows = []
+    for c in enum:
+        if "F" in c:
+            rows.append([c["tag"], f"{c['cells']:g}", c["props"]["M2"], c["props"]["M3"], _fmt(c["ok"]), c["its"],
+                         _fmt(c["F"], 4), _fmt(c["M2"], 4), _fmt(c["M3"], 4), _fmt(c["fuel_lb"], 2), _fmt(c["t3"], 1),
+                         _fmt(c["laps"], 2), _fmt(c["Kv"], 0), c["kv_set_by"], _fmt(c["M1_passed"])])
+        else:
+            rows.append([c["tag"], f"{c['cells']:g}", c["props"]["M2"], c["props"]["M3"], "no", c["its"],
+                         c.get("error", "")[:60], "", "", "", "", "", "", "", ""])
+    w(_table(["run", "cells", "M2 prop", "M3 prop", "ok", "its", "F", "M2", "M3", "fuel (lb)", "t3 (s)", "M3 laps",
+              "Kv", "Kv set by", "M1 check"], rows))
+    w("\nActive constraints at the best case: " + ", ".join(best["active"]) + "; at bounds: " +
+      ", ".join(best["bounds"]) + ".\n")
+    m1f = [c for c in ok if not c["M1_passed"]]
+    if m1f:
+        w(f"\n**Flag: the M1 check (no payload, M3's prop/pack/throttle) fails at {len(m1f)} of {len(ok)} optima.** "
+          "Violated: " + "; ".join(sorted({", ".join(c["M1_violated"] or []) for c in m1f})) + ". M1 is scored 1 "
+          "regardless (analysis-only check, RESULTS_PLAN §9); v_fit_margin is a model-validity limit (the light M1 "
+          "aircraft outruns the propeller fit range at M3's throttle), and an SM just above its upper bound without "
+          "payload is fixed by ballast or the battery station on the day.\n")
+    w("\n![enumeration](figures/results_enumeration.png)\n")
+    if R["bottles"]:
+        w("\n### 1b. Store option: the external bottle (best propulsion case)\n")
+        w("Same case, re-optimised from the 1 L optimum with each candidate bottle (dimensions and empty masses are "
+          "PLACEHOLDERS, OPEN_QUESTIONS Q36). Sensitivity only: the main results use Woombah's 1 L.\n\n")
+        rows = [[b["bottle"], _fmt(b["ok"]), b["its"], _fmt(b.get("F"), 4), _fmt(b.get("M2"), 4), _fmt(b.get("M3"), 4),
+                 _fmt(b.get("fuel_lb"), 2), _fmt(b.get("t3"), 1), _fmt(b.get("laps"), 2), _fmt(b.get("m2_total"), 2),
+                 _fmt(b.get("cd_stores"), 4), ", ".join(b.get("bounds", [])) or (b.get("error") or "")[:50],
+                 _fmt(b.get("M1_passed"))] for b in R["bottles"]]
+        w(_table(["bottle", "ok", "its", "F", "M2", "M3", "fuel (lb)", "t3 (s)", "M3 laps", "M2 mass (kg)",
+                  "M2 C_D stores", "at bounds", "M1 check"], rows))
+        capped_b = [b for b in R["bottles"] if "fuel_mass (upper)" in b.get("bounds", [])]
+        if len(capped_b) == len([b for b in R["bottles"] if "F" in b]):
+            w("\n**The fuel fills the tanks for every bottle**: within the model, M2 keeps rising with tank capacity "
+              "(fuel weight grows faster than the 3-lap time), and nothing in the 2024-25 rules but the 55 lb TOGW "
+              "and the span bounds it (no take-off distance limit, RESULTS_PLAN §2). The tank size, and the number of "
+              "tanks (fixed at 2 here), are the largest levers in the problem; the 1 L result is a constrained "
+              "optimum, not the problem's.\n")
+
+    # ------------------------------------------------------------------ method comparison
+    w("## 2. Method comparison (the AirCrafter 2.0 multipoint analysis at nominal inputs)\n")
+    w("Woombah: as built, at the throttles that reproduce its logged currents (validation_2025.md). AirCrafter 1.0 "
+      "direct = mapping (a), completed = mapping (b) (span, chord and fuel fixed at AirCrafter 1.0's values, the rest "
+      f"optimised). Multipoint = {base}. RDO = {rb or 'not run'}."
+      + (" **AirCrafter 1.0's fuel (19.2 lb) does not fit in two 1 L bottles, so both mappings fly 2 L bottles** "
+         "(smallest bottle that holds it); the like-for-like AirCrafter 2.0 design is multipoint_2L (the same case "
+         "re-optimised with 2 L bottles, section 1b)." if "multipoint_2L" in designs else "") + "\n")
+    labs = [d for d in designs if nom.get(d, {}).get("ok")]
+    w("### Design variables and geometry\n")
+    rows = [[name] + [_fmt(nom[d]["dv"].get(k), 3) for d in labs] for k, name in GEOM]
+    rows.append(["aspect ratio b/c"] + [_fmt(nom[d]["dv"]["b"] / nom[d]["dv"]["c"], 2) for d in labs])
+    rows.append(["fuel (lb)"] + [_fmt(nom[d]["fuel_lb"], 2) for d in labs])
+    rows.append(["cells"] + [f"{nom[d]['cells']:g}" for d in labs])
+    rows.append(["M2 / M3 prop"] + [f"{nom[d]['props']['M2']} / {nom[d]['props']['M3']}" for d in labs])
+    w(_table(["quantity"] + labs, rows))
+    w("\n### Mass breakdown (kg)\n")
+    rows = [[f"{pt} {k}"] + [_fmt(nom[d][pt].get(k), 3) for d in labs] for pt in ("M2", "M3") for k in MASSES]
+    w(_table(["mass"] + labs, rows))
+    w("\n### Performance, scores and margins\n")
+    rows = [[f"{pt} {name}"] + [_fmt(nom[d][pt].get(k), nd) for d in labs] for pt in ("M2", "M3")
+            for k, name, nd in PERF]
+    rows += [[k] + [_fmt(nom[d]["score"][k], 4) for d in labs] for k in ("M2", "M3", "flight_score")]
+    fixed_kv = {"woombah": "fixed (as built)", "ac1_direct": "fixed (AirCrafter 1.0)",
+                "rdo": "robust M2 rpm_margin (mu - 2 sigma)"}
+    rows.append(["Kv set by"] + [fixed_kv.get(d, nom[d]["kv_set_by"]) for d in labs])
+    rows.append(["M1 check"] + [("pass" if nom[d]["M1_check"]["passed"] else
+                                 "fail: " + ", ".join(nom[d]["M1_check"].get("violated") or
+                                                      [nom[d]["M1_check"].get("error", "")])) for d in labs])
+    w(_table(["quantity"] + labs, rows))
+    w("\n### Constraint status (active within 1e-4 of ref, or violated)\n")
+    cons = R["constraints"]
+    rows = []
+    for d in labs:
+        viol = []
+        for n, kw in cons.items():
+            x = nom[d]["M2" if n.startswith("points.M2") else "M3"].get(n.split(".", 2)[-1]) \
+                if n.startswith("points.") else None
+            if x is None:
+                continue
+            ref = kw.get("ref") or 1.0
+            if (kw.get("lower") is not None and (x - kw["lower"]) / ref < -1e-4) or \
+                    (kw.get("upper") is not None and (x - kw["upper"]) / ref > 1e-4):
+                viol.append(f"{n} = {x:.3g}")
+        rows.append([d, "; ".join(nom[d]["active_constraints"]) or "–", "; ".join(nom[d]["active_bounds"]) or "–",
+                     "; ".join(viol) or "none (of the reported outputs)"])
+    w(_table(["design", "active constraints", "at bounds", "violated"], rows))
+    w("\nViolations are checked here only for the outputs recorded per point (the table above); the Monte Carlo "
+      "(section 3) checks every constraint.\n")
+
+    # ------------------------------------------------------------------ common evaluation
+    w("## 3. Common evaluation\n")
+    w("1 = in its own model (what each method claims); 2 = the AirCrafter 2.0 multipoint analysis at nominal inputs "
+      "(**favours the AirCrafter 2.0 designs**); 3 = Monte Carlo in AirCrafter 2.0, 1024 scrambled Sobol' points "
+      "(seed 0) over **all** uncertain parameters, the same points for every design (**favours RDO by "
+      "construction**). MDA failures are excluded from the statistics and counted in their own column.\n")
+    rows = []
+    for d in designs:
+        o, n_, m = own.get(d, {}), nom.get(d, {}), mc.get(d, {})
+        st = m.get("stats", {})
+        rows.append([d, _fmt(o.get("F"), 4), _fmt(n_.get("score", {}).get("flight_score"), 4),
+                     _fmt(st.get("flight_score", {}).get("mu"), 4), _fmt(st.get("flight_score", {}).get("sigma"), 4),
+                     _fmt(st.get("flight_score", {}).get("p5"), 4), _fmt(st.get("M2", {}).get("mu"), 4),
+                     _fmt(st.get("M2", {}).get("p5"), 4), _fmt(st.get("M3", {}).get("mu"), 4),
+                     _fmt(st.get("M3", {}).get("p5"), 4),
+                     f"{m['failed']}/{m['N']}" if m else "–"])
+    w(_table(["design", "F own (1)", "F nominal (2)", "F mu (3)", "F sigma", "F p5", "M2 mu", "M2 p5", "M3 mu",
+              "M3 p5", "MDA failures"], rows))
+    w("\nOwn-model sources: " + "; ".join(f"{d}: {own[d]['source']}" for d in own) + ".\n")
+    for d in ("ac1_direct", "ac1_completed"):
+        if d in own:
+            w(f"\nAirCrafter 1.0's claim ({own[d]['fuel_lb']:.1f} lb, {own[d]['laps']:g} M3 laps) has no store drag "
+              "(it has no way to represent it; a limitation of AirCrafter 1.0, not added).\n")
+            break
+    if mc:
+        names = sorted({k for m in mc.values() for k, p in m["p_violation"].items() if p > 0})
+        w("\n**Probability of violating each constraint** (Monte Carlo, converged samples; constraints never violated "
+          "by any design are omitted):\n\n")
+        w(_table(["constraint"] + list(mc), [[n] + [_fmt(mc[d]["p_violation"].get(n), 3) for d in mc] for n in names])
+          if names else "No constraint is violated in any converged sample.\n")
+    w("\n![common evaluation](figures/results_common_evaluation.png)\n\n![MC](figures/results_mc_cdf.png)\n")
+
+    # ------------------------------------------------------------------ bookends
+    w("## 4. Mission bookends\n")
+    w("The same multipoint problem (both missions flown, every constraint at both points) with the objective reduced "
+      "to one mission's score.\n")
+    rows = [["multipoint", "yes", R["enumeration"][[c["tag"] for c in enum].index(base)]["its"], _fmt(best["F"], 4),
+             _fmt(best["M2"], 4), _fmt(best["M3"], 4), _fmt(best["fuel_lb"], 2), _fmt(best["t3"], 1),
+             _fmt(best["laps"], 2)]]
+    for s, d in bk.items():
+        rows.append([s, _fmt(d["ok"]), d["its"], _fmt(d.get("flight_score"), 4), _fmt(d.get("M2"), 4),
+                     _fmt(d.get("M3"), 4), _fmt(d.get("fuel_lb"), 2), _fmt(d.get("t3"), 1), _fmt(d.get("laps"), 2)])
+    w(_table(["objective", "ok", "its", "F", "M2", "M3", "fuel (lb)", "t3 (s)", "M3 laps"], rows))
+    if "M3only" in bk and not bk["M3only"]["ok"]:
+        w(f"\nThe M3-only run stopped at its iteration limit ({bk['M3only']['maxiter']}) without SLSQP's convergence "
+          "flag: M3's objective is nearly flat in the airframe (the laps are capped by the 100 Wh rule), so the "
+          "optimiser wanders on a plateau. Its M3 is what it reached, a lower bound on the M3-only optimum.\n")
+    if "M3only" in bk and bk["M3only"].get("dv"):
+        d3 = bk["M3only"]["dv"]
+        w("\nM3-only design vs multipoint: " + ", ".join(
+            f"{k} {best_dv:.3g} → {d3[k]:.3g}" for k, best_dv in load(base)["dv"].items()
+            if abs(d3[k] - best_dv) > 0.02 * max(abs(best_dv), 1e-3)) + ".\n")
+
+    # ------------------------------------------------------------------ normalisation
+    w("## 5. Normalisation sensitivity\n")
+    w(f"R2 and R3 scaled by 0.5, 1 and 2 (R2 {0.5 * sc['R2']:g}–{2 * sc['R2']:g} lb/s, R3 {0.5 * sc['R3']:g}–"
+      f"{2 * sc['R3']:g}); each re-optimised from the centre optimum, deterministic multipoint, {base}. A larger R "
+      "makes that mission worth less.\n")
+    g = R["normalisation"]["grid"]
+    c0 = next(r for r in g if r["f2"] == 1 and r["f3"] == 1)
+    keys = ["b", "c", "Kv", "capacity_M2", "capacity_M3", "throttle_M2", "throttle_M3"]
+    rows = []
+    for r in g:
+        if "F" not in r:
+            rows.append([f"x{r['f2']:g}", f"x{r['f3']:g}", "no", r["its"], r.get("error", "")[:50]] + [""] * (5 + len(keys)))
+            continue
+        rows.append([f"x{r['f2']:g}", f"x{r['f3']:g}", _fmt(r["ok"]), r["its"], _fmt(r["F"], 4), _fmt(r["M2"], 4),
+                     _fmt(r["M3"], 4), _fmt(r["fuel_lb"], 2), _fmt(r["t3"], 1), _fmt(r["laps"], 2)]
+                    + [_fmt(r["dv"][k], 3) for k in keys])
+    w(_table(["R2", "R3", "ok", "its", "F", "M2", "M3", "fuel (lb)", "t3 (s)", "M3 laps"] + keys, rows))
+    moves = []
+    for r in g:
+        if "F" not in r or (r["f2"] == r["f3"]):
+            continue
+        dfuel = r["fuel_lb"] - c0["fuel_lb"]
+        dlaps = r["laps"] - c0["laps"]
+        moves.append((r["f2"], r["f3"], dfuel, dlaps, r["t3"] - c0["t3"]))
+    same = [r for r in g if "F" in r and r["f2"] == r["f3"] and r["f2"] != 1]
+    w("\n" + (f"Equal scaling of R2 and R3 ({', '.join(f'x{r['f2']:g}' for r in same)}) scales the whole variable "
+              "part of F, so the optimum cannot move; those runs stopped in "
+              f"{', '.join(str(r['its']) for r in same)} iterations at the centre design, as they should. " if same
+              else ""))
+    mx = max(moves, key=lambda m: abs(m[2]) + abs(m[3])) if moves else None
+    if moves:
+        w("Off-diagonal: " + "; ".join(f"R2 x{a:g} / R3 x{b:g}: fuel {d:+.2f} lb, M3 laps {l_:+.2f}, t3 {t:+.1f} s"
+                                      for a, b, d, l_, t in moves) +
+          f". **Largest move: R2 x{mx[0]:g} / R3 x{mx[1]:g}.** "
+          + ("The design barely moves: the M2 and M3 levers are nearly decoupled (fuel weight sets M2; M3's laps "
+             "are capped by the energy rule), so the normalisation re-weights the score but not the aircraft."
+             if max(abs(m[2]) for m in moves) < 0.5 and max(abs(m[3]) for m in moves) < 0.2 else
+             "Making M3 relatively worth more (R3 smaller or R2 larger) moves the design towards M3 (less fuel, "
+             "more laps) and vice versa; see the table for the size of each move.") + "\n")
+    w("\n![normalisation](figures/results_normalisation.png)\n")
+
+    # ------------------------------------------------------------------ bonus
+    b_ = R["bonus"]
+    w("## 6. Bonus scenario\n")
+    w(f"B = {b_['B']:g} at W_X1 = {b_['x1_lb']:g} lb adds B/W_X1/R3 = {b_['dM3']:.4f} to M3 for every design. W_X1 is "
+      "fixed (the X-1 is not a design variable here), so the term is a constant: **the optimum does not change**, "
+      "only the totals.\n")
+    rows = []
+    for d in designs:
+        f0 = nom.get(d, {}).get("score", {}).get("flight_score")
+        rows.append([d, _fmt(f0, 4), _fmt(f0 + b_["dM3"] if f0 is not None else None, 4)])
+    w(_table(["design", "F (B = 0)", "F (B = 2.5)"], rows))
+    w("\n")
+
+    # ------------------------------------------------------------------ robust
+    w("## 7. Robust vs deterministic\n")
+    s_ = R["screen"]
+    w(f"**Screening** at {s_['case']} (first-order variance, threshold 90 %, max d = 7): d = {s_['d']}, "
+      f"{', '.join(s_['selected'])}. "
+      + (f"90 % reached for every quantity. " if s_['reached'] else
+         f"90 % not reached for every quantity within d = 7 (below 90 %: "
+         + ", ".join(f"{k} {x:.3f}" for k, x in s_['coverage'].items() if x < 0.9) + "). ")
+      + f"Flight-score coverage {s_['coverage']['flight_score']:.3f}. UDR with 3 points per "
+      f"parameter gives N = 2d + 1 = {2 * s_['d'] + 1} nodes, each a full M2 + M3 analysis.\n")
+    nc = R["node_check"]
+    w("\n**Node check** (every node, both mission points; MDA failures with the warm-start fallbacks): "
+      + "; ".join(f"{r['design']} {len(r['failed'])}/{nc['N']} failed" for r in nc["results"]) + ".")
+    bad = [r for r in nc["results"] if len(r["failed"]) == nc["N"]]
+    if bad:
+        w(f" At {', '.join(r['design'] for r in bad)} the design's own nominal point does not converge (every node "
+          "fails because the start state does): a design outside the analysis' convergence region, like the failed "
+          "multistarts, not a node problem.")
+    w("\n\n")
+    rows = []
+    for r in R["rdo"]:
+        s = (r.get("summary") or {}).get("flight_score", {})
+        fails = sum(x["failed_attempts"] for x in (r.get("nodes") or []))
+        rows.append([r["tag"], r["start"], _fmt(r["ok"]), r["its"], _fmt((r["time"] or 0) / 3600, 2),
+                     _fmt(s.get("mu"), 4), _fmt(s.get("sigma"), 4), _fmt(s.get("robust"), 4), fails,
+                     (r.get("error") or "")[:60]])
+    w(_table(["run", "start", "ok", "its", "wall (h)", "mu F", "sigma F", "mu - k sigma", "failed MDA attempts "
+              "(recovered or not)", "error"], rows))
+    re_ = (R["robust_eval"] or {}).get("results", {})
+    if re_:
+        w("\n**The same UDR statistics at every design** (the RDO's nodes; robust constraints mu - beta sigma >= lower,"
+          " mu + beta sigma <= upper, beta = 2):\n\n")
+        rows = []
+        det = {c["tag"]: c for c in ok}
+        lab_nom = {**{t: c["F"] for t, c in det.items()},
+                   **{d: nom.get(d, {}).get("score", {}).get("flight_score") for d in designs}}
+        items = [(k, x) for k, x in re_.items() if "mu" in x]
+        rank_nom = sorted((k for k, _ in items if k in det), key=lambda k: -det[k]["F"])
+        rank_rob = sorted((k for k, _ in items if k in det), key=lambda k: -re_[k]["robust"])
+        for k, x in items:
+            rows.append([k, _fmt(lab_nom.get(k), 4), _fmt(x["mu"], 4), _fmt(x["sigma"], 4), _fmt(x["robust"], 4),
+                         rank_nom.index(k) + 1 if k in rank_nom else "–",
+                         rank_rob.index(k) + 1 if k in rank_rob else "–",
+                         ", ".join(n.replace("points.", "") for n in x["robust_violated"]) or "none"])
+        for k, x in re_.items():
+            if "mu" not in x:
+                rows.append([k, "", f"{x['failed']}/{x['N']} nodes failed", "", "", "", "", ""])
+        if rb:
+            r = next(x for x in R["rdo"] if x["tag"] == rb)
+            s = r["summary"]["flight_score"]
+            rows.append([f"**{rb}**", _fmt(nom.get("rdo", {}).get("score", {}).get("flight_score"), 4),
+                         _fmt(s["mu"], 4), _fmt(s["sigma"], 4), _fmt(s["robust"], 4), "–", "–",
+                         "none (constrained)" if r["ok"] else "see run"])
+        w(_table(["design", "F nominal", "mu F", "sigma F", "mu - k sigma", "rank nominal", "rank robust",
+                  "robust constraints violated"], rows))
+        same_rank = rank_nom == rank_rob
+        moved = [f"{k} {rank_nom.index(k) + 1} → {rank_rob.index(k) + 1}" for k in rank_nom
+                 if rank_nom.index(k) != rank_rob.index(k)]
+        w("\n**Propulsion ranking under uncertainty: " + ("unchanged" if same_rank else
+          f"the best case stays first ({rank_rob[0]}); swaps: {'; '.join(moved)}" if rank_rob[0] == rank_nom[0]
+          else f"the best case changes to {rank_rob[0]}") + "** (ranked by mu - k sigma at each case's deterministic "
+          "optimum; an RDO per case was not run, see RESULTS_PLAN). The deterministic optima all violate the robust "
+          "constraints at the nodes: their nominal constraints are active, so about half the nodes fall on the wrong "
+          "side.\n")
+    if rb and "multipoint" in mc and "rdo" in mc:
+        a, b2 = mc["multipoint"], mc["rdo"]
+        w(f"\nMonte Carlo (all parameters): multipoint F mu {a['stats']['flight_score']['mu']:.4f} sigma "
+          f"{a['stats']['flight_score']['sigma']:.4f} p5 {a['stats']['flight_score']['p5']:.4f}, max P(violation) "
+          f"{max(a['p_violation'].values()):.3f}; RDO mu {b2['stats']['flight_score']['mu']:.4f} sigma "
+          f"{b2['stats']['flight_score']['sigma']:.4f} p5 {b2['stats']['flight_score']['p5']:.4f}, max P(violation) "
+          f"{max(b2['p_violation'].values()):.3f}.\n")
+    w("\n## Caveats\n")
+    w("- R2, R3 are PLACEHOLDERS (Q35); section 5 shows what moves with them.\n"
+      "- No take-off in the lap model (M2 biased high for every design alike).\n"
+      "- Bottle dimensions and masses, the store interference factors and the store drag spread are PLACEHOLDERS "
+      "(Q36, Q37); every uncertainty spread is a PLACEHOLDER (configs/uncertainty.yaml).\n"
+      "- The mass model is uncalibrated (validation_2025.md: 24–41 % light on Woombah).\n"
+      "- The full ranked list of placeholders affecting the results is in INDEX.md.\n")
+    return "\n".join(L)
+
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("part", choices=["optimise", "bookends", "report"])
+    ap.add_argument("part", choices=["optimise", "bookends", "screen", "node_check", "rdo", "multistart",
+                                     "normalisation", "mc", "common", "robust_eval", "report"])
+    ap.add_argument("--labels", nargs="*")
+    ap.add_argument("--index", type=int)
+    ap.add_argument("--f2", type=float)
+    ap.add_argument("--f3", type=float)
     ap.add_argument("--tag")
     ap.add_argument("--case")
     ap.add_argument("--cells", type=float)
@@ -179,11 +1097,28 @@ if __name__ == "__main__":
     ap.add_argument("--R2", type=float)
     ap.add_argument("--R3", type=float)
     ap.add_argument("--start")
+    ap.add_argument("--bottle", help="external tank bottle: a key of stores.BOTTLES (default the config's 1 L)")
     a = ap.parse_args()
     if a.part == "optimise":
         sc = {k: getattr(a, k) for k in ("w2", "w3", "R2", "R3") if getattr(a, k) is not None}
-        optimise(a.tag, a.cells, a.m2, a.m3, sc or None, a.start)
+        optimise(a.tag, a.cells, a.m2, a.m3, sc or None, a.start, bottle=a.bottle)
     elif a.part == "bookends":
         bookends(a.case)
+    elif a.part == "screen":
+        screen(a.case)
+    elif a.part == "node_check":
+        node_check(a.case)
+    elif a.part == "rdo":
+        rdo(a.tag, a.case, a.start, index=a.index)
+    elif a.part == "mc":
+        monte_carlo(mc_designs(a.labels))
+    elif a.part == "multistart":
+        multistart(a.case, a.index)
+    elif a.part == "normalisation":
+        normalisation(a.case, a.f2, a.f3)
+    elif a.part == "common":
+        common(a.labels)
+    elif a.part == "robust_eval":
+        robust_eval()
     else:
-        raise SystemExit("report: checkpoint 4")
+        report()

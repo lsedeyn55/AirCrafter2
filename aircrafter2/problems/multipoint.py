@@ -125,17 +125,19 @@ def load_multipoint_config(path):
 
 
 class _PointSetter:
-    """set_val / get_val for one point: shared names at the top, per-point names suffixed, the rest prefixed."""
+    """set_val / get_val for one point: shared names at the top, per-point names suffixed, the rest under
+    <prefix>points.<point>. (prefix: e.g. "nodes.n3." for a robust-design node)."""
 
-    def __init__(self, prob, point, shared, per_point):
+    def __init__(self, prob, point, shared, per_point, prefix=""):
         self.prob, self.point, self.shared, self.per_point = prob, point, set(shared), set(per_point)
+        self.prefix = prefix
 
     def _name(self, name):
         if name in self.shared or name == "fuel_mass":
             return name
         if name in self.per_point:
             return f"{name}_{self.point}"
-        return f"points.{self.point}.{name}"
+        return f"{self.prefix}points.{self.point}.{name}"
 
     def set_val(self, name, val, units=None, indices=None):
         self.prob.set_val(self._name(name), val, units=units, indices=indices)
@@ -158,8 +160,9 @@ def multipoint_constraints(mcfg):
     return cons
 
 
-def build_multipoint_model(m, mcfg, mda_retry=False):
-    """Add the two mission points, the score and the rule components to group m (promoted DVs at m's level)."""
+def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
+    """Add the two mission points, the score and the rule components to group m (promoted DVs at m's level).
+    defaults: set the DVs' input defaults here (False when m is one of several robust nodes: set them at the top)."""
     from ..scoring.dbf2025 import DBF2025, DBF2025Score
 
     shared = list(mcfg.shared_dvs)
@@ -175,17 +178,8 @@ def build_multipoint_model(m, mcfg, mda_retry=False):
     for src, dst in SIZING_LINKS:  # M3 flies the airframe sized at M2 (same structural loads)
         m.connect(f"points.M2.{src}", f"points.M3.{dst}")
 
-    base = mcfg.base
-    for name in shared:
-        bd = base.design_variables[name]
-        start = base.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper)
-        m.set_input_defaults(name, base.initial.get(name, start), units=DV_UNITS.get(name))
-    for p in POINTS:
-        for name, bd in mcfg.point_dvs(p).items():
-            k = name[: -len(p) - 1]
-            start = mcfg.mp.per_point_initial.get(name, base.initial.get(k, 0.5 * (bd.lower + bd.upper)))
-            m.set_input_defaults(name, start, units=PER_POINT_UNITS.get(k))
-    m.set_input_defaults("fuel_mass", mcfg.mp.fuel_initial, units="kg")
+    if defaults:
+        set_dv_defaults(m, mcfg)
 
     plugin = DBF2025(**mcfg.mp.scoring)
     m.add_subsystem("scoring", DBF2025Score(plugin=plugin), promotes_inputs=["fuel_mass"],
@@ -215,32 +209,56 @@ def build_multipoint_model(m, mcfg, mda_retry=False):
     return plugin
 
 
-def add_multipoint_driver(prob, mcfg, optimizer="SLSQP"):
-    m = prob.model
-    b = mcfg.base
-    prob.driver = om.ScipyOptimizeDriver(optimizer=optimizer, tol=b.tol, maxiter=b.maxiter, disp=True)
+def set_dv_defaults(m, mcfg):
+    """Input defaults (start values and units) of every multipoint design variable, on group m."""
+    base = mcfg.base
+    for name in mcfg.shared_dvs:
+        bd = base.design_variables[name]
+        start = base.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper)
+        m.set_input_defaults(name, base.initial.get(name, start), units=DV_UNITS.get(name))
+    for p in POINTS:
+        for name, bd in mcfg.point_dvs(p).items():
+            k = name[: -len(p) - 1]
+            start = mcfg.mp.per_point_initial.get(name, base.initial.get(k, 0.5 * (bd.lower + bd.upper)))
+            m.set_input_defaults(name, start, units=PER_POINT_UNITS.get(k))
+    m.set_input_defaults("fuel_mass", mcfg.mp.fuel_initial, units="kg")
+
+
+def add_dvs(m, mcfg, only=None):
+    """The multipoint design variables (bounds, units, refs) on model m; span capped at the rule.
+    only: a subset of the names (the rest stay model inputs at their set values; cost-scaling studies)."""
     for name, bd in mcfg.all_dvs().items():
+        if only is not None and name not in only:
+            continue
         k = name if name in mcfg.shared_dvs or name == "fuel_mass" else name.rsplit("_", 1)[0]
         upper = min(bd.upper, mcfg.mp.rules.span_max_ft * 0.3048) if name == "b" else bd.upper
         m.add_design_var(name, lower=bd.lower, upper=upper, units=DV_UNITS.get(k) if k != "fuel_mass" else "kg",
                          ref=DV_REF.get(k))
+
+
+def add_multipoint_driver(prob, mcfg, optimizer="SLSQP", only=None):
+    m = prob.model
+    b = mcfg.base
+    prob.driver = om.ScipyOptimizeDriver(optimizer=optimizer, tol=b.tol, maxiter=b.maxiter, disp=True)
+    add_dvs(m, mcfg, only)
     m.add_objective("score", ref=-5.0)  # maximise the flight score
     for name, kw in multipoint_constraints(mcfg):
         m.add_constraint(name, **kw)
 
 
-def apply_multipoint_values(prob, mcfg):
+def apply_multipoint_values(prob, mcfg, prefix=""):
     shared, per = list(mcfg.shared_dvs), mcfg.mp.per_point
     for p in POINTS:
-        apply_full_values(_PointSetter(prob, p, shared, per), mcfg.point_config(p), stores=True)
+        apply_full_values(_PointSetter(prob, p, shared, per, prefix), mcfg.point_config(p), stores=True)
     for name, val in mcfg.mp.per_point_initial.items():
         prob.set_val(name, val)
     prob.set_val("fuel_mass", mcfg.mp.fuel_initial, units="kg")
 
 
-def build_multipoint_problem(mcfg, driver=True):
+def build_multipoint_problem(mcfg, driver=True, mda_retry=False):
+    """mda_retry: the points' MDAs warm-start and fall back (rdo_problem.RetryNewton) before declaring failure."""
     prob = om.Problem(reports=False)
-    build_multipoint_model(prob.model, mcfg)
+    build_multipoint_model(prob.model, mcfg, mda_retry=mda_retry)
     if driver:
         add_multipoint_driver(prob, mcfg)
     prob.setup()

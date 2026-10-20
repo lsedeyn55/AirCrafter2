@@ -25,14 +25,26 @@ def _init(cfg, dv, outputs):
     import warnings
 
     warnings.filterwarnings("ignore")
-    from ..problems.full_mdo import build_full_problem
+    from ..problems.full_mdo import FullMDOConfig, build_full_problem
 
-    prob = build_full_problem(cfg, driver=False)
+    if isinstance(cfg, FullMDOConfig):
+        prob = build_full_problem(cfg, driver=False)
+        names = lambda k: [k]  # noqa: E731
+    else:  # a MultipointConfig: each parameter at both mission points (the same aircraft)
+        from ..problems.multipoint import build_multipoint_problem
+        from .rdo_multipoint import param_inputs
+
+        prob = build_multipoint_problem(cfg, driver=False)
+        names = param_inputs
     for k, v in dv.items():
         prob.set_val(k, v)
-    prob.run_model()
+    try:
+        prob.run_model()
+    except Exception:  # the nominal point itself does not converge: every sample is MDA non-convergence (an
+        _W.update(prob=None, outputs=outputs)  # initializer that raises makes the pool respawn workers forever)
+        return
     _W.update(prob=prob, outputs=outputs, nominal=prob.model._outputs.asarray(copy=True),
-              inputs={k: _value(prob, k) for k in dv})
+              inputs={k: _value(prob, k) for k in dv}, names=names)
 
 
 def _restore_nominal():
@@ -45,11 +57,14 @@ def _restore_nominal():
 def _run(task):
     i, vals = task
     prob = _W["prob"]
+    if prob is None:
+        return i, [np.nan] * len(_W["outputs"]), "failed"
     for attempt in ("warm", "nominal"):
         if attempt == "nominal":
             _restore_nominal()
         for k, v in vals.items():
-            prob.set_val(k, v)
+            for name in _W["names"](k):
+                prob.set_val(name, v)
         try:
             prob.run_model()
             return i, [_value(prob, o) for o in _W["outputs"]], attempt
@@ -60,7 +75,8 @@ def _run(task):
 
 
 def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
-    """Run the deterministic model of `cfg` at design `dv` for each {param: value} in `rows`.
+    """Run the deterministic model of `cfg` (a FullMDOConfig, or a MultipointConfig: each parameter is set at both
+    mission points) at design `dv` for each {param: value} in `rows`.
 
     Returns dict(values=(n, len(outputs)) array with NaN rows for MDA failures, failed=[indices],
     retried=[indices recovered from the nominal state], wall=s, cpu_workers=workers).
