@@ -54,7 +54,8 @@ multipoint:
     M3: {prop: 10x7E}                        # flight attempt [R p. 14]
   per_point: [capacity, x_batt, throttle]
   per_point_bounds:
-    throttle: {lower: 0.3, upper: 1.0}       # pilot setting per flight
+    throttle: {lower: 0.5, upper: 1.0}       # pilot setting per flight; below ~0.3-0.5 the aircraft cannot hold level
+                                             # flight (validation_2025.md section 1), so the optimiser is kept out
   per_point_initial: {throttle_M2: 1.0, throttle_M3: 0.6}
   fuel: {lower: 0.5, upper: 100.0}           # kg; capped at the declared tanks' capacity (stores)
   fuel_initial: 4.0

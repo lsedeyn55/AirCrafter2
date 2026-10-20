@@ -39,6 +39,13 @@ class Bottle(BaseModel):
     empty_mass: float = Field(0.040, description="kg, PLACEHOLDER (1 L PET bottle with cap; Q36)")
 
 
+# Candidate external bottles (rules: >= 16 fl oz, any commercial non-glass bottle, p. 8). 1 L is Woombah's (p. 18);
+# the dimensions and empty masses are PLACEHOLDERS (OPEN_QUESTIONS Q36).
+BOTTLES = {"0.5L": dict(volume_L=0.5, diameter=0.065, empty_mass=0.025),   # 16.9 fl oz
+           "1L": dict(volume_L=1.0, diameter=0.085, empty_mass=0.040),
+           "2L": dict(volume_L=2.0, diameter=0.105, empty_mass=0.050)}
+
+
 class StoreConfig(BaseModel):
     """The store set of a design (shared by its mission points) and the drag/mass data."""
     model_config = ConfigDict(extra="forbid")

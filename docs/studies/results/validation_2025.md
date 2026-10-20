@@ -62,6 +62,20 @@ Logged-current case: throttles M2 0.678, M3 0.537 (the throttle at which the 3-l
 
 **Reading.** At full throttle the model flies M2 at 81 mph average over 3 laps, drawing 91 A per pack: above the ESC's 60 A and the APC rpm limit (rpm margin -6093 rpm), so that design point is not flyable as built. At the logged current (34 A per pack) it gives 75 mph: the operating point explains 5 of the 30 mph between full throttle and the flown 51.1 mph (18 %). Flying the logged take-off masses as well (the uncalibrated model's M2 take-off mass is 19.8 lb against 26.9 lb flown, i.e. 6.9 lb added) gives 69 mph: mass explains another 6 mph (20 %). The remaining 18 mph (62 %) is what the model does not represent: take-off (in the flown time, not in the model), the drag of the as-built airframe (model M2 C_D0 0.0330 with stores against Woombah's FlightStream C_D,min 0.0452 [W Table 26]), the propulsion model at part throttle, and the pilot's line. M3: 9.6 laps with the logged current and mass against 7 flown (10.0 at the model's own mass). No parameter was adjusted to the flight data; the current and mass are the flights' recorded conditions.
 
+## 4. AirCrafter 1.0 ('2025' mode) at Woombah's design point
+
+`reference/aircrafter1/ac1/ac1_point.m`: AirCrafter 1.0's own physics and Woombah's AirCrafter assumptions [W Table 4], bug fixes M2/M5/M7/M8/M13 on, at the design point the team built to (MTOW 26 lb, M3 13.6 lb, span 5.9 ft, AR 5.5 [W p. 11 Fig. 7, Table 29]); per mission the cruise speed with the best mission score on the 1 m/s axis, as AirCrafter.m selects it.
+
+| Quantity | AirCrafter 1.0 here | Table 29 (AirCrafter 1.0 in the report) | Table 39 actual | AirCrafter 2.0, logged current and mass |
+|---|---:|---:|---:|---:|
+| M2 cruise speed (mph) | 105 | 87 | 51.1 (average) | 91 (level) |
+| M2 3-lap time (s) | 70.5 | 100 | 112.2 or 138.1 | 88.3 |
+| M2 power (W, total) | 2555 | 1300 [W p. 11] | - | - |
+| M3 laps (4-min window, Table 4) | 8 | 8 | 7 | 9.6 (5 min) |
+| M3 cruise speed (mph) | 72 | 80 | 52.3 (average) | 74 (level) |
+
+AirCrafter 1.0's lap time comes from a target cruise speed and the power to hold it (P = D V / eta), with a constant C_D0 0.05 'including fuel tanks' and no propulsion model, take-off or reaction time in the 3-lap time (bugs M3, M10). Here it predicts a faster M2 than the report's own AirCrafter run (Table 29: 87 mph, 100 s): the shipped code is not the version the team ran for Woombah, which gridded power (600-2700 W) and flew 90 % of the power-limited maximum speed [W p. 9-10], where the shipped code grids a target cruise speed. Both are far from the flown 51 mph.
+
 ![woombah_m2_speed](figures/woombah_m2_speed.png)
 
 *M2 average speed: Woombah's design target and flight result (Table 39) against AirCrafter 2.0.*

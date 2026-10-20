@@ -200,7 +200,7 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 | **M2** | `batteryFraction = 0` ⇒ E = 0 ⇒ lap count 1 everywhere (confirmed in the baseline) | **yes** | **fix** (fraction 1) |
 | M3 | take-off time missing from lap 1 | no (method) | keep, document |
 | M4 | decel mask reuse | no | keep |
-| M5 | accel table errors at an unreachable V | no | keep |
+| **M5** | a lookup table that cannot be built within its step limit raises an error | **yes on the 2025 grid** (found in checkpoint 3: the error stops the whole sweep; it never fires on the shipped grid) | **fix** (mark the point infeasible) |
 | M6 | T_static computed but not used in the lap time | no (method) | keep |
 | **M7** | NaN lap time when the turn-entry speed is below the decel table (m = 7, b = 1.5, AR 9, V = 25) | **yes** (silently drops points) | **fix** (keep the speed) |
 | **M8 (new)** | `propSelector` reads past the last RPM block of a file whose data stop below 0.85 × 150000/D: crash with the full APC set | **yes** (crash) | **fix** (stop at the file end) |
@@ -209,6 +209,7 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 | M11 (new) | `propSelector` computes the minimum-power prop but returns the whole table | no | read the min-power row as "selected" |
 | M12–M13 | `ind2sub` 5-output on 4-D arrays (M3_k used as an index); duplicate rows for tied scores | no | keep |
 | M14 | hard-coded APC path; parser reads `*.txt` only | portability | path argument; `.txt` links |
+| **M13 (new, checkpoint 3)** | `propSelector` crashes (`array2table` on an empty table) when no prop meets the requirement | **yes** (crash) | **fix** (empty table). Related configuration: `propSelector` sizes one prop for the whole aircraft; in `2025` mode `n_props` = 2 splits the static thrust and cruise drag over the twin's two props (a configuration input, as the team would use it for Woombah) |
 
 **Copies.** `reference/aircrafter1/{original,2025}/` with a `mode` switch:
 - `original` must reproduce `baseline/shipped_tested.*` to machine precision;

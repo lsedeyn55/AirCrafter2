@@ -54,10 +54,25 @@ def load(tag):
     return json.loads((RUNS / f"{tag}.json").read_text())
 
 
-def config(cells=None, m2=None, m3=None, scoring=None, cfg=CFG):
+def config(cells=None, m2=None, m3=None, scoring=None, cfg=CFG, fixed=None, bottle=None):
+    """The multipoint config with overrides; fixed = {design variable: value} pins DVs (equal bounds);
+    bottle = a key of stores.BOTTLES for the external tanks."""
     from aircrafter2.problems.multipoint import load_multipoint_config
+    from aircrafter2.problems.wing_aero import Bounds
+    from aircrafter2.stores import BOTTLES, Bottle
 
     mcfg = load_multipoint_config(cfg)
+    if bottle:
+        mcfg.mp.stores.bottle = Bottle(**BOTTLES[bottle])
+    for name, val in (fixed or {}).items():
+        if name == "fuel_mass":
+            mcfg.mp.fuel = Bounds(lower=val, upper=val)
+            mcfg.mp.fuel_initial = val
+        elif name in mcfg.base.design_variables:
+            mcfg.base.design_variables[name] = Bounds(lower=val, upper=val)
+            mcfg.base.initial[name] = val
+        else:
+            raise ValueError(f"cannot fix {name!r}: not a shared design variable or fuel_mass")
     if cells is not None:
         mcfg.base.propulsion.n_cells = float(cells)
     if m2:
@@ -107,12 +122,15 @@ def summarise(p, mcfg):
     return out
 
 
-def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=None, cfg=CFG):
+def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=None, cfg=CFG, maxiter=None, fixed=None,
+             bottle=None):
     from openmdao.core.analysis_error import AnalysisError
 
     from aircrafter2.problems.multipoint import build_multipoint_problem
 
-    mcfg = config(cells, m2, m3, scoring, cfg)
+    mcfg = config(cells, m2, m3, scoring, cfg, fixed, bottle)
+    if maxiter:
+        mcfg.base.maxiter = maxiter
     p = build_multipoint_problem(mcfg, driver=True)
     p.driver.options["disp"] = False
     if start:
@@ -128,7 +146,8 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
     except AnalysisError as exc:
         ok, its, err = False, int(p.driver.iter_count), f"MDA non-convergence: {str(exc)[:200]}"
     wall = time.perf_counter() - t
-    out = dict(tag=tag, ok=ok, its=its, error=err, time=wall, start=start, x0=x0, git=git_hash(),
+    out = dict(tag=tag, ok=ok, its=its, error=err, time=wall, start=start, x0=x0, git=git_hash(), maxiter=mcfg.base.maxiter,
+               fixed=fixed, bottle=bottle or "1L",
                threads=os.environ.get("OMP_NUM_THREADS"), config=str(Path(cfg).relative_to(ROOT)))
     if err is None:
         out.update(summarise(p, mcfg))
@@ -143,7 +162,8 @@ def bookends(case):
     d = load(case)
     kw = dict(cells=d["cells"], m2=d["props"]["M2"], m3=d["props"]["M3"])
     optimise(f"{case}_M2only", scoring={"w2": 1.0, "w3": 0.0}, start=case, **kw)
-    optimise(f"{case}_M3only", scoring={"w2": 0.0, "w3": 1.0}, start=case, **kw)
+    # M3's laps are capped by the 100 Wh rule, so its objective is nearly flat in the airframe: more iterations
+    optimise(f"{case}_M3only", scoring={"w2": 0.0, "w3": 1.0}, start=case, maxiter=300, **kw)
 
 
 if __name__ == "__main__":

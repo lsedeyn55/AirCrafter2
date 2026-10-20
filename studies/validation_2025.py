@@ -396,6 +396,39 @@ def report():
                + " (the throttle at which the 3-lap average pack current equals Table 38's average current, read as "
                "per pack; an input condition of the flight, not a fit).\n")
         w_("**Reading.** " + _reading(wb) + "\n")
+    ac1f = ROOT / "reference" / "aircrafter1" / "runs" / "ac1_2025_r1.json"
+    if ac1f.exists():
+        a = json.loads(ac1f.read_text())
+        wp = a["woombah_point"]
+        out["aircrafter1_woombah_point"] = wp
+        w_("## 4. AirCrafter 1.0 ('2025' mode) at Woombah's design point\n")
+        w_("`reference/aircrafter1/ac1/ac1_point.m`: AirCrafter 1.0's own physics and Woombah's AirCrafter assumptions "
+           "[W Table 4], bug fixes M2/M5/M7/M8/M13 on, at the design point the team built to (MTOW 26 lb, M3 13.6 lb, span 5.9 "
+           "ft, AR 5.5 [W p. 11 Fig. 7, Table 29]); per mission the cruise speed with the best mission score on the 1 m/s "
+           "axis, as AirCrafter.m selects it.\n")
+        w_("| Quantity | AirCrafter 1.0 here | Table 29 (AirCrafter 1.0 in the report) | Table 39 actual | AirCrafter 2.0, "
+           "logged current and mass |")
+        w_("|---|---:|---:|---:|---:|")
+        lm = out.get("woombah", {}).get("cases", {}).get("logged_current_and_mass")
+        if "M2" in wp:
+            m2 = wp["M2"]
+            w_(f"| M2 cruise speed (mph) | {m2['V'] / MPH:.0f} | 87 | 51.1 (average) | "
+               + (f"{lm['M2']['v'] / MPH:.0f} (level)" if lm else "-") + " |")
+            w_(f"| M2 3-lap time (s) | {m2['ThreeLapTime']:.1f} | 100 | 112.2 or 138.1 | "
+               + (f"{lm['M2']['ThreeLapTime']:.1f}" if lm else "-") + " |")
+            w_(f"| M2 power (W, total) | {m2['Preq']:.0f} | 1300 [W p. 11] | - | - |")
+        if "M3" in wp:
+            m3 = wp["M3"]
+            w_(f"| M3 laps (4-min window, Table 4) | {m3['lapCount']:g} | 8 | 7 | "
+               + (f"{lm['M3']['laps_frac']:.1f} (5 min)" if lm else "-") + " |")
+            w_(f"| M3 cruise speed (mph) | {m3['V'] / MPH:.0f} | 80 | 52.3 (average) | "
+               + (f"{lm['M3']['v'] / MPH:.0f} (level)" if lm else "-") + " |")
+        w_("\nAirCrafter 1.0's lap time comes from a target cruise speed and the power to hold it (P = D V / eta), with "
+           "a constant C_D0 0.05 'including fuel tanks' and no propulsion model, take-off or reaction time in the "
+           "3-lap time (bugs M3, M10). Here it predicts a faster M2 than the report's own AirCrafter run (Table 29: "
+           "87 mph, 100 s): the shipped code is not the version the team ran for Woombah, which gridded power "
+           "(600-2700 W) and flew 90 % of the power-limited maximum speed [W p. 9-10], where the shipped code grids a "
+           "target cruise speed. Both are far from the flown 51 mph.\n")
     files = figures(out["woombah"]) if "woombah" in out else []
     if files:
         w_("![woombah_m2_speed](figures/woombah_m2_speed.png)\n")

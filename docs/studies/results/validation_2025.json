@@ -1,5 +1,5 @@
 {
- "git": "20ef669",
+ "git": "ed9fe79",
  "corners": {
   "rows": [
    {
@@ -618,5 +618,39 @@
    "m_gear": 0.29937096420000003
   },
   "git": "20ef669"
+ },
+ "aircrafter1_woombah_point": {
+  "M3": {
+   "NaNflag": false,
+   "Vstall": 11,
+   "lapCount": 8,
+   "Lap1time": 27.568180425569135,
+   "otherLapTime": 26.331516167973206,
+   "Tstatic": 18.051151022518283,
+   "Preq": 813.4700379956738,
+   "ThreeLapTime": 80.23121276151555,
+   "V": 32,
+   "score": 2.259259259259259
+  },
+  "M2": {
+   "NaNflag": false,
+   "Vstall": 16,
+   "lapCount": 4,
+   "Lap1time": 24.491290492934567,
+   "otherLapTime": 22.992660653206986,
+   "Tstatic": 43.29142673409687,
+   "Preq": 2554.7149000779655,
+   "ThreeLapTime": 70.47661179934855,
+   "V": 47,
+   "score": 1.8366906196893118,
+   "fuel_lb": 11.793424
+  },
+  "inputs": {
+   "m2_kg": 11.791383219954648,
+   "m3_kg": 6.167800453514739,
+   "b": 1.7983200000000001,
+   "AR": 5.5
+  },
+  "here": "/home/lucas/University/THESIS/AirCrafter2/reference/aircrafter1/ac1"
  }
 }
