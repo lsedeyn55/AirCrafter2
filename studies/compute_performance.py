@@ -363,7 +363,7 @@ def collect():
     R["reliability_det"] = dict(default=base["score"]["flight_score"], n=len(ms),
                                 ok=[m["ok"] for m in ms], F=[m.get("score", {}).get("flight_score") for m in ms],
                                 its=[m["its"] for m in ms], errors=[m.get("error") for m in ms])
-    rdo = [rl(t) for t in ("rdo_best", "rdo_ms0", "rdo_ms1")]
+    rdo = [rl(t) for t in ("rdor_best", "rdor_ms0", "rdor_ms1", "rdo_best", "rdo_ms0", "rdo_ms1")]
     R["reliability_rdo"] = [dict(tag=r["tag"], start=r["start"], ok=r["ok"], its=r["its"], time=r["time"],
                                  robust=(r.get("summary") or {}).get("flight_score", {}).get("robust"),
                                  error=r.get("error")) for r in rdo if r]
@@ -469,9 +469,14 @@ def render(R):
             rows.append([str(d), lab, f"{s['N']['median']:.0f}", _ms(s["setup_s"]), _ms(s["wall_s"]),
                          f"{s['model_runs']['median']:.0f}", f"{s['mda_solves']['median']:.0f}",
                          f"{s['compute_totals']['median']:.0f}",
-                         _f(s["wall_s"]["median"] / max(s["iterations"]["median"] or 1, 1), 0)])
-    w("| d | set | N nodes | setup (s) | wall (s) | model runs | MDA solves | compute_totals | s / SLSQP iteration |\n"
-      "|---:|---|---:|---:|---:|---:|---:|---:|---:|\n" + "".join("| " + " | ".join(r) + " |\n" for r in rows))
+                         _f(s["wall_s"]["median"] / max(s["iterations"]["median"] or 1, 1), 0),
+                         _f(s["wall_s"]["median"] / max(s["mda_solves"]["median"], 1), 2)])
+    w("| d | set | N nodes | setup (s) | wall (s) | model runs | MDA solves | compute_totals | s / SLSQP iteration | "
+      "s / MDA solve |\n|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+      + "".join("| " + " | ".join(r) + " |\n" for r in rows))
+    w("\nThe cost per MDA solve (derivatives included) is about constant across d and sets; the wall time follows the "
+      "number of solves, i.e. N nodes x 2 points x the model runs the line search needed (the reduced set's d = 4 "
+      "needed fewer than the full set's d = 3, so it is cheaper per run despite more nodes).\n")
     rm = S.get("rdor_main")
     if rm:
         rs_ = (R["raw"]["rdor_main"][0].get("robust") or {}).get("flight_score", {})
@@ -543,11 +548,18 @@ def render(R):
       f"{rd['default']:.4f}. Failures: " + "; ".join(f"start {i}: {e[:90]}" for i, (o, e) in
                                                    enumerate(zip(rd["ok"], rd["errors"])) if not o) + ".\n")
     if R["reliability_rdo"]:
-        w("\nRDO, 3 starts (the deterministic optimum and Sobol' starts 0 and 1), run in parallel with 3 threads each "
-          "(wall times not clean):\n\n| run | start | ok | its | wall (h) | mu - k sigma | error |\n"
+        w("\nRDO, 3 starts per uncertain set (the deterministic optimum and Sobol' starts 0 and 1), run in parallel "
+          "with 3 threads each (wall times not clean). `rdor_*` = the reduced mass-and-wind set (d = 4, the main "
+          "results); `rdo_*` = the published 15-parameter set screened to d = 7:\n\n"
+          "| run | start | ok | its | wall (h) | mu - k sigma | error |\n"
           "|---|---|---|---:|---:|---:|---|\n" + "".join(
               f"| {r['tag']} | {r['start']} | {r['ok']} | {r['its']} | {r['time'] / 3600:.2f} | {_f(r['robust'], 4)} "
               f"| {(r['error'] or '')[:60]} |\n" for r in R["reliability_rdo"]))
+        red = [r for r in R["reliability_rdo"] if r["tag"].startswith("rdor_") and r["ok"]]
+        if len(red) > 1:
+            rb = [r["robust"] for r in red]
+            w(f"\nReduced set: {len(red)}/3 converge, spread of mu - k sigma {max(rb) - min(rb):.1e}; the designs "
+              "differ along Kv x M2 throttle (a flat direction; results_2025.md, Findings).\n")
     w("\n## 5. Cost of a complete design study\n")
     if a1 and d2:
         sr = R["study_runs"]
@@ -567,8 +579,17 @@ def render(R):
         if rs and R["reliability_rdo"]:
             pi = rs["wall_s"]["median"] / max(rs["function_evaluations"]["median"], 1)
             ri = sum(r["its"] for r in R["reliability_rdo"])
-            w(f"\nRDO (d = 7): {pi:.0f} s per driver iteration clean; the 3 starts took {ri} driver iterations, about "
-              f"{ri * pi / 3600:.1f} h serial single-threaded (estimate), on one propulsion case.\n")
+            ri = sum(r["its"] for r in R["reliability_rdo"] if r["tag"].startswith("rdo_"))
+            w(f"\nRDO, full set (d = 7): {pi:.0f} s per driver iteration clean; the 3 starts took {ri} driver iterations, "
+              f"about {ri * pi / 3600:.1f} h serial single-threaded (estimate), on one propulsion case.\n")
+        rm = S.get("rdor_main")
+        red = [r for r in R["reliability_rdo"] if r["tag"].startswith("rdor_")]
+        if rm and red:
+            pi4 = rm["wall_s"]["median"] / max(rm["function_evaluations"]["median"], 1)
+            ri4 = sum(r["its"] for r in red)
+            w(f"\nRDO, reduced set (d = 4): {pi4:.0f} s per driver iteration clean (the clean main run: "
+              f"{rm['wall_s']['median'] / 60:.0f} min to convergence); the 3 starts took {ri4} driver iterations, about "
+              f"{ri4 * pi4 / 3600:.1f} h serial single-threaded (estimate).\n")
     return "\n".join(L)
 
 

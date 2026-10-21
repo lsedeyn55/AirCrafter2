@@ -240,3 +240,12 @@ headwind near the light M3 aircraft's V_stall is therefore a no-flight condition
 - PLACEHOLDER (recommended default, not asked): the RDO does not constrain the wind limit. A design whose wind limit
   falls inside the range shows it in the Monte Carlo, not in the optimiser. Constraining it, e.g.
   V_stall(M3) − wind_max ≥ margin, is a possible extension.
+
+## Status (2026-10-21)
+
+All three checkpoints are done:
+- checkpoint 1 at `e86c78f`;
+- checkpoint 2 at `3d6cccd`;
+- checkpoint 3 (timing at d = 4, the clean main run, compute_performance.md, INDEX.md) committed with this line.
+
+Results: results_2025.md Findings 7–11 and sections 3 and 7. Timing: compute_performance.md §3 and §5.
