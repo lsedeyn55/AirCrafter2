@@ -1,0 +1,10 @@
+# Reduced uncertain set for the 2024-25 RDO: mass and wind only (docs/RDO_REDUCED_PLAN.md). Every other parameter
+# of configs/uncertainty.yaml is held at its nominal (config) value. Schema as configs/uncertainty.yaml.
+# Evidence for each spread: docs/RDO_REDUCED_PLAN.md section 2 and OPEN_QUESTIONS Q39; all four are PLACEHOLDERS.
+parameters:
+  # build-mass factor on the whole structure (wing, tails, boom, cargo bay, gear): aircrafter2/mass/garcia_gamboa/masses.py
+  - {name: f_build,    dist: uniform, nominal: 1.0, spread: 0.30, source: PLACEHOLDER}  # Q39
+  - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G tail-boom factor
+  - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}
+  # steady wind along the straights, 0 to 3 m/s (centre 1.5 m/s), as configs/uncertainty.yaml
+  - {name: lap.wind,   dist: uniform, nominal: 1.5, spread: 1.5, units: m/s, source: PLACEHOLDER}

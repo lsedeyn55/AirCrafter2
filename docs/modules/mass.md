@@ -22,14 +22,23 @@ A structure-based (class II½) mass model for a **circular carbon-tube spar** wi
 | `CriticalLoads` | 51–53 | KS max (smooth) or hard max. |
 | `TubeSparSizing` | 105–118 | Bending, tip deflection, shear, torsion, optional twist, divergence; minimum gauge. |
 | `RibSizing` | 97–104 | Total n_rib · t_rib, so no integer rib count. |
-| `WingMass` | 26, 27, 28, 30, 31, 32 | f_wing^(n_panels−1), confirmed as an exponent (G5). |
+| `WingMass` | 26, 27, 28, 30, 31, 32 | f_wing^(n_panels−1), confirmed as an exponent (G5). × `f_build` (not G&G, below). |
 | `TailMass` | 34, 35 | |
 | `TailBoomLoads` / `TailBoomSizing` | 54–56, 119–123 | Minimum boom wall (`tb_min_gauge`). |
-| `FuselageMass` | 36–38 | |
-| `GearMass` | 39 | Uses the coupled total mass. |
+| `FuselageMass` | 36–38 | m_tb and m_cb × `f_build`. |
+| `GearMass` | 39 | Uses the coupled total mass. × `f_build`. |
 | `MassSum` | 40–41 | Optional `m_ballast` robustness hook (not G&G). |
 | `StatisticalMass` | 124–126 | Initial guess for the closure and a sanity check. |
 | `calibration.fit_correction_factors` | 127–128 | Offline refit of the correction factors. |
+
+**Build-mass factor `f_build`** (not G&G; default 1, docs/RDO_REDUCED_PLAN.md). One multiplier on the whole
+structural mass: how heavy the airframe comes out when built. It multiplies m_wing (so m_ht and m_vt, which G&G
+take as fractions of m_wing, follow), m_tb, m_cb and m_gear: the structure of Eq. 40 without m_sys, m_ballast and
+the payload. It acts inside the closure, so the loads, the spar and boom sizing, the gear (f_gear m), the total mass
+and the CG (`stability/static.py` takes the component masses) all see it. The bare-wing breakdown (m_tube … m_film,
+m_wing_bare) is not scaled. Applying it per component rather than to the sum in `MassSum` is what lets the CG see it.
+At f_build = 1 every result is reproduced bit for bit (`tests/test_rdo_reduced.py`). **Overlap with f_tb:** both
+scale the tail boom. This is accepted: f_tb carries the CG effect of mass at the tail, f_build the overall build.
 
 **Closure.** The group uses block Gauss–Seidel with Aitken acceleration when standalone. Inside the full model it
 is a subsystem of the MDF Newton solver.

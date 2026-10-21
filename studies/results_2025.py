@@ -161,7 +161,20 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
     return out
 
 
-RDO_CFG = ROOT / "configs" / "dbf2025_multipoint_rdo.yaml"
+RDO_CFG = ROOT / "configs" / "dbf2025_multipoint_rdo.yaml"  # the reduced mass-and-wind set (docs/RDO_REDUCED_PLAN.md)
+RDO_FULL_CFG = ROOT / "configs" / "dbf2025_multipoint_rdo_full.yaml"  # the published 15-parameter set
+# The uncertain set the robust parts (screen, node_check, rdo, mc, robust_eval, propagation) work on (--set): the full
+# set's outputs stay where they were published (outputs/results/, runs rdo_*), the reduced set's go to
+# outputs/results/reduced/ (runs rdor_*).
+UQ_SETS = {"full": dict(name="full", cfg=RDO_FULL_CFG, out=OUT, prefix="rdo_", select=True),
+           "reduced": dict(name="reduced", cfg=RDO_CFG, out=OUT / "reduced", prefix="rdor_", select=False)}
+UQ = dict(UQ_SETS["reduced"])
+
+
+def use_set(name):
+    UQ.clear()
+    UQ.update(UQ_SETS[name])
+    UQ["out"].mkdir(parents=True, exist_ok=True)
 MC_N = 1024
 
 
@@ -177,8 +190,9 @@ def best_case(prefix="mp_"):
     return best
 
 
-def _mcfg_for(run, cfg=RDO_CFG):
-    return config(run["cells"], run["props"]["M2"], run["props"]["M3"], cfg=cfg, bottle=run.get("bottle"))
+def _mcfg_for(run, cfg=None):
+    return config(run["cells"], run["props"]["M2"], run["props"]["M3"], cfg=cfg or UQ["cfg"],
+                  bottle=run.get("bottle"))
 
 
 def screen(case=None):
@@ -201,9 +215,14 @@ def screen(case=None):
     contrib = first_order_contributions_mp(p, dists, of)
     rob = mcfg.base.robust
     sel, cov, reached = select_parameters(contrib, rob.screening_threshold, rob.max_dim)
-    out = dict(case=run["tag"], selected=sel, coverage=cov, reached=reached, d=len(sel), git=git_hash(),
-               contrib=contrib, values={q: v(p, q) for q in of})
-    (OUT / "screen.json").write_text(json.dumps(out, indent=1, default=float))
+    if not UQ["select"]:  # the reduced set: every parameter active, the contributions are a table, not a selection
+        sel = [d.name for d in dists]
+        tot = {q: sum(c.values()) for q, c in contrib.items()}
+        cov, reached = {q: 1.0 for q in contrib if tot[q] > 0}, True
+    out = dict(case=run["tag"], set=UQ["name"], selected=sel, coverage=cov, reached=reached, d=len(sel),
+               git=git_hash(), contrib=contrib, values={q: v(p, q) for q in of},
+               means={d.name: d.mean for d in dists}, std={d.name: d.std for d in dists})
+    (UQ["out"] / "screen.json").write_text(json.dumps(out, indent=1, default=float))
     print(f"screen {run['tag']}: d = {len(sel)} {sel} reached={reached} min coverage "
           f"{min(cov.values()) if cov else float('nan'):.3f}", flush=True)
     return out
@@ -226,7 +245,7 @@ def node_check(case=None, workers=5):
     from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp
     from aircrafter2.robustness.sampling import evaluate
 
-    sc = json.loads((OUT / "screen.json").read_text())
+    sc = json.loads((UQ["out"] / "screen.json").read_text())
     run = load(case or sc["case"])
     mcfg = _mcfg_for(run)
     mcfg.base.robust.active = sc["selected"]
@@ -243,7 +262,7 @@ def node_check(case=None, workers=5):
         ev = evaluate(mcfg, dv, rows, ["flight_score"], workers)
         res.append(dict(design=label, failed=ev["failed"], retried=ev["retried"], wall=ev["wall"]))
         print(f"node check {label}: failed {ev['failed']} retried {ev['retried']} {ev['wall']:.0f}s", flush=True)
-    (OUT / "node_check.json").write_text(json.dumps(dict(case=run["tag"], N=len(rows), d=len(act), results=res,
+    (UQ["out"] / "node_check.json").write_text(json.dumps(dict(case=run["tag"], N=len(rows), d=len(act), results=res,
                                                          git=git_hash()), indent=1, default=float))
 
 
@@ -253,7 +272,7 @@ def rdo(tag, case=None, start=None, x0=None, maxiter=None, index=None):
 
     from aircrafter2.robustness.rdo_multipoint import build_robust_multipoint, node_report_mp, robust_summary_mp
 
-    sc = json.loads((OUT / "screen.json").read_text())
+    sc = json.loads((UQ["out"] / "screen.json").read_text())
     run = load(case or sc["case"])
     mcfg = _mcfg_for(run)
     mcfg.base.robust.active = sc["selected"]
@@ -297,7 +316,7 @@ def monte_carlo(designs, n=MC_N, workers=5):
     from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp
     from aircrafter2.robustness.sampling import evaluate, violation_probabilities
 
-    summary = json.loads((OUT / "mc.json").read_text()) if (OUT / "mc.json").exists() else {}
+    summary = json.loads((UQ["out"] / "mc.json").read_text()) if (UQ["out"] / "mc.json").exists() else {}
     for label, mcfg, dv in designs:
         p = build_multipoint_problem(mcfg, driver=False)
         for k, x in dv.items():
@@ -309,7 +328,7 @@ def monte_carlo(designs, n=MC_N, workers=5):
         outputs = ["flight_score", "M2", "M3"] + [c for c, _ in cons]
         ev = evaluate(mcfg, dv, rows, outputs, workers)
         V = ev["values"]
-        np.savez(OUT / f"mc_{label}.npz", values=V, outputs=np.array(outputs), u=u)
+        np.savez(UQ["out"] / f"mc_{label}.npz", values=V, outputs=np.array(outputs), u=u)
         ok = ~np.isnan(V).any(axis=1)
         stats = {}
         for j, o in enumerate(outputs[:3]):
@@ -318,7 +337,7 @@ def monte_carlo(designs, n=MC_N, workers=5):
         summary[label] = dict(N=n, failed=len(ev["failed"]), retried=len(ev["retried"]), wall=ev["wall"],
                               stats=stats, p_violation=violation_probabilities(V, outputs, cons),
                               params=[d.name for d in dists], git=git_hash())
-        (OUT / "mc.json").write_text(json.dumps(summary, indent=1, default=float))
+        (UQ["out"] / "mc.json").write_text(json.dumps(summary, indent=1, default=float))
         print(f"MC {label}: failed {len(ev['failed'])}, F mu {stats['flight_score']['mu']:.4f} "
               f"sigma {stats['flight_score']['sigma']:.4f} p5 {stats['flight_score']['p5']:.4f}", flush=True)
 
@@ -327,7 +346,7 @@ def mc_designs(labels=None):
     """The common-evaluation designs: [(label, MultipointConfig with the RDO parameter list, dv)]."""
     from aircrafter2.problems.multipoint import load_multipoint_config
 
-    rob = load_multipoint_config(RDO_CFG).base.robust
+    rob = load_multipoint_config(UQ["cfg"]).base.robust
     out = []
     w = json.loads((OUT / "validation_woombah.json").read_text())
     if "logged_current" in w["cases"]:  # Woombah as built, at the throttles it was flown at (Table 38 currents)
@@ -337,7 +356,7 @@ def mc_designs(labels=None):
     for tag in ("ac1_direct", "ac1_completed"):
         if (RUNS / f"{tag}.json").exists():
             d = load(tag)
-            out.append((tag, config(d["cells"], d["props"]["M2"], d["props"]["M3"], cfg=RDO_CFG,
+            out.append((tag, config(d["cells"], d["props"]["M2"], d["props"]["M3"], cfg=UQ["cfg"],
                                     bottle=d.get("bottle")), d["dv"]))
     b = best_case()
     out.append(("multipoint", _mcfg_for(b), b["dv"]))
@@ -422,7 +441,7 @@ def robust_eval(workers=5):
     from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp, robust_names
     from aircrafter2.robustness.sampling import evaluate
 
-    sc = json.loads((OUT / "screen.json").read_text())
+    sc = json.loads((UQ["out"] / "screen.json").read_text())
     designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in deterministic_cases() if d.get("ok")]
     designs += [d for d in mc_designs() if d[0] != "multipoint"]
     out = {}
@@ -452,7 +471,7 @@ def robust_eval(workers=5):
                     res["robust_violated"].append(n)
         out[label] = res
         print(f"robust eval {label}: {res}", flush=True)
-    (OUT / "robust_eval.json").write_text(json.dumps(dict(selected=sc["selected"], results=out, git=git_hash()),
+    (UQ["out"] / "robust_eval.json").write_text(json.dumps(dict(selected=sc["selected"], results=out, git=git_hash()),
                                                      indent=1, default=float))
 
 
@@ -1083,6 +1102,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("part", choices=["optimise", "bookends", "screen", "node_check", "rdo", "multistart",
                                      "normalisation", "mc", "common", "robust_eval", "report"])
+    ap.add_argument("--set", choices=list(UQ_SETS), default="reduced",
+                    help="uncertain set of the robust parts (default the reduced mass-and-wind set)")
     ap.add_argument("--labels", nargs="*")
     ap.add_argument("--index", type=int)
     ap.add_argument("--f2", type=float)
@@ -1099,6 +1120,7 @@ if __name__ == "__main__":
     ap.add_argument("--start")
     ap.add_argument("--bottle", help="external tank bottle: a key of stores.BOTTLES (default the config's 1 L)")
     a = ap.parse_args()
+    use_set(a.set)
     if a.part == "optimise":
         sc = {k: getattr(a, k) for k in ("w2", "w3", "R2", "R3") if getattr(a, k) is not None}
         optimise(a.tag, a.cells, a.m2, a.m3, sc or None, a.start, bottle=a.bottle)

@@ -9,6 +9,13 @@ import numpy as np
 from ...analytic import AnalyticComponent, D
 
 
+BUILD_NOTE = """f_build (default 1, not G&G) is one multiplier on the whole structural mass, i.e. how heavy the airframe
+comes out when built (docs/RDO_REDUCED_PLAN.md). It scales m_wing (so the tails, m_ht and m_vt = f S/S_wing m_wing,
+follow), m_tb, m_cb and m_gear, inside the mass closure: the loads, the sizing, the total mass and the CG all see it.
+The breakdown of the bare wing (m_tube ... m_film, m_wing_bare) is not scaled. f_tb also scales the boom (overlap
+accepted: f_tb carries the CG effect at the tail, f_build the overall build)."""
+
+
 class WingMass(AnalyticComponent):
     """Circular tube spar wing mass (Sec. 2.2.5).
 
@@ -18,6 +25,7 @@ class WingMass(AnalyticComponent):
     Eq. 31  m_le   = K_A,le (t/c) c^2 b rho_le
     Eq. 28  m_film = gamma_film K_P c b                          (gamma = t_film rho_film)
     Eq. 32  m_wing = f_wing^(n_panels - 1) (sum) (1 + S_winglet/S_wing)
+            (times f_build, not G&G: the build-mass factor, see BUILD_NOTE)
 
     The exponent reading of Eq. 32 is confirmed by Tables 14-15 (PLAN G5).
     Ribs and LE/TE stringers are balsa (Table 13).
@@ -43,6 +51,7 @@ class WingMass(AnalyticComponent):
             "gamma_film": (0.036, "kg/m**2"),
             "f_wing": (1.12, None),
             "winglet_ratio": (0.0, None),
+            "f_build": (1.0, None),
         }
         outs = {name: (0.1, "kg") for name in ["m_tube", "m_rib", "m_le", "m_te", "m_film", "m_wing_bare", "m_wing"]}
         return ins, outs
@@ -83,8 +92,10 @@ class WingMass(AnalyticComponent):
         f, wr = x["f_wing"], x["winglet_ratio"]
         F = f ** (npan - 1)
         dF = (npan - 1) * f ** (npan - 2) if npan > 1 else 0.0 * f
-        m_wing = F * bare * (1.0 + wr)  # Eq. 32
-        g_wing = (F * (1.0 + wr)) * g_bare + D({"f_wing": dF * bare * (1.0 + wr), "winglet_ratio": F * bare})
+        fb = x["f_build"]
+        m_wing = F * bare * (1.0 + wr) * fb  # Eq. 32 (x f_build)
+        g_wing = (F * (1.0 + wr) * fb) * g_bare + D({"f_wing": dF * bare * (1.0 + wr) * fb,
+                                                     "winglet_ratio": F * bare * fb, "f_build": F * bare * (1.0 + wr)})
 
         return ({"m_tube": m_tube, "m_rib": m_rib, "m_le": m_le, "m_te": m_te, "m_film": m_film,
                  "m_wing_bare": bare, "m_wing": m_wing},
@@ -122,6 +133,7 @@ class FuselageMass(AnalyticComponent):
     """Eq. 36  m_tb  = f_tb pi (r_tb^2 - (r_tb - t_tb)^2) l_tb rho_tb
     Eq. 37  m_cb  = f_cb S_cb
     Eq. 38  m_fus = m_tb + m_cb
+    (m_tb and m_cb times f_build, not G&G: see BUILD_NOTE)
     """
 
     def io(self):
@@ -133,29 +145,33 @@ class FuselageMass(AnalyticComponent):
             "f_tb": (12.81, None),
             "f_cb": (0.7878, "kg/m**2"),
             "S_cb": (0.2, "m**2"),
+            "f_build": (1.0, None),
         }
         return ins, {"m_tb": (0.1, "kg"), "m_cb": (0.1, "kg"), "m_fus": (0.2, "kg")}
 
     def evaluate(self, x):
-        r, t, l, rho, f = x["r_tb"], x["t_tb"], x["l_tb"], x["rho_tb"], x["f_tb"]
+        r, t, l, rho, f, fb = x["r_tb"], x["t_tb"], x["l_tb"], x["rho_tb"], x["f_tb"], x["f_build"]
         ring = np.pi * (2.0 * r * t - t**2)
-        m_tb = f * ring * l * rho
-        g_tb = D({"r_tb": f * 2.0 * np.pi * t * l * rho, "t_tb": f * 2.0 * np.pi * (r - t) * l * rho,
-                  "l_tb": f * ring * rho, "rho_tb": f * ring * l, "f_tb": ring * l * rho})
-        m_cb = x["f_cb"] * x["S_cb"]
-        g_cb = D({"f_cb": x["S_cb"], "S_cb": x["f_cb"]})
+        m_tb = f * ring * l * rho * fb
+        g_tb = D({"r_tb": f * 2.0 * np.pi * t * l * rho * fb, "t_tb": f * 2.0 * np.pi * (r - t) * l * rho * fb,
+                  "l_tb": f * ring * rho * fb, "rho_tb": f * ring * l * fb, "f_tb": ring * l * rho * fb,
+                  "f_build": f * ring * l * rho})
+        m_cb = x["f_cb"] * x["S_cb"] * fb
+        g_cb = D({"f_cb": x["S_cb"] * fb, "S_cb": x["f_cb"] * fb, "f_build": x["f_cb"] * x["S_cb"]})
         return ({"m_tb": m_tb, "m_cb": m_cb, "m_fus": m_tb + m_cb},
                 {"m_tb": g_tb, "m_cb": g_cb, "m_fus": g_tb + g_cb})
 
 
 class GearMass(AnalyticComponent):
-    """Eq. 39  m_gear = f_gear m   (m: total mass, the coupling variable of the closure)."""
+    """Eq. 39  m_gear = f_gear m   (m: total mass, the coupling variable of the closure; times f_build, not G&G)."""
 
     def io(self):
-        return {"m": (12.0, "kg"), "f_gear": (0.0089, None)}, {"m_gear": (0.1, "kg")}
+        return {"m": (12.0, "kg"), "f_gear": (0.0089, None), "f_build": (1.0, None)}, {"m_gear": (0.1, "kg")}
 
     def evaluate(self, x):
-        return {"m_gear": x["f_gear"] * x["m"]}, {"m_gear": D({"f_gear": x["m"], "m": x["f_gear"]})}
+        fb = x["f_build"]
+        return ({"m_gear": x["f_gear"] * x["m"] * fb},
+                {"m_gear": D({"f_gear": x["m"] * fb, "m": x["f_gear"] * fb, "f_build": x["f_gear"] * x["m"]})})
 
 
 class MassSum(AnalyticComponent):

@@ -141,7 +141,7 @@ def test_rdo_multipoint_nodes_differ_and_designs_are_shared():
     from aircrafter2.problems.multipoint import load_multipoint_config
     from aircrafter2.robustness.rdo_multipoint import build_robust_multipoint, mp_params
 
-    mcfg = load_multipoint_config(CONFIGS / "dbf2025_multipoint_rdo.yaml")
+    mcfg = load_multipoint_config(CONFIGS / "dbf2025_multipoint_rdo_full.yaml")
     names = [p.name for p in mp_params(mcfg)]
     assert "m_pay" not in names and "store_drag_factor" in names and "Kv_factor" in names and "Kv" not in names
     mcfg.base.aero.num_y = 11

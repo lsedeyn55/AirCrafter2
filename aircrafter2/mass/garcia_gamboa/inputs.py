@@ -75,6 +75,8 @@ INPUTS = {
     "m_sys": ("kg", 0.65, "systems mass: propulsion, battery, servos, receiver"),
     "m_pay": ("kg", 1.0, "payload mass"),
     "m_ballast": ("kg", 0.0, "robustness margin added to the empty mass (not G&G; default 0)"),
+    "f_build": (None, 1.0, "build-mass factor on the whole structure: wing, tails, boom, cargo bay, gear (not G&G; "
+                "default 1)"),
 }
 
 

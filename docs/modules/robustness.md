@@ -38,6 +38,17 @@ Design variables are never uncertain parameters. `robust.dv_tolerances` is a hoo
 (x + δ at the nodes), not implemented yet. **Every spread in `configs/uncertainty.yaml` is a PLACEHOLDER
 (OPEN_QUESTIONS Q32).**
 
+**Uncertain sets of the 2024-25 multipoint RDO.**
+- `configs/dbf2025_multipoint_rdo.yaml` (main) uses `configs/uncertainty_2025_reduced.yaml`: 4 mass-and-wind
+  parameters, all active (d = 4, UDR N = 9 nodes × 2 points, no screening selection):
+  - `f_build` ±30 % (the build-mass factor, docs/modules/mass.md);
+  - `f_tb` ±30 %;
+  - `m_avionics` ±15 %;
+  - `lap.wind` 0–3 m/s.
+  Every other parameter is held at its config value. Evidence for each spread: docs/RDO_REDUCED_PLAN.md §2 and
+  OPEN_QUESTIONS Q39.
+- `configs/dbf2025_multipoint_rdo_full.yaml` keeps the published 15-parameter set, screened to d = 7.
+
 **Motor Kv a design variable (the default).** The design variables are promoted once and shared by every node, so a
 node cannot set its own `Kv` (the writes would all land on the one shared input). The motor's uncertainty is then:
 - `Kv_factor` (nominal 1, the same ±5 % as `Kv`): the effective Kv is `Kv · Kv_factor`, applied before the rewind
