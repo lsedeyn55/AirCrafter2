@@ -4,7 +4,9 @@ Uses only APIs that existed before RDO was added, so the reference (tests/data/r
 by this same file on the pre-RDO commit. Regenerate (only if the deterministic model is meant to change):
     .venv/bin/python tests/rdo_off_snapshot.py tests/data/rdo_off_reference.json
 The fixed-Kv configs (full_mdo_fixed_kv.yaml, full_mdo_twin_fixed_kv.yaml) are compared with this reference; the
-Kv-as-design-variable defaults have their own (tests/data/kv_dv_reference.json, same script).
+Kv-as-design-variable defaults have their own (tests/data/kv_dv_reference.json, same script), regenerated
+2026-10-22 after the placeholders migration (docs/PLACEHOLDERS_RULESETS_PLAN.md); the fixed-Kv configs still
+reproduce rdo_off_reference.json bit for bit.
 """
 
 import json

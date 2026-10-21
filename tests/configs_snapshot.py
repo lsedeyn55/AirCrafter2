@@ -4,6 +4,9 @@ regression test that the 2024-25 results work leaves them unchanged (tests/test_
 The reference (tests/data/configs_reference.json) was made by this file on commit b2adbb8 (kv-dv, before the results
 branch), in a git worktree:
     .venv/bin/python tests/configs_snapshot.py tests/data/configs_reference.json
+Regenerated 2026-10-22 after the placeholders migration (docs/PLACEHOLDERS_RULESETS_PLAN.md): full_mdo,
+full_mdo_twin, full_mdo_rdo and full_mdo_twin_rdo changed (newer motor, battery, x_motor, take-off distance); the
+four *_fixed_kv entries reproduced bit for bit.
 """
 
 import json

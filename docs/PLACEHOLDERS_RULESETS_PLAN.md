@@ -186,9 +186,12 @@ The full table with commits is printed by the checkpoint 2 test (`tests/test_pla
     - the reduced RDO set is the shared spreads.
 
     The mass verification and `multipoint_nominal_reference.json` pass unchanged.
-  - **References:** the regression entries the migration changes are strict xfail (`tests/migration.py`), not
-    regenerated: `configs_reference.json` (`full_mdo`, `full_mdo_twin`, `full_mdo_rdo`, `full_mdo_twin_rdo`, in
-    `test_rdo_reduced` and `test_results_2025`) and `kv_dv_reference.json` (`full_mdo`, `full_mdo_twin`).
+  - **References:** the regression entries the migration changes were strict xfail (`tests/migration.py`) until the
+    user's go-ahead. They were then regenerated (2026-10-22): `configs_reference.json` (`full_mdo`, `full_mdo_twin`,
+    `full_mdo_rdo`, `full_mdo_twin_rdo`) and `kv_dv_reference.json` (`full_mdo`, `full_mdo_twin`). The four `*_fixed_kv`
+    entries came out bit-identical, and the fixed-Kv configs still match `rdo_off_reference.json` bit for bit.
+    Start-point 3-lap time, num_y 11: `full_mdo` 81.44 → 77.53 s, `full_mdo_twin` 77.16 → 74.54 s, `full_mdo_rdo`
+    83.23 → 78.82 s, `full_mdo_twin_rdo` 78.18 → 75.17 s.
   - **`test_kv_dv.py`:** four tests hard-coded the old 900 rpm/V reference motor. They now read the reference motor from
     the config, and the fixed-motor comparison uses `full_mdo.yaml` with its own motor fixed.
 - **Checkpoint 3:** the UI.
