@@ -48,8 +48,10 @@ Note also that in the original MATLAB, "Lap 1 Leg 1" (take-off ground roll)
 is listed in Table 3.5 but its contribution to Lap1time is commented out
 (`% Lap1time = Lap1time + t`) -- take-off time is never actually added.
 `Tstatic` is computed but otherwise unused downstream. That gap is
-reproduced as-is here; wire it up yourself if you want take-off time
-included in Lap1time.
+reproduced as-is here (this port stays the MATLAB reference). The smooth
+lap model used by the optimisation problems has a switch for it:
+`course.takeoff.in_mission_time` (smooth_lap.py, option `takeoff`; off by
+default; docs/TAKEOFF_COURSE_PLAN.md).
 
 `lapCount` is inherently a step function of the inputs (see `_lap_count`)
 and its finite-difference partials will mostly be zero with occasional large

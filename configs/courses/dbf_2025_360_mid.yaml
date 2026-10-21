@@ -1,0 +1,11 @@
+# The 360 deg turn halfway along the back (downwind) straight, as Rules_2025.pdf Figure 1 (p. 3) draws it.
+name: dbf_2025_360_mid
+citation: "Rules_2025.pdf Figure 1 (p. 3): 360 deg turn on the back straight; turn markers 500 ft from the start line (p. 18)"
+legs:
+  - {kind: straight, length_ft: 500, wind: head}
+  - {kind: turn, angle_deg: 180}
+  - {kind: straight, length_ft: 500, wind: tail}
+  - {kind: turn, angle_deg: 360}
+  - {kind: straight, length_ft: 500, wind: tail}
+  - {kind: turn, angle_deg: 180}
+  - {kind: straight, length_ft: 500, wind: head}

@@ -29,6 +29,7 @@ from ..aero import WingAero
 from ..aero.parasite import ParasiteDrag
 from ..aero.polar import ThreePointPolar, TurnAlpha
 from ..mass.garcia_gamboa import GarciaGamboaMass
+from ..mission.course import CourseConfig
 from ..mission.smooth_lap import SmoothLapModel
 from ..propulsion.motor_scaling import MotorRewind
 from ..propulsion.powertrain import Powertrain, motor_stations
@@ -156,6 +157,8 @@ class FullMDOConfig(AeroMassProblemConfig):
                                  "enters the model")
     robust: RobustConfig = Field(RobustConfig(), description="robust design optimisation (off by default; "
                                  "aircrafter2.robustness.rdo_problem)")
+    course: CourseConfig = Field(CourseConfig(), description="course layout, pilot reaction time and the take-off "
+                                 "switch (mission/course.py; default: Table 3.5, take-off off = the original model)")
 
     @model_validator(mode="after")
     def _check_kv_robust(self):
@@ -367,7 +370,12 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
                                                   E_mission={"units": "J"}, E_usable={"units": "J"},
                                                   reserve={"val": cfg.energy_reserve}),
                     promotes=["E_mission", "E_usable"])
-    m.add_subsystem("lap", SmoothLapModel(rho_ks=a.rho_ks, power_mode="propulsion"),
+    co = cfg.course
+    lap1, lap_other = co.lap_options()
+    m.add_subsystem("lap", SmoothLapModel(rho_ks=a.rho_ks, power_mode="propulsion", lap1=lap1, lap_other=lap_other,
+                                          pilot_reaction_time=co.pilot_reaction_time_s,
+                                          takeoff=co.takeoff.in_mission_time,
+                                          start_offset_ft=co.takeoff.start_offset_ft),
                     promotes_inputs=["CD0", "CD1", "k", "rho", "g", "T_coeffs", "P_coeffs", ("V", "v"), ("S", "S"),
                                      ("m", "m_total"), ("E_avail", "E_mission")],
                     promotes_outputs=["*"])
@@ -505,6 +513,9 @@ def apply_full_values(prob, cfg: FullMDOConfig, stores=False, skip=()):
         prob.set_val(name, getattr(st, name))
     for name in ["mu_roll", "takeoff_distance", "mission_time", "n_struct"]:
         prob.set_val(f"lap.{name}", getattr(cfg, name))
+    if cfg.course.takeoff.in_mission_time:
+        for name in ["k_lof", "CL_ground"]:
+            prob.set_val(f"lap.{name}", getattr(cfg.course.takeoff, name))
     prob.set_val("x_cb_frac", st.x_cb_frac)
     for name, val in cfg.initial.items():
         if name not in skip:

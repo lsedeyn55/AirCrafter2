@@ -35,6 +35,11 @@ SUMMARY_KEYS = [
     ("SM", "-", "static margin"), ("V_h", "-", "HT volume coeff."), ("V_v", "-", "VT volume coeff."),
     ("wall_ratio", "-", "spar t/r"), ("r_tube", "m", "spar radius"), ("I_margin", "A", "current margin"),
     ("rpm_margin", "rpm", "RPM margin at top speed"),
+    # take-off in the mission time (course.takeoff.in_mission_time; all zero when it is off)
+    ("t_takeoff", "s", "take-off ground roll time"), ("s_ground_roll", "m", "ground roll distance"),
+    ("V_lof", "m/s", "lift-off speed"), ("E_takeoff", "J", "ground roll battery energy"),
+    ("takeoff_accel_margin", "m/s²", "smallest ground-roll acceleration"),
+    ("takeoff_straight_margin", "m", "first straight - ground roll"),
 ]
 
 
@@ -54,6 +59,27 @@ def _val(p, k):
 
 def summary_table(p):
     return [(k, unit, desc, _val(p, k)) for k, unit, desc in SUMMARY_KEYS]
+
+
+def leg_breakdown(p, path="lap"):
+    """Per-leg table of lap 1 and a lap 2+ of a run problem (SmoothLapModel.leg_breakdown), or None."""
+    try:
+        return p.model._get_subsystem(path).leg_breakdown()
+    except AttributeError:
+        return None
+
+
+def leg_lines(rows):
+    """Markdown table of a leg breakdown."""
+    if not rows:
+        return []
+    out = ["\n## Leg breakdown\n", "| lap | leg | kind | size | wind | v entry (m/s) | v exit (m/s) | time (s) | "
+           "energy (kJ) |", "|---:|---:|---|---:|---|---:|---:|---:|---:|"]
+    for r in rows:
+        unit = "deg" if r["kind"] == "turn" else "ft"
+        out.append(f"| {'1' if r['lap'] == 1 else '2+'} | {r['leg']} | {r['kind']} | {r['size']:.0f} {unit} | "
+                   f"{r['wind']} | {r['v_entry']:.2f} | {r['v_exit']:.2f} | {r['time']:.2f} | {r['energy'] / 1e3:.2f} |")
+    return out
 
 
 # placeholder model assumptions for the sensitivity report, by motor mode (design variables are never repeated here)
@@ -222,6 +248,10 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
     from .stability import oei_check
 
     values["oei"] = oei_check(prob, cfg)
+    values["course"] = cfg.course.summary()
+    legs = leg_breakdown(prob)
+    if legs is not None:
+        values["legs"] = legs
     result = RunResult(prob=prob, cfg=cfg, success=success, iterations=its, values=values)
     if not out:
         return result
@@ -254,6 +284,11 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
         lines.insert(len(_robust_lines(robust)) + 2, "Design analysed at the config's nominal parameter values:\n")
     lines += [f"| {desc} (`{k}`) | {v:.5g} | {unit} |" for k, unit, desc, v in summary_table(prob)]
     lines += _motor_lines(values["motor"])
+    co = values["course"]
+    lines += [f"\nCourse: {co['preset'] or 'custom'} ({co['lap_length_ft']:.0f} ft of straights per lap), pilot reaction "
+              f"time {co['pilot_reaction_time_s']:g} s, take-off in the mission time: "
+              f"{'on' if co['takeoff']['in_mission_time'] else 'off'}."]
+    lines += leg_lines(values.get("legs"))
     (out / "summary.md").write_text("\n".join(lines) + "\n")
     result.files += [out / "results.json", out / "summary.md"]
     if n2:

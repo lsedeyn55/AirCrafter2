@@ -1,0 +1,9 @@
+# The DBF course without the 360 deg turn (an oval around the two 500 ft markers): for comparison only, not a ruleset.
+name: oval
+citation: "Rules_2025.pdf Figure 1 (p. 3) and p. 18 (markers 500 ft from the start line), with the 360 deg turn removed"
+legs:
+  - {kind: straight, length_ft: 500, wind: head}
+  - {kind: turn, angle_deg: 180}
+  - {kind: straight, length_ft: 1000, wind: tail}
+  - {kind: turn, angle_deg: 180}
+  - {kind: straight, length_ft: 500, wind: head}

@@ -1,0 +1,12 @@
+# The course the lap model has always flown (default): Kallarackel (2025), AirCrafter, Table 3.5, every lap.
+# Upwind and downwind markers 500 ft from the start line (Rules_2025.pdf p. 18); the 360 deg turn flown right after the
+# upwind turn, as Table 3.5 (and performance_modeller.m) order it.
+name: dbf_2025
+citation: "Kallarackel (2025) Table 3.5; Rules_2025.pdf Figure 1 (p. 3), turn markers 500 ft from the start line (p. 18)"
+legs:
+  - {kind: straight, length_ft: 500, wind: head}
+  - {kind: turn, angle_deg: 180}
+  - {kind: turn, angle_deg: 360}
+  - {kind: straight, length_ft: 1000, wind: tail}
+  - {kind: turn, angle_deg: 180}
+  - {kind: straight, length_ft: 500, wind: head}
