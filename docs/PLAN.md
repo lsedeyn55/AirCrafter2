@@ -918,6 +918,43 @@ All three would run outside the optimiser, as post-checks at a fixed design, in 
 The framework places the motor at x = −0.30 m but has no nose structure, so the prop would otherwise float. It is
 listed in `mockup_assumptions`.
 
+## 6j. 2024-25 results (AirCrafter 1.0 vs multipoint vs RDO)
+
+Plan: `docs/RESULTS_PLAN.md`. Results: `docs/studies/results/` (`INDEX.md` first). Branch `results`.
+
+**Built:**
+- The `dbf2025` scoring plug-in (`docs/modules/scoring.md`), with the store modules (external tanks and pylons,
+  X-1, internal tank).
+- `problems/multipoint.py`: M2 and M3 flown by one airframe, with shared airframe DVs and per-mission throttle,
+  battery and station. It also provides the M1 check.
+- `robustness/rdo_multipoint.py`: UDR RDO composed with the multipoint problem (N nodes x 2 points).
+- `reference/aircrafter1/`: AirCrafter 1.0's 2024-25 mode.
+- Configs: `dbf2025_multipoint.yaml`, `dbf2025_multipoint_rdo.yaml`, `woombah_2025.yaml` and
+  `mass_usyd_woombah.yaml`.
+
+**Status:**
+
+| checkpoint | content | page |
+|---|---|---|
+| 1 | plan | `RESULTS_PLAN.md` |
+| 2 | scoring, stores, Woombah, deterministic multipoint | `validation_2025.md` |
+| 3 | AirCrafter 1.0 2024-25 mode, both mappings | `aircrafter1_2025.json`, `results_2025.md` §2 |
+| 4 | the study: enumeration, bottle sensitivity, bookends, normalisation, multistart, screening, RDO, common evaluation, Monte Carlo | `results_2025.md` |
+| 5 | computational performance and scaling, the index | `compute_performance.md`, `INDEX.md` |
+
+**Findings to carry into the thesis** (evidence in `results_2025.md`; numbers are not repeated here):
+- M2 dominates the multipoint optimum. The fuel weight sits at the tank capacity in every case, so the tank size and
+  count (OPEN_QUESTIONS Q38) is the largest lever, ahead of R2/R3 and every uncertainty spread (`INDEX.md`).
+- The cell count barely matters (Kv absorbs it), and the M2 prop sets the ranking. Kv is set by the M2 rpm limit,
+  not by its bounds.
+- AirCrafter 1.0's designs score higher than the 1 L multipoint design only because their fuel needs 2 L bottles.
+  Against the like-for-like 2 L multipoint design they score lower.
+- RDO converges to one design from three starts. It costs a little nominal score and removes most of the
+  constraint-violation probability.
+- The M1 check fails at the best case (SM just above its band, outside the prop fit). This is flagged, not fixed.
+- Some multistarts fail by MDA non-convergence at random start designs. These are reported as such, never as
+  infeasible.
+
 ## 7. G&G 2022: errata, ambiguities and findings
 
 "Paper wins, but flag it" is followed throughout. The default implementation is the paper as printed, unless an

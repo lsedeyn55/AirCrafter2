@@ -47,3 +47,15 @@ component always exists (also in analysis runs), and is the objective only when 
 Woombah flew 13.2 lb in M2 and 7 laps (6 before the launch) with a 0.37 lb X-1 (Table 39; pre-competition testing). The official USYD scores (M2 1.58, M3 2.28) are reproduced by:
 - R2 = (13.2 / t) / 0.58: 0.203 lb/s for t = 112.2 s (3 × 37.4 s), or 0.165 lb/s for t = 138.1 s (the flight time);
 - R3 = (6 + B / 0.37) / 0.28: 21.4 for B = 0, or 45.6 for B = 2.5.
+
+### In the 2024-25 results (`docs/studies/results/results_2025.md`)
+
+- **Normalisation (§5):** the R2/R3 grid (×0.5, ×1, ×2) changes the totals, but the design barely moves. Equal
+  scalings cannot move it at all: they scale the whole variable part of F. M2's lever is the fuel weight, which is
+  capped by the tanks, and M3's laps are capped by the 100 Wh pack rule. So the normalisation re-weights the score
+  without changing the aircraft. R2 and R3 stay PLACEHOLDERS (Q35).
+- **Bonus (§6):** B = 2.5 adds the same constant to every design, as expected.
+- **M1 check:** it fails at the best propulsion case, on the static margin (just above its band without payload).
+  `v_fit_margin` is also listed, but it does not fail the check. The page flags this; M1 is still scored 1.
+- **Bookends (§4):** the `w2`/`w3` options give the M2-only and M3-only optima. The multipoint optimum is close to
+  the M2-only one.
