@@ -258,3 +258,35 @@ def test_rdo_node_with_takeoff():
     prob.run_model()
     t = [float(prob.get_val(f"nodes.n{j}.points.M2.t_takeoff")[0]) for j in range(prob.rdo["N"])]
     assert all(x > 0.0 for x in t) and len(set(np.round(t, 9))) == 3  # the headwind shortens the roll
+
+
+def test_leg_rows_roundtrip_order_and_errors():
+    from aircrafter2.mission.course import legs_from_rows, load_preset, rows_from_legs
+
+    _, other = load_preset("dbf_2025")
+    legs, errors = legs_from_rows(rows_from_legs(other))
+    assert legs == other and not errors
+    rows = rows_from_legs(other)
+    rows[0]["order"] = 99  # the first straight moved to the end
+    legs, _ = legs_from_rows(rows)
+    assert legs[-1] == other[0] and legs[0] == other[1]
+    legs, errors = legs_from_rows([dict(order=1, kind="straight", length_ft=float("nan"), wind="head"),
+                                   dict(order=2, kind=None)])
+    assert not legs and errors == ["lap leg 1 (straight): give its length (ft)"]
+
+
+def test_course_sketch_draws_presets():
+    import matplotlib.pyplot as plt
+
+    from aircrafter2.mission.course import Leg, load_preset
+    from aircrafter2.plotting.course_sketch import course_sketch
+
+    for name in ("dbf_2025", "dbf_2025_360_mid", "oval"):
+        lap1, other = load_preset(name)
+        fig = course_sketch(other, lap1, takeoff_on=True, start_offset_ft=30.0)
+        assert "2000 ft of straights" in fig.axes[0].get_title()
+        plt.close(fig)
+    cross = [Leg(kind="straight", length_ft=300, wind="none"), Leg(kind="turn", angle_deg=90)]
+    fig = course_sketch(cross, load_preset("oval")[1])  # a different lap 1: two panels
+    assert len(fig.axes) == 2 and "90° of turning" in fig.axes[1].get_title()
+    plt.close(fig)

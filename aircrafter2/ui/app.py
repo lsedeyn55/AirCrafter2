@@ -3,7 +3,9 @@
 Start with:  aircrafter2 ui      (or: streamlit run aircrafter2/ui/app.py)
 """
 
+import json
 import time
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +13,8 @@ import streamlit as st
 
 from aircrafter2.api import reanalyse_with_motor, run_design, validate_kv_dv
 from aircrafter2.config.loader import load_yaml
+from aircrafter2.mission.course import (SHIPPED_PRESETS, CourseConfig, TakeoffConfig, check_course, legs_from_rows,
+                                        list_presets, load_preset, load_preset_data, rows_from_legs, save_preset)
 from aircrafter2.problems.full_mdo import WOOMBAH_Y_M, PropulsionInputs, check_kv_robust, load_full_config
 from aircrafter2.problems.wing_aero import Bounds
 from aircrafter2.propulsion.apc import DEFAULT_DIR
@@ -133,7 +137,7 @@ with st.sidebar:
     figs = st.checkbox("Make figures", value=True)
 
 # --- main: editable inputs --------------------------------------------------------------------------
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
 with c1:
     st.subheader("Design-variable bounds")
     st.caption("Motor Kv, if optimised, is set in the sidebar (Motor).")
@@ -150,7 +154,126 @@ with c2:
     cfg.mass.inputs["n"] = st.number_input("Load factor", 1.0, 12.0, float(cfg.mass.inputs.get("n", 5.0)))
     cfg.propulsion.n_cells = st.number_input("Battery cells (series)", 1.0, 12.0, float(cfg.propulsion.n_cells), 1.0)
     cfg.propulsion.I_max = st.number_input("Current limit (A) - PLACEHOLDER", 5.0, 200.0, float(cfg.propulsion.I_max))
+with c3:
+    st.subheader("Mission")
     cfg.mission_time = st.number_input("Mission time (s)", 30.0, 1200.0, float(cfg.mission_time))
+    to0 = cfg.course.takeoff
+    to_on = st.checkbox("Include take-off in mission time", value=to0.in_mission_time,
+                        help="add the ground roll (rest to lift-off, into the wind, at the throttle) to lap 1's time "
+                        "and energy: the rules time every mission from the first throttle advance. Off: the original "
+                        "model, lap 1 starts in the air at V_stall (every published result)")
+    k_lof = st.number_input("Lift-off speed factor k_lof (V_LOF = k_lof V_stall)", 1.01, 2.0, float(to0.k_lof), 0.05,
+                            disabled=not to_on, help="1.1: performance_modeller.m l. 405")
+    cl_ground = st.number_input("Ground-roll lift coefficient CL_ground - PLACEHOLDER", 0.0, 2.0,
+                                float(to0.CL_ground), 0.05, disabled=not to_on, help="OPEN_QUESTIONS Q40")
+    start_off = st.number_input("Start offset behind the line (ft) - PLACEHOLDER", 0.0, 1000.0,
+                                float(to0.start_offset_ft), 10.0, disabled=not to_on, help="OPEN_QUESTIONS Q43")
+    cfg.mu_roll = st.number_input("Rolling friction mu_roll", 0.0, 0.5, float(cfg.mu_roll), 0.01,
+                                  help="used by the Eq. 3.3 constraint and, with take-off on, the ground roll")
+    cfg.takeoff_distance = st.number_input("Take-off distance (m): Eq. 3.3 static-thrust constraint", 5.0, 1000.0,
+                                           float(cfg.takeoff_distance))
+    reaction = st.number_input("Pilot reaction time per lap (s)", 0.0, 30.0, float(cfg.course.pilot_reaction_time_s),
+                               0.5)
+
+# --- mission: course layout ---------------------------------------------------------------------------
+LEG_COLS = ["order", "kind", "length_ft", "angle_deg", "wind"]
+LEG_COLUMN_CONFIG = {
+    "order": st.column_config.NumberColumn("order", help="legs are flown in this order", step=1),
+    "kind": st.column_config.SelectboxColumn("kind", options=["straight", "turn"], required=True),
+    "length_ft": st.column_config.NumberColumn("length (ft)", help="straights", min_value=0.0),
+    "angle_deg": st.column_config.NumberColumn("angle (deg)", help="turns", min_value=0.0),
+    "wind": st.column_config.SelectboxColumn("wind", options=["head", "tail", "none"],
+                                             help="straights: along-track wind (none = crosswind)")}
+
+
+def leg_table(label, legs0, key):
+    """Editable leg table (rows can be added and deleted); kept in session state so 'Add leg' can append a row."""
+    dfk, vk = f"{key}_df", f"{key}_v"
+    if dfk not in st.session_state:
+        st.session_state[dfk] = pd.DataFrame(rows_from_legs(legs0), columns=LEG_COLS)
+        st.session_state[vk] = 0
+    edited = st.data_editor(st.session_state[dfk], key=f"{key}_ed{st.session_state[vk]}", num_rows="dynamic",
+                            hide_index=True, column_config=LEG_COLUMN_CONFIG, width="stretch")
+    b1, b2 = st.columns(2)
+    if b1.button(f"Add leg ({label})", key=f"{key}_add"):
+        last = pd.to_numeric(edited["order"], errors="coerce").max()
+        new = dict(order=(0 if pd.isna(last) else int(last)) + 1, kind="straight", length_ft=100.0, angle_deg=None,
+                   wind="none")
+        st.session_state[dfk] = pd.concat([edited, pd.DataFrame([new], columns=LEG_COLS)], ignore_index=True)
+        st.session_state[vk] += 1
+        st.rerun()
+    if b2.button(f"Sort by order ({label})", key=f"{key}_sort"):
+        st.session_state[dfk] = edited.sort_values("order", kind="stable", na_position="last").reset_index(drop=True)
+        st.session_state[vk] += 1
+        st.rerun()
+    return edited
+
+
+st.subheader("Mission: course")
+presets = list_presets()
+cfg_preset = cfg.course.preset if cfg.course.legs is None and cfg.course.preset in presets else None
+cc1, cc2 = st.columns([3, 2])
+with cc1:
+    preset = st.selectbox("Course preset (configs/courses/)", presets,
+                          index=presets.index(cfg_preset or ("dbf_2025" if "dbf_2025" in presets else presets[0])),
+                          key=f"preset_{cfg_name}")
+    st.caption(f"Source: {load_preset_data(preset).get('citation', '-')}")
+    if preset == (cfg_preset or "dbf_2025") and cfg.course.legs is not None:
+        src_lap1, src_other = cfg.course.resolve()  # the config's own inline legs
+    else:
+        src_lap1, src_other = load_preset(preset)
+    tkey = f"legs_{cfg_name}_{preset}"
+    other_df = leg_table("lap", src_other, tkey)
+    other, course_errors = legs_from_rows(other_df.to_dict("records"), "lap")
+    diff = st.checkbox("Different first lap", value=src_lap1 != src_other, key=f"{tkey}_diff")
+    lap1 = other
+    if diff:
+        st.caption("Lap 1 (with take-off on, it must start with a head-wind straight: the ground roll is into the wind)")
+        lap1_df = leg_table("lap 1", src_lap1, f"{tkey}_lap1")
+        lap1, e1 = legs_from_rows(lap1_df.to_dict("records"), "lap 1")
+        course_errors += e1
+    course_warns = []
+    if not course_errors:
+        course_errors, course_warns = check_course(lap1, other, takeoff_on=to_on)
+    if not course_errors:
+        same = other == load_preset(preset)[1] and lap1 == load_preset(preset)[0]
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                cfg.course = CourseConfig(
+                    preset=preset if same else None, legs=None if same else other,
+                    lap1_legs=None if same or not diff else lap1, pilot_reaction_time_s=reaction,
+                    takeoff=TakeoffConfig(in_mission_time=to_on, k_lof=k_lof, CL_ground=cl_ground,
+                                          start_offset_ft=start_off))
+        except ValueError as exc:
+            course_errors.append(str(exc))
+with cc2:
+    for msg in course_errors:
+        st.error(msg)
+    for msg in course_warns:
+        st.warning(msg)
+    if not course_errors:
+        import matplotlib.pyplot as plt
+
+        from aircrafter2.plotting.course_sketch import course_sketch
+
+        fig = course_sketch(other, lap1 if diff else None, takeoff_on=to_on, start_offset_ft=start_off)
+        st.pyplot(fig)
+        plt.close(fig)
+        st.caption("Top view, straights to scale; turn radii are schematic (the lap model's turns follow the flight "
+                   "state). Wind arrow: the wind blows against the head-wind straights.")
+    with st.expander("Save this course as a preset"):
+        pname = st.text_input("Preset name (letters, digits, _ and -)", key="preset_name")
+        if st.button("Save preset", disabled=bool(course_errors) or not pname):
+            if pname in SHIPPED_PRESETS:
+                st.error(f"'{pname}' is a shipped preset and cannot be overwritten: choose another name.")
+            else:
+                try:
+                    path = save_preset(pname, other, lap1 if diff else None,
+                                       citation="user-defined course (AirCrafter 2.0 UI)")
+                    st.success(f"Saved {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}.")
+                except ValueError as exc:
+                    st.error(str(exc))
 
 # --- run ----------------------------------------------------------------------------------------------
 try:
@@ -159,7 +282,7 @@ try:
 except ValueError as exc:
     kv_errors.append(str(exc))
     st.error(str(exc))
-if st.button("Run", type="primary", disabled=bool(kv_errors)):
+if st.button("Run", type="primary", disabled=bool(kv_errors or course_errors)):
     out = OUTPUTS / "ui_runs" / time.strftime("%Y%m%d_%H%M%S")  # named studies stay at the top of outputs/
     with st.status("Running AirCrafter 2.0 ...", expanded=True) as status:
         t0 = time.perf_counter()
@@ -183,6 +306,12 @@ if "last" in st.session_state:
     out = Path(st.session_state["last"])
     st.subheader(f"Results: {out.name}")
     summary = (out / "summary.md").read_text() if (out / "summary.md").exists() else ""
+    rj = json.loads((out / "results.json").read_text()) if (out / "results.json").exists() else {}
+    if rj.get("course", {}).get("takeoff", {}).get("in_mission_time"):
+        t1, t2, t3 = st.columns(3)
+        t1.metric("Take-off time t_takeoff", f"{rj['t_takeoff']:.2f} s")
+        t2.metric("Ground roll s_ground_roll", f"{rj['s_ground_roll']:.1f} m ({rj['s_ground_roll'] / 0.3048:.0f} ft)")
+        t3.metric("Lift-off speed V_LOF", f"{rj['V_lof']:.2f} m/s")
     st.markdown(summary)
     figdir = out / "figures"
     if figdir.exists():

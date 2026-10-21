@@ -198,3 +198,44 @@ def lap_length_ft(legs):
 
 def total_turning_deg(legs):
     return float(sum(leg.angle_deg for leg in legs if leg.kind == "turn"))
+
+
+def rows_from_legs(legs):
+    """Leg-table rows (the UI's editor): order, kind, length_ft (straights), angle_deg (turns), wind (straights)."""
+    return [dict(order=i, kind=leg.kind, length_ft=leg.length_ft if leg.kind == "straight" else None,
+                 angle_deg=leg.angle_deg if leg.kind == "turn" else None,
+                 wind=leg.wind if leg.kind == "straight" else None) for i, leg in enumerate(legs, start=1)]
+
+
+def legs_from_rows(rows, label="lap"):
+    """(legs, errors) from leg-table rows, sorted by their order column (ties keep the table order); rows without a
+    kind are skipped. A missing length or angle is an error, as is a row that does not make a Leg."""
+    def num(x):
+        try:
+            x = float(x)
+        except (TypeError, ValueError):
+            return None
+        return None if x != x else x  # NaN (an empty cell) -> None
+
+    keyed = []
+    for i, r in enumerate(rows):
+        o = num(r.get("order"))
+        keyed.append((o if o is not None else float("inf"), i, r))
+    legs, errors = [], []
+    for n, (_, _, r) in enumerate(sorted(keyed, key=lambda t: (t[0], t[1])), start=1):
+        kind = r.get("kind")
+        if kind not in ("straight", "turn"):
+            if kind not in (None, "") and kind == kind:
+                errors.append(f"{label} leg {n}: kind must be straight or turn, got {kind!r}")
+            continue
+        size = num(r.get("length_ft" if kind == "straight" else "angle_deg"))
+        if size is None:
+            errors.append(f"{label} leg {n} ({kind}): give its {'length (ft)' if kind == 'straight' else 'angle (deg)'}")
+            continue
+        wind = r.get("wind") if kind == "straight" else "none"
+        wind = wind if wind in WIND_SIGN else "none"
+        try:
+            legs.append(Leg(kind=kind, **({"length_ft": size, "wind": wind} if kind == "straight" else {"angle_deg": size})))
+        except ValueError as exc:
+            errors.append(f"{label} leg {n}: {exc}")
+    return legs, errors

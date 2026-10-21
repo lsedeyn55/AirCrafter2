@@ -141,6 +141,22 @@ Lengths are in feet and angles in degrees, as the rules write them.
 lap 1 and lap 2+, with columns lap, leg, kind, size, wind, entry and exit speed, time and energy, and gives the ground
 roll its own row. `api.run_design` writes it to `summary.md` and `results.json` together with the course used.
 
+**UI** (`aircrafter2/ui/app.py`, "Mission" and "Mission: course"):
+- **Take-off:**
+  - the take-off checkbox, with `k_lof`, `CL_ground` (PLACEHOLDER) and the start offset, all disabled while take-off
+    is off;
+  - `mu_roll` and the take-off distance stay editable either way, because the Eq. 3.3 constraint uses them.
+- **Course:**
+  - a preset selector, an editable leg table (an order column, rows added or deleted in the table or with "Add leg")
+    and a second table for a different lap 1;
+  - the pilot reaction time;
+  - a top-view sketch (`aircrafter2/plotting/course_sketch.py`: straights to scale, schematic turn radii, start line,
+    runway, wind arrow, leg numbers, lap length and total turning).
+- **Validation:** errors disable Run, and warnings show above the sketch.
+- **Save as preset** writes `configs/courses/<name>.yaml` and refuses the shipped names.
+- **After a run:** t_takeoff, s_ground_roll and V_LOF are shown above the summary, which carries the course used and
+  the leg breakdown.
+
 ## Oval (`oval.py`, used by `oval_lap`)
 
 Constant-speed oval: R = V²/(g√(n² − 1)), lap = (2L_s + 2πR)/V. Kept as a teaching and verification case.

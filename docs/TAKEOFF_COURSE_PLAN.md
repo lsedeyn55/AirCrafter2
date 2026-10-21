@@ -181,3 +181,17 @@ complex evaluation).
 - Climb and transition are not modelled.
 - Step resolution of lap 1's first straight near the wind limit (Q45, found in the re-analysis; affects the take-off-off
   model too).
+
+## Status
+
+- **Checkpoint 1** (`7fa5148`): model, course data and presets, verification.
+- **Checkpoint 2** (`77ff476`): re-analysis (`docs/studies/takeoff_study.md`), wording fixes, docs and OPEN_QUESTIONS.
+- **Checkpoint 3:** the UI.
+  - **Mission panel:** the Mission column (mission time, take-off, `mu_roll`, the Eq. 3.3 distance, reaction time) and
+    the course editor.
+  - **Course editor:** preset selector, leg table with an order column and "Add leg" / "Sort by order", a different
+    lap 1, the sketch, validation, save-as-preset.
+  - **After a run:** the take-off metrics.
+  - **Tests:** `tests/test_ui.py` covers take-off on, a leg added, Analyse at num_y 11, the take-off time in the
+    summary and the course recorded in the outputs, plus a validation case that blocks Run and the shipped-name
+    refusal. AppTest cannot edit an `st.data_editor`, so the UI test adds the leg with the "Add leg" button.

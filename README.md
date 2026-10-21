@@ -49,7 +49,7 @@ in one of two ways (the first that is set wins):
 .venv/bin/aircrafter2 vsp outputs/my_design/
 .venv/bin/aircrafter2 run configs/full_mdo_twin.yaml --vsp
 
-# the graphical interface
+# the graphical interface (Mission panel: take-off switch, course presets, leg table and sketch)
 .venv/bin/aircrafter2 ui
 
 # available objectives (scoring plug-ins)
