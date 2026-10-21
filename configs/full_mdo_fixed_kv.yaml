@@ -3,3 +3,19 @@
 # Resolves to exactly the old full_mdo.yaml: same DVs, constraints and values (tests/test_rdo.py regression).
 extends: full_mdo.yaml
 fixed_design_variables: [Kv]   # drop the inherited Kv DV: propulsion.Kv/Rm/I0 are the motor, I_max a post-check
+
+# The pinned values (decision: deliberate study variants keep their effective values, docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# These are the single-motor PLACEHOLDERS of the AIAC-era full_mdo*.yaml; configs/placeholders.yaml now holds the
+# T-Motor V3115 / Woombah values (newer), which would otherwise apply here.
+takeoff_distance: 100.0  # m, inputs_file.m
+propulsion:
+  e_spec: 150.0          # Wh/kg pack-level, PLACEHOLDER (Q8)
+  Kv: 900.0              # rpm/V, PLACEHOLDER motor (Q7)
+  Rm: 0.05               # ohm, PLACEHOLDER (Q7)
+  I0: 1.0                # A, PLACEHOLDER (Q7)
+  m_motor: 0.15          # kg, PLACEHOLDER (Q7)
+  m_esc: 0.06            # kg, PLACEHOLDER (Q7)
+  m_prop: 0.03           # kg, PLACEHOLDER
+  m_avionics: 0.25       # kg, PLACEHOLDER
+stability:
+  x_motor: -0.30         # m from wing LE, PLACEHOLDER (single nose tractor)

@@ -88,3 +88,10 @@ def build_wing_aero_problem(cfg: WingAeroProblemConfig, driver=True):
     for name, val in cfg.initial.items():
         prob.set_val(name, val)
     return prob
+
+
+def load_wing_aero_config(path):
+    """A wing_aero YAML over its layers (placeholders.yaml, the ruleset): configs/wing_aero.yaml."""
+    from ..config.loader import load_layered
+
+    return WingAeroProblemConfig(**load_layered(path, WingAeroProblemConfig.model_fields))

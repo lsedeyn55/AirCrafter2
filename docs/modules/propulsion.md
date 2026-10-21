@@ -72,7 +72,7 @@ independent root solve.)
 ## Motor Kv as a design variable (`motor_scaling.py`, default)
 
 By default `Kv` is a continuous design variable of the full problem (`default_full_dvs()`, and the
-`design_variables` block of `configs/full_mdo.yaml` / `full_mdo_twin.yaml`): the optimiser picks the winding for the
+`design_variables` block of `configs/full_mdo.yaml` / `full_mdo_twin.yaml`; the reference motor's Kv, Rm and I0 are in `configs/placeholders.yaml`): the optimiser picks the winding for the
 given frame, prop and cell count. The config's motor (`propulsion.Kv`, `Rm`, `I0`) is then a **reference motor**
 (Kv_ref, Rm_ref, I0_ref), and `MotorRewind` gives the powertrain the motor that the same frame becomes when it is
 rewound to the design Kv.

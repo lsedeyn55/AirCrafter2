@@ -16,6 +16,8 @@ from openmdao.utils.assert_utils import assert_check_partials
 
 from aircrafter2.mass.garcia_gamboa.masses import FuselageMass, GearMass, WingMass
 
+from .migration import ref_params
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIGS = ROOT / "configs"
 DATA = ROOT / "tests" / "data"
@@ -57,7 +59,7 @@ def test_f_build_scales_every_structural_mass_and_closes_the_loop():
 
 
 # --- f_build = 1 reproduces every existing result bit for bit ------------------------------------------------------------
-@pytest.mark.parametrize("cfg_name", json.loads((DATA / "configs_reference.json").read_text()))
+@pytest.mark.parametrize("cfg_name", ref_params(json.loads((DATA / "configs_reference.json").read_text())))
 def test_f_build_one_reproduces_the_config_references_bit_for_bit(cfg_name):
     from .configs_snapshot import snapshot
 

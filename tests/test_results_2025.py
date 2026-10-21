@@ -8,6 +8,7 @@ import pytest
 from openmdao.utils.assert_utils import assert_check_partials, assert_check_totals
 
 from .conftest import CONFIGS, ROOT, run_component
+from .migration import ref_params
 
 LB = 0.45359237
 
@@ -53,7 +54,7 @@ def test_stores_mass_station_drag_and_partials(mission):
     from aircrafter2.problems.multipoint import STORE_FLAGS
     from aircrafter2.stores import StoreConfig, Stores
 
-    cfg = StoreConfig()
+    cfg = StoreConfig.from_ruleset()  # configs/rulesets/dbf_2024_25.yaml (no code defaults)
     flags = STORE_FLAGS[mission]
     inputs = dict(v=35.0, S=0.59, c=0.33) | (dict(fuel_mass=5.0) if flags["fuel"] else {})
     p = run_component(Stores(config=cfg, **flags), **inputs)
@@ -124,7 +125,7 @@ def test_multipoint_totals(multipoint):
 
 
 # --- regression: every pre-existing config is unchanged ---------------------------------------------------------------
-@pytest.mark.parametrize("cfg_name", json.loads((ROOT / "tests" / "data" / "configs_reference.json").read_text()))
+@pytest.mark.parametrize("cfg_name", ref_params(json.loads((ROOT / "tests" / "data" / "configs_reference.json").read_text())))
 def test_existing_configs_unchanged(cfg_name):
     from .configs_snapshot import snapshot
 

@@ -70,7 +70,7 @@ def bottle_for(fuel_kg):
     from aircrafter2.stores import BOTTLES, Bottle, StoreConfig
 
     for key in ("1L", "2L"):
-        if StoreConfig(bottle=Bottle(**BOTTLES[key])).fuel_capacity >= fuel_kg:
+        if StoreConfig.from_ruleset(bottle=Bottle(**BOTTLES[key])).fuel_capacity >= fuel_kg:
             return key
     return "2L"
 

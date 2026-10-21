@@ -51,15 +51,16 @@ class PointConfig(BaseModel):
 
 
 class RulesConfig(BaseModel):
-    """2024-25 rule limits (Rules_2025.pdf) and the battery / ESC data that turn them into constraints."""
+    """Rule limits and the battery / ESC data that turn them into constraints. The values are in the ruleset
+    (configs/rulesets/<ruleset>.yaml, multipoint.rules), with their citations; there are no code defaults."""
     model_config = ConfigDict(extra="forbid")
-    togw_max_lb: float = Field(55.0, description="TOGW must be less than 55 lb (p. 14)")
-    energy_total_max_Wh: float = Field(100.0, description="propulsion total stored energy (p. 14); also <= 100 Wh "
-                                                          "per pack, implied for packs that share the total")
-    fuse_max_A: float = Field(100.0, description="arming fuse rating (p. 15)")
-    c_rating: float = Field(70.0, description="pack C rating: fuse <= capacity x C (p. 15); Dualsky 70C (Woombah p. 22)")
-    laps_m2_min: float = Field(3.0, description="M2: 3 laps within the 5-minute window (p. 11)")
-    span_max_ft: float = Field(6.0, description="maximum wingspan (p. 8): the upper bound of b")
+    togw_max_lb: float = Field(description="TOGW limit (lb)")
+    energy_total_max_Wh: float = Field(description="propulsion total stored energy (Wh); also the per-pack limit "
+                                                   "for packs that share the total")
+    fuse_max_A: float = Field(description="arming fuse rating (A)")
+    c_rating: float = Field(description="pack C rating: fuse <= capacity x C")
+    laps_m2_min: float = Field(description="M2 laps required in the window")
+    span_max_ft: float = Field(description="maximum wingspan (ft): the upper bound of b")
 
 
 class MultipointSettings(BaseModel):
@@ -72,9 +73,9 @@ class MultipointSettings(BaseModel):
     fuel: Bounds = Field(Bounds(lower=0.0, upper=1e9), description="kg; the upper bound is capped at the tanks' "
                                                                    "capacity")
     fuel_initial: float = 3.0
-    stores: StoreConfig = StoreConfig()
+    stores: StoreConfig = Field(description="the ruleset's multipoint.stores (with a config's overrides)")
     scoring: dict = Field({}, description="dbf2025 options: R2, R3, bonus, x1_weight_lb, w2, w3")
-    rules: RulesConfig = RulesConfig()
+    rules: RulesConfig = Field(description="the ruleset's multipoint.rules")
 
 
 class MultipointConfig(BaseModel):
@@ -113,13 +114,14 @@ class MultipointConfig(BaseModel):
         return dvs
 
 
-def load_multipoint_config(path):
+def load_multipoint_config(path, placeholders=None, ruleset=None):
+    """A multipoint YAML over its layers: placeholders.yaml, then the ruleset (its multipoint: block included)."""
     from pathlib import Path
 
-    from ..config.loader import load_yaml
+    from ..config.loader import load_layered
 
     path = Path(path)
-    data = load_yaml(path)
+    data = load_layered(path, FullMDOConfig.model_fields, multipoint=True, placeholders=placeholders, ruleset=ruleset)
     mp = data.pop("multipoint")
     return MultipointConfig(base=full_config_from_dict(data, path), mp=MultipointSettings(**mp))
 

@@ -1,0 +1,22 @@
+# The generic ruleset of the single-point problems (full_mdo*, aero_mass, lap_mdo, wing_aero, oval_lap): the
+# rule-dependent values of the original AirCrafter inputs (inputs_file.m, performance_modeller.m), with no stores,
+# scoring or rule limits (the single-point problems have none). Layer 3, as configs/rulesets/dbf_2024_25.yaml.
+# Decision 2026-10-22 (docs/PLACEHOLDERS_RULESETS_PLAN.md): the single-point configs take this ruleset.
+#
+# One value per line, as a dotted path into the config schema. Comment: # <units>; <PLACEHOLDER | cited>; Q..; <source>
+
+# --- site ---
+altitude: 400.0                              # m; cited; no Q; inputs_file.m (Wichita ~400 m)
+
+# --- mission ---
+mission_time: 300.0                          # s; cited; no Q; inputs_file.m
+course.preset: dbf_2025                      # -; cited; no Q; configs/courses/dbf_2025.yaml: the course performance_modeller.m flies (Kallarackel 2025, Table 3.5)
+course.pilot_reaction_time_s: 3.0            # s per lap; PLACEHOLDER; no Q; performance_modeller.m
+course.takeoff.start_offset_ft: 0.0          # ft; PLACEHOLDER; Q43; brake release on the start line (take-off on only)
+
+# --- uncertainty ---
+# Steady wind along the straights, 0 to the 3 m/s worst case (the course is laid out into the wind, so the first
+# straight is upwind); centre 1.5 m/s. The published single-point RDO uses configs/uncertainty.yaml (standalone), which
+# carries the same entry.
+uncertainty:
+  - {name: lap.wind,   dist: uniform, nominal: 1.5, spread: 1.5, units: m/s, source: PLACEHOLDER}  # m/s; PLACEHOLDER; Q32; headwind 0-3 m/s

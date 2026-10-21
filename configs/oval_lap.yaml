@@ -1,10 +1,12 @@
 # Oval lap: minimise the lap time of a simple oval at fixed cruise speed.
 # Schema: aircrafter2/problems/oval_lap.py (OvalLapProblemConfig). SI units; alpha in deg.
+# n_crit: configs/placeholders.yaml; altitude: configs/rulesets/generic.yaml.
+placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
+ruleset: rulesets/generic.yaml          # rule-dependent values: altitude, mission time, course, headwind spread (layer 3)
 
 airfoil: {seed: naca4412, n_modes: 0}
-aero: {num_x: 2, num_y: 41, spacing: cosine, model_size: xlarge, n_crit: 9.0}
+aero: {num_x: 2, num_y: 41, spacing: cosine, model_size: xlarge}
 
-altitude: 400.0               # m, inputs_file.m
 V: 20.0                       # m/s, PLACEHOLDER fixed cruise and turn speed
 weight: 49.0                  # N, PLACEHOLDER (5 kg); aero_mass couples mass
 straight_length: 304.8        # m = 1000 ft, the long leg in performance_modeller.m

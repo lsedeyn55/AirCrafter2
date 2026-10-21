@@ -1,0 +1,85 @@
+# The 2024-25 DBF ruleset (X-1 Supersonic Flight Program): every value that depends on the competition rules.
+# Layer 3 (code defaults < placeholders.yaml < this file < the problem config < the study variant), opt-in: the
+# 2024-25 configs set 'ruleset: rulesets/dbf_2024_25.yaml'. A single-point load uses the top-level keys only and ignores
+# multipoint.*. Plan: docs/PLACEHOLDERS_RULESETS_PLAN.md.
+#
+# One value per line, as a dotted path into the config schema. Comment: # <units>; <PLACEHOLDER | cited>; Q..; <source>
+# [R] = Rules_2025.pdf page; [W] = 2025 USYD DBF Design Report (Project Woombah), page / table. PLACEHOLDER = not
+# sourced (docs/OPEN_QUESTIONS.md). Edit here or in the UI's Ruleset tab (which saves in place, keeping every comment).
+
+# --- site ---
+altitude: 800.0                              # m; cited; no Q; Tucson elevation 2625 ft [W p. 25]; fly-off at TIMPA, Tucson [R p. 7]
+
+# --- mission ---
+mission_time: 300.0                          # s; cited; no Q; 5-minute windows [R p. 11-12]
+course.preset: dbf_2025                      # -; cited; no Q; configs/courses/dbf_2025.yaml: Kallarackel (2025) Table 3.5; turn markers 500 ft from the start line [R p. 18]
+course.pilot_reaction_time_s: 3.0            # s per lap; PLACEHOLDER; no Q; performance_modeller.m
+course.takeoff.start_offset_ft: 0.0          # ft; PLACEHOLDER; Q43; brake release on the start line (take-off on only)
+
+# --- scoring ---
+multipoint.scoring.R2: 0.20                  # lb/s; PLACEHOLDER; Q35; best team's fuel weight / time
+multipoint.scoring.R3: 27.0                  # -; PLACEHOLDER; Q35; best team's laps + bonus / X-1 weight
+multipoint.scoring.bonus: 0.0                # -; cited; Q35; main scenario B = 0 (the X-1's flight is not modelled)
+multipoint.scoring.x1_weight_lb: 0.37        # lb; cited; Q35; Woombah's X-1 as flown [W p. 59 Table 39]
+
+# --- rule limits ---
+multipoint.rules.togw_max_lb: 55.0           # lb; cited; no Q; TOGW must be less than 55 lb [R p. 14]
+multipoint.rules.energy_total_max_Wh: 100.0  # Wh; cited; no Q; propulsion total stored energy [R p. 14]; also <= 100 Wh per pack, implied for packs that share the total
+multipoint.rules.fuse_max_A: 100.0           # A; cited; no Q; arming fuse rating [R p. 15]
+multipoint.rules.c_rating: 70.0              # C; cited; no Q; pack C rating: fuse <= capacity x C [R p. 15]; Dualsky 70C [W p. 22]
+multipoint.rules.laps_m2_min: 3.0            # laps; cited; no Q; M2: 3 laps within the 5-minute window [R p. 11]
+multipoint.rules.span_max_ft: 6.0            # ft; cited; no Q; maximum wingspan [R p. 8]: the upper bound of b
+
+# --- stores: tanks ---
+multipoint.stores.n_ext: 2                   # tanks; cited; Q38; external tanks = pylons (rules: >= 2 in M2 and M3 [R p. 9]); Woombah's two
+multipoint.stores.bottle.volume_L: 1.0       # L; cited; Q38; Woombah: 1 L Pepsi bottle [W p. 18]
+multipoint.stores.bottle.diameter: 0.085     # m; PLACEHOLDER; Q36; 1 L PET bottle
+multipoint.stores.bottle.empty_mass: 0.040   # kg; PLACEHOLDER; Q36; 1 L PET bottle with cap
+multipoint.stores.internal_bottle: null      # -; cited; Q38; optional internal tank (rules p. 8); none
+multipoint.stores.fill_density: 2.9483504050000002  # kg/L = 6.5 lb/L; cited; no Q; steel powder packed density [W p. 18]
+multipoint.stores.cd_bottle: 0.523           # per bottle, frontal area; cited; no Q; bottom first, Woombah CFD [W p. 43]
+multipoint.stores.Q_tank: 1.0                # -; PLACEHOLDER; Q37; tank interference factor
+multipoint.stores.x_tank_frac: 0.37519379844961237  # chord fraction = 4.84 / 12.90; cited; no Q; tank/pylon station from the wing LE: Woombah 4.84 in [W Table 34] / 12.90 in rectangular-equivalent chord
+multipoint.stores.x_internal_frac: 0.25      # chord fraction; PLACEHOLDER; Q36; internal tank station
+
+# --- stores: pylons ---
+multipoint.stores.pylon_chord: 0.20573999999999998  # m = 8.1 in; cited; no Q; [W p. 18 Table 16]
+multipoint.stores.pylon_thickness: 0.0254    # m = 1.0 in; cited; no Q; [W Table 16]
+multipoint.stores.pylon_height: 0.046228     # m = 1.82 in; cited; no Q; [W Table 16]
+multipoint.stores.pylon_xt: 0.3              # x/c; PLACEHOLDER; Q37; pylon max-thickness location
+multipoint.stores.Q_pylon: 1.0               # -; PLACEHOLDER; Q37; pylon interference factor
+multipoint.stores.m_pylons: 0.1995806428     # kg = 0.44 lb; cited; no Q; pylons + adapters for the set: Woombah 'payload structure' [W p. 45 Table 34]
+
+# --- stores: X-1 ---
+multipoint.stores.m_x1: 0.16782917690000002  # kg = 0.37 lb; cited; no Q; X-1 as flown [W p. 59 Table 39]; rules <= 0.55 lb
+multipoint.stores.m_x1_structure: 0.0997903214  # kg = 0.22 lb; cited; no Q; X-1 release structure [W Table 34]
+multipoint.stores.x1_wing_area: 0.05290312   # m^2 = 82.0 in^2; cited; no Q; [W p. 24 Table 25]
+multipoint.stores.x1_wing_chord: 0.124841    # m = mean of 5.90 and 3.93 in; cited; no Q; root/tip [W Table 25]
+multipoint.stores.x1_wing_tc: 0.10           # -; PLACEHOLDER; Q37; SD8020 [W p. 24], t/c ~ 0.10
+multipoint.stores.x1_body_length: 0.269748   # m = 10.62 in; cited; no Q; [W Table 25]
+multipoint.stores.x1_body_diameter: 0.06470771515051355  # m = sqrt(2.36 x 2.75) in; cited; no Q; equivalent of 2.36 x 2.75 in [W Table 25]
+multipoint.stores.Q_x1: 1.0                  # -; PLACEHOLDER; Q37; X-1 interference factor
+multipoint.stores.x_x1_frac: -0.3596899224806201  # chord fraction = -4.64 / 12.90; cited; no Q; X-1 station: Woombah -4.64 in [W Table 34] / 12.90 in
+multipoint.stores.x_x1s_frac: 0.8116279069767443  # chord fraction = 10.47 / 12.90; cited; no Q; X-1 release structure: Woombah 10.47 in / 12.90 in
+
+# --- stores: bottle study catalogue (studies/results_2025.py --bottle; rules: >= 16 fl oz, any commercial non-glass bottle [R p. 8]) ---
+bottles.0.5L.volume_L: 0.5                   # L; cited; Q36; 16.9 fl oz
+bottles.0.5L.diameter: 0.065                 # m; PLACEHOLDER; Q36
+bottles.0.5L.empty_mass: 0.025               # kg; PLACEHOLDER; Q36
+bottles.1L.volume_L: 1.0                     # L; cited; Q36; Woombah's [W p. 18]
+bottles.1L.diameter: 0.085                   # m; PLACEHOLDER; Q36
+bottles.1L.empty_mass: 0.040                 # kg; PLACEHOLDER; Q36
+bottles.2L.volume_L: 2.0                     # L; cited; Q36
+bottles.2L.diameter: 0.105                   # m; PLACEHOLDER; Q36
+bottles.2L.empty_mass: 0.050                 # kg; PLACEHOLDER; Q36
+
+# --- uncertainty ---
+# Steady headwind along the straights (the course is laid out into the prevailing wind [R p. 3]). DBF flies in April,
+# alternately at Tucson AZ (TIMPA, 2025 [R pp. 6-7]) and Wichita KS. April mean wind: Tucson 8.3 mph = 3.71 m/s (NOAA
+# NCDC Comparative Climatic Data, via currentresults.com; ASU monthly summaries 7.1-7.8 mph), Wichita 12.6 mph =
+# 5.63 m/s (Weather Spark, airport, reanalysis-based). Capped at 7 m/s, the lap model's validity (decision
+# 2026-10-21): lap 1 starts at V_stall into the wind, and as the headwind nears the light M3 aircraft's V_stall
+# (8.0-8.3 m/s) the ground speed goes to zero (above ~7.5 m/s the lap breaks down, now an analysis failure). Uniform
+# 0-7 m/s, centre 3.5 m/s (was 0-3 m/s): covers Tucson's mean, cuts Wichita's windier days. Gusts not modelled.
+uncertainty:
+  - {name: lap.wind,   dist: uniform, nominal: 3.5, spread: 3.5, units: m/s, source: PLACEHOLDER}  # m/s; PLACEHOLDER; Q39; headwind 0-7 m/s

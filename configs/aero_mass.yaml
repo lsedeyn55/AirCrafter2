@@ -1,35 +1,30 @@
 # Coupled aero + mass (MDF), minimise cruise drag at fixed speed.
 # Schema: aircrafter2/problems/aero_mass.py (AeroMassProblemConfig). SI units.
-# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md).
+# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md). Shared placeholders (payload, boom, cargo
+# bay, minimum tube, n_crit): configs/placeholders.yaml; altitude: configs/rulesets/generic.yaml.
+
+placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
+ruleset: rulesets/generic.yaml          # rule-dependent values: altitude, mission time, course, headwind spread (layer 3)
 
 airfoil: {seed: naca4412, n_modes: 0}
-aero: {num_x: 2, num_y: 41, spacing: cosine, model_size: xlarge, n_crit: 9.0}
+aero: {num_x: 2, num_y: 41, spacing: cosine, model_size: xlarge}
 
 mass_config: mass_garcia_gamboa_2022.yaml   # base mass-model config, relative to this file
 mass:                    # overrides merged over mass_config
   inputs:
     n: 5.0               # assumptions_file.m load factor
     m_sys: 1.2           # kg, PLACEHOLDER propulsion + battery + avionics (full_mdo computes it from the powertrain)
-    m_pay: 1.5           # kg, PLACEHOLDER payload
-    r_tb: 0.008          # m, PLACEHOLDER tail boom radius (16 mm tube)
-    x_gd: 0.25           # PLACEHOLDER ground-test hold point (chord fraction)
 
-altitude: 400.0          # m, inputs_file.m
 V: 20.0                  # m/s, PLACEHOLDER cruise speed, also the G&G design speed for loads
 
 geometry:
   l_ht: 0.8              # m, PLACEHOLDER tail arm
   S_ht: 0.06             # m^2, PLACEHOLDER
   S_vt: 0.03             # m^2, PLACEHOLDER
-  boom_offset: 0.15      # m, PLACEHOLDER
-  l_cb: 0.40             # m, PLACEHOLDER cargo bay box
-  w_cb: 0.12
-  h_cb: 0.12
   x_spar: 0.25           # brief default
 
 clmax_ratio_min: 1.44    # cruise at >= 1.2 V_stall
 wall_ratio_max: 0.2      # thin-wall validity of the tube equations
-r_tube_min: 0.005        # m, PLACEHOLDER smallest spar tube (10 mm OD); sets the thinnest buildable section
 
 design_variables:
   b: {lower: 0.9, upper: 1.52}

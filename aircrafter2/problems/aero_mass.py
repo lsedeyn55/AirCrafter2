@@ -77,10 +77,10 @@ def load_aero_mass_config(path):
     """Load an aero_mass YAML: ``mass_config`` names the base mass YAML; ``mass`` overrides it."""
     from pathlib import Path
 
-    from ..config.loader import _merge, load_yaml
+    from ..config.loader import _merge, load_layered, load_yaml
 
     path = Path(path)
-    data = load_yaml(path)
+    data = load_layered(path, AeroMassProblemConfig.model_fields)  # placeholders.yaml and the ruleset underneath
     base = load_yaml(path.parent / data.pop("mass_config")) if "mass_config" in data else {}
     data["mass"] = _merge(base, data.get("mass", {}))
     return AeroMassProblemConfig(**data)

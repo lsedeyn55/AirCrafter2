@@ -106,8 +106,11 @@ all the G&G verification tests are unchanged.
 
 ## Defaults and calibration
 
-`configs/mass_garcia_gamboa_2022.yaml` holds the defaults:
-- materials: Table 13;
+`configs/mass_garcia_gamboa_2022.yaml` holds the defaults, and `configs/placeholders.yaml` the values shared with the
+other placeholders:
+- materials (Table 13), `delta_tip_ratio` and `theta_tb_max` (Table 3), the tube fit `k_fill` and `clearance`, and
+  `t_tube_min`: in `placeholders.yaml`, which every problem config loads above `mass_config`. A mass file loaded on
+  its own (`configs/verification/`) gets the same values from the `inputs.py` defaults;
 - correction factors: Table 14;
 - f_tb = 0.847: refitted for a 1 mm boom wall from the USYD tubes (`docs/studies/tail_boom_calibration.md`). The paper's
   12.81 applies only to load-sized walls.

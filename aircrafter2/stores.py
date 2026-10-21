@@ -34,47 +34,60 @@ INCH = 0.0254
 
 class Bottle(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    volume_L: float = Field(1.0, description="L; Woombah: 1 L Pepsi bottle (Design Report p. 18)")
-    diameter: float = Field(0.085, description="m, PLACEHOLDER (1 L PET bottle; OPEN_QUESTIONS Q36)")
-    empty_mass: float = Field(0.040, description="kg, PLACEHOLDER (1 L PET bottle with cap; Q36)")
+    volume_L: float = Field(description="L")
+    diameter: float = Field(description="m")
+    empty_mass: float = Field(description="kg")
 
 
-# Candidate external bottles (rules: >= 16 fl oz, any commercial non-glass bottle, p. 8). 1 L is Woombah's (p. 18);
-# the dimensions and empty masses are PLACEHOLDERS (OPEN_QUESTIONS Q36).
-BOTTLES = {"0.5L": dict(volume_L=0.5, diameter=0.065, empty_mass=0.025),   # 16.9 fl oz
-           "1L": dict(volume_L=1.0, diameter=0.085, empty_mass=0.040),
-           "2L": dict(volume_L=2.0, diameter=0.105, empty_mass=0.050)}
+def _ruleset_bottles(name="dbf_2024_25"):
+    from .config.loader import CONFIGS_DIR, load_layer
+
+    path = CONFIGS_DIR / "rulesets" / f"{name}.yaml"
+    return dict(load_layer(path).get("bottles") or {}) if path.exists() else {}
+
+
+# Candidate external bottles of the bottle study: the 'bottles:' block of configs/rulesets/dbf_2024_25.yaml (rules:
+# >= 16 fl oz, any commercial non-glass bottle, p. 8; dimensions and empty masses PLACEHOLDERS, OPEN_QUESTIONS Q36).
+BOTTLES = _ruleset_bottles()
 
 
 class StoreConfig(BaseModel):
-    """The store set of a design (shared by its mission points) and the drag/mass data."""
+    """The store set of a design (shared by its mission points) and the drag/mass data. Every value is in the ruleset
+    (configs/rulesets/dbf_2024_25.yaml, multipoint.stores), with its citation; there are no code defaults."""
     model_config = ConfigDict(extra="forbid")
-    n_ext: int = Field(2, ge=2, description="external tanks = pylons (rules: >= 2 in M2 and M3, p. 9)")
-    bottle: Bottle = Bottle()
-    internal_bottle: Optional[Bottle] = Field(None, description="optional internal tank (rules p. 8); None = none")
-    fill_density: float = Field(6.5 * LB, description="kg/L, steel powder packed density 6.5 lb/L (Woombah p. 18)")
-    cd_bottle: float = Field(0.523, description="per bottle, frontal area, bottom first (Woombah CFD, p. 43)")
-    Q_tank: float = Field(1.0, description="tank interference factor, PLACEHOLDER (Q37)")
-    pylon_chord: float = Field(8.1 * INCH, description="m, Woombah Table 16 (p. 18)")
-    pylon_thickness: float = Field(1.0 * INCH, description="m, Woombah Table 16")
-    pylon_height: float = Field(1.82 * INCH, description="m, Woombah Table 16")
-    pylon_xt: float = Field(0.3, description="pylon max-thickness location (x/c), PLACEHOLDER")
-    Q_pylon: float = Field(1.0, description="pylon interference factor, PLACEHOLDER (Q37)")
-    m_pylons: float = Field(0.44 * LB, description="kg, pylons + adapters for the set: Woombah 'payload structure' "
-                                                   "0.44 lb (Table 34, p. 45)")
-    m_x1: float = Field(0.37 * LB, description="kg, X-1 as flown: 0.37 lb (Woombah Table 39, p. 59); rules <= 0.55 lb")
-    m_x1_structure: float = Field(0.22 * LB, description="kg, X-1 release structure: 0.22 lb (Woombah Table 34)")
-    x1_wing_area: float = Field(82.0 * INCH**2, description="m^2, Woombah Table 25 (p. 24)")
-    x1_wing_chord: float = Field(0.5 * (5.90 + 3.93) * INCH, description="m, mean of root/tip, Woombah Table 25")
-    x1_wing_tc: float = Field(0.10, description="SD8020 (Woombah p. 24), t/c ~ 0.10, PLACEHOLDER")
-    x1_body_length: float = Field(10.62 * INCH, description="m, Woombah Table 25")
-    x1_body_diameter: float = Field(np.sqrt(2.36 * 2.75) * INCH, description="m, equivalent of 2.36 x 2.75 in")
-    Q_x1: float = Field(1.0, description="X-1 interference factor, PLACEHOLDER (Q37)")
-    x_tank_frac: float = Field(4.84 / 12.90, description="tank/pylon station / c from the wing LE: Woombah 4.84 in "
-                                                         "(Table 34) / 12.90 in rectangular-equivalent chord")
-    x_x1_frac: float = Field(-4.64 / 12.90, description="X-1 station / c: Woombah -4.64 in (Table 34) / 12.90 in")
-    x_x1s_frac: float = Field(10.47 / 12.90, description="X-1 release structure / c: Woombah 10.47 in / 12.90 in")
-    x_internal_frac: float = Field(0.25, description="internal tank station / c, PLACEHOLDER")
+    n_ext: int = Field(ge=2, description="external tanks = pylons")
+    bottle: Bottle
+    internal_bottle: Optional[Bottle] = Field(None, description="optional internal tank; None = none")
+    fill_density: float = Field(description="kg/L")
+    cd_bottle: float = Field(description="per bottle, frontal area")
+    Q_tank: float = Field(description="tank interference factor")
+    pylon_chord: float = Field(description="m")
+    pylon_thickness: float = Field(description="m")
+    pylon_height: float = Field(description="m")
+    pylon_xt: float = Field(description="pylon max-thickness location (x/c)")
+    Q_pylon: float = Field(description="pylon interference factor")
+    m_pylons: float = Field(description="kg, pylons + adapters for the set")
+    m_x1: float = Field(description="kg, X-1 as flown")
+    m_x1_structure: float = Field(description="kg, X-1 release structure")
+    x1_wing_area: float = Field(description="m^2")
+    x1_wing_chord: float = Field(description="m")
+    x1_wing_tc: float = Field(description="X-1 wing t/c")
+    x1_body_length: float = Field(description="m")
+    x1_body_diameter: float = Field(description="m")
+    Q_x1: float = Field(description="X-1 interference factor")
+    x_tank_frac: float = Field(description="tank/pylon station / c from the wing LE")
+    x_x1_frac: float = Field(description="X-1 station / c")
+    x_x1s_frac: float = Field(description="X-1 release structure station / c")
+    x_internal_frac: float = Field(description="internal tank station / c")
+
+    @classmethod
+    def from_ruleset(cls, name="dbf_2024_25", **over):
+        """The ruleset's store set (configs/rulesets/<name>.yaml), with field overrides."""
+        from .config.loader import CONFIGS_DIR, load_layer
+
+        data = dict(load_layer(CONFIGS_DIR / "rulesets" / f"{name}.yaml")["multipoint"]["stores"])
+        data.update(over)
+        return cls(**data)
 
     @property
     def fuel_capacity(self):

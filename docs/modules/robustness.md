@@ -38,8 +38,19 @@ Design variables are never uncertain parameters. `robust.dv_tolerances` is a hoo
 (x + δ at the nodes), not implemented yet. **Every spread in `configs/uncertainty.yaml` is a PLACEHOLDER
 (OPEN_QUESTIONS Q32).**
 
+**The parameter pool** (docs/PLACEHOLDERS_RULESETS_PLAN.md) is merged by name in this order:
+1. the shared spreads in `configs/placeholders.yaml` and the ruleset;
+2. the config's `uncertainty_config` file;
+3. `robust.parameters`.
+
+An entry replaces the one of the same name in place, or is appended. A file marked `standalone: true` is the whole
+pool by itself: `configs/uncertainty.yaml`, the published 15-parameter set of `rdo_study`,
+`dbf2025_multipoint_rdo_full` and `examples/full_mdo.py`, which takes none of the shared spreads.
+
 **Uncertain sets of the 2024-25 multipoint RDO.**
-- `configs/dbf2025_multipoint_rdo.yaml` (main) uses `configs/uncertainty_2025_reduced.yaml`: 4 mass-and-wind
+- `configs/dbf2025_multipoint_rdo.yaml` (main) uses the shared spreads: f_build, f_tb and m_avionics from
+  `configs/placeholders.yaml` and lap.wind from `configs/rulesets/dbf_2024_25.yaml`
+  (`uncertainty_2025_reduced.yaml` now holds only what differs, which is nothing). That makes 4 mass-and-wind
   parameters, all active (d = 4, UDR N = 9 nodes × 2 points, no screening selection):
   - `f_build` ±30 % (the build-mass factor, docs/modules/mass.md);
   - `f_tb` ±30 %;

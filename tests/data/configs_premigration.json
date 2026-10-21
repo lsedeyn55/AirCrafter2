@@ -1,0 +1,6330 @@
+{
+ "aero_mass.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 41,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "design_variables": {
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   }
+  },
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "tc_scale": 1.0
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "m_sys": 1.2,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "objective": "D",
+  "r_tube_min": 0.005,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "dbf2025_multipoint.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": false,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": false,
+    "k": 1.0,
+    "max_dim": 5,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": null
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "dbf2025_multipoint_rdo.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": false,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": true,
+    "k": 1.0,
+    "max_dim": 7,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_build",
+      "nominal": 1.0,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_tb",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_avionics",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.15,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "lap.wind",
+      "nominal": 3.5,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 3.5,
+      "units": "m/s"
+     }
+    ],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube",
+     "rpm_margin",
+     "I_margin"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": "uncertainty_2025_reduced.yaml"
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "dbf2025_multipoint_rdo_calibrated.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": false,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": true,
+    "k": 1.0,
+    "max_dim": 7,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_build",
+      "nominal": 2.73763,
+      "relative": true,
+      "source": "Woombah Table 34 calibration",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_tb",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_avionics",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.15,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "lap.wind",
+      "nominal": 3.5,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 3.5,
+      "units": "m/s"
+     }
+    ],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube",
+     "rpm_margin",
+     "I_margin"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": "uncertainty_2025_reduced_calibrated.yaml"
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "dbf2025_multipoint_rdo_full.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": false,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": true,
+    "k": 1.0,
+    "max_dim": 7,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_tb",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_cb",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_gear",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_ht",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_vt",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "e_spec",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.1,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "R_cell",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "fixed",
+      "name": "Kv",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.05,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "dv",
+      "name": "Kv_factor",
+      "nominal": 1.0,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 0.05,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "fixed",
+      "name": "Rm",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.2,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "dv",
+      "name": "Rm_ref",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.2,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_avionics",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.15,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_motor",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.1,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "eta_h",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.1,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "lap.thrust_factor",
+      "nominal": 1.0,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 0.1,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "lap.wind",
+      "nominal": 1.5,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 1.5,
+      "units": "m/s"
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_pay",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.1,
+      "units": "kg"
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "store_drag_factor",
+      "nominal": 1.0,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     }
+    ],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube",
+     "rpm_margin",
+     "I_margin"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": "uncertainty.yaml"
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "dbf2025_multipoint_rdo_onesided.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": false,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": true,
+    "k": 1.0,
+    "max_dim": 7,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_build",
+      "nominal": 1.15,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 0.15,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_tb",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_avionics",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.15,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "lap.wind",
+      "nominal": 3.5,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 3.5,
+      "units": "m/s"
+     }
+    ],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube",
+     "rpm_margin",
+     "I_margin"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": "uncertainty_2025_reduced_onesided.yaml"
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "dbf2025_multipoint_rdo_takeoff.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": true,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": true,
+    "k": 1.0,
+    "max_dim": 7,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_build",
+      "nominal": 1.0,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "f_tb",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.3,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "m_avionics",
+      "nominal": null,
+      "relative": true,
+      "source": "PLACEHOLDER",
+      "spread": 0.15,
+      "units": null
+     },
+     {
+      "dist": "uniform",
+      "kv_mode": "both",
+      "name": "lap.wind",
+      "nominal": 3.5,
+      "relative": false,
+      "source": "PLACEHOLDER",
+      "spread": 3.5,
+      "units": "m/s"
+     }
+    ],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube",
+     "rpm_margin",
+     "I_margin"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": "uncertainty_2025_reduced.yaml"
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "dbf2025_multipoint_takeoff.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": true,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.06,
+    "S_vt": 0.03,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 0.4,
+    "l_ht": 0.8,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 900.0,
+    "S_ht": 0.12,
+    "S_vt": 0.05,
+    "alpha_cruise": 4.0,
+    "b": 1.6,
+    "c": 0.3,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 0.9,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": false,
+    "k": 1.0,
+    "max_dim": 5,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": null
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 2.0,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.09,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 4.0,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "throttle_M2": 1.0,
+    "throttle_M3": 0.6
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.9483504050000002,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ },
+ "full_mdo.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "Kv": {
+    "lower": 500.0,
+    "upper": 1500.0
+   },
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 1,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "11x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": null
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": null,
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": false,
+   "k": 1.0,
+   "max_dim": 5,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": null
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.3
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_fixed_kv.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 1,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "11x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": null
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": null,
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": false,
+   "k": 1.0,
+   "max_dim": 5,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": null
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.3
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_rdo.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "Kv": {
+    "lower": 500.0,
+    "upper": 1500.0
+   },
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 1,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "10x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": null
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": [
+    "Kv_factor",
+    "Rm_ref",
+    "m_avionics",
+    "m_motor",
+    "eta_h",
+    "lap.thrust_factor",
+    "m_pay"
+   ],
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": true,
+   "k": 1.0,
+   "max_dim": 7,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_tb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_cb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_gear",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_ht",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_vt",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "e_spec",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "R_cell",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Kv",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Kv_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Rm",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Rm_ref",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_avionics",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.15,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_motor",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "eta_h",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.thrust_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.wind",
+     "nominal": 1.5,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 1.5,
+     "units": "m/s"
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_pay",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": "kg"
+    }
+   ],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": "uncertainty.yaml"
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.3
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_rdo_fixed_kv.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 1,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "10x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": null
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": [
+    "Kv",
+    "Rm",
+    "m_avionics",
+    "m_motor",
+    "eta_h",
+    "lap.thrust_factor",
+    "m_pay"
+   ],
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": true,
+   "k": 1.0,
+   "max_dim": 7,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_tb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_cb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_gear",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_ht",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_vt",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "e_spec",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "R_cell",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Kv",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Kv_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Rm",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Rm_ref",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_avionics",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.15,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_motor",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "eta_h",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.thrust_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.wind",
+     "nominal": 1.5,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 1.5,
+     "units": "m/s"
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_pay",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": "kg"
+    }
+   ],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": "uncertainty.yaml"
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.3
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_twin.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "Kv": {
+    "lower": 500.0,
+    "upper": 1500.0
+   },
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 2,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "11x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": 0.2515
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": null,
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": false,
+   "k": 1.0,
+   "max_dim": 5,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": null
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.1397
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_twin_fixed_kv.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 2,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "11x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": 0.2515
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": null,
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": false,
+   "k": 1.0,
+   "max_dim": 5,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": null
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.1397
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_twin_rdo.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "Kv": {
+    "lower": 500.0,
+    "upper": 1500.0
+   },
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 2,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "10x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": 0.2515
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": [
+    "Kv_factor",
+    "Rm_ref",
+    "m_avionics",
+    "m_motor",
+    "eta_h",
+    "lap.thrust_factor",
+    "m_pay"
+   ],
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": true,
+   "k": 1.0,
+   "max_dim": 7,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_tb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_cb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_gear",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_ht",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_vt",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "e_spec",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "R_cell",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Kv",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Kv_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Rm",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Rm_ref",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_avionics",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.15,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_motor",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "eta_h",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.thrust_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.wind",
+     "nominal": 1.5,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 1.5,
+     "units": "m/s"
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_pay",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": "kg"
+    }
+   ],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": "uncertainty.yaml"
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.1397
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "full_mdo_twin_rdo_fixed_kv.yaml": {
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 21,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "course": {
+   "lap1_legs": null,
+   "legs": null,
+   "pilot_reaction_time_s": 3.0,
+   "preset": "dbf_2025",
+   "takeoff": {
+    "CL_ground": 0.15,
+    "in_mission_time": false,
+    "k_lof": 1.1,
+    "start_offset_ft": 0.0
+   }
+  },
+  "design_variables": {
+   "S_ht": {
+    "lower": 0.02,
+    "upper": 0.15
+   },
+   "S_vt": {
+    "lower": 0.01,
+    "upper": 0.1
+   },
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "capacity": {
+    "lower": 0.5,
+    "upper": 6.0
+   },
+   "l_ht": {
+    "lower": 0.4,
+    "upper": 1.2
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "x_batt": {
+    "lower": -0.35,
+    "upper": 0.2
+   },
+   "x_cb_frac": {
+    "lower": 0.0,
+    "upper": 0.6
+   }
+  },
+  "energy_reserve": 0.2,
+  "fuselage_drag": true,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "capacity": 3.0,
+   "l_ht": 0.8,
+   "tc_scale": 1.0,
+   "v": 22.0,
+   "x_batt": -0.1
+  },
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mockup": {
+   "fairings": false,
+   "markers": true,
+   "n_blades": 2,
+   "nacelle_drop_m": 0.02032,
+   "spinner_diameter_frac": 0.18,
+   "wing_incidence": "zero",
+   "wing_position": "high"
+  },
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "propulsion": {
+   "I0": 1.0,
+   "I_max": 60.0,
+   "Kv": 900.0,
+   "Q_nac": 1.3,
+   "R_cell": 0.005,
+   "Rm": 0.05,
+   "V_cell": 3.7,
+   "apc_dir": null,
+   "battery_topology": "per_motor",
+   "c_clear": 0.025,
+   "d_nac": 0.05,
+   "e_spec": 150.0,
+   "fit_range": "fixed",
+   "l_nac": 0.15,
+   "m_avionics": 0.25,
+   "m_esc": 0.06,
+   "m_motor": 0.15,
+   "m_nacelle": 0.0,
+   "m_prop": 0.03,
+   "n_cells": 4.0,
+   "n_motors": 2,
+   "nacelle_ff": "body",
+   "pack_I_max": null,
+   "prop": "10x7E",
+   "rpm_fraction": 0.85,
+   "throttle": 1.0,
+   "usable_fraction": 0.8,
+   "v_top": 50.0,
+   "y_motor": null,
+   "y_motor_m": 0.2515
+  },
+  "r_tube_min": 0.005,
+  "require_3lap_energy": true,
+  "robust": {
+   "active": [
+    "Kv",
+    "Rm",
+    "m_avionics",
+    "m_motor",
+    "eta_h",
+    "lap.thrust_factor",
+    "m_pay"
+   ],
+   "beta": 2.0,
+   "dv_tolerances": {},
+   "enabled": true,
+   "k": 1.0,
+   "max_dim": 7,
+   "objective": "mean_plus_k_sigma",
+   "optimizer": "slsqp",
+   "parameters": [
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_tb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_cb",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_gear",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_ht",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "f_vt",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "e_spec",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "R_cell",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.3,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Kv",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Kv_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.05,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "fixed",
+     "name": "Rm",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "dv",
+     "name": "Rm_ref",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.2,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_avionics",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.15,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_motor",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "eta_h",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.thrust_factor",
+     "nominal": 1.0,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": null
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "lap.wind",
+     "nominal": 1.5,
+     "relative": false,
+     "source": "PLACEHOLDER",
+     "spread": 1.5,
+     "units": "m/s"
+    },
+    {
+     "dist": "uniform",
+     "kv_mode": "both",
+     "name": "m_pay",
+     "nominal": null,
+     "relative": true,
+     "source": "PLACEHOLDER",
+     "spread": 0.1,
+     "units": "kg"
+    }
+   ],
+   "points": 3,
+   "quadrature": "udr",
+   "robust_constraints": [
+    "energy_margin",
+    "thrust_margin_static",
+    "stall_margin",
+    "SM",
+    "wall_ratio",
+    "r_tube"
+   ],
+   "screening_threshold": 0.9,
+   "sigma_cap": null,
+   "sigma_eps": 1e-06,
+   "smolyak_level": 2,
+   "sobol_n": 1024,
+   "sobol_seed": 0,
+   "uncertainty_config": "uncertainty.yaml"
+  },
+  "scoring": {
+   "options": {},
+   "plugin": "three_lap_time"
+  },
+  "stability": {
+   "AR_ht": 4.0,
+   "AR_vt": 2.0,
+   "SM_max": 0.2,
+   "SM_min": 0.05,
+   "V_h_max": 0.65,
+   "V_h_min": 0.35,
+   "V_v_max": 0.06,
+   "V_v_min": 0.02,
+   "eta_h": 0.9,
+   "eta_v": 0.9,
+   "oei_speed_factor": 1.2,
+   "rudder_max_deg": 25.0,
+   "rudder_tau": 0.5,
+   "tc_tail": 0.09,
+   "wing_cg_frac": 0.4,
+   "x_avionics": -0.1,
+   "x_cb_frac": 0.25,
+   "x_gear": 0.05,
+   "x_motor": -0.1397
+  },
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "lap_mdo.yaml": {
+  "E_avail": 288000.0,
+  "V": 20.0,
+  "aero": {
+   "alpha_max": 25.0,
+   "alpha_min": -8.0,
+   "alpha_step": 0.5,
+   "h_alpha": 0.0001,
+   "h_k": 1e-06,
+   "h_logre": 1e-05,
+   "max_mode": "ks",
+   "model_size": "xlarge",
+   "n_crit": 9.0,
+   "num_x": 2,
+   "num_y": 41,
+   "rho_ks": 100.0,
+   "spacing": "cosine"
+  },
+  "airfoil": {
+   "n_modes": 0,
+   "seed": "naca4412",
+   "te_thickness": null
+  },
+  "altitude": 400.0,
+  "clmax_ratio_min": 1.44,
+  "design_variables": {
+   "b": {
+    "lower": 0.9,
+    "upper": 1.52
+   },
+   "c": {
+    "lower": 0.15,
+    "upper": 0.45
+   },
+   "camber_scale": {
+    "lower": 0.0,
+    "upper": 2.0
+   },
+   "tc_scale": {
+    "lower": 0.5,
+    "upper": 1.6
+   },
+   "v": {
+    "lower": 10.0,
+    "upper": 30.0
+   }
+  },
+  "eta": 0.7,
+  "geometry": {
+   "S_ht": 0.06,
+   "S_vt": 0.03,
+   "boom_offset": 0.15,
+   "h_cb": 0.12,
+   "l_cb": 0.4,
+   "l_ht": 0.8,
+   "w_cb": 0.12,
+   "x_spar": 0.25
+  },
+  "initial": {
+   "alpha_cruise": 6.0,
+   "b": 1.2,
+   "c": 0.3,
+   "camber_scale": 1.0,
+   "tc_scale": 1.0,
+   "v": 20.0
+  },
+  "lap_objective": "ThreeLapTime",
+  "mass": {
+   "inputs": {
+    "E_spar": 84000000000.0,
+    "E_tb": 84000000000.0,
+    "G_spar": 5000000000.0,
+    "SF": 1.5,
+    "c_rib_frac": 0.7,
+    "clearance": 0.001,
+    "delta_tip_ratio": 0.1,
+    "div_speed_factor": 1.2,
+    "f_cb": 0.7878,
+    "f_gear": 0.0089,
+    "f_ht": 0.6411,
+    "f_tb": 0.847,
+    "f_vt": 0.3414,
+    "f_wing": 1.12,
+    "gamma_film": 0.036,
+    "k_fill": 0.85,
+    "le_ratio": 0.021,
+    "m_pay": 1.5,
+    "m_sys": 1.2,
+    "n": 5.0,
+    "r_tb": 0.008,
+    "rho": 1.225,
+    "rho_balsa": 200.0,
+    "rho_spar": 1600.0,
+    "rho_tb": 1600.0,
+    "sigma_balsa": 10000000.0,
+    "sigma_spar": 720000000.0,
+    "sigma_tb": 720000000.0,
+    "t_tb_min": 0.001,
+    "t_tube_min": 0.0005,
+    "tau_balsa": 1400000.0,
+    "tau_spar": 54000000.0,
+    "tau_tb": 54000000.0,
+    "te_ratio": 0.021,
+    "theta_tb_max": 0.017453,
+    "x_gd": 0.25,
+    "x_spar": 0.25
+   },
+   "notes": {},
+   "options": {
+    "deflection_mode": "paper",
+    "include_twist": false,
+    "max_mode": "ks",
+    "motor_inertia_relief": false,
+    "n_motor_pairs": 0,
+    "n_panels": 1,
+    "nacelle_torsion": true,
+    "r_tube_mode": "derived",
+    "rho_ks": 100.0,
+    "sizing_radius_mode": "paper",
+    "softplus_scale": 1e-06,
+    "standalone_solver": true,
+    "statistical_model": "all",
+    "tail_boom_load_mode": "paper",
+    "tb_min_gauge": true,
+    "torsion_stiffness_mode": "paper",
+    "use_min_gauge": true
+   }
+  },
+  "maxiter": 100,
+  "mda_maxiter": 30,
+  "mission_time": 300.0,
+  "mu_roll": 0.02,
+  "n_struct": 5.0,
+  "objective": "D",
+  "polar_turn_frac": 0.95,
+  "power_available": 300.0,
+  "r_tube_min": 0.005,
+  "takeoff_distance": 100.0,
+  "tol": 1e-08,
+  "wall_ratio_max": 0.2
+ },
+ "woombah_2025.yaml": {
+  "base": {
+   "V": 20.0,
+   "aero": {
+    "alpha_max": 25.0,
+    "alpha_min": -8.0,
+    "alpha_step": 0.5,
+    "h_alpha": 0.0001,
+    "h_k": 1e-06,
+    "h_logre": 1e-05,
+    "max_mode": "ks",
+    "model_size": "xlarge",
+    "n_crit": 9.0,
+    "num_x": 2,
+    "num_y": 21,
+    "rho_ks": 100.0,
+    "spacing": "cosine"
+   },
+   "airfoil": {
+    "n_modes": 0,
+    "seed": "clarky",
+    "te_thickness": null
+   },
+   "altitude": 800.0,
+   "clmax_ratio_min": 1.44,
+   "course": {
+    "lap1_legs": null,
+    "legs": null,
+    "pilot_reaction_time_s": 3.0,
+    "preset": "dbf_2025",
+    "takeoff": {
+     "CL_ground": 0.15,
+     "in_mission_time": false,
+     "k_lof": 1.1,
+     "start_offset_ft": 0.0
+    }
+   },
+   "design_variables": {
+    "Kv": {
+     "lower": 400.0,
+     "upper": 1050.0
+    },
+    "S_ht": {
+     "lower": 0.02,
+     "upper": 0.15
+    },
+    "S_vt": {
+     "lower": 0.01,
+     "upper": 0.1
+    },
+    "b": {
+     "lower": 0.9,
+     "upper": 1.829
+    },
+    "c": {
+     "lower": 0.15,
+     "upper": 0.45
+    },
+    "camber_scale": {
+     "lower": 0.0,
+     "upper": 2.0
+    },
+    "capacity": {
+     "lower": 0.5,
+     "upper": 4.0
+    },
+    "l_ht": {
+     "lower": 0.4,
+     "upper": 1.2
+    },
+    "tc_scale": {
+     "lower": 0.5,
+     "upper": 1.6
+    },
+    "x_batt": {
+     "lower": -0.8,
+     "upper": 0.2
+    },
+    "x_cb_frac": {
+     "lower": 0.0,
+     "upper": 0.6
+    }
+   },
+   "energy_reserve": 0.2,
+   "fuselage_drag": true,
+   "geometry": {
+    "S_ht": 0.1525,
+    "S_vt": 0.067,
+    "boom_offset": 0.15,
+    "h_cb": 0.12,
+    "l_cb": 1.0,
+    "l_ht": 1.1,
+    "w_cb": 0.12,
+    "x_spar": 0.25
+   },
+   "initial": {
+    "Kv": 1050.0,
+    "S_ht": 0.1525,
+    "S_vt": 0.067,
+    "alpha_cruise": 4.0,
+    "b": 1.801,
+    "c": 0.3276,
+    "camber_scale": 1.0,
+    "capacity": 2.0,
+    "l_ht": 1.1,
+    "tc_scale": 1.0,
+    "v": 30.0,
+    "x_batt": -0.1,
+    "x_cb_frac": 0.438
+   },
+   "mass": {
+    "inputs": {
+     "E_spar": 84000000000.0,
+     "E_tb": 84000000000.0,
+     "G_spar": 5000000000.0,
+     "SF": 1.5,
+     "c_rib_frac": 0.7,
+     "clearance": 0.001,
+     "delta_tip_ratio": 0.1,
+     "div_speed_factor": 1.2,
+     "f_cb": 0.7878,
+     "f_gear": 0.0089,
+     "f_ht": 0.6411,
+     "f_tb": 0.847,
+     "f_vt": 0.3414,
+     "f_wing": 1.12,
+     "gamma_film": 0.036,
+     "k_fill": 0.85,
+     "le_ratio": 0.021,
+     "m_pay": 1.5,
+     "n": 5.0,
+     "r_tb": 0.008,
+     "rho": 1.225,
+     "rho_balsa": 200.0,
+     "rho_spar": 1600.0,
+     "rho_tb": 1600.0,
+     "sigma_balsa": 10000000.0,
+     "sigma_spar": 720000000.0,
+     "sigma_tb": 720000000.0,
+     "t_tb_min": 0.001,
+     "t_tube_min": 0.0005,
+     "tau_balsa": 1400000.0,
+     "tau_spar": 54000000.0,
+     "tau_tb": 54000000.0,
+     "te_ratio": 0.021,
+     "theta_tb_max": 0.017453,
+     "x_gd": 0.25,
+     "x_spar": 0.25
+    },
+    "notes": {},
+    "options": {
+     "deflection_mode": "paper",
+     "include_twist": false,
+     "max_mode": "ks",
+     "motor_inertia_relief": false,
+     "n_motor_pairs": 0,
+     "n_panels": 1,
+     "nacelle_torsion": true,
+     "r_tube_mode": "derived",
+     "rho_ks": 100.0,
+     "sizing_radius_mode": "paper",
+     "softplus_scale": 1e-06,
+     "standalone_solver": true,
+     "statistical_model": "all",
+     "tail_boom_load_mode": "paper",
+     "tb_min_gauge": true,
+     "torsion_stiffness_mode": "paper",
+     "use_min_gauge": true
+    }
+   },
+   "maxiter": 100,
+   "mda_maxiter": 30,
+   "mission_time": 300.0,
+   "mockup": {
+    "fairings": false,
+    "markers": true,
+    "n_blades": 2,
+    "nacelle_drop_m": 0.02032,
+    "spinner_diameter_frac": 0.18,
+    "wing_incidence": "zero",
+    "wing_position": "high"
+   },
+   "mu_roll": 0.02,
+   "n_struct": 5.0,
+   "objective": "D",
+   "polar_turn_frac": 0.95,
+   "propulsion": {
+    "I0": 1.79,
+    "I_max": 60.0,
+    "Kv": 1050.0,
+    "Q_nac": 1.3,
+    "R_cell": 0.005,
+    "Rm": 0.03384,
+    "V_cell": 3.7,
+    "apc_dir": null,
+    "battery_topology": "per_motor",
+    "c_clear": 0.025,
+    "d_nac": 0.05,
+    "e_spec": 134.3,
+    "fit_range": "throttle",
+    "l_nac": 0.15,
+    "m_avionics": 0.222,
+    "m_esc": 0.127,
+    "m_motor": 0.1127,
+    "m_nacelle": 0.0,
+    "m_prop": 0.018,
+    "n_cells": 6.0,
+    "n_motors": 2,
+    "nacelle_ff": "body",
+    "pack_I_max": null,
+    "prop": "11x7E",
+    "rpm_fraction": 0.85,
+    "throttle": 1.0,
+    "usable_fraction": 0.8,
+    "v_top": 80.0,
+    "y_motor": null,
+    "y_motor_m": 0.2515
+   },
+   "r_tube_min": 0.005,
+   "require_3lap_energy": true,
+   "robust": {
+    "active": null,
+    "beta": 2.0,
+    "dv_tolerances": {},
+    "enabled": false,
+    "k": 1.0,
+    "max_dim": 5,
+    "objective": "mean_plus_k_sigma",
+    "optimizer": "slsqp",
+    "parameters": [],
+    "points": 3,
+    "quadrature": "udr",
+    "robust_constraints": [
+     "energy_margin",
+     "thrust_margin_static",
+     "stall_margin",
+     "SM",
+     "wall_ratio",
+     "r_tube"
+    ],
+    "screening_threshold": 0.9,
+    "sigma_cap": null,
+    "sigma_eps": 1e-06,
+    "smolyak_level": 2,
+    "sobol_n": 1024,
+    "sobol_seed": 0,
+    "uncertainty_config": null
+   },
+   "scoring": {
+    "options": {},
+    "plugin": "three_lap_time"
+   },
+   "stability": {
+    "AR_ht": 4.0,
+    "AR_vt": 1.38,
+    "SM_max": 0.2,
+    "SM_min": 0.05,
+    "V_h_max": 0.65,
+    "V_h_min": 0.35,
+    "V_v_max": 0.06,
+    "V_v_min": 0.02,
+    "eta_h": 0.9,
+    "eta_v": 0.9,
+    "oei_speed_factor": 1.2,
+    "rudder_max_deg": 25.0,
+    "rudder_tau": 0.5,
+    "tc_tail": 0.12,
+    "wing_cg_frac": 0.4,
+    "x_avionics": -0.1,
+    "x_cb_frac": 0.25,
+    "x_gear": 0.05,
+    "x_motor": -0.1397
+   },
+   "takeoff_distance": 106.68,
+   "tol": 1e-08,
+   "wall_ratio_max": 0.2
+  },
+  "mp": {
+   "fuel": {
+    "lower": 0.5,
+    "upper": 100.0
+   },
+   "fuel_initial": 5.987,
+   "per_point": [
+    "capacity",
+    "x_batt",
+    "throttle"
+   ],
+   "per_point_bounds": {
+    "throttle": {
+     "lower": 0.5,
+     "upper": 1.0
+    }
+   },
+   "per_point_initial": {
+    "capacity_M2": 2.25,
+    "capacity_M3": 2.25,
+    "throttle_M2": 1.0,
+    "throttle_M3": 1.0,
+    "x_batt_M2": -0.0211,
+    "x_batt_M3": -0.746
+   },
+   "points": {
+    "M2": {
+     "prop": "10x7E"
+    },
+    "M3": {
+     "prop": "10x7E"
+    }
+   },
+   "rules": {
+    "c_rating": 70.0,
+    "energy_total_max_Wh": 100.0,
+    "fuse_max_A": 100.0,
+    "laps_m2_min": 3.0,
+    "span_max_ft": 6.0,
+    "togw_max_lb": 55.0
+   },
+   "scoring": {
+    "R2": 0.2,
+    "R3": 27.0,
+    "bonus": 0.0,
+    "x1_weight_lb": 0.37
+   },
+   "stores": {
+    "Q_pylon": 1.0,
+    "Q_tank": 1.0,
+    "Q_x1": 1.0,
+    "bottle": {
+     "diameter": 0.085,
+     "empty_mass": 0.04,
+     "volume_L": 1.0
+    },
+    "cd_bottle": 0.523,
+    "fill_density": 2.994,
+    "internal_bottle": null,
+    "m_pylons": 0.1995806428,
+    "m_x1": 0.16782917690000002,
+    "m_x1_structure": 0.0997903214,
+    "n_ext": 2,
+    "pylon_chord": 0.20573999999999998,
+    "pylon_height": 0.046228,
+    "pylon_thickness": 0.0254,
+    "pylon_xt": 0.3,
+    "x1_body_diameter": 0.06470771515051355,
+    "x1_body_length": 0.269748,
+    "x1_wing_area": 0.05290312,
+    "x1_wing_chord": 0.124841,
+    "x1_wing_tc": 0.1,
+    "x_internal_frac": 0.25,
+    "x_tank_frac": 0.37519379844961237,
+    "x_x1_frac": -0.3596899224806201,
+    "x_x1s_frac": 0.8116279069767443
+   }
+  }
+ }
+}

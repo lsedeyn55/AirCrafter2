@@ -3,6 +3,14 @@
 Each item is either a value I won't invent (ground rule) or a decision outside the brief. Placeholders appear in the
 configs as `PLACEHOLDER`, with a pointer back to this file.
 
+**Where the values live (since 2026-10-22, docs/PLACEHOLDERS_RULESETS_PLAN.md).** Every placeholder that does not
+depend on the competition rules is in `configs/placeholders.yaml`. Every rule-dependent value is in
+`configs/rulesets/<ruleset>.yaml`: `dbf_2024_25.yaml` for the 2024-25 problem, and `generic.yaml` for the original
+AirCrafter inputs of the single-point problems. Each line carries its Q number in its comment, so search those files
+for `Q..` to find a question's values. A value still set in a problem config overrides both files. These overrides
+are the deliberate study variants (`*_fixed_kv.yaml`, the 2024-25 RDO variants) and the aircraft-specific configs
+(`woombah_2025.yaml`, `mass_usyd_woombah.yaml`).
+
 | # | Question | Area | Current placeholder |
 |---|---|---|---|
 | Q1 | ~~Git repo~~: **resolved 2026-10-09**, repo initialised in `AirCrafter2/`. A repo-local identity was set (`Lucas`, account email); change it with `git config user.name/user.email`. | n/a | n/a |
@@ -27,7 +35,7 @@ configs as `PLACEHOLDER`, with a pointer back to this file.
 | Q20 | **Resolved 2026-10-09:** MATLAB signed in, reference run done, port matches to ~1e-8. Original: MATLAB reference for the lap modeller code check: please run `matlab -batch "run('verification/matlab/run_reference.m')"` from `AirCrafter2/` (needs your MathWorks sign-in; headless start from this session hangs) | `mission` (MATLAB check) | pending |
 | Q21 | **Decided 2026-10-09: option B.** Propulsion sets the power (motor + prop + battery at a chosen throttle); cruise speed is the output where thrust = drag; legs use the propulsion thrust curve T(v). Original: Finding L1: replace AirCrafter's power setting P = D(V)V/η (which rewards cruise drag) with a propulsion-defined power in the full model? | `full_mdo` | proposed: yes |
 | Q22 | lap_mdo placeholder: electrical power ≤ 300 W (no propulsion model in lap_mdo) | `lap_mdo` | 300 W |
-| Q23 | full_mdo placeholders: motor Kv 900 rpm/V, Rm 0.05 Ω, I0 1 A, 0.15 kg, I_max 60 A; 4S LiPo 3.7 V/cell, 5 mΩ/cell, 150 Wh/kg; ESC 0.06 kg; prop 0.03 kg; avionics 0.25 kg; tail AR 4/2, t/c 0.09, η_h 0.9; stations (motor −0.30 m, avionics −0.10 m, gear 0.05 m, wing CG 0.40c); SM band 0.05–0.20; V_h 0.35–0.65; V_v 0.02–0.06; Monte Carlo spreads | `full_mdo` | as listed |
+| Q23 | full_mdo placeholders (**2026-10-22:** the motor, battery, ESC, prop, avionics and motor-station values below were replaced in `configs/placeholders.yaml` by the newer T-Motor V3115 / Woombah values of the 2024-25 config, the most recent line under the migration rule. The values listed here stay pinned in the `*_fixed_kv.yaml` variants): motor Kv 900 rpm/V, Rm 0.05 Ω, I0 1 A, 0.15 kg, I_max 60 A; 4S LiPo 3.7 V/cell, 5 mΩ/cell, 150 Wh/kg; ESC 0.06 kg; prop 0.03 kg; avionics 0.25 kg; tail AR 4/2, t/c 0.09, η_h 0.9; stations (motor −0.30 m, avionics −0.10 m, gear 0.05 m, wing CG 0.40c); SM band 0.05–0.20; V_h 0.35–0.65; V_v 0.02–0.06; Monte Carlo spreads | `full_mdo` | as listed |
 | Q24 | **Placeholder adopted 2026-10-09:** `energy_reserve: 0.2` (20% of usable energy kept in reserve), changeable in the config. Original: objective: the placeholder 3-lap time sizes the battery to exactly three laps. Add an energy reserve now, or wait for the real scoring plug-in? | `scoring` | none |
 | Q25 | Nacelle mass per unit for the twin layout. The twin brief cites a "Motor nacelles" row of Woombah Table 34, but Table 34 has no such row: the nacelles look to be inside the 3.41 lb "Wing" item. "Motor nacelles" is a row of Table 26 (drag). Need a measured or CAD nacelle mass (PLAN §6h T1). | twin (checkpoint 2) | `m_nacelle` = 0.0 (twin config) |
 | Q26 | Twin decisions from PLAN §6h: T2 motor x-station (firewall −5.5" vs Table 34 motor CG −6.5"), T3 one relief switch or a separate nacelle-torsion switch, T4 `y_motor` as a semi-span fraction or an absolute station, T5 shear relief | twin (checkpoint 2) | as briefed: −5.5", one switch, fraction, shear included |

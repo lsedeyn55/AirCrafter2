@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from aircrafter2.config import load_yaml
+from aircrafter2.config.loader import load_layered  # noqa: E402
 from aircrafter2.problems.oval_lap import OvalLapProblemConfig, build_oval_lap_problem
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +30,7 @@ def run(cfg):
 
 
 def main():
-    base = load_yaml(ROOT / "configs" / "oval_lap.yaml")
+    base = load_layered(ROOT / "configs" / "oval_lap.yaml", OvalLapProblemConfig.model_fields)  # + placeholders, ruleset
     cases = {"no power limit": dict(base), "P_turn <= 400 W": dict(base, power_available=400.0)}
     results = {}
     for label, data in cases.items():

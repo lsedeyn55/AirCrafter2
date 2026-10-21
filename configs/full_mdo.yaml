@@ -1,44 +1,36 @@
 # Full AirCrafter 2.0 MDF problem: propulsion (decision B), stability, parasite drag.
 # Schema: aircrafter2/problems/full_mdo.py (FullMDOConfig). SI units. PLACEHOLDER = not USYD data.
-# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md).
+# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md). The placeholder values themselves are in
+# configs/placeholders.yaml and the rule-dependent ones in configs/rulesets/generic.yaml; a value set here overrides
+# both (docs/PLACEHOLDERS_RULESETS_PLAN.md).
+
+placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
+ruleset: rulesets/generic.yaml          # rule-dependent values: altitude, mission time, course, headwind spread (layer 3)
 
 airfoil: {seed: naca4412, n_modes: 0}
-aero: {num_x: 2, num_y: 21, spacing: cosine, model_size: xlarge, n_crit: 9.0}
+aero: {num_x: 2, num_y: 21, spacing: cosine, model_size: xlarge}
 
 mass_config: mass_garcia_gamboa_2022.yaml   # base mass-model config, relative to this file
 mass:                    # overrides merged over mass_config
   inputs:
     n: 5.0               # assumptions_file.m load factor
-    m_pay: 1.5           # kg, PLACEHOLDER payload
-    r_tb: 0.008          # m, PLACEHOLDER tail boom radius (16 mm tube)
-    x_gd: 0.25           # PLACEHOLDER ground-test hold point (chord fraction)
-
-altitude: 400.0          # m, inputs_file.m
 
 geometry:
   l_ht: 0.8              # m, PLACEHOLDER tail arm
   S_ht: 0.06             # m^2, PLACEHOLDER
   S_vt: 0.03             # m^2, PLACEHOLDER
-  boom_offset: 0.15      # m, PLACEHOLDER
-  l_cb: 0.40             # m, PLACEHOLDER cargo bay box
-  w_cb: 0.12
-  h_cb: 0.12
   x_spar: 0.25           # brief default
 
 clmax_ratio_min: 1.44    # cruise at >= 1.2 V_stall
 wall_ratio_max: 0.2      # thin-wall validity of the tube equations
-r_tube_min: 0.005        # m, PLACEHOLDER smallest spar tube (10 mm OD); sets the thinnest buildable section
 
 polar_turn_frac: 0.95    # three-point polar: cruise, mid, C_L = 0.95 C_L,max
 fuselage_drag: true      # switchable fuselage (cargo box + boom) parasite drag
 mu_roll: 0.02            # assumptions_file.m
-takeoff_distance: 100.0  # m, inputs_file.m
-mission_time: 300.0      # s, inputs_file.m
 n_struct: 5.0            # assumptions_file.m
 
 scoring:
   plugin: three_lap_time # placeholder objective; or laps_in_window, or 'module:Class' (docs/how_to_add_a_scoring_plugin.md)
-energy_reserve: 0.2      # PLACEHOLDER: keep 20 % of the usable battery energy in reserve (Q24)
 require_3lap_energy: true
 
 propulsion:              # decision B: the powertrain sets the power; cruise speed is where T = D
@@ -47,37 +39,12 @@ propulsion:              # decision B: the powertrain sets the power; cruise spe
   prop: 11x7E            # APC PER3 file (discrete choice, D4: enumerate in examples/full_mdo.py)
   throttle: 1.0          # full throttle (the fastest-lap placeholder objective)
   n_cells: 4             # PLACEHOLDER (Q8)
-  V_cell: 3.7            # V, PLACEHOLDER LiPo nominal (Q8)
-  R_cell: 0.005          # ohm, PLACEHOLDER (Q8)
   usable_fraction: 0.8   # assumptions_file.m
-  e_spec: 150.0          # Wh/kg pack-level, PLACEHOLDER (Q8)
-  Kv: 900.0              # rpm/V, PLACEHOLDER motor (Q7); the reference motor when Kv is a design variable
-  Rm: 0.05               # ohm, PLACEHOLDER (Q7); reference motor (scaled as (Kv_ref/Kv)^2 when Kv is a DV)
-  I0: 1.0                # A, PLACEHOLDER (Q7); reference motor (scaled as Kv/Kv_ref when Kv is a DV)
-  m_motor: 0.15          # kg, PLACEHOLDER (Q7)
-  m_esc: 0.06            # kg, PLACEHOLDER (Q7)
-  m_prop: 0.03           # kg, PLACEHOLDER
-  m_avionics: 0.25       # kg, PLACEHOLDER
-  I_max: 60.0            # A, PLACEHOLDER motor/ESC limit (Q7); a constraint when Kv is a DV
   rpm_fraction: 0.85     # of APC's 150000/D, propSelector.m
   v_top: 50.0            # m/s, T(v) fit range (above the full-throttle level speed)
 
 stability:
-  AR_ht: 4.0             # PLACEHOLDER
-  AR_vt: 2.0             # PLACEHOLDER
-  tc_tail: 0.09          # PLACEHOLDER
-  eta_h: 0.9             # PLACEHOLDER
-  wing_cg_frac: 0.40     # PLACEHOLDER
-  x_motor: -0.30         # m from wing LE, PLACEHOLDER
-  x_avionics: -0.10      # m, PLACEHOLDER
-  x_gear: 0.05           # m, PLACEHOLDER
   x_cb_frac: 0.25        # initial cargo/payload centre (chord fraction); a design variable below
-  SM_min: 0.05           # PLACEHOLDER (Q9)
-  SM_max: 0.20           # PLACEHOLDER (Q9)
-  V_h_min: 0.35          # PLACEHOLDER (Q9)
-  V_h_max: 0.65
-  V_v_min: 0.02
-  V_v_max: 0.06
 
 design_variables:
   b: {lower: 0.9, upper: 1.52}

@@ -1,5 +1,8 @@
 # Wing aero: aero-only rectangular wing, minimise CD at fixed lift and fixed wing area.
 # Schema: aircrafter2/problems/wing_aero.py (WingAeroProblemConfig). SI units; alpha in deg.
+# n_crit: configs/placeholders.yaml; altitude: configs/rulesets/generic.yaml (load_wing_aero_config).
+placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
+ruleset: rulesets/generic.yaml          # rule-dependent values: altitude, mission time, course, headwind spread (layer 3)
 
 airfoil:
   seed: naca4412          # AeroSandbox name or path to a .dat file
@@ -10,9 +13,7 @@ aero:
   num_y: 41               # 40 strips per half wing (docs/verification/aero.md, mesh convergence)
   spacing: cosine
   model_size: xlarge      # NeuralFoil network
-  n_crit: 9.0             # PLACEHOLDER: XFoil "average wind tunnel" default
 
-altitude: 400.0           # m, inputs_file.m (Wichita ~400 m)
 V: 20.0                   # m/s, PLACEHOLDER cruise speed
 weight: 49.0              # N (5 kg), PLACEHOLDER: fixed lift (aero_mass couples mass)
 S: 0.375                  # m^2, PLACEHOLDER fixed wing area

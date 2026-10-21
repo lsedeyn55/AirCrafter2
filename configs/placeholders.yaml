@@ -1,0 +1,104 @@
+# Universal placeholders and assumptions: every value that does NOT depend on the competition rules. Loaded by every
+# problem config (layer 2: code defaults < this file < the ruleset < the problem config < the study variant; the
+# 'placeholders:' key names another file). Rule-dependent values: configs/rulesets/<ruleset>.yaml.
+# Plan and the conflict table (most recent line wins, by git blame): docs/PLACEHOLDERS_RULESETS_PLAN.md.
+#
+# One value per line, as a dotted path into the config schema (propulsion.Kv = propulsion: {Kv: ...}). Comment:
+#   # <units>; <PLACEHOLDER | cited>; Q..; <source or reason>
+# PLACEHOLDER = not USYD data (docs/OPEN_QUESTIONS.md). [W] = 2025 USYD DBF Design Report (Project Woombah), page /
+# table; [TM] = THESIS/3_LITERATURE/25 competition/T-Motor V3115/; G&G = Garcia & Gamboa (2022), Aeronaut. J. 126.
+# Edit here or in the UI's Placeholders tab (which saves in place, keeping every comment).
+
+# --- energy and battery ---
+energy_reserve: 0.2                          # fraction of usable energy; PLACEHOLDER; Q24; keep 20 % of the usable battery energy in reserve
+propulsion.R_cell: 0.005                     # ohm per cell; PLACEHOLDER; Q8; Dualsky 70C internal resistance not reported
+propulsion.V_cell: 3.7                       # V; PLACEHOLDER; Q8; LiPo nominal
+propulsion.e_spec: 134.3                     # Wh/kg; cited; Q8; 49.95 Wh per 2250 mAh 6S pack [W p. 22] / 0.82 lb per pack (batteries x2 = 1.64 lb [W p. 45 Table 34])
+
+# --- motor and ESC ---
+propulsion.Kv: 1050.0                        # rpm/V; cited; Q7; reference motor: T-Motor V3115 1050 KV [W p. 22]; the reference motor when Kv is a design variable
+propulsion.Rm: 0.03384                       # ohm; cited; Q7; V3115 KV1050 winding resistance 33.84 mOhm [TM]; scaled as (Kv_ref/Kv)^2 when Kv is a DV
+propulsion.I0: 1.79                          # A; cited; Q7; idle current at 10 V [TM]; scaled as Kv/Kv_ref when Kv is a DV
+propulsion.m_motor: 0.1127                   # kg; cited; Q7; 112.7 g incl. cable [TM]; Table 34: 0.50 lb for two [W p. 45]
+propulsion.m_esc: 0.127                      # kg; cited; Q7; ESC x2 = 0.56 lb [W p. 45 Table 34]
+propulsion.m_prop: 0.018                     # kg; cited; Q23; propeller x2 = 0.08 lb [W Table 34]
+propulsion.m_avionics: 0.222                 # kg; cited; Q23; receiver 0.19 lb + receiver battery 0.30 lb [W Table 34]
+propulsion.I_max: 60.0                       # A; cited; Q7; Hargrave microDrive LP ESC continuous limit [W p. 22]; a constraint when Kv is a DV
+
+# --- twin nacelles ---
+propulsion.m_nacelle: 0.0                    # kg per nacelle; PLACEHOLDER; Q25; Table 34 has no nacelle row
+propulsion.l_nac: 0.15                       # m; PLACEHOLDER; Q25; nacelle length, not in the Woombah report
+propulsion.d_nac: 0.05                       # m; PLACEHOLDER; Q25; nacelle diameter, not in the Woombah report
+propulsion.c_clear: 0.025                    # m; PLACEHOLDER; Q29; prop-tip clearance (Woombah as built: ~2.0 in with 11 in props)
+
+# --- structure ---
+mass.inputs.r_tb: 0.008                      # m; PLACEHOLDER; Q19; tail boom radius (16 mm tube)
+mass.inputs.x_gd: 0.25                       # chord fraction; PLACEHOLDER; Q4; ground-test hold point
+r_tube_min: 0.005                            # m; PLACEHOLDER; Q3; smallest spar tube (10 mm OD); sets the thinnest buildable section
+mass.inputs.k_fill: 0.85                     # -; PLACEHOLDER; Q5; tube fit (decision D1): allowed tube diameter / local section thickness
+mass.inputs.clearance: 0.001                 # m; PLACEHOLDER; Q5; tube fit (decision D1)
+mass.inputs.t_tube_min: 5.0e-4               # m; PLACEHOLDER; Q3; spar tube minimum gauge (only with use_min_gauge)
+
+# --- materials and G&G inputs ---
+mass.inputs.sigma_spar: 7.2e+8               # Pa; cited; Q6; G&G Table 13, UD CFRP normal stress (ultimate); PLACEHOLDER for USYD
+mass.inputs.tau_spar: 5.4e+7                 # Pa; cited; Q6; G&G Table 13, shear stress (ultimate); PLACEHOLDER for USYD
+mass.inputs.E_spar: 8.4e+10                  # Pa; cited; Q6; G&G Table 13; PLACEHOLDER for USYD
+mass.inputs.G_spar: 5.0e+9                   # Pa; cited; Q6; G&G Table 13; PLACEHOLDER for USYD
+mass.inputs.rho_spar: 1600.0                 # kg/m^3; cited; Q6; G&G Table 13; PLACEHOLDER for USYD
+mass.inputs.sigma_tb: 7.2e+8                 # Pa; PLACEHOLDER; Q6; tail boom not tabulated: assumed UD CFRP as Table 13 (PLAN G17)
+mass.inputs.tau_tb: 5.4e+7                   # Pa; PLACEHOLDER; Q6; assumed UD CFRP (PLAN G17)
+mass.inputs.E_tb: 8.4e+10                    # Pa; PLACEHOLDER; Q6; assumed UD CFRP (PLAN G17)
+mass.inputs.rho_tb: 1600.0                   # kg/m^3; PLACEHOLDER; Q6; assumed UD CFRP (PLAN G17)
+mass.inputs.delta_tip_ratio: 0.1             # -; cited; Q12; G&G Table 3 (UBI15); Sec. 3.3.1 "typical upper value 0.1"; PLACEHOLDER for USYD
+mass.inputs.theta_tb_max: 0.017453           # rad = 1 deg; cited; Q12; G&G Table 3; PLACEHOLDER for USYD
+
+# --- payload ---
+mass.inputs.m_pay: 1.5                       # kg; PLACEHOLDER; Q12, Q19; payload of the single-point problems (the multipoint stores compute it)
+
+# --- fuselage ---
+geometry.l_cb: 0.40                          # m; PLACEHOLDER; Q19; cargo bay box length
+geometry.w_cb: 0.12                          # m; PLACEHOLDER; Q19; cargo bay box width
+geometry.h_cb: 0.12                          # m; PLACEHOLDER; Q19; cargo bay box height
+geometry.boom_offset: 0.15                   # m; PLACEHOLDER; Q19
+
+# --- tail and CG ---
+stability.AR_ht: 4.0                         # -; PLACEHOLDER; Q23
+stability.AR_vt: 2.0                         # -; PLACEHOLDER; Q23
+stability.tc_tail: 0.09                      # -; PLACEHOLDER; Q23; tail section t/c
+stability.eta_h: 0.9                         # -; PLACEHOLDER; Q23; tail dynamic-pressure ratio
+stability.wing_cg_frac: 0.40                 # chord fraction; PLACEHOLDER; Q23; wing CG / chord
+stability.x_motor: -0.1397                   # m from wing LE; cited; Q23; motors 5.5 in ahead of the LE [W p. 20]
+stability.x_avionics: -0.10                  # m from wing LE; PLACEHOLDER; Q23
+stability.x_gear: 0.05                       # m from wing LE; PLACEHOLDER; Q23
+
+# --- stability limits ---
+stability.SM_min: 0.05                       # -; PLACEHOLDER; Q9
+stability.SM_max: 0.20                       # -; PLACEHOLDER; Q9
+stability.V_h_min: 0.35                      # -; PLACEHOLDER; Q9; around Raymer Table 6.4 values
+stability.V_h_max: 0.65                      # -; PLACEHOLDER; Q9
+stability.V_v_min: 0.02                      # -; PLACEHOLDER; Q9
+stability.V_v_max: 0.06                      # -; PLACEHOLDER; Q9
+
+# --- OEI post-check ---
+stability.eta_v: 0.9                         # -; PLACEHOLDER; Q29; fin dynamic-pressure ratio (OEI post-check only)
+stability.rudder_tau: 0.5                    # -; PLACEHOLDER; Q29; rudder effectiveness d(alpha_v)/d(delta_r) (OEI only)
+stability.rudder_max_deg: 25.0               # deg; PLACEHOLDER; Q29; maximum rudder deflection (OEI only)
+stability.oei_speed_factor: 1.2              # x V_stall; PLACEHOLDER; Q29; OEI check speed (OEI only)
+
+# --- aero ---
+aero.n_crit: 9.0                             # -; PLACEHOLDER; Q16; XFoil "average wind tunnel" default
+
+# --- take-off ---
+takeoff_distance: 106.68                     # m = 350 ft; PLACEHOLDER; no Q; Woombah's runway limit [W p. 10 Table 4]; an engineering constraint: there is no take-off distance rule [R p. 10]
+course.takeoff.k_lof: 1.1                    # x V_stall; PLACEHOLDER; Q41; lift-off speed: performance_modeller.m l. 405 comment "full power until 1.1 Vstall", not a measurement
+course.takeoff.CL_ground: 0.15               # -; PLACEHOLDER; Q40; ground-roll C_L at Woombah's 2 deg wing setting, tail-up roll (TAKEOFF_COURSE_PLAN.md)
+
+# --- RDO spreads ---
+# The shared uncertain parameters (aircrafter2/robustness/uncertainty.py UncertainParam), merged by name with the
+# ruleset's spreads, then a config's uncertainty_config file and robust.parameters. The robust 2024-25 problem uses
+# these and the ruleset's lap.wind (d = 4; docs/RDO_REDUCED_PLAN.md, OPEN_QUESTIONS Q39). The published 15-parameter
+# set is configs/uncertainty.yaml (standalone).
+uncertainty:
+  - {name: f_build,    dist: uniform, nominal: 1.0, spread: 0.30, source: PLACEHOLDER}  # -; PLACEHOLDER; Q39; build-mass factor on the whole structure (wing, tails, boom, cargo bay, gear)
+  - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # -; PLACEHOLDER; Q32; G&G tail-boom factor
+  - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}  # -; PLACEHOLDER; Q32

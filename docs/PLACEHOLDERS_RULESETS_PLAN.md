@@ -158,3 +158,57 @@ The full table with commits is printed by the checkpoint 2 test (`tests/test_pla
   layer keys its schema has; for example, `wing_aero` takes `aero.n_crit` and the ruleset's altitude.
 - **`results_2025.py calibrate`** rewrites `uncertainty_2025_reduced_calibrated.yaml` from the text of the reduced
   file. It now writes only the f_build override.
+
+## Status
+
+- **Checkpoint 1** (`cee6a3c`): this inventory.
+- **Checkpoint 2:** the files, the loader, the migration and the non-UI verification.
+  - **Files:** `configs/placeholders.yaml` (60 values and the 3 shared spreads), `configs/rulesets/dbf_2024_25.yaml` (50
+    values, the bottle catalogue and lap.wind) and `configs/rulesets/generic.yaml`.
+  - **Code:**
+    - `aircrafter2/config/loader.py` (`load_layered`, dotted keys);
+    - `aircrafter2/config/layer_files.py` (rows, save in place, "overridden by");
+    - the problem loaders; the spread pool in `full_config_from_dict` (`standalone: true`);
+    - `StoreConfig`, `Bottle` and `RulesConfig` without code defaults (`StoreConfig.from_ruleset`), with `BOTTLES` read
+      from the ruleset;
+    - the `inputs.py` theta_tb_max default set to 0.017453.
+  - **Verification** (`tests/test_placeholders.py`):
+    - each layer overrides the one below;
+    - the default placeholders file applies;
+    - a single-point load ignores `multipoint:`;
+    - the mass layering;
+    - every config's `model_dump()` matches the pre-migration snapshot (`tests/data/configs_premigration.json`), except
+      the listed single-point changes. Every 2024-25 config and variant is identical;
+    - one place per value;
+    - every row is tagged;
+    - save in place leaves every other line byte-identical;
+    - an edit reaches `full_mdo.yaml` and `dbf2025_multipoint.yaml` unless overridden;
+    - the reduced RDO set is the shared spreads.
+
+    The mass verification and `multipoint_nominal_reference.json` pass unchanged.
+  - **References:** the regression entries the migration changes are strict xfail (`tests/migration.py`), not
+    regenerated: `configs_reference.json` (`full_mdo`, `full_mdo_twin`, `full_mdo_rdo`, `full_mdo_twin_rdo`, in
+    `test_rdo_reduced` and `test_results_2025`) and `kv_dv_reference.json` (`full_mdo`, `full_mdo_twin`).
+  - **`test_kv_dv.py`:** four tests hard-coded the old 900 rpm/V reference motor. They now read the reference motor from
+    the config, and the fixed-motor comparison uses `full_mdo.yaml` with its own motor fixed.
+- **Checkpoint 3:** the UI.
+  - **Tabs:** "Design and mission", "Placeholders" and "Ruleset". The layer tabs run first and the config is loaded over
+    their (possibly unsaved) edits. Each layer table has an "overridden by" column, and Save / Discard sit on each tab.
+  - **Multipoint configs** show the two layer tabs and an info box, with no Run button.
+  - **`AIRCRAFTER2_CONFIGS`** points the app at another configs folder (used by the tests).
+  - **Moved widgets** (deleted where they were):
+    - to the Placeholders tab: nacelle mass, length and diameter and the energy reserve (sidebar); payload mass and the
+      current limit (Key assumptions); `k_lof`, `CL_ground` and the take-off distance (Mission);
+    - to the Ruleset tab: the start offset and the mission time.
+
+    The take-off switch, `mu_roll`, the reaction time and the course editor stay in Mission, with a caption pointing to
+    the tabs.
+  - **UI test lines updated** in `tests/test_ui.py`:
+    - `test_streamlit_kv_toggle_bounds_and_validation`: the Kv caption's start is now 1050 (the placeholders file's
+      reference motor; a value change, not a moved widget);
+    - `test_streamlit_takeoff_and_course_headless`: the `k_lof` and take-off-distance widget checks are replaced by the
+      Mission caption check (moved widgets).
+  - **New UI tests:**
+    - the three tabs, and the multipoint view;
+    - an unsaved energy-reserve edit changes an Analyse run (num_y 11);
+    - Save writes a temporary copy (one line changes) and Discard restores.

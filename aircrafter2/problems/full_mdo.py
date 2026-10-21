@@ -534,13 +534,16 @@ def build_full_problem(cfg: FullMDOConfig, driver=True):
     return prob
 
 
-def load_full_config(path):
+def load_full_config(path, placeholders=None, ruleset=None):
+    """A FullMDOConfig YAML over its layers (placeholders.yaml, the ruleset; config/loader.py load_layered).
+    placeholders/ruleset: layer data to use instead of the files (the UI's unsaved edits)."""
     from pathlib import Path
 
-    from ..config.loader import load_yaml
+    from ..config.loader import load_layered
 
     path = Path(path)
-    return full_config_from_dict(load_yaml(path), path)
+    return full_config_from_dict(load_layered(path, FullMDOConfig.model_fields, placeholders=placeholders,
+                                              ruleset=ruleset), path)
 
 
 def full_config_from_dict(data, path):
@@ -551,6 +554,7 @@ def full_config_from_dict(data, path):
 
     path = Path(path)
     data = dict(data)
+    pool = {p["name"]: p for p in data.pop("uncertainty_pool", None) or []}  # placeholders.yaml + ruleset spreads
     base = load_yaml(path.parent / data.pop("mass_config")) if "mass_config" in data else {}
     data["mass"] = _merge(base, data.get("mass", {}))
     if "design_variables" not in data:
@@ -564,8 +568,16 @@ def full_config_from_dict(data, path):
     for n in fixed:
         (data.get("initial") or {}).pop(n, None)
     rob = data.get("robust") or {}
-    if rob.get("uncertainty_config"):  # parameter list from a shared YAML; 'parameters' entries override by name
-        shared = {p["name"]: p for p in load_yaml(path.parent / rob["uncertainty_config"])["parameters"]}
+    if rob.get("uncertainty_config") or (rob.get("enabled") and pool):
+        # the pool: the layers' shared spreads, then the uncertainty YAML's entries, then 'parameters', merged by name
+        # (an entry replaces the one of the same name in place, or is appended). A 'standalone: true' YAML is the
+        # whole pool by itself (configs/uncertainty.yaml: the published 15-parameter set, without the shared spreads).
+        shared = dict(pool)
+        if rob.get("uncertainty_config"):
+            unc = load_yaml(path.parent / rob["uncertainty_config"])
+            if unc.get("standalone"):
+                shared = {}
+            shared.update({p["name"]: p for p in unc.get("parameters") or []})
         shared.update({p["name"]: p for p in rob.get("parameters", [])})
         rob["parameters"] = list(shared.values())
     return FullMDOConfig(**data)

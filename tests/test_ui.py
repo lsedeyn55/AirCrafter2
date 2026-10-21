@@ -52,7 +52,8 @@ def test_streamlit_kv_toggle_bounds_and_validation():
     assert not at.exception
     toggle = [c for c in at.sidebar.checkbox if c.label == "Optimise motor Kv"][0]
     assert toggle.value  # on for the default config
-    assert _kv_caption(at) == ["Kv design variable: 500 to 1500 rpm/V, start 900."]
+    # start = the reference motor's Kv, now the placeholders file's T-Motor V3115 1050 KV (was the 900 placeholder)
+    assert _kv_caption(at) == ["Kv design variable: 500 to 1500 rpm/V, start 1050."]
     assert any(w.label == "Reference motor Kv (rpm/V) - PLACEHOLDER" for w in at.sidebar.number_input)
     # user-set bounds and start reach cfg.design_variables["Kv"] / cfg.initial["Kv"] (the caption reads them back)
     _ni(at, "Kv lower bound (rpm/V)").set_value(600.0)
