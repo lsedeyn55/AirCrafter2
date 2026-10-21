@@ -2,8 +2,9 @@
 
 Each worker process builds the deterministic problem once, sets the design, converges the nominal point, and then
 runs its share of the samples, warm-starting each from the previous converged state. A sample whose MDA fails is
-retried once from the nominal converged state; if it fails again it is recorded as MDA non-convergence (its row is
-NaN), never as a constraint violation.
+retried once from the nominal converged state; if it fails again it is recorded as an analysis failure (its row is
+NaN), never as a constraint violation: MDA non-convergence, or (``lap_invalid``) the aircraft's wind limit (a headwind
+near V_stall: it cannot make progress into the wind and would not fly, mission/smooth_lap.py).
 
 Memory: one problem is ~0.4-2 GB, so keep `workers` small (5 on a 14 GB machine).
 """
@@ -59,6 +60,7 @@ def _run(task):
     prob = _W["prob"]
     if prob is None:
         return i, [np.nan] * len(_W["outputs"]), "failed"
+    msg = ""
     for attempt in ("warm", "nominal"):
         if attempt == "nominal":
             _restore_nominal()
@@ -68,17 +70,19 @@ def _run(task):
         try:
             prob.run_model()
             return i, [_value(prob, o) for o in _W["outputs"]], attempt
-        except Exception:  # MDA non-convergence (AnalysisError) or NaN residuals
+        except Exception as exc:  # MDA non-convergence (AnalysisError), NaN residuals, or a non-physical lap
+            msg = str(exc)
             continue
     _restore_nominal()
-    return i, [np.nan] * len(_W["outputs"]), "failed"
+    return i, [np.nan] * len(_W["outputs"]), "lap_invalid" if "non-physical lap" in msg else "failed"
 
 
 def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
     """Run the deterministic model of `cfg` (a FullMDOConfig, or a MultipointConfig: each parameter is set at both
     mission points) at design `dv` for each {param: value} in `rows`.
 
-    Returns dict(values=(n, len(outputs)) array with NaN rows for MDA failures, failed=[indices],
+    Returns dict(values=(n, len(outputs)) array with NaN rows for analysis failures, failed=[indices of every
+    analysis failure], lap_invalid=[the subset outside the lap model's validity; the rest are MDA non-convergence],
     retried=[indices recovered from the nominal state], wall=s, cpu_workers=workers).
     """
     os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -89,14 +93,17 @@ def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
         res = list(pool.imap_unordered(_run, list(enumerate(rows)), chunksize=chunksize))
     wall = time.perf_counter() - t
     values = np.full((n, len(outputs)), np.nan)
-    failed, retried = [], []
+    failed, retried, invalid = [], [], []
     for i, row, how in res:
         values[i] = row
-        if how == "failed":
+        if how in ("failed", "lap_invalid"):
             failed.append(i)
+            if how == "lap_invalid":
+                invalid.append(i)
         elif how == "nominal":
             retried.append(i)
-    return dict(values=values, failed=sorted(failed), retried=sorted(retried), wall=wall, workers=workers)
+    return dict(values=values, failed=sorted(failed), lap_invalid=sorted(invalid), retried=sorted(retried), wall=wall,
+                workers=workers)
 
 
 def violation_probabilities(values, outputs, constraints, rtol=1e-6):

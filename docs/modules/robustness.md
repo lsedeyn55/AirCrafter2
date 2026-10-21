@@ -44,7 +44,9 @@ Design variables are never uncertain parameters. `robust.dv_tolerances` is a hoo
   - `f_build` ±30 % (the build-mass factor, docs/modules/mass.md);
   - `f_tb` ±30 %;
   - `m_avionics` ±15 %;
-  - `lap.wind` 0–3 m/s.
+  - `lap.wind` 0–7 m/s (Tucson and Wichita April means 3.7 and 5.6 m/s; capped at the lap model's validity).
+  A calibrated variant (`dbf2025_multipoint_rdo_calibrated.yaml`, f_build centred on Woombah's 2.74) and a one-sided
+  one (`..._onesided.yaml`, f_build on [1.0, 1.3]) are sensitivity runs.
   Every other parameter is held at its config value. Evidence for each spread: docs/RDO_REDUCED_PLAN.md §2 and
   OPEN_QUESTIONS Q39.
 - `configs/dbf2025_multipoint_rdo_full.yaml` keeps the published 15-parameter set, screened to d = 7.

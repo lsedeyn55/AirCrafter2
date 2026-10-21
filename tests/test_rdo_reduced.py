@@ -1,8 +1,8 @@
 """RDO with the reduced uncertainty set (mass and wind): the build-mass factor f_build and its RDO composition.
 
 docs/RDO_REDUCED_PLAN.md. f_build = 1 must reproduce every existing result bit for bit: compared with == against the
-regression references (tests/data/*_reference.json) and the published 2024-25 nominal evaluation
-(docs/studies/results/results_2025.json), none of them regenerated.
+regression references (tests/data/*_reference.json) and the published 2024-25 nominal evaluation (frozen from
+results_2025.json at ec639dd into tests/data/multipoint_nominal_reference.json), none of them regenerated.
 """
 
 import json
@@ -70,7 +70,7 @@ def test_f_build_one_reproduces_the_published_multipoint_nominal_bit_for_bit():
     from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
 
     warnings.filterwarnings("ignore")
-    pub = json.loads((ROOT / "docs/studies/results/results_2025.json").read_text())["common"]["nominal"]["multipoint"]
+    pub = json.loads((DATA / "multipoint_nominal_reference.json").read_text())  # frozen from the published commit
     mcfg = load_multipoint_config(CONFIGS / "dbf2025_multipoint.yaml")
     for pt in ("M2", "M3"):
         mcfg.mp.points[pt].prop = pub["props"][pt]
@@ -106,3 +106,22 @@ def test_rdo_reduced_nodes_differ_in_f_build_and_designs_are_shared():
     assert len(set(np.round(m, 9))) == 3
     for j in range(1, N):  # design variables shared by every node
         assert prob.get_val(f"nodes.n{j}.b") == pytest.approx(prob.get_val("nodes.n0.b"))
+
+
+# --- the wind limit ----------------------------------------------------------------------------------------------------
+def test_headwind_beyond_the_wind_limit_is_an_analysis_failure_not_a_score():
+    """Lap 1 starts at V_stall into the wind: a headwind at V_stall leaves no ground speed (the aircraft would not fly).
+    The lap model raises AnalysisError (sampling: 'lap_invalid', reported as the wind limit), never returns a score."""
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.mission.smooth_lap import SmoothLapModel
+
+    prob = om.Problem(reports=False)
+    prob.model.add_subsystem("lap", SmoothLapModel())
+    prob.setup()
+    prob.run_model()
+    vstall = float(prob.get_val("lap.Vstall")[0])
+    assert np.isfinite(prob.get_val("lap.laps_frac")[0])
+    prob.set_val("lap.wind", 1.05 * vstall)
+    with pytest.raises(AnalysisError, match="non-physical lap"):
+        prob.run_model()

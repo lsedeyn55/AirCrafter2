@@ -6,5 +6,11 @@ parameters:
   - {name: f_build,    dist: uniform, nominal: 1.0, spread: 0.30, source: PLACEHOLDER}  # Q39
   - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G tail-boom factor
   - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}
-  # steady wind along the straights, 0 to 3 m/s (centre 1.5 m/s), as configs/uncertainty.yaml
-  - {name: lap.wind,   dist: uniform, nominal: 1.5, spread: 1.5, units: m/s, source: PLACEHOLDER}
+  # steady headwind along the straights (the course is laid out into the prevailing wind [R p. 3]). DBF flies in
+  # April, alternately at Tucson AZ (TIMPA, 2025 [R pp. 6-7]) and Wichita KS. April mean wind: Tucson 8.3 mph =
+  # 3.71 m/s (NOAA NCDC Comparative Climatic Data, via currentresults.com; ASU monthly summaries 7.1-7.8 mph),
+  # Wichita 12.6 mph = 5.63 m/s (Weather Spark, airport, reanalysis-based). Capped at 7 m/s, the lap model's validity
+  # (decision 2026-10-21): lap 1 starts at V_stall into the wind, and as the headwind nears the light M3 aircraft's
+  # V_stall (8.0-8.3 m/s) the ground speed goes to zero (above ~7.5 m/s the lap breaks down, now an analysis failure).
+  # Uniform 0-7 m/s, centre 3.5 m/s (was 0-3 m/s): covers Tucson's mean, cuts Wichita's windier days. Gusts not modelled.
+  - {name: lap.wind,   dist: uniform, nominal: 3.5, spread: 3.5, units: m/s, source: PLACEHOLDER}

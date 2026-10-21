@@ -1,0 +1,22 @@
+# CALIBRATED run: dbf2025_multipoint_rdo.yaml with f_build centred on Woombah's built/predicted structure, +/-30 % about
+# it (uncertainty_2025_reduced_calibrated.yaml, written by studies/results_2025.py calibrate). Decision 2026-10-21:
+# the Woombah ratio is a calibration (a nominal shift), not a spread.
+# Robust design optimisation of the 2024-25 multipoint problem (aircrafter2/robustness/rdo_multipoint.py) with the
+# REDUCED uncertain set: mass and wind only (docs/RDO_REDUCED_PLAN.md). Everything not listed here is
+# configs/dbf2025_multipoint.yaml. UDR, maximise mu - k sigma of the flight score, mu -/+ beta sigma robust
+# constraints; every spread is a PLACEHOLDER. The published 15-parameter RDO: dbf2025_multipoint_rdo_full.yaml.
+extends: dbf2025_multipoint.yaml
+
+robust:
+  enabled: true
+  uncertainty_config: uncertainty_2025_reduced_calibrated.yaml   # f_build calibrated, f_tb, m_avionics, lap.wind
+  active: null                           # all four (d = 4, no screening selection): UDR N = 2d + 1 = 9 nodes x 2 points
+  quadrature: udr
+  points: 3
+  objective: mean_plus_k_sigma           # with the score maximised: mu - k sigma
+  k: 1.0
+  beta: 2.0
+  # unchanged from the full set (dbf2025_multipoint_rdo_full.yaml); applied at both mission points
+  robust_constraints: [energy_margin, thrust_margin_static, stall_margin, SM, wall_ratio, r_tube, rpm_margin, I_margin]
+  screening_threshold: 0.9
+  max_dim: 7

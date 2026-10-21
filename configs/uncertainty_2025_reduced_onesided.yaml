@@ -1,0 +1,18 @@
+# SENSITIVITY: the reduced set with a one-sided f_build on [1.0, 1.3] (builds come out heavier, not lighter): the
+# uniform machinery is symmetric, so nominal 1.15 +/- 0.15, and the reference node sits at a 15 % heavier structure.
+# Reduced uncertain set for the 2024-25 RDO: mass and wind only (docs/RDO_REDUCED_PLAN.md). Every other parameter
+# of configs/uncertainty.yaml is held at its nominal (config) value. Schema as configs/uncertainty.yaml.
+# Evidence for each spread: docs/RDO_REDUCED_PLAN.md section 2 and OPEN_QUESTIONS Q39; all four are PLACEHOLDERS.
+parameters:
+  # build-mass factor on the whole structure (wing, tails, boom, cargo bay, gear): aircrafter2/mass/garcia_gamboa/masses.py
+  - {name: f_build,    dist: uniform, nominal: 1.15, spread: 0.15, source: PLACEHOLDER}  # Q39: one-sided [1.0, 1.3]
+  - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G tail-boom factor
+  - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}
+  # steady headwind along the straights (the course is laid out into the prevailing wind [R p. 3]). DBF flies in
+  # April, alternately at Tucson AZ (TIMPA, 2025 [R pp. 6-7]) and Wichita KS. April mean wind: Tucson 8.3 mph =
+  # 3.71 m/s (NOAA NCDC Comparative Climatic Data, via currentresults.com; ASU monthly summaries 7.1-7.8 mph),
+  # Wichita 12.6 mph = 5.63 m/s (Weather Spark, airport, reanalysis-based). Capped at 7 m/s, the lap model's validity
+  # (decision 2026-10-21): lap 1 starts at V_stall into the wind, and as the headwind nears the light M3 aircraft's
+  # V_stall (8.0-8.3 m/s) the ground speed goes to zero (above ~7.5 m/s the lap breaks down, now an analysis failure).
+  # Uniform 0-7 m/s, centre 3.5 m/s (was 0-3 m/s): covers Tucson's mean, cuts Wichita's windier days. Gusts not modelled.
+  - {name: lap.wind,   dist: uniform, nominal: 3.5, spread: 3.5, units: m/s, source: PLACEHOLDER}

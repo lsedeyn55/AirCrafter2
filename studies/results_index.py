@@ -19,16 +19,18 @@ PAGES = [  # page, JSON, script, configs
     (None, "aircrafter1_2025.json", "reference/aircrafter1/run_2025.m + studies/aircrafter1_2025.py",
      "reference/aircrafter1/ac1/inputs_2025.m, assumptions_2025.m; configs/dbf2025_multipoint.yaml"),
     ("results_2025.md", "results_2025.json", "studies/results_2025.py report",
-     "configs/dbf2025_multipoint.yaml, configs/dbf2025_multipoint_rdo.yaml, configs/woombah_2025.yaml, "
+     "configs/dbf2025_multipoint.yaml, configs/dbf2025_multipoint_rdo.yaml (+ _full, _calibrated, _onesided), "
+     "configs/woombah_2025.yaml, configs/uncertainty_2025_reduced.yaml, "
      "configs/uncertainty.yaml"),
     ("compute_performance.md", "compute_performance.json", "studies/compute_performance.py report",
      "configs/dbf2025_multipoint.yaml, configs/dbf2025_multipoint_rdo.yaml; reference/aircrafter1/time_2025.m"),
 ]
 FIGURES = {"woombah_": "validation_2025.md", "results_": "results_2025.md", "compute_": "compute_performance.md"}
-UNC_SPREAD = {  # configs/uncertainty.yaml and dbf2025_multipoint_rdo.yaml (the spreads are PLACEHOLDERS)
+UNC_SPREAD = {  # configs/uncertainty_2025_reduced.yaml (main) and uncertainty.yaml (the spreads are PLACEHOLDERS)
+    "f_build": "build-mass factor ±30 % (Q39)",
     "Kv_factor": "Kv tolerance ±5 %", "lap.thrust_factor": "lap thrust factor ±10 %", "Rm_ref": "motor Rm ±20 %",
     "store_drag_factor": "store drag factor ±30 % (Q37)", "R_cell": "cell resistance ±30 %",
-    "lap.wind": "wind 0–3 m/s", "f_cb": "cargo-bay mass factor ±30 %", "e_spec": "pack specific energy ±10 %",
+    "lap.wind": "wind 0–7 m/s (Q32)", "f_cb": "cargo-bay mass factor ±30 %", "e_spec": "pack specific energy ±10 %",
     "m_avionics": "avionics mass ±15 %", "m_motor": "motor mass ±10 %", "f_gear": "gear mass factor ±30 %",
     "f_tb": "tail-boom mass factor ±30 %", "f_ht": "HT mass factor ±30 %", "f_vt": "VT mass factor ±30 %",
     "eta_h": "tail dynamic-pressure ratio ±10 %"}
@@ -79,10 +81,23 @@ def ranking():
             if k in b:
                 rows.append((f"Q36/Q38 bottle {k} instead of 1 L (and its PLACEHOLDER dimensions)",
                              b[k]["F"] - b["1L"]["F"], f"F re-optimised; fuel {b[k]['fuel_lb']:.1f} lb"))
-    sc = R["screen"]["contrib"]["flight_score"]
+    sc = R["uq"]["reduced"]["screen"]["contrib"]["flight_score"]
     for k, v in sc.items():
-        rows.append((f"uncertainty spread: {UNC_SPREAD.get(k, k)}", math.sqrt(v),
+        rows.append((f"uncertainty spread (reduced set, active): {UNC_SPREAD.get(k, k)}", math.sqrt(v),
                      "first-order sigma of F at the deterministic optimum (abs(dF/dp) x sigma_p)"))
+    rr = (R["uq"]["reduced"].get("robust_eval") or {}).get("results", {})
+    rc = (R["uq"]["calibrated"].get("robust_eval") or {}).get("results", {})
+    base = R["best_case"]
+    if base in rr and base in rc and "mu" in rr[base] and "mu" in rc[base]:
+        cal = R["uq"]["calibrated"]["calibration"]["f_build"]
+        rows.append((f"Q39 build mass calibrated on Woombah (f_build {cal:.2f} instead of 1)",
+                     rc[base]["mu"] - rr[base]["mu"],
+                     "change of the UDR mean of F at the deterministic optimum (calibrated set against reduced set)"))
+    full = R["uq"]["full"]["screen"]["contrib"]["flight_score"]
+    for k, v in full.items():
+        if k not in sc:
+            rows.append((f"uncertainty spread (full set only, now fixed): {UNC_SPREAD.get(k, k)}", math.sqrt(v),
+                         "first-order sigma of F at the deterministic optimum, published 15-parameter screening"))
     rows.sort(key=lambda r: -abs(r[1]))
     return rows
 
@@ -114,7 +129,7 @@ def main():
     w("\n## Caveats: PLACEHOLDERS affecting the results, ranked by their effect on F\n\n")
     w("Measures differ by row (stated): a normalisation or bottle row is the change in the re-optimised flight "
       "score; an uncertainty row is the first-order standard deviation of F that the PLACEHOLDER spread produces "
-      "at the deterministic optimum (results_2025.md §7 screening). The best deterministic F is "
+      "at the deterministic optimum (results_2025.md §7 contributions; parameters the reduced set fixes are listed from the published 15-parameter screening, §7d). The best deterministic F is "
       f"{max(r.get('F', 0.0) for r in json.loads((DOCS / 'results_2025.json').read_text())['enumeration']):.4f}, "
       "so 0.01 in F is about 0.2 %. The normalisation rows are mostly a rescaling of the score: the design barely "
       "moves (their measure column), so they change the totals and the M2/M3 balance of the score, not the aircraft "

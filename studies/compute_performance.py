@@ -119,19 +119,23 @@ def child_det(dvs=None, maxiter=None):
                 F=float(prob.get_val("flight_score")[0]), **C)
 
 
-def child_rdo(d, maxiter=RDO_MAXITER):
-    """RDO from the deterministic optimum with the first d screened parameters, `maxiter` SLSQP iterations."""
+def child_rdo(d, maxiter=RDO_MAXITER, uqset="full"):
+    """RDO from the deterministic optimum with the first d screened parameters of an uncertain set (results_2025.py
+    --set: the published full set screened to 7, or the reduced mass-and-wind set of 4), `maxiter` SLSQP iterations
+    (0: the config's maxiter, i.e. a complete run)."""
     sys.path.insert(0, str(ROOT / "studies"))
     from openmdao.core.analysis_error import AnalysisError
-    from results_2025 import OUT, _mcfg_for, load
+    from results_2025 import UQ, _mcfg_for, load, use_set
 
     from aircrafter2.robustness.rdo_multipoint import build_robust_multipoint
 
-    sc = json.loads((OUT / "screen.json").read_text())
+    use_set(uqset)
+    sc = json.loads((UQ["out"] / "screen.json").read_text())
     run = load(sc["case"])
     mcfg = _mcfg_for(run)
     mcfg.base.robust.active = sc["selected"][:d]
-    mcfg.base.maxiter = maxiter
+    if maxiter:
+        mcfg.base.maxiter = maxiter
     t0 = time.perf_counter()
     p = build_robust_multipoint(mcfg, driver=True, extra_robust=("points.M2.laps_frac",))
     p.driver.options["disp"] = False
@@ -147,8 +151,10 @@ def child_rdo(d, maxiter=RDO_MAXITER):
     except AnalysisError as exc:
         its, err = int(p.driver.iter_count), str(exc)[:200]
     wall = time.perf_counter() - t0
-    return dict(d=d, N=p.rdo["N"], iterations=_nit(p.driver), function_evaluations=its, error=err, wall_s=wall,
-                setup_s=t_setup, **C)
+    from results_2025 import robust_summary_mp_safe
+
+    return dict(d=d, set=uqset, N=p.rdo["N"], iterations=_nit(p.driver), function_evaluations=its, error=err,
+                wall_s=wall, setup_s=t_setup, robust=robust_summary_mp_safe(p), **C)
 
 
 def child_quad(rule):
@@ -157,16 +163,16 @@ def child_quad(rule):
     import numpy as np
 
     sys.path.insert(0, str(ROOT / "studies"))
-    from results_2025 import OUT, _mcfg_for, load
+    from results_2025 import OUT, RDO_FULL_CFG, _mcfg_for, load
 
     from aircrafter2.problems.multipoint import build_multipoint_problem
     from aircrafter2.robustness.quadrature import make_rule
     from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp
     from aircrafter2.robustness.sampling import evaluate
 
-    sc = json.loads((OUT / "screen.json").read_text())
+    sc = json.loads((OUT / "screen.json").read_text())  # the published full set (the d = 7 screening)
     run = load(sc["case"])
-    mcfg = _mcfg_for(run)
+    mcfg = _mcfg_for(run, cfg=RDO_FULL_CFG)
     rob = mcfg.base.robust
     rob.active = sc["selected"]
     rob.quadrature = rule
@@ -260,6 +266,15 @@ def _repeats(first_wall):
     return 5 if first_wall < 600 else 3
 
 
+def run_reduced():
+    """The reduced mass-and-wind set (docs/RDO_REDUCED_PLAN.md): RDO at d = 4 (RDO_MAXITER SLSQP iterations, 5
+    repeats) for the cost-against-d table, and one complete RDO from the deterministic optimum (the main run, clean)."""
+    r = _measure("rdor_d4", 0, ["rdo", "--d", "4", "--set", "reduced"])
+    for i in range(1, _repeats(r["wall_s"])):
+        _measure("rdor_d4", i, ["rdo", "--d", "4", "--set", "reduced"])
+    _measure("rdor_main", 0, ["rdo", "--d", "4", "--set", "reduced", "--maxiter", "0"])
+
+
 def run_all():
     """Every measurement of the main table, the threading rows and the scaling studies (resumable)."""
     r = _measure("ac2_det", 0, ["det"])
@@ -327,7 +342,7 @@ def collect():
     R = dict(machine=machine())
     names = ["ac2_det", "ac2_det_default_threads", "ac1", "ac1_default_threads", "quad_udr",
              "quad_smolyak"] + [f"ac2_det_{n}dv" for n in DV_SETS] + [f"rdo_d{d}" for d in RDO_D] + \
-        ["rdo_d7_default_threads"]
+        ["rdo_d7_default_threads", "rdor_d4", "rdor_main"]
     R["raw"] = {n: _load(n) for n in names}
     S = {}
     for n, rows in R["raw"].items():
@@ -447,15 +462,24 @@ def render(R):
       "|---:|---:|---:|---:|---:|---:|---:|\n" + "".join("| " + " | ".join(r) + " |\n" for r in rows))
     w(f"\n### RDO: cost against d ({RDO_MAXITER} SLSQP iterations from the deterministic optimum)\n\n")
     rows = []
-    for d in RDO_D:
-        s = S.get(f"rdo_d{d}")
+    for d, name, lab in sorted([(d, f"rdo_d{d}", "full (first d screened)") for d in RDO_D]
+                               + [(4, "rdor_d4", "reduced (mass and wind)")]):
+        s = S.get(name)
         if s:
-            rows.append([str(d), f"{s['N']['median']:.0f}", _ms(s["setup_s"]), _ms(s["wall_s"]),
+            rows.append([str(d), lab, f"{s['N']['median']:.0f}", _ms(s["setup_s"]), _ms(s["wall_s"]),
                          f"{s['model_runs']['median']:.0f}", f"{s['mda_solves']['median']:.0f}",
                          f"{s['compute_totals']['median']:.0f}",
                          _f(s["wall_s"]["median"] / max(s["iterations"]["median"] or 1, 1), 0)])
-    w("| d | N nodes | setup (s) | wall (s) | model runs | MDA solves | compute_totals | s / SLSQP iteration |\n"
-      "|---:|---:|---:|---:|---:|---:|---:|---:|\n" + "".join("| " + " | ".join(r) + " |\n" for r in rows))
+    w("| d | set | N nodes | setup (s) | wall (s) | model runs | MDA solves | compute_totals | s / SLSQP iteration |\n"
+      "|---:|---|---:|---:|---:|---:|---:|---:|---:|\n" + "".join("| " + " | ".join(r) + " |\n" for r in rows))
+    rm = S.get("rdor_main")
+    if rm:
+        rs_ = (R["raw"]["rdor_main"][0].get("robust") or {}).get("flight_score", {})
+        w(f"\n**Main reduced-set RDO, clean** (d = 4, N = 9, from the deterministic optimum to convergence, "
+          f"single-threaded, one run): {rm['wall_s']['median']:.0f} s, {rm['iterations']['median']:.0f} SLSQP "
+          f"iterations, {rm['function_evaluations']['median']:.0f} objective evaluations, "
+          f"{rm['mda_solves']['median']:.0f} MDA solves, {rm['compute_totals']['median']:.0f} compute_totals"
+          + (f"; mu - k sigma {rs_['robust']:.4f}" if rs_.get("robust") is not None else "") + ".\n")
     qu, qs = S.get("quad_udr"), S.get("quad_smolyak")
     if qu and qs:
         w(f"\n**UDR vs Smolyak level 2** at the deterministic optimum (d = {qu['d']['median']:.0f}, values only, 1 "
@@ -559,22 +583,26 @@ def report():
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("part", choices=["run", "refine", "report", "child"])
+    ap.add_argument("part", choices=["run", "run_reduced", "refine", "report", "child"])
     ap.add_argument("what", nargs="?")
     ap.add_argument("--dvs", type=int)
     ap.add_argument("--d", type=int)
     ap.add_argument("--rule")
     ap.add_argument("--maxiter", type=int)
+    ap.add_argument("--set", default="full", help="child rdo: the uncertain set (results_2025.py --set)")
     a = ap.parse_args()
     if a.part == "child":
         import warnings
 
         warnings.filterwarnings("ignore")
-        res = {"det": lambda: child_det(a.dvs, a.maxiter), "rdo": lambda: child_rdo(a.d),
+        res = {"det": lambda: child_det(a.dvs, a.maxiter),
+               "rdo": lambda: child_rdo(a.d, RDO_MAXITER if a.maxiter is None else a.maxiter, a.set),
                "quad": lambda: child_quad(a.rule)}[a.what]()
         print("RESULT " + json.dumps(res, default=float), flush=True)
     elif a.part == "run":
         run_all()
+    elif a.part == "run_reduced":
+        run_reduced()
     elif a.part == "refine":
         run_refine()
     else:

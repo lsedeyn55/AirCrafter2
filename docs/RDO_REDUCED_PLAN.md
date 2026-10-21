@@ -199,3 +199,44 @@ Total about 3–4 h of compute for checkpoint 2 and about 1 h for checkpoint 3.
 3. Should the wind range follow the Tucson April mean (proposal: 0–6.6 m/s), or stay at 0–3 m/s? (§2)
 
 None of the three is adopted. Checkpoint 2 runs with the settled values unless you say otherwise.
+
+## Decisions taken (2026-10-21), and what changed after checkpoint 1
+
+1. **`f_build` per part** (the CG sees it): kept.
+2. **Woombah ratio as a calibration:**
+   - `results_2025.py calibrate` solves f_build through the closure so that Woombah as built (at its logged-current
+     design) has Table 34's 6.05 lb of structure: **f_build = 2.738**.
+   - The raw ratio is 2.86 (2.11 lb modelled at that design; validation_2025.md §2 quotes 2.21 lb for its own case).
+     The spar and gear resize with the heavier structure, which is why the solved factor is lower.
+   - The script writes `configs/uncertainty_2025_reduced_calibrated.yaml` (f_build centred there, ±30 %).
+     `configs/dbf2025_multipoint_rdo_calibrated.yaml` is one extra RDO run from the main robust optimum
+     (results_2025.md §7b).
+3. **Wind widened**, then capped at the lap model's validity (`configs/uncertainty_2025_reduced.yaml`):
+   - **Sites:** DBF alternates between Tucson (2025 [R pp. 6–7]) and Wichita. Their April means are 3.7 m/s (8.3 mph,
+     NOAA Comparative Climatic Data via currentresults.com) and 5.6 m/s (12.6 mph, Weather Spark, airport station).
+   - **First try:** a range centred on the mean of the two, 0–9.34 m/s. It broke the lap model. Lap 1 starts at
+     V_stall on the into-wind straight, and the straights are integrated in ground distance, dt/ds = 1/(v − wind).
+     At 8.29 m/s, the top UDR node, the light M3 aircraft (V_stall 8.3 m/s) has almost zero ground speed: M3 laps
+     came out at 1e30, then NaN, and nothing flagged it. The first RDO attempt stopped on it. That output is kept
+     in `outputs/results/reduced/invalid/` and is not used.
+   - **Decision:** cap the range at **0–7 m/s, centre 3.5 m/s**. It covers Tucson's mean but cuts Wichita's windier
+     days. At 7 m/s the lap model holds from a cold start, with about 1 m/s margin to the light f_build = 0.7
+     node's V_stall (7.99 m/s). At 7.5 m/s that node gives a negative lap time.
+   - **Safeguard:** `SmoothLapModel` now raises `AnalysisError` on a non-physical lap (non-finite, or a lap time ≤ 0),
+     so such a point is an analysis failure, never a score. Valid points are unaffected; the lap tests pass.
+   - **Calm-air nominal:** the deterministic designs were optimised in calm air, and the wind distribution's mean
+     (3.5 m/s) is not calm. At the mean the deterministic optimum misses M2's 3 laps (laps_frac 2.98), so the
+     reference node is not the deterministic nominal. This was already true of the 0–3 m/s range (centre 1.5 m/s).
+
+The contributions table in §3 above is from checkpoint 1, with the 0–3 m/s wind. The current tables (0–7 m/s, and the
+calibrated and one-sided sets) are in results_2025.md §7 and §7b–c. With the wider wind, wind carries most of the
+flight score's variance.
+
+**Wind limit (2026-10-21, your call):** an aircraft may have a wind limit; if it is too windy it does not fly. A
+headwind near the light M3 aircraft's V_stall is therefore a no-flight condition of the design, not a model error.
+- It is reported as "wind limit (no flight)", with its probability per design, separately from MDA non-convergence
+  and from constraint violations, and kept out of the score statistics.
+- Within 0–7 m/s it occurs only for the bigger-wing designs (AirCrafter 1.0's mappings, multipoint 2 L), at 6.2–7 m/s.
+- PLACEHOLDER (recommended default, not asked): the RDO does not constrain the wind limit. A design whose wind limit
+  falls inside the range shows it in the Monte Carlo, not in the optimiser. Constraining it, e.g.
+  V_stall(M3) − wind_max ≥ margin, is a possible extension.

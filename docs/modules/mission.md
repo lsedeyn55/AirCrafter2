@@ -37,7 +37,15 @@ There are two power modes:
 **Finding L1:** `aircrafter` mode rewards cruise drag. More drag means more power on every leg, which the
 optimiser exploited. That's why the full model uses `propulsion` mode.
 
-Robustness hooks: `wind` (headwind on the 500 ft legs, tailwind on the 1000 ft leg) and `thrust_factor`.
+Robustness hooks: `wind` (headwind on the 500 ft legs, tailwind on the 1000 ft leg) and `thrust_factor`. **Wind
+limit:** lap 1 starts at V_stall on the into-wind leg, and the straights are integrated in ground distance
+(dt/ds = 1/(v − wind)). As the headwind nears V_stall the ground speed after lift-off goes to zero: the aircraft cannot
+make progress into the wind and would not fly. That is the aircraft's wind limit, a property of the design, not a
+model error. It is about 7.5 m/s for the light M3 aircraft of the multipoint optimum (V_stall 8.0–8.3 m/s) and lower
+for bigger wings. A lap past it (non-finite, or a lap time ≤ 0) raises `AnalysisError`. Sampling records it as
+`lap_invalid`, reported as "wind limit (no flight)": separate from MDA non-convergence and from constraint violation,
+and never scored.
+
 Agreement with the reference port: ≤ 0.65% on the 3-lap time across 8 points.
 
 ## Oval (`oval.py`, used by `oval_lap`)

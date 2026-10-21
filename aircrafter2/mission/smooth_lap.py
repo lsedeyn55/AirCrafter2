@@ -11,7 +11,8 @@ performance_modeller.m), reformulated so that gradients are exact:
   at V (the pilot holds the target speed); here the acceleration is a smooth
   min(a(v), (V - v) / tau_hold), so v relaxes onto V and stays there (a plain multiplicative
   cap leaks: thrust exceeds drag at V because P includes 1/eta).
-* Wind (robustness): a steady wind along the straights; ground speed = v -/+ wind on alternate
+* Wind (robustness): a steady wind along the straights (valid while wind < V_stall: lap 1 starts at V_stall into
+  the wind; a non-physical lap raises AnalysisError); ground speed = v -/+ wind on alternate
   straights (500 ft legs into wind, 1000 ft leg downwind); turns ignore drift.
 * Turns: duration = angle / omega(v_entry), with omega = g sqrt(n^2 - 1) / v and
   n = KSmin(q S CL_max / W, n_struct) (Eqs. 3.10-3.12: stall-limited turn rate, capped at the
@@ -199,6 +200,15 @@ class SmoothLapModel(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         res = self._model({k: inputs[k] for k in inputs})
+        # a strong headwind near the lap-1 start speed (V_stall) drives the ground speed v - wind to zero and the
+        # distance integration breaks down: report it as an analysis failure, never as a score
+        lap_t = np.real(np.concatenate([np.ravel(res["Lap1time"]), np.ravel(res["otherLapTime"])]))
+        if not (np.all(np.isfinite(lap_t)) and np.all(lap_t > 0.0) and np.all(np.isfinite(np.real(res["laps_frac"])))):
+            from openmdao.core.analysis_error import AnalysisError
+
+            raise AnalysisError(f"{self.pathname}: non-physical lap (lap times {lap_t}, wind "
+                                f"{float(np.real(inputs['wind'][0])):.2f} m/s against V_stall "
+                                f"{float(np.real(res['Vstall'][0])):.2f} m/s): outside the lap model's validity")
         for k, v in res.items():
             outputs[k] = v
         # integer count for reporting, mirroring the MATLAB loop's strict inequalities
