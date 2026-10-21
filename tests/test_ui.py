@@ -1,5 +1,6 @@
 """Streamlit UI, run headless."""
 
+import json
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1] / "aircrafter2" / "ui" / "app.py"
@@ -84,11 +85,9 @@ def test_streamlit_takeoff_and_course_headless(tmp_path):
     at = AppTest.from_file(str(APP), default_timeout=900)
     at.run()
     assert not at.exception
-    k_lof = [w for w in at.number_input if w.label.startswith("Lift-off speed factor")][0]
-    assert k_lof.disabled  # take-off off by default: its parameters are disabled
-    assert not [w for w in at.number_input if w.label.startswith("Take-off distance")][0].disabled
+    # k_lof, CL_ground and the take-off distance moved to the Placeholders tab: the Mission column points there
+    assert any(c.value.startswith("Take-off parameters: k_lof 1.1, CL_ground 0.15") for c in at.caption)
     [c for c in at.checkbox if c.label == "Include take-off in mission time"][0].check().run()
-    assert not [w for w in at.number_input if w.label.startswith("Lift-off speed factor")][0].disabled
     # add a leg: a 100 ft crosswind straight at the end of the lap (head and tail distances still match)
     _button(at, "Add leg (lap)").click().run()
     assert not at.exception and not at.error and not _button(at, "Run").disabled
@@ -128,3 +127,88 @@ def test_streamlit_course_validation_blocks_run():
     at.text_input[0].set_value("dbf_2025").run()
     _button(at, "Save preset").click().run()
     assert any("shipped preset" in e.value for e in at.error)
+
+
+# --- placeholders and ruleset tabs (docs/PLACEHOLDERS_RULESETS_PLAN.md) ---------------------------------------------
+
+CONFIGS = Path(__file__).resolve().parents[1] / "configs"
+PH_KEY = "layer_full_mdo.yaml_placeholders.yaml"
+
+
+def _ph_frame(configs, **values):
+    """The Placeholders editor's frame for configs/placeholders.yaml with some values edited (as text)."""
+    from aircrafter2.config.layer_files import read_rows, rows_to_frame
+
+    df = rows_to_frame(read_rows(configs / "placeholders.yaml")[0])
+    for name, val in values.items():
+        df.loc[df["parameter"] == name, "value"] = val
+    return df
+
+
+def test_streamlit_three_tabs_and_multipoint_view():
+    """full_mdo.yaml: the three tabs; dbf2025_multipoint.yaml: the two layer tabs, an info box, no Run button."""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(APP), default_timeout=300)
+    at.run()
+    assert not at.exception
+    assert [t.label for t in at.tabs] == ["Design and mission", "Placeholders", "Ruleset"]
+    assert any(b.label == "Save (placeholders)" for b in at.button) and any(b.label == "Run" for b in at.button)
+    at.sidebar.selectbox[0].set_value("dbf2025_multipoint.yaml").run()
+    assert not at.exception
+    assert [t.label for t in at.tabs] == ["Placeholders", "Ruleset"]
+    assert not any(b.label == "Run" for b in at.button)
+    assert any("multipoint" in i.value and "results_2025.py" in i.value for i in at.info)
+    assert at.selectbox[0].value == "rulesets/dbf_2024_25.yaml"  # the config's ruleset by default
+
+
+def test_streamlit_energy_reserve_edit_changes_the_run():
+    """An unsaved energy-reserve edit in the Placeholders tab reaches an Analyse run (num_y 11)."""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(APP), default_timeout=900)
+    at.run()
+    at.sidebar.select_slider[0].set_value(11)
+    _button(at, "Run").click().run()
+    assert not at.exception
+    base = json.loads((Path(at.session_state["last"]) / "results.json").read_text())["energy_margin"]
+    at.session_state[f"{PH_KEY}_df"] = _ph_frame(CONFIGS, energy_reserve="0.4")
+    at.run()
+    assert any("Unsaved edits in configs/placeholders.yaml" in i.value for i in at.info)
+    _button(at, "Run").click().run()
+    assert not at.exception
+    edited = json.loads((Path(at.session_state["last"]) / "results.json").read_text())["energy_margin"]
+    assert edited < base - 1.0  # 40 % instead of 20 % of the usable energy held back
+    assert (CONFIGS / "placeholders.yaml").read_text().count("energy_reserve: 0.2 ") == 1  # not saved
+
+
+def test_streamlit_save_writes_the_file_and_discard_restores(tmp_path, monkeypatch):
+    """Save writes the edit into a temporary copy of configs/ (AIRCRAFTER2_CONFIGS), changing only that line; Discard
+    drops an unsaved edit and leaves the file alone."""
+    import shutil
+
+    from streamlit.testing.v1 import AppTest
+
+    shutil.copytree(CONFIGS, tmp_path / "configs")
+    c = tmp_path / "configs"
+    monkeypatch.setenv("AIRCRAFTER2_CONFIGS", str(c))
+    before = (c / "placeholders.yaml").read_text().splitlines()
+    at = AppTest.from_file(str(APP), default_timeout=300)
+    at.run()
+    at.session_state[f"{PH_KEY}_df"] = _ph_frame(c, energy_reserve="0.25")
+    at.run()
+    assert any("Unsaved edits" in i.value for i in at.info)
+    _button(at, "Save (placeholders)").click().run()
+    assert not at.exception
+    after = (c / "placeholders.yaml").read_text().splitlines()
+    changed = [i for i, (a, b) in enumerate(zip(before, after)) if a != b]
+    assert len(before) == len(after) and len(changed) == 1 and after[changed[0]].startswith("energy_reserve: 0.25 ")
+    assert not any("Unsaved edits" in i.value for i in at.info)
+    saved = (c / "placeholders.yaml").read_text()
+    at.session_state[f"{PH_KEY}_df"] = _ph_frame(c, energy_reserve="0.35")
+    at.run()
+    assert any("Unsaved edits" in i.value for i in at.info)
+    _button(at, "Discard changes (placeholders)").click().run()
+    assert not at.exception and not any("Unsaved edits" in i.value for i in at.info)
+    assert (c / "placeholders.yaml").read_text() == saved
+    assert (CONFIGS / "placeholders.yaml").read_text().splitlines() == before  # the real file was never touched

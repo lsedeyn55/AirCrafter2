@@ -131,6 +131,46 @@ the optimiser.
 | `scoring` | the objective plug-in (`three_lap_time`, `laps_in_window`, `dbf2025`, or your own) |
 | `design_variables`, `initial` | bounds and start point |
 
+### Placeholders and rulesets
+
+Every placeholder and assumption lives in one of two kinds of file, which every run loads underneath its config
+(plan and conflict table: `docs/PLACEHOLDERS_RULESETS_PLAN.md`):
+
+- `configs/placeholders.yaml`: one universal file with every value that does **not** depend on the competition
+  rules: battery and motor data, nacelles, structure and materials, payload, fuselage, tail and CG, stability limits,
+  n_crit, take-off (`k_lof`, `CL_ground`, the Eq. 3.3 distance) and the shared RDO spreads (f_build, f_tb, m_avionics).
+- `configs/rulesets/<ruleset>.yaml`: one file per competition with everything that does: site altitude, mission
+  time, course preset, pilot reaction time, start offset, the headwind spread, and for the multipoint problem the
+  scoring (R2, R3, X-1), the stores (bottles, pylons, X-1 data) and the rule limits. `dbf_2024_25.yaml` is the
+  2024-25 ruleset; `generic.yaml` holds the original AirCrafter inputs (`inputs_file.m`) for the single-point problems.
+
+Both files are written one value per line, as a dotted path into the config with a comment
+`# <units>; <PLACEHOLDER | cited>; Q..; <source>`. Load order, lowest to highest:
+
+1. code defaults
+2. `placeholders.yaml` (the `placeholders:` key; the default file when the key is missing)
+3. the ruleset (the `ruleset:` key; opt-in; a single-point load ignores its `multipoint:` block)
+4. the problem config and its `extends:` chain
+5. the study variant (a config that extends the problem config)
+
+`mass_config` sits below `placeholders.yaml`'s `mass.inputs`. A value set in a config overrides both layers: the
+`*_fixed_kv.yaml` variants pin the AIAC-era motor values that way, and `woombah_2025.yaml` its as-built geometry.
+Edit a value in either file and every config that uses it picks it up, `studies/results_2025.py` included.
+
+In the UI (`aircrafter2 ui`), the main area has three tabs:
+- **Design and mission**: design-variable bounds, key assumptions, the Mission column (take-off switch, `mu_roll`,
+  reaction time) and the course editor.
+- **Placeholders**: one editable table for `placeholders.yaml` and a second one for the RDO spreads.
+- **Ruleset**: a selector over `configs/rulesets/` and the same kind of table for the chosen file.
+
+Each table has an **overridden by** column. It shows the file and line of the selected config that sets the value
+instead, so an edit there won't reach that config's runs. **Save** writes the edits back into the file in place,
+keeping every comment and the order. **Discard changes** drops them. Unsaved edits still apply to the current run, and
+a note says so.
+
+For a multipoint (2024-25) config, the UI shows only the two layer tabs, because it runs single-point problems. The
+2024-25 runs are `studies/results_2025.py`.
+
 ## Documentation
 
 - `docs/PLAN.md`: architecture, XDSM, module interfaces, every finding and decision.
@@ -178,7 +218,7 @@ topic in `examples/`, `verification/` or `studies/`; rerun the script rather tha
 | `aircrafter2/robustness` | sensitivities, worst cases, Monte Carlo; robust design optimisation (`rdo_problem.py`, `rdo_multipoint.py`) |
 | `aircrafter2/vsp` | OpenVSP mock-up: build, render, consistency check |
 | `aircrafter2/plotting`, `api.py`, `cli.py`, `ui/` | figures, API, CLI, Streamlit |
-| `configs/` | run configs (`full_mdo.yaml` is the full model), shared mass inputs, `verification/` paper cases |
+| `configs/` | run configs (`full_mdo.yaml` is the full model), `placeholders.yaml`, `rulesets/`, shared mass inputs, `verification/` paper cases |
 | `examples/` | user-facing demos, one per problem (`oval_lap`, `aero_mass`, `lap_mdo`, `full_mdo`) |
 | `studies/` | thesis and paper scripts (thesis figures, twin-motor study, OpenVSP mock-ups, tail-boom calibration, 2024-25 validation, results, computational performance) |
 | `reference/aircrafter1/` | AirCrafter 1.0: shipped copy, the switchable copy with its 2024-25 mode, baseline checks |

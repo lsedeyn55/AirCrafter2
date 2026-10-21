@@ -162,7 +162,7 @@ The full table with commits is printed by the checkpoint 2 test (`tests/test_pla
 ## Status
 
 - **Checkpoint 1** (`cee6a3c`): this inventory.
-- **Checkpoint 2:** the files, the loader, the migration and the non-UI verification.
+- **Checkpoint 2** (`d6277a9`): the files, the loader, the migration and the non-UI verification.
   - **Files:** `configs/placeholders.yaml` (60 values and the 3 shared spreads), `configs/rulesets/dbf_2024_25.yaml` (50
     values, the bottle catalogue and lap.wind) and `configs/rulesets/generic.yaml`.
   - **Code:**
