@@ -164,7 +164,13 @@ on the change: the polar and the masses barely move with throttle.
 - **Robustness:** a roll with friction above thrust at rest (floored), longer than the straight, stays finite. A
   headwind ≥ V_LOF raises `AnalysisError`.
 
-## Re-optimisation with take-off on (not done; estimate)
+## Re-optimisation with take-off on
+
+**Done for the best case and the reduced-set RDO** (`studies/takeoff_study.py reopt`; results in
+`docs/studies/takeoff_study.md` §9). Actual times: deterministic best case 61 s warm, 266 s cold; RDO 500 s (one
+start). The full enumeration was not run. The estimate below, made before those runs, was conservative.
+
+### Estimate (before the runs)
 
 One deterministic multipoint run from the published optimum costs about the same as the published run. Take-off on costs +2 % per model run (0.438 → 0.446 s) and +10 % per `compute_totals`
 (2.43 → 2.68 s). The lap component's cs linearisation goes from 0.85 to 0.98 s per point (two more inputs and the roll in every

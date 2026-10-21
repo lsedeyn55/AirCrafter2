@@ -1400,7 +1400,7 @@ def render(R):
         _sec_robust(w, R, R["uq"]["full"], ok)
     w("\n## Caveats\n")
     w("- R2, R3 are PLACEHOLDERS (Q35); section 5 shows what moves with them.\n"
-      "- No take-off in the lap model (switch `course.takeoff.in_mission_time`, off here). The bias is not uniform: it favours heavy designs (re-analysis with take-off on: ΔF −0.008 for the 0.5 L optimum to −0.053 for 2 L, −0.020 multipoint, −0.021 RDO; no ranking change at nominal inputs). With take-off on, every optimum here violates M2's energy constraint and the RDO design violates two robust constraints (docs/studies/takeoff_study.md).\n"
+      "- No take-off in the lap model (switch `course.takeoff.in_mission_time`, off here). The bias is not uniform: it favours heavy designs (re-analysis with take-off on: ΔF −0.008 for the 0.5 L optimum to −0.053 for 2 L, −0.020 multipoint, −0.021 RDO; no ranking change at nominal inputs). With take-off on, every optimum here violates M2's energy constraint and the RDO design violates two robust constraints. Re-optimised with take-off on, the best case is feasible again at F 5.1200 and the RDO design meets every robust constraint and stays ahead in mu − kσ (docs/studies/takeoff_study.md §9).\n"
       "- Bottle dimensions and masses, the store interference factors and the store drag spread are PLACEHOLDERS "
       "(Q36, Q37); every uncertainty spread is a PLACEHOLDER (configs/uncertainty.yaml).\n"
       "- The mass model is uncalibrated (validation_2025.md: 24–41 % light on Woombah).\n"

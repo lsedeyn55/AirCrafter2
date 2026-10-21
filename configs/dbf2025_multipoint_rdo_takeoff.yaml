@@ -1,0 +1,11 @@
+# The reduced-set RDO (configs/dbf2025_multipoint_rdo.yaml) with take-off in the mission time: the take-off block is
+# configs/dbf2025_multipoint_takeoff.yaml's. Used by studies/takeoff_study.py reopt (docs/studies/takeoff_study.md).
+extends: dbf2025_multipoint_rdo.yaml
+
+course:
+  preset: dbf_2025
+  takeoff:
+    in_mission_time: true
+    k_lof: 1.1            # performance_modeller.m l. 405: "full power until 1.1 Vstall"
+    CL_ground: 0.15       # PLACEHOLDER: the model's C_L at Woombah's 2 deg wing setting, tail-up roll (TAKEOFF_COURSE_PLAN.md)
+    start_offset_ft: 0.0  # PLACEHOLDER: brake release on the start line

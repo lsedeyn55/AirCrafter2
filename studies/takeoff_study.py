@@ -343,9 +343,30 @@ def report():
               f"(M2 {sn['M2'] - so['M2']:+.4f}, M3 {sn['M3'] - so['M3']:+.4f}) |")
 
 
+TAKEOFF_RDO_CFG = ROOT / "configs" / "dbf2025_multipoint_rdo_takeoff.yaml"
+
+
+def reopt(which):
+    """Re-optimise with take-off on (outputs/results/runs/to_*.json; the published runs are untouched).
+    best_warm / best_cold: the best deterministic case from its published optimum / the config's initial point;
+    rdo: the reduced-set RDO of the same case from the published RDO design."""
+    import results_2025 as R
+
+    R.use_set("reduced")
+    b = R.best_case()
+    if which in ("best_warm", "best_cold"):
+        R.optimise(f"to_{b['tag']}_{which.split('_')[1]}", b["cells"], b["props"]["M2"], b["props"]["M3"],
+                   start=b["tag"] if which == "best_warm" else None, cfg=TAKEOFF_CFG, bottle=b.get("bottle"))
+        return
+    r = R.best_rdo()
+    R.UQ["cfg"] = TAKEOFF_RDO_CFG  # same screen.json (all four inputs), take-off config
+    R.rdo(f"to_rdor_{r['tag']}", case=r["case"], x0=r["dv"])
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "woombah", "wind", "robust", "resolution", "report"])
+    ap.add_argument("cmd", choices=["run", "woombah", "wind", "robust", "resolution", "report", "reopt"])
+    ap.add_argument("--which", choices=["best_warm", "best_cold", "rdo"], default="best_warm")
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
-    {"run": lambda: run(a.workers), "woombah": lambda: woombah(a.workers), "wind": lambda: wind(a.workers), "robust": lambda: robust(a.workers), "resolution": lambda: resolution(a.workers), "report": report}[a.cmd]()
+    {"run": lambda: run(a.workers), "woombah": lambda: woombah(a.workers), "wind": lambda: wind(a.workers), "robust": lambda: robust(a.workers), "resolution": lambda: resolution(a.workers), "report": report, "reopt": lambda: reopt(a.which)}[a.cmd]()

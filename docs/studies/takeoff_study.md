@@ -1,12 +1,14 @@
 # Take-off in the mission time: re-analysis of the 2024-25 designs
 
-Script: `studies/takeoff_study.py` (`run`, `woombah`, `wind`, `robust`, `resolution`, `report`). Its outputs are in
+Script: `studies/takeoff_study.py` (`run`, `woombah`, `wind`, `robust`, `resolution`, `reopt`, `report`). Its outputs are in
 `outputs/takeoff/`, which git ignores. Config: `configs/dbf2025_multipoint_takeoff.yaml`. It extends
 `dbf2025_multipoint.yaml` and switches `course.takeoff.in_mission_time` on. The model and its decisions are in
 `docs/TAKEOFF_COURSE_PLAN.md` and `docs/modules/mission.md`.
 
-This is **analysis only.** Every design is re-analysed at its published design variables. Nothing is re-optimised,
-and no published result, figure or JSON is changed. Take-off stays **off** in every published result.
+Sections 1–8 are **analysis only**: every design is re-analysed at its published design variables. Section 9
+re-optimises the best deterministic case and the reduced-set RDO with take-off on; its runs are new files
+(`outputs/results/runs/to_*.json`). No published result, figure or JSON is changed. Take-off stays **off** in every
+published result.
 
 ## Setup
 
@@ -96,13 +98,12 @@ with take-off on, against 28.46 s with it off.
 - **The reserve is a placeholder.** The energy budget holds back 20 % of usable energy (`energy_reserve`, a
   PLACEHOLDER, OPEN_QUESTIONS Q24), so these aircraft would finish M2 into the reserve. Against the model's own
   constraints, though, they are infeasible.
-- **Re-optimising would cost more F than ΔF.** It would restore the energy with a lower M2 throttle (a slower M2), or
-  a bigger pack where the 100 Wh rule allows. So the re-analysis ΔF of section 1 is a lower bound on what take-off
-  costs an optimised design. Re-optimisation was not run; its cost is estimated in `docs/TAKEOFF_COURSE_PLAN.md`
-  (best case about 20 min).
+- **Re-optimising restores the energy almost for free (section 9).** I expected the re-analysis ΔF to be a lower
+  bound on the cost. It is not: the re-optimised best case scores 5.1200, slightly above its infeasible re-analysis
+  (5.1194). The optimiser buys the energy back with a bigger M2 pack (1.03 → 1.07 Ah), not a slower M2.
 - **The M1 check doesn't change:** every design passes or fails it as before. M1 is far inside its window and energy.
 
-## 3. Robust statistics: the RDO's advantage does not survive
+## 3. Robust statistics at the published designs: the RDO's advantage does not survive (until re-optimised, §9)
 
 These are the reduced set's UDR statistics (f_build, f_tb, m_avionics, lap.wind; d = 4, 9 nodes; k and β as in
 `configs/dbf2025_multipoint_rdo.yaml`) at each design. The take-off off columns reproduce `results_2025.md` §7. The
@@ -129,8 +130,9 @@ results are not edited.
    - M2's energy margin: mu − 2σ = −2.1 kJ;
    - M2's laps: mu − 2σ = 2.94 laps, against 3.
 
-   "The RDO design keeps the laps margin for almost no score" (finding 8) holds only in a model without take-off. An
-   RDO re-run with take-off on would buy the margin back, at a score cost not estimated here.
+   At the published designs, "the RDO design keeps the laps margin for almost no score" (finding 8) holds only in a
+   model without take-off. **Section 9 re-runs the RDO with take-off on and restores both:** the re-optimised RDO
+   design meets every robust constraint and is again ahead in mu − kσ.
 
 **Wind matters less with take-off on.** σ falls by about 25 % for every design (multipoint 0.0097 → 0.0074). A
 headwind now also shortens the ground roll: the roll starts at airspeed w and lifts off at the same airspeed V_LOF,
@@ -255,16 +257,72 @@ See `docs/TAKEOFF_COURSE_PLAN.md` for the table.
 - **Placeholders:** OPEN_QUESTIONS Q40–Q44 cover `CL_ground`, `k_lof`, the take-off throttle, the start offset and
   climb. Q45 covers the step resolution.
 
+## 9. Re-optimisation with take-off on
+
+`studies/takeoff_study.py reopt --which best_warm|best_cold|rdo`, take-off on (`CL_ground` 0.15, `k_lof` 1.1, as in
+sections 1–3). Only the best deterministic case (`mp_6S_11x8E_10x7E`) and its reduced-set RDO were re-optimised.
+The other propulsion cases and the bottle runs were not.
+
+- **Deterministic:** `configs/dbf2025_multipoint_takeoff.yaml`, SLSQP from the published optimum (warm, 14
+  iterations, 61 s) and from the config's initial point (cold, 53 iterations, 266 s).
+- **RDO:** `configs/dbf2025_multipoint_rdo_takeoff.yaml`, which is `dbf2025_multipoint_rdo.yaml` with the same take-off
+  block. It uses the same four inputs and 9 UDR nodes, and k = 1, β = 2. One start, from the published RDO design
+  `rdor_ms0` (13 iterations, 500 s).
+
+### Deterministic best case
+
+| | F | M2 | M3 | M2 energy constraint | M2 pack (Ah) | chord (m) | M2 mass (kg) |
+|---|---:|---:|---:|---|---:|---:|---:|
+| published, take-off off | 5.1394 | 1.7981 | 2.3413 | active | 1.026 | 0.289 | 8.159 |
+| published design, take-off on (§1) | 5.1194 | | | violated | 1.026 | 0.289 | 8.159 |
+| re-optimised, take-off on | 5.1200 | 1.7798 | 2.3401 | active | 1.068 | 0.306 | 8.189 |
+
+- **The warm and cold starts reach the same F** (5.1200), the same airframe and the same active set. Kv (728 against
+  752 rpm/V) and the throttles (0.825 against 0.798 in M2) differ, so the optimum is flat in those directions.
+- **The active set is the published one:**
+  - M2 energy, M2 rpm, M2 laps and the M3 rules energy;
+  - both points' tail volumes;
+  - span, tail arm and fuel at their upper bounds.
+
+  The cruise speeds barely move (M2 39.40 → 39.31 m/s, M3 34.97 → 34.75 m/s).
+- **The cost of take-off at the optimum is ΔF = −0.0194.** The re-analysis estimate (−0.0201) was within 0.0007.
+
+### Robust design
+
+Both re-optimised designs are evaluated with take-off on, at the same 9 nodes:
+
+| design | mu F | sigma | mu − kσ | M2 energy, mu − 2σ (J) | M2 laps, mu − 2σ | robust constraints met |
+|---|---:|---:|---:|---:|---:|---|
+| re-optimised deterministic | 5.1127 | 0.0077 | 5.1050 | −1453 | 2.96 | no (M2 energy, M2 laps) |
+| re-optimised RDO | 5.1127 | 0.0074 | 5.1053 | +8 | 3.00 | yes |
+
+- **The published conclusion holds again.** The RDO design is ahead by 3e-4 in mu − kσ (1e-4 with take-off off), and
+  it meets the two robust constraints that the deterministic design fails. Finding 8 of `results_2025.md` ("keeps
+  the laps margin for almost no score") holds with take-off on.
+- **The flip in section 3 was a stale-optimum effect.** It came from evaluating designs optimised without take-off.
+- **How the RDO design gets its margin:** the same higher throttle and lower Kv as the published RDO (M2 throttle
+  0.949, Kv 632). Its M2 pack also grows (1.04 → 1.07 Ah).
+
+### What this does not settle
+
+- **The ranking of propulsion cases.** The top four published cases are within 0.0009 of each other in F, and take-off
+  costs about 0.02. Re-optimising only the best case cannot show that it is still the best. That needs the full
+  enumeration with take-off on, which was not run.
+- **The RDO's global optimum.** The RDO had one start; the published RDO used a multistart.
+- **High-wind accuracy.** Q45, the step resolution, still applies to the high-wind nodes.
+
 ## Findings
 
 1. **Take-off costs every design score, unevenly.** ΔF runs from −0.008 to −0.053 and grows with M2 mass, so leaving
    take-off out favours heavy designs. Nearly all of it is in M2; ΔM3 is −0.0007 everywhere.
 2. **No ranking changes at nominal inputs.**
 3. **Every published optimum violates M2's energy constraint with take-off on.** Its energy-limited M2 laps are
-   2.87–2.97. The re-analysis ΔF is therefore a lower bound on what take-off costs an optimised design.
-4. **The RDO conclusion changes.** With take-off on, the published RDO design violates two robust constraints (M2
-   energy, M2 laps). Its mu − kσ falls 5e-4 below the deterministic optimum's: a tie in practice, but no longer an
-   advantage.
+   2.87–2.97. Re-optimising the best case restores it with a bigger M2 pack, at F 5.1200 (ΔF −0.0194 against the
+   published 5.1394, §9), so the re-analysis ΔF is a good estimate of the cost.
+4. **The RDO conclusion survives re-optimisation.** At the published designs, the RDO design violates two robust
+   constraints with take-off on and falls 5e-4 behind (§3). Re-optimised with take-off on (§9), it meets every robust
+   constraint and is ahead by 3e-4 in mu − kσ, as without take-off. The ranking of propulsion cases with take-off on
+   is not established: only the best case was re-optimised.
 5. **Woombah:** take-off explains 1–3.5 s of the 25.9 s gap between its two M2 time readings. It does not reconcile
    them.
 6. **Wind limit:** each design's limit rises from about V_stall to just under V_LOF (M3: +0.3 to +1.4 m/s), and all are
