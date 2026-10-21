@@ -2,6 +2,10 @@
 docs/TAKEOFF_COURSE_PLAN.md). Analysis only: nothing is re-optimised, no published result is touched.
 
     .venv/bin/python studies/takeoff_study.py run        # every design, take-off off and on (+ CL_ground, throttle)
+    .venv/bin/python studies/takeoff_study.py woombah    # Woombah as built (validation_2025.md section 3), off and on
+    .venv/bin/python studies/takeoff_study.py wind       # each design's wind limit, take-off off and on
+    .venv/bin/python studies/takeoff_study.py robust     # the RDO's UDR statistics (9 nodes) at each design, off and on
+    .venv/bin/python studies/takeoff_study.py resolution # lap-1 time against 16x the straight steps, in wind
     .venv/bin/python studies/takeoff_study.py report     # prints the tables (the docs are written from the JSON)
 
 Designs: the six of results_2025.md section 2 (woombah, ac1_direct, ac1_completed, multipoint, multipoint_2L, rdo =
@@ -15,7 +19,22 @@ ground roll at CL_ground 0, 0.5 and 1 (sensitivity to the PLACEHOLDER); and, as 
 question only, the ground roll if the throttle were 1.0 (the whole point re-analysed at full throttle: only its
 roll is read).
 
-Output: outputs/takeoff/reanalysis.json.
+Woombah as built: configs/woombah_2025.yaml in validation_2025.md's three cases (full throttle; the logged-current
+throttles; those and the logged take-off masses through the m_ballast hook), with the throttles and ballast read from
+docs/studies/results/validation_2025.json (not re-solved), take-off off and on.
+
+Wind limit: per design and point, the largest steady wind (lap.wind, the robustness input: headwind on the head
+straights) for which the lap is still valid (no AnalysisError), by stepping the wind in 0.01 m/s on the lap component
+alone at the converged nominal point (wind only enters the lap model). No Monte Carlo is rerun.
+
+Robust statistics: results_2025.robust_eval's UDR moments (the reduced set's screened parameters and nodes, k and beta
+of configs/dbf2025_multipoint_rdo.yaml) at each design, take-off off (reproduces results_2025.md section 7) and on.
+Nodes only: the Monte Carlo is not rerun.
+
+Step resolution: M3's lap-1 time at the default n_steps_straight (40) against 640, at winds 3.5-8.4 m/s, off and on,
+for multipoint, multipoint_2L and ac1_completed (the designs whose M3 wind limit is near the Monte Carlo's 7 m/s cap).
+
+Output: outputs/takeoff/reanalysis.json, woombah.json, wind_limit.json, robust_eval.json, resolution.json.
 """
 
 import os
@@ -129,6 +148,180 @@ def run(workers=4):
             print(label, setting, res.get("score", {}).get("flight_score", res.get("error")), flush=True)
 
 
+def _wind_job(job):
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.problems.multipoint import build_multipoint_problem
+
+    label, mcfg, dv, setting = job
+    mcfg = mcfg.model_copy(deep=True)
+    if setting == "on":
+        mcfg.base.course = _takeoff_block()
+    p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+    for k, x in dv.items():
+        p.set_val(k, x)
+    p.run_model()
+    res = {}
+    for pt in ("M2", "M3"):
+        comp = p.model._get_subsystem(f"points.{pt}.lap")
+        base = {k: np.array(comp._inputs[k], dtype=float) for k in comp._inputs}
+
+        def valid(w):
+            x = dict(base, wind=np.array([w]))
+            try:
+                comp.compute(x, {})
+            except AnalysisError:
+                return False
+            return True
+
+        w, step = 0.0, 0.5
+        while step >= 0.01 - 1e-12:  # coarse to fine: largest valid wind on a 0.01 m/s grid
+            while w + step < 40.0 and valid(w + step):
+                w += step
+            step /= 5.0 if step > 0.02 else 2.0
+        res[pt] = dict(wind_limit=w, Vstall=_v(p, f"points.{pt}.lap.Vstall"),
+                       V_lof=_v(p, f"points.{pt}.lap.V_lof") if setting == "on" else None)
+    return label, setting, res
+
+
+def wind(workers=4):
+    jobs = [(label, mcfg, dv, s) for label, mcfg, dv in designs() for s in ("off", "on")]
+    out = {}
+    with get_context("forkserver").Pool(workers) as pool:
+        for label, setting, res in pool.imap_unordered(_wind_job, jobs):
+            out.setdefault(label, {})[setting] = res
+            print(label, setting, res, flush=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "wind_limit.json").write_text(json.dumps(out, indent=1, default=float))
+
+
+def robust(workers=5):
+    import results_2025 as R
+    from aircrafter2.problems.multipoint import build_multipoint_problem, multipoint_constraints
+    from aircrafter2.robustness.quadrature import make_rule
+    from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp, robust_names
+    from aircrafter2.robustness.sampling import evaluate
+
+    R.use_set("reduced")
+    sc = json.loads((R.UQ["out"] / "screen.json").read_text())
+    out = {}
+    for label, mcfg0, dv in designs():
+        for setting in ("off", "on"):
+            mcfg = mcfg0.model_copy(deep=True)
+            if setting == "on":
+                mcfg.base.course = _takeoff_block()
+            mcfg.base.robust.active = sc["selected"]
+            rob = mcfg.base.robust
+            p = build_multipoint_problem(mcfg, driver=False)
+            dists, act = resolved_dists_mp(mcfg, lambda n: _v(p, f"points.M2.{n}"))
+            rule = make_rule(rob, act)
+            base = {d.name: d.mean for d in dists}
+            rows = [dict(base, **{d.name: float(x) for d, x in zip(act, r)}) for r in rule.nodes]
+            cons = dict(multipoint_constraints(mcfg))
+            rn = robust_names(mcfg, extra=("points.M2.laps_frac",))
+            ev = evaluate(mcfg, dv, rows, ["flight_score"] + rn, workers)
+            res = dict(N=rule.n, failed=len(ev["failed"]), robust_violated=[], margins={})
+            if not ev["failed"]:
+                mu, var = rule.moments(ev["values"][:, 0])
+                sig = float(np.sqrt(max(var, 0.0)))
+                res.update(mu=mu, sigma=sig, robust=mu - rob.k * sig)
+                for j, n in enumerate(rn, start=1):
+                    m_, var_ = rule.moments(ev["values"][:, j])
+                    s_ = float(np.sqrt(max(var_, 0.0)))
+                    kw = cons[n]
+                    tol = 1e-6 * max(abs(kw.get("lower") or kw.get("upper") or 0.0), kw.get("ref") or 0.0, 1.0)
+                    res["margins"][n] = dict(mu=m_, sigma=s_)
+                    if (kw.get("lower") is not None and m_ - rob.beta * s_ < kw["lower"] - tol) or \
+                            (kw.get("upper") is not None and m_ + rob.beta * s_ > kw["upper"] + tol):
+                        res["robust_violated"].append(n)
+            out.setdefault(label, {})[setting] = res
+            print(label, setting, {k: res.get(k) for k in ("mu", "sigma", "robust", "failed", "robust_violated")},
+                  flush=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "robust_eval.json").write_text(json.dumps(dict(selected=sc["selected"], results=out), indent=1,
+                                                     default=float))
+
+
+RES_WINDS = (3.5, 5.0, 6.0, 7.0, 7.5, 8.0, 8.4)
+
+
+def _resolution_job(job):
+    from aircrafter2.problems.multipoint import build_multipoint_problem
+
+    label, mcfg, dv, setting = job
+    mcfg = mcfg.model_copy(deep=True)
+    if setting == "on":
+        mcfg.base.course = _takeoff_block()
+    p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+    for k, x in dv.items():
+        p.set_val(k, x)
+    p.run_model()
+    comp = p.model._get_subsystem("points.M3.lap")
+    base = {k: np.array(comp._inputs[k], dtype=float) for k in comp._inputs}
+    rows = []
+    for w in RES_WINDS:
+        t = {}
+        for n in (40, 640):
+            comp.options["n_steps_straight"] = n
+            t[n] = float(np.real(np.ravel(comp._model(dict(base, wind=np.array([w])))["Lap1time"])[0]))
+        comp.options["n_steps_straight"] = 40
+        rows.append(dict(wind=w, lap1_40=t[40], lap1_640=t[640], rel_err=t[40] / t[640] - 1.0))
+    return label, setting, rows
+
+
+def resolution(workers=4):
+    jobs = [(label, mcfg, dv, s) for label, mcfg, dv in designs()
+            if label in ("multipoint", "multipoint_2L", "ac1_completed") for s in ("off", "on")]
+    out = {}
+    with get_context("forkserver").Pool(workers) as pool:
+        for label, setting, rows in pool.imap_unordered(_resolution_job, jobs):
+            out.setdefault(label, {})[setting] = rows
+            print(label, setting, [(r["wind"], round(100 * r["rel_err"], 2)) for r in rows], flush=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "resolution.json").write_text(json.dumps(out, indent=1, default=float))
+
+
+def _woombah_job(job):
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
+
+    case, setting, th2, th3, ballast = job
+    mcfg = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+    if setting == "on":
+        mcfg.base.course = _takeoff_block()
+    p = build_multipoint_problem(mcfg, driver=False)
+    p.set_val("throttle_M2", th2)
+    p.set_val("throttle_M3", th3)
+    for pt, kg in ballast.items():
+        p.set_val(f"points.{pt}.m_ballast", kg)
+    try:
+        p.run_model()
+    except AnalysisError as exc:
+        return case, setting, dict(ok=False, error=str(exc)[:300])
+    res = dict(ok=True, score={k: _v(p, k) for k in SCORES})
+    for pt in ("M2", "M3"):
+        res[pt] = {k: _v(p, f"points.{pt}.{k}") for k in PT_OUT}
+        res[pt]["legs"] = p.model._get_subsystem(f"points.{pt}.lap").leg_breakdown() if setting == "on" else None
+    return case, setting, res
+
+
+def woombah(workers=4):
+    val = json.loads((ROOT / "docs" / "studies" / "results" / "validation_2025.json").read_text())["woombah"]
+    lt = val["logged_throttle"]
+    th = (lt["M2"]["throttle"], lt["M3"]["throttle"])
+    ballast = val["cases"]["logged_current_and_mass"]["ballast_kg"]
+    cases = dict(full_throttle=(1.0, 1.0, {}), logged_current=(*th, {}), logged_current_and_mass=(*th, ballast))
+    jobs = [(c, s, *a) for c, a in cases.items() for s in ("off", "on")]
+    out = {}
+    with get_context("forkserver").Pool(workers) as pool:
+        for case, setting, res in pool.imap_unordered(_woombah_job, jobs):
+            out.setdefault(case, {})[setting] = res
+            print(case, setting, res.get("M2", {}).get("ThreeLapTime", res.get("error")), flush=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "woombah.json").write_text(json.dumps(out, indent=1, default=float))
+
+
 def report():
     d = json.loads((OUT / "reanalysis.json").read_text())
     print("| design | pt | throttle | t_TO (s) | s_roll (ft) | V_LOF | s_Eq3.3 (ft) | V_R | dt3 (s) | dlaps | "
@@ -152,7 +345,7 @@ def report():
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "report"])
+    ap.add_argument("cmd", choices=["run", "woombah", "wind", "robust", "resolution", "report"])
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
-    run(a.workers) if a.cmd == "run" else report()
+    {"run": lambda: run(a.workers), "woombah": lambda: woombah(a.workers), "wind": lambda: wind(a.workers), "robust": lambda: robust(a.workers), "resolution": lambda: resolution(a.workers), "report": report}[a.cmd]()

@@ -111,7 +111,9 @@ point's throttle, `CL_ground` = 0.15.
   constraint is inactive at all of these designs, as it was in the published results.
 - **Lap 2+ is unaffected.** The ground roll is 2–5 s at M2 and under 1 s at M3, where the aircraft is light and
   V_stall is low.
-- **The one-line re-analysis** (checkpoint 2 writes it up):
+- **The one-line re-analysis** (written up in `docs/studies/takeoff_study.md`, which also covers the robust
+  statistics: with take-off on, the RDO design violates two robust constraints and its mu − kσ falls 5e-4 below
+  the deterministic optimum's):
   - ΔF ranges from −0.0069 (0.5 L) to −0.053 (2 L), almost all of it from M2; ΔM3 = −0.0007 everywhere
     (−0.02 laps).
   - The ranking doesn't change: bottles 0.5 L < 1 L < 2 L; AirCrafter 1.0 direct > completed; Woombah > multipoint >
@@ -171,9 +173,11 @@ complex evaluation).
 - The full 11-case propulsion enumeration plus the bottle runs: about 4–5 h on 4 workers.
 - The reduced-set RDO (3 starts): about 1.5 h.
 
-## Open questions (OPEN_QUESTIONS at checkpoint 2)
+## Open questions (OPEN_QUESTIONS Q40–Q45)
 
 - `CL_ground` (0.15, PLACEHOLDER) and `k_lof` (1.1, from the MATLAB comment, not a measurement).
 - The take-off throttle.
 - `start_offset_ft` (0, PLACEHOLDER: brake release on the start line).
 - Climb and transition are not modelled.
+- Step resolution of lap 1's first straight near the wind limit (Q45, found in the re-analysis; affects the take-off-off
+  model too).

@@ -1094,7 +1094,7 @@ The port uses the exact Vstall. → Add a `matlab_compat` switch.
 the first lap, and **`lapCount` is always 1** in the MATLAB runner. The port defaults `battery_fraction = 1.0`.
 Reproduction runs must state which convention they use.
 
-**M3.** Take-off time is not added to Lap 1. This is known and already documented in the port.
+**M3.** Take-off time is not added to Lap 1. This is known and already documented in the port. The port keeps it out; the smooth model now has a switch, `course.takeoff.in_mission_time` (default off, so every published result is unchanged), that adds the ground roll to lap 1's time and energy (docs/modules/mission.md, docs/TAKEOFF_COURSE_PLAN.md, docs/studies/takeoff_study.md).
 
 **M4.** In the MATLAB decel-table build, `a_vector` is filtered and then reused as a mask for `v_vector`. The port
 does this correctly. The results match as long as the a < 0 region is a contiguous prefix of the descending

@@ -294,7 +294,9 @@ def report():
        "only, uncalibrated mass model unless a column says otherwise; **nothing is tuned to the flight data**.\n")
     w_("**Modelling differences (known before running):** rectangular-equivalent wing (same span and area; Woombah "
        "tapers 0.8); one spar tube for two; the model's fuselage is a cargo box plus a tail boom (Woombah: an 82 in "
-       "fuselage); the lap model has no take-off, while the rules time M2 from the first throttle advance [R p. 11]; "
+       "fuselage); the lap model has no take-off, while the rules time M2 from the first throttle advance [R p. 11] "
+       "(switch `course.takeoff.in_mission_time`, off here; Woombah with take-off on: docs/studies/takeoff_study.md "
+       "§4); "
        "first-order motor model, APC surrogate props; stores drag from Woombah's own CFD bottle value [W p. 43].\n")
     if (OUT / "validation_corners.json").exists():
         c = load("corners")

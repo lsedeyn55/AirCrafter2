@@ -142,7 +142,10 @@ def main():
       "masses (Q36: grams against kilograms of fuel); the pylons' spanwise station (Q36: carried as fuselage "
       "payload, conservative for the spar); the uncalibrated mass model (validation_2025.md: 24–41 % light on "
       "Woombah; a calibrated model was not used for the results, so absolute masses are low for every design "
-      "alike); the missing take-off in the lap model (biases every M2 high alike); the motor catalogue and Kv bounds "
+      "alike); the missing take-off in the lap model (off in every published result; it biases M2 high unevenly, "
+      "favouring heavy designs: ΔF −0.008 for the 0.5 L optimum to −0.053 for 2 L, no ranking change at nominal "
+      "inputs, but every optimum then violates M2's energy constraint and the RDO design two robust constraints; "
+      "docs/studies/takeoff_study.md); the motor catalogue and Kv bounds "
       "(Q7, Q34; Kv is set by the rpm limit, not its bounds).\n")
     w("\nThe tank size (Q38) is the largest lever overall: see results_2025.md §1b.\n")
     (DOCS / "INDEX.md").write_text("".join(L))
