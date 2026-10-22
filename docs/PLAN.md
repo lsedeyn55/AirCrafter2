@@ -990,6 +990,11 @@ by the mass equations) or the root chord (used for sizing).
 **G5. Eq. 32: `f_wing^(n_panels−1)` is an exponent. Confirmed numerically.** Back-solving Table 15 with the
 per-aircraft and combined f_wing values from Table 14 gives exponents of 2.08 (UBI15), 2.05 (UBI11) and 4.18 (GRA13).
 Those match n_panels − 1 = 2, 2 and 4. Consequence: a single-panel wing gets no f_wing correction.
+**Note (2026-10-23, USYD calibration, docs/studies/mass_calibration_usyd.md).** With `f_wing^(n_panels−1)` alone a
+one-piece wing cannot be corrected, and three USYD aircraft with 1, 2 and 3 panels cannot separate a joint effect from
+the construction effect. So Eq. 32 gets a wing construction factor `k_wing` (not G&G, default 1) that applies whatever
+n_panels: m_wing = k_wing · f_wing^(n_panels−1) · (bare) · (1 + S_winglet/S_wing) · f_build. f_wing keeps G&G's 1.12
+per joint, and each aircraft is fitted with its real n_panels. k_wing = 1 reproduces Table 15 unchanged.
 
 **G6. Eq. 33 (multi-panel).** It doesn't say whether `f_wing^(n−1)` and `(1 + S_winglet/S_wing)` apply per panel
 or once to the sum.

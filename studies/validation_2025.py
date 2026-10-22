@@ -1,13 +1,20 @@
 """2024-25 validation: Project Woombah as built, analysis only (docs/studies/results/validation_2025.md).
 
     .venv/bin/python studies/validation_2025.py corners      # MDA over the Kv / throttle / prop corners (v_top check)
-    .venv/bin/python studies/validation_2025.py woombah      # Woombah in AirCrafter 2.0: full throttle and logged currents
-    .venv/bin/python studies/validation_2025.py calibrate    # mass calibration on Woombah (configs/mass_usyd_woombah.yaml)
+    .venv/bin/python studies/validation_2025.py woombah --mass gg    # Woombah, G&G (uncalibrated) mass factors
+    .venv/bin/python studies/validation_2025.py woombah --mass loo   # Woombah, USYD factors fitted WITHOUT Woombah
+    .venv/bin/python studies/validation_2025.py calibrate    # SUPERSEDED Woombah-only refit (configs/mass_usyd_woombah.yaml)
     .venv/bin/python studies/validation_2025.py report       # docs/studies/results/validation_2025.{md,json} + figures
 
-Each part writes outputs/results/validation_<part>.json; report collects them. No value is tuned to the flight data:
-the logged-current case sets the throttle from the recorded average current (an input condition of the flight),
-everything else is the uncalibrated model.
+Each part writes outputs/results/validation_<part>.json (woombah: validation_woombah_<mass>.json; the pre-calibration
+run stays in validation_woombah.json); report collects them. No value is tuned to the flight data: the logged-current
+case sets the throttle from the recorded average current (an input condition of the flight).
+
+Mass model (since the USYD calibration, docs/studies/mass_calibration_usyd.md): configs/placeholders.yaml carries the
+correction factors fitted on Orange Hornet, Woombah and Humpback, so Woombah is in-sample there. The validation
+therefore applies its mass factors above the layers: 'gg' = G&G's published factors (mass_garcia_gamboa_2022.yaml,
+k_wing 1, gg tails), 'loo' = configs/mass_usyd_loo_woombah.yaml (fitted on Orange Hornet and Humpback only), so the
+Woombah comparison stays out-of-sample.
 """
 
 import os
@@ -68,10 +75,32 @@ def git_hash():
                           text=True).stdout.strip()
 
 
-def woombah_config():
+MASS_VARIANTS = {"gg": "G&G factors (uncalibrated)", "loo": "USYD factors without Woombah (out-of-sample)"}
+
+
+def mass_override(variant):
+    """(options, inputs) applied over the loaded config's mass model (above placeholders.yaml)."""
+    from aircrafter2.config import load_yaml
+
+    if variant == "gg":
+        inp = load_yaml(ROOT / "configs" / "mass_garcia_gamboa_2022.yaml")["inputs"]
+        return {"tail_mass_model": "gg"}, {**{k: inp[k] for k in ("f_wing", "f_ht", "f_vt", "f_cb", "f_tb", "f_gear")},
+                                           "k_wing": 1.0}
+    if variant == "loo":
+        d = load_yaml(ROOT / "configs" / "mass_usyd_loo_woombah.yaml")
+        return d.get("options", {}), d["inputs"]
+    raise ValueError(variant)
+
+
+def woombah_config(mass=None):
     from aircrafter2.problems.multipoint import load_multipoint_config
 
-    return load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+    mcfg = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+    if mass:
+        opts, inp = mass_override(mass)
+        mcfg.base.mass.options = mcfg.base.mass.options.model_copy(update=opts)
+        mcfg.base.mass.inputs.update(inp)
+    return mcfg
 
 
 POINT_OUT = ["m_total", "m_empty", "m_pay", "m_wing", "m_ht", "m_vt", "m_fus", "m_tb", "m_cb", "m_gear", "m_sys",
@@ -133,6 +162,9 @@ def corners():
     print(f"max level speed {vmax:.1f} m/s vs v_top {v_top}; failures {len(rows) - len(conv)}")
 
 
+MASS = "gg"  # the mass variant of the woombah part (--mass)
+
+
 def _run(th2, th3, ballast=None):
     """Woombah as built at throttles (th2, th3), on a fresh problem (a failed solve leaves NaN states behind).
     ballast: {point: kg} added through the mass model's m_ballast hook (to fly the logged take-off masses)."""
@@ -140,7 +172,7 @@ def _run(th2, th3, ballast=None):
 
     from aircrafter2.problems.multipoint import build_multipoint_problem
 
-    mcfg = woombah_config()
+    mcfg = woombah_config(MASS)
     p = build_multipoint_problem(mcfg, driver=False)
     p.set_val("throttle_M2", th2)
     p.set_val("throttle_M3", th3)
@@ -185,7 +217,7 @@ def _solve_throttle(pt, target_A, other=1.0):
 def woombah():
     from aircrafter2.problems.multipoint import m1_check
 
-    out = dict(git=git_hash(), config="configs/woombah_2025.yaml", cases={})
+    out = dict(git=git_hash(), config="configs/woombah_2025.yaml", mass=MASS, mass_label=MASS_VARIANTS[MASS], cases={})
     p, mcfg = _run(1.0, 1.0)
     out["cases"]["full_throttle"] = snapshot(p, mcfg)
     out["cases"]["full_throttle"]["M1"] = m1_check(mcfg, p)
@@ -217,12 +249,17 @@ def woombah():
         print("logged current + mass:", {pt: {k: round(snap[pt][k], 2) for k in
                                               ("m_total", "v", "ThreeLapTime", "laps_frac", "I_avg_pack_A")}
                                          for pt in ("M2", "M3")}, flush=True)
-    dump("woombah", out)
+    dump(f"woombah_{MASS}", out)
 
 
 def calibrate():
-    """Refit the G&G correction factors on Woombah's component masses (Eq. 127, one aircraft)."""
+    """SUPERSEDED (2026-10-23) by studies/mass_calibration_usyd.py: refit the G&G correction factors on Woombah's
+    component masses (Eq. 127, one aircraft). Kept for the record; rerunning it would rewrite
+    configs/mass_usyd_woombah.yaml on today's placeholders, so it asks for --force."""
     import yaml
+
+    if not FORCE:
+        raise SystemExit("calibrate is superseded (docs/studies/mass_calibration_usyd.md); --force to rerun it anyway")
 
     from aircrafter2.config.mass import MassConfig
     from aircrafter2.mass.calibration import fit_correction_factors
@@ -291,7 +328,16 @@ def report():
     w_("Generated by `studies/validation_2025.py report` from `outputs/results/validation_*.json` (copied to "
        "`docs/studies/results/validation_2025.json`). Config: `configs/woombah_2025.yaml` (extends "
        "`configs/dbf2025_multipoint.yaml`). Sources: [W] 2025 USYD DBF Design Report; [R] Rules_2025.pdf. Analysis "
-       "only, uncalibrated mass model unless a column says otherwise; **nothing is tuned to the flight data**.\n")
+       "only; **nothing is tuned to the flight data**.\n")
+    w_("**Mass model (since 2026-10-23).** The optimisations now run with the USYD-calibrated mass model: the "
+       "correction factors in `configs/placeholders.yaml` are fitted on Orange Hornet, Woombah and Humpback "
+       "(docs/studies/mass_calibration_usyd.md). This reverses the earlier rule of running every optimisation with "
+       "the uncalibrated model. Woombah is in that fit, so this validation uses two mass models applied above the "
+       "layers: **G&G** (the published factors of `mass_garcia_gamboa_2022.yaml`, uncalibrated) and **out-of-sample** "
+       "(`configs/mass_usyd_loo_woombah.yaml`, fitted on Orange Hornet and Humpback only). Keeping Woombah out of "
+       "the fit is what keeps this comparison honest. Both use the cited Step 1 values (1 mm spar wall, 313 MPa) and "
+       "Woombah's three-piece wing and cargo box (the 2024-25 ruleset). The Woombah-only refit of the earlier version "
+       "stays in §2, superseded.\n")
     w_("**Modelling differences (known before running):** rectangular-equivalent wing (same span and area; Woombah "
        "tapers 0.8); one spar tube for two; the model's fuselage is a cargo box plus a tail boom (Woombah: an 82 in "
        "fuselage); the lap model has no take-off, while the rules time M2 from the first throttle advance [R p. 11] "
@@ -317,10 +363,13 @@ def report():
            "and 400 KV with the 9x6E): the aircraft cannot hold level flight, so the speed balance has no solution. "
            "That is a physically infeasible design, not a speed above v_top; an optimiser step into it stops the run "
            "as MDA non-convergence (reported separately from constraint violation).\n")
-    if (OUT / "validation_woombah.json").exists():
-        wb = load("woombah")
+    runs = {m: load(f"woombah_{m}") for m in MASS_VARIANTS if (OUT / f"validation_woombah_{m}.json").exists()}
+    if "gg" in runs:
+        wb = runs["gg"]
         out["woombah"] = wb
-        ft = wb["cases"]["full_throttle"]
+        if "loo" in runs:
+            out["woombah_loo"] = runs["loo"]
+        ft = {m: r["cases"]["full_throttle"] for m, r in runs.items()}
         w_("## 2. Mass against Table 34\n")
         cal = load("calibrate") if (OUT / "validation_calibrate.json").exists() else None
         if cal:
@@ -328,51 +377,64 @@ def report():
         rows = [("wing", "m_wing", TABLE34["wing"]), ("HT", "m_ht", TABLE34["HT"]), ("VT", "m_vt", TABLE34["VT"]),
                 ("fuselage + nose", "m_fus", TABLE34["fuselage"] + TABLE34["fuselage_nose"]),
                 ("undercarriage", "m_gear", TABLE34["undercarriage"])]
-        hdr = "| Component | Table 34 (lb) | AirCrafter 2.0, uncalibrated (lb) | error |"
+        hdr = "| Component | Table 34 (lb) |" + "".join(f" AirCrafter 2.0, {MASS_VARIANTS[m]} (lb) | error |" for m in ft)
         if cal:
-            hdr += " refitted, n_panels 1 (lb) | refitted, n_panels 3 (lb) |"
+            hdr += " Woombah-only refit, n_panels 1 (lb, superseded) | n_panels 3 (lb, superseded) |"
         w_(hdr)
-        w_("|---|---:|---:|---:|" + ("---:|---:|" if cal else ""))
+        w_("|---|---:|" + "---:|---:|" * len(ft) + ("---:|---:|" if cal else ""))
+        struct = {m: 0.0 for m in ft}
         for lab, key, real in rows:
-            m = ft["M2"][key] / LB
-            line = f"| {lab} | {real:.2f} | {m:.2f} | {100 * (m / real - 1):+.0f} % |"
+            line = f"| {lab} | {real:.2f} |"
+            for m in ft:
+                x = ft[m]["M2"][key] / LB
+                struct[m] += x
+                line += f" {x:.2f} | {100 * (x / real - 1):+.0f} % |"
             if cal:
                 for npan in (1, 3):
                     err = cal["results"][f"n_panels_{npan}"]["errors"][0].get(key)
                     line += f" {real * (1 + err):.2f} |" if err is not None else " - |"
             w_(line)
-        for lab, key, real in [("M1 (no payload)", None, TABLE34["M1"]), ("M2", "M2", TABLE34["M2"]),
-                               ("M3", "M3", TABLE34["M3"])]:
-            if key:
-                w_(f"| **{lab} take-off mass** | {real:.2f} (Table 38: {TABLE38['M2_test3']['togw_lb'] if key == 'M2' else TABLE38['M3_test2']['togw_lb']}) "
-                   f"| {ft[key]['m_total'] / LB:.2f} | {100 * (ft[key]['m_total'] / LB / real - 1):+.0f} % |"
-                   + (" | |" if cal else ""))
-        if "M1" in ft:
-            w_(f"| **M1 take-off mass** | {TABLE34['M1']:.2f} | {ft['M1'].get('m_total', float('nan')) / LB:.2f} | "
-               f"{100 * (ft['M1'].get('m_total', float('nan')) / LB / TABLE34['M1'] - 1):+.0f} % |" + (" | |" if cal else ""))
+        real_s = sum(r for _, _, r in rows)
+        w_(f"| **structure (wing to gear)** | {real_s:.2f} |" + "".join(
+            f" {struct[m]:.2f} | {100 * (struct[m] / real_s - 1):+.0f} % |" for m in ft) + (" | |" if cal else ""))
+        for lab, key, real in [("M2", "M2", TABLE34["M2"]), ("M3", "M3", TABLE34["M3"])]:
+            togw = TABLE38["M2_test3"]["togw_lb"] if key == "M2" else TABLE38["M3_test2"]["togw_lb"]
+            w_(f"| **{lab} take-off mass** | {real:.2f} (Table 38: {togw}) |" + "".join(
+                f" {ft[m][key]['m_total'] / LB:.2f} | {100 * (ft[m][key]['m_total'] / LB / real - 1):+.0f} % |"
+                for m in ft) + (" | |" if cal else ""))
+        if all("M1" in ft[m] for m in ft):
+            w_(f"| **M1 take-off mass** | {TABLE34['M1']:.2f} |" + "".join(
+                f" {ft[m]['M1'].get('m_total', float('nan')) / LB:.2f} | "
+                f"{100 * (ft[m]['M1'].get('m_total', float('nan')) / LB / TABLE34['M1'] - 1):+.0f} % |" for m in ft)
+               + (" | |" if cal else ""))
         w_("\nTable 34's M2 total (26.02 lb) is 2.21 lb above the sum of its own rows, and its M3 total omits the empty "
            "bottles the rules require; the flight-test take-off masses (Table 38: 26.9 and 13.7 lb) include ballast "
-           "added after P1 [W p. 60].")
+           "added after P1 [W p. 60]. The model masses are the full-throttle point's (the closure re-sizes the "
+           "structure at the closed take-off mass). Table 34 has no servo row (OPEN_QUESTIONS Q48).")
         if cal:
             f1, f3 = cal["results"]["n_panels_1"]["factors"], cal["results"]["n_panels_3"]["factors"]
-            w_(f"\n**Calibration** (Eq. 127, one aircraft; `configs/mass_usyd_woombah.yaml`): factors "
-               + ", ".join(f"{k} = {x:.3g}" for k, x in f1.items()) + " with n_panels = 1. With n_panels = 3 "
-               "(Woombah's three-piece wing) f_wing enters as f_wing^2 (PLAN G5): " + ", ".join(
-                   f"{k} = {x:.3g}" for k, x in f3.items()) + " (saved). With n_panels = 1 the wing cannot be corrected "
-               "(f_wing drops out) and stays far below Table 34; with n_panels = 3 five factors fit five masses "
-               "exactly, which is interpolation, not evidence. **One aircraft is one data point**: the refitted "
-               "factors are a comparison column only, never used in the optimisations.\n")
+            w_(f"\n**Superseded: the Woombah-only refit** (Eq. 127, one aircraft; `configs/mass_usyd_woombah.yaml`, "
+               f"from the earlier run at {cal.get('git', '?')}, on the earlier placeholders): factors "
+               + ", ".join(f"{k} = {x:.3g}" for k, x in f1.items()) + " with n_panels = 1; " + ", ".join(
+                   f"{k} = {x:.3g}" for k, x in f3.items()) + " with n_panels = 3 (Woombah's three-piece wing, "
+               "f_wing^2, PLAN G5). Five factors fit five masses exactly: interpolation, not evidence. Replaced by "
+               "the three-aircraft calibration, whose Woombah-out factors give the out-of-sample column.\n")
         w_("## 3. Flight performance against Table 39\n")
         w_("Table 39 is not internally consistent (docs/RESULTS_PLAN.md §6), so each quantity is compared with each "
            "reading. M2 'time' readings: 112.2 s (3 × the 37.4 s average lap), 138.1 s (the total flight time, take-off "
-           "included). Average speeds are over 3 × 3000 ft.\n")
-        cases = [c for c in ("full_throttle", "logged_current", "logged_current_and_mass") if c in wb["cases"]]
-        w_("| Quantity | Table 39 design | Table 39 actual | " + " | ".join(f"AirCrafter 2.0, {c.replace('_', ' ')}"
-                                                                    for c in cases) + " |")
-        w_("|---|---:|---:|" + "---:|" * len(cases))
+           "included). Average speeds are over 3 × 3000 ft. Columns: the mass model (G&G, out-of-sample), then the "
+           "case.\n")
+        cols = [(m, c) for m in runs for c in ("full_throttle", "logged_current", "logged_current_and_mass")
+                if c in runs[m]["cases"]]
+        short = {"gg": "G&G", "loo": "out-of-sample"}
+        w_("| Quantity | Table 39 design | Table 39 actual | " + " | ".join(
+            f"{short[m]}, {c.replace('_', ' ')}" for m, c in cols) + " |")
+        w_("|---|---:|---:|" + "---:|" * len(cols))
         d2, a2, d3, a3 = (TABLE39["M2"]["design"], TABLE39["M2"]["actual"], TABLE39["M3"]["design"],
                           TABLE39["M3"]["actual"])
-        cs = [wb["cases"][c] for c in cases]
+        cs = [runs[m]["cases"][c] for m, c in cols]
+        w_(f"| M2 take-off mass (lb) | 26 | 26.9 (Table 38) | " + " | ".join(f"{x['M2']['m_total'] / LB:.1f}" for x in cs)
+           + " |")
         w_(f"| M2 average speed (mph) | {d2['speed_mph']:g} | {a2['speed_mph']:g} | "
            + " | ".join(f"{x['M2']['avg_speed_mph_3laps']:.1f}" for x in cs) + " |")
         w_(f"| M2 3-lap time (s) | {d2['flight_time_s']:g} | 112.2 or 138.1 | "
@@ -383,6 +445,8 @@ def report():
            + " | ".join(f"{100 * x['M2']['reserve_after_3laps']:.0f} %" for x in cs) + " |")
         w_(f"| M2 average current per pack (A) | 60 [W p. 26] | 34 (Test 3) | "
            + " | ".join(f"{x['M2']['I_avg_pack_A']:.1f}" for x in cs) + " |")
+        w_(f"| M3 take-off mass (lb) | | 13.7 (Table 38) | " + " | ".join(f"{x['M3']['m_total'] / LB:.1f}" for x in cs)
+           + " |")
         w_(f"| M3 laps in the window (pre-launch) | {d3['laps']} ({d3['laps'] - 1}) | {a3['laps']} ({a3['laps'] - 1}) | "
            + " | ".join(f"{x['M3']['laps_frac']:.2f} ({x['M3']['laps_frac'] - 1:.2f})" for x in cs) + " |")
         w_(f"| M3 average speed (mph) | {d3['speed_mph']:g} | {a3['speed_mph']:g} | "
@@ -391,13 +455,15 @@ def report():
            + " | ".join(f"{x['M3']['I_avg_pack_A']:.1f}" for x in cs) + " |")
         w_(f"| flight score M1 + M2 + M3 (B = 0) | | | " + " | ".join(f"{x['score']['flight_score']:.3f}" for x in cs)
            + " |")
-        lt = wb.get("logged_throttle", {})
-        if lt:
-            w_("\nLogged-current case: throttles " + ", ".join(
-                f"{k} {x['throttle']:.3f}" if x.get("throttle") else f"{k}: {x.get('note')}" for k, x in lt.items())
-               + " (the throttle at which the 3-lap average pack current equals Table 38's average current, read as "
-               "per pack; an input condition of the flight, not a fit).\n")
-        w_("**Reading.** " + _reading(wb) + "\n")
+        for m, r in runs.items():
+            lt = r.get("logged_throttle", {})
+            if lt:
+                w_(f"\n{short[m]}, logged-current case: throttles " + ", ".join(
+                    f"{k} {x['throttle']:.3f}" if x.get("throttle") else f"{k}: {x.get('note')}"
+                    for k, x in lt.items()) + ".")
+        w_("\nThe logged-current throttle is the one at which the 3-lap average pack current equals Table 38's "
+           "average current, read as per pack: an input condition of the flight, not a fit.\n")
+        w_("**Reading.** " + _reading(wb) + (" " + _reading_loo(runs) if "loo" in runs else "") + "\n")
     ac1f = ROOT / "reference" / "aircrafter1" / "runs" / "ac1_2025_r1.json"
     if ac1f.exists():
         a = json.loads(ac1f.read_text())
@@ -442,6 +508,24 @@ def report():
     print("\n".join(L))
 
 
+def _reading_loo(runs):
+    g, o = runs["gg"]["cases"]["full_throttle"], runs["loo"]["cases"]["full_throttle"]
+    s = (f"**Out-of-sample mass model:** the structure fitted without Woombah predicts an M2 take-off mass of "
+         f"{o['M2']['m_total'] / LB:.1f} lb at full throttle (G&G: {g['M2']['m_total'] / LB:.1f} lb; Table 34: "
+         f"{TABLE34['M2']:.2f} lb, Table 38: 26.9 lb) and {o['M3']['m_total'] / LB:.1f} lb in M3 (G&G "
+         f"{g['M3']['m_total'] / LB:.1f}; Table 38: 13.7 lb).")
+    c = runs["loo"]["cases"]
+    if "logged_current" in c:
+        s += (f" At the logged current it flies M2 at {c['logged_current']['M2']['avg_speed_mph_3laps']:.0f} mph "
+              f"(G&G {runs['gg']['cases']['logged_current']['M2']['avg_speed_mph_3laps']:.0f} mph, flown "
+              f"{TABLE39['M2']['actual']['speed_mph']:g} mph)")
+        if "logged_current_and_mass" in c:
+            s += (f"; with the logged masses as well, {c['logged_current_and_mass']['M2']['avg_speed_mph_3laps']:.0f}"
+                  f" mph (G&G {runs['gg']['cases']['logged_current_and_mass']['M2']['avg_speed_mph_3laps']:.0f} mph)")
+        s += "."
+    return s
+
+
 def _reading(wb):
     c = wb["cases"]
     ft = c["full_throttle"]
@@ -473,7 +557,13 @@ def _reading(wb):
     return s
 
 
+FORCE = False
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("part", choices=["corners", "woombah", "calibrate", "report"])
-    globals()[ap.parse_args().part]()
+    ap.add_argument("--mass", choices=list(MASS_VARIANTS), default="gg", help="woombah: mass factors (module docstring)")
+    ap.add_argument("--force", action="store_true", help="calibrate: rerun the superseded Woombah-only refit")
+    a = ap.parse_args()
+    MASS, FORCE = a.mass, a.force
+    globals()[a.part]()

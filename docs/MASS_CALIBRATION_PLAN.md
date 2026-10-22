@@ -237,3 +237,14 @@ model moved.
    reference changes (commit), then the regenerated references (their own commit).
 3. Woombah validation with the LOO config; one deterministic 2024-25 multipoint optimum; the RDO cost estimate;
    `mass.md`, OPEN_QUESTIONS, PLAN G5, INDEX (commit).
+
+## 9. Outcome (checkpoints 2 and 3)
+
+- Checkpoint 2 `725cb51`; references regenerated `da1158f`; checkpoint 3 the commit after. Full suite on checkpoint 2:
+  337 passed, 18 strict-xfail (the reference entries), then 0 xfail after the regeneration.
+- Fits, LOO, gg vs areal, sensitivities, closure check and the calibrated optimum: `docs/studies/mass_calibration_usyd.md`.
+- Woombah validation, out-of-sample: `docs/studies/results/validation_2025.md` §2–3 (`studies/validation_2025.py woombah
+  --mass gg|loo`). The pre-calibration run (`outputs/results/validation_woombah.json`) is kept; the superseded
+  Woombah-only refit stays as a column.
+- Not done (brief): RDO reruns; the cost estimate is in the calibration doc §9. `results_2025.md`, `kv_study.md`,
+  `rdo_study.md` and `twin_motor_study.md` still show the uncalibrated model; INDEX.md says so.

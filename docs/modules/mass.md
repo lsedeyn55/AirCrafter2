@@ -22,23 +22,35 @@ A structure-based (class II½) mass model for a **circular carbon-tube spar** wi
 | `CriticalLoads` | 51–53 | KS max (smooth) or hard max. |
 | `TubeSparSizing` | 105–118 | Bending, tip deflection, shear, torsion, optional twist, divergence; minimum gauge. |
 | `RibSizing` | 97–104 | Total n_rib · t_rib, so no integer rib count. |
-| `WingMass` | 26, 27, 28, 30, 31, 32 | f_wing^(n_panels−1), confirmed as an exponent (G5). × `f_build` (not G&G, below). |
-| `TailMass` | 34, 35 | |
+| `WingMass` | 26, 27, 28, 30, 31, 32 | f_wing^(n_panels−1), confirmed as an exponent (G5). × `k_wing` and × `f_build` (not G&G, below). |
+| `TailMass` | 34, 35 | `tail_mass_model: gg` (default). `areal`: m = a S (not G&G, below). |
 | `TailBoomLoads` / `TailBoomSizing` | 54–56, 119–123 | Minimum boom wall (`tb_min_gauge`). |
 | `FuselageMass` | 36–38 | m_tb and m_cb × `f_build`. |
 | `GearMass` | 39 | Uses the coupled total mass. × `f_build`. |
 | `MassSum` | 40–41 | Optional `m_ballast` robustness hook (not G&G). |
 | `StatisticalMass` | 124–126 | Initial guess for the closure and a sanity check. |
-| `calibration.fit_correction_factors` | 127–128 | Offline refit of the correction factors. |
+| `calibration.fit_correction_factors`, `leave_one_out` | 127–128 | Offline refit of the correction factors; external sizing, lumped targets, leave-one-out. |
+
+**Wing construction factor `k_wing`** (not G&G; default 1). It multiplies Eq. 32 whatever n_panels:
+m_wing = k_wing · f_wing^(n_panels−1) · (bare) · (1 + S_winglet/S_wing) · f_build. G&G's f_wing (1.12 per joint)
+cannot correct a one-piece wing (PLAN G5), and three aircraft with 1, 2 and 3 panels cannot separate a joint effect from
+the construction. So k_wing carries the construction and f_wing stays G&G's. k_wing = 1 is the published model.
+
+**Areal tails** (`tail_mass_model: areal`; not G&G). m_ht = a_ht S_ht and m_vt = a_vt S_vt (a in kg/m²), times f_build.
+G&G scale the tails with the wing mass (Eqs. 34–35, `gg`, the default). The USYD tails do not follow their wings, but
+their areal masses are consistent (docs/studies/mass_calibration_usyd.md §4). In `areal` mode f_ht and f_vt are not
+inputs, so an uncertain parameter of that name needs `gg` (the published full-set RDO configs pin it).
 
 **Build-mass factor `f_build`** (not G&G; default 1, docs/RDO_REDUCED_PLAN.md). One multiplier on the whole
-structural mass: how heavy the airframe comes out when built. It multiplies m_wing (so m_ht and m_vt, which G&G
-take as fractions of m_wing, follow), m_tb, m_cb and m_gear: the structure of Eq. 40 without m_sys, m_ballast and
-the payload. It acts inside the closure, so the loads, the spar and boom sizing, the gear (f_gear m), the total mass
-and the CG (`stability/static.py` takes the component masses) all see it. The bare-wing breakdown (m_tube … m_film,
-m_wing_bare) is not scaled. Applying it per component rather than to the sum in `MassSum` is what lets the CG see it.
-At f_build = 1 every result is reproduced bit for bit (`tests/test_rdo_reduced.py`). **Overlap with f_tb:** both
-scale the tail boom. This is accepted: f_tb carries the CG effect of mass at the tail, f_build the overall build.
+structural mass: how heavy the airframe comes out when built. It multiplies m_wing, m_tb, m_cb and m_gear, and the
+tails: with `gg` tails they follow m_wing, and with `areal` tails f_build multiplies them directly. Together these are
+the structure of Eq. 40 without m_sys, m_ballast and the payload. It acts inside the closure, so the loads, the spar
+and boom sizing, the gear (f_gear m), the total mass and the CG (`stability/static.py` takes the component masses) all
+see it. The bare-wing breakdown (m_tube … m_film, m_wing_bare) is not scaled. Applying it per component rather than
+to the sum in `MassSum` is what lets the CG see it. At f_build = 1 every result is reproduced bit for bit
+(`tests/test_rdo_reduced.py`). **Overlap with f_tb:** both scale the tail boom. This is accepted: f_tb carries the CG
+effect of mass at the tail, f_build the overall build. Since the USYD calibration the factors carry the construction
+bias, and f_build's nominal is 1 with the leave-one-out spread (OPEN_QUESTIONS Q39).
 
 **Closure.** The group uses block Gauss–Seidel with Aitken acceleration when standalone. Inside the full model it
 is a subsystem of the MDF Newton solver.
@@ -56,6 +68,7 @@ Defaults reproduce the paper. Each switch is a `mass.options` key.
 | `include_twist` | `false` | Eq. 116 (the paper used divergence only). |
 | `use_min_gauge` / `tb_min_gauge` | `true` / `true` | Spar and boom minimum walls (t_tube_min, t_tb_min). |
 | `max_mode`, `rho_ks` | `ks`, 100 | Smooth max (log-space KS, over-estimate ≤ 0.7% for two terms). |
+| `tail_mass_model` | `gg` | Eqs. 34–35. `areal`: m = a S (the USYD calibration; `placeholders.yaml` sets it for every problem config). |
 
 ## Wing-mounted propulsion units (twin layout, not in G&G)
 
@@ -106,18 +119,35 @@ all the G&G verification tests are unchanged.
 
 ## Defaults and calibration
 
-`configs/mass_garcia_gamboa_2022.yaml` holds the defaults, and `configs/placeholders.yaml` the values shared with the
-other placeholders:
-- materials (Table 13), `delta_tip_ratio` and `theta_tb_max` (Table 3), the tube fit `k_fill` and `clearance`, and
-  `t_tube_min`: in `placeholders.yaml`, which every problem config loads above `mass_config`. A mass file loaded on
-  its own (`configs/verification/`) gets the same values from the `inputs.py` defaults;
-- correction factors: Table 14;
-- f_tb = 0.847: refitted for a 1 mm boom wall from the USYD tubes (`docs/studies/tail_boom_calibration.md`). The paper's
-  12.81 applies only to load-sized walls.
+`configs/mass_garcia_gamboa_2022.yaml` holds the published G&G model: the correction factors of Table 14, with f_tb
+refitted for a 1 mm boom wall (0.847, `docs/studies/tail_boom_calibration.md`). The verification
+(`configs/verification/`) and the uncalibrated comparisons load it on its own.
 
-All of these are placeholders until the model is calibrated on USYD aircraft. Use
-`calibration.fit_correction_factors` with your real component masses (Eq. 127 for one aircraft, Eq. 128 for
-several).
+Every problem config loads `configs/placeholders.yaml` above it. That file holds:
+- materials (Table 13), `delta_tip_ratio` and `theta_tb_max` (Table 3), the tube fit `k_fill` and `clearance`;
+- the cited USYD values: `t_tube_min` 1.0 mm (every USYD CF tube) and `sigma_spar` 313 MPa (the team's measured
+  COTS-tube strength). k_fill 0.85 is a checked equivalence;
+- **the USYD calibration** (block "mass correction factors (USYD calibration)"): `k_wing`, `a_ht`, `a_vt`, `f_cb`,
+  `f_tb`, `f_gear` and `tail_mass_model: areal`, fitted with Eq. 128 on Orange Hornet, Woombah and Humpback.
+  `docs/studies/mass_calibration_usyd.md` has the fits, written by `studies/mass_calibration_usyd.py fit`.
+
+**Calibration method** (`aircrafter2/mass/calibration.py`):
+- **External sizing:** each aircraft's component equations are fitted at its own sizing (design) mass, with no
+  closure (`GarciaGamboaMass(external_sizing=True)`). This isolates the factors from the closure error and needs no
+  m_sys.
+- **Targets:** per-aircraft target sets, including lumped targets (`m_fus`, or `"m_cb+m_tb"`).
+- **Residuals:** relative, with equal weights, as G&G (Eqs. 127–128).
+- **Leave-one-out:** `leave_one_out` refits without each aircraft and predicts it. A factor the remaining aircraft
+  do not identify is held at a given value.
+
+**USYD construction caveat.** The three USYD aircraft are not G&G's tube-spar concept:
+- a balsa-sheeted rib-and-spar wing with two CF tube spars, or CF joiners plus timber spar caps ([HB]);
+- a semi-monocoque balsa/plywood fuselage with no CF boom;
+- balsa tails with CF spars.
+
+So the factors are large (k_wing ≈ 2) and absorb the construction difference. They hold for this construction only.
+With three aircraft the evidence is the leave-one-out scatter (about ±25 % on the structure), and the fuselage and
+gear factors rest on two aircraft each (OPEN_QUESTIONS Q46).
 
 ## Verification
 
