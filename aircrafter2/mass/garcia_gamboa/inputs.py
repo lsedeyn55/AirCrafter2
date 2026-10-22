@@ -71,6 +71,10 @@ INPUTS = {
     "f_vt": (None, 0.3414, "vertical tail factor (Eq. 35)"),
     "f_cb": ("kg/m**2", 0.7878, "cargo bay areal mass factor (Eq. 37)"),
     "f_gear": (None, 0.0089, "landing gear mass fraction (Eq. 39)"),
+    # --- construction factors (not G&G; default 1 / unused: the published model) ---
+    "k_wing": (None, 1.0, "wing construction factor on Eq. 32, whatever n_panels (not G&G; default 1)"),
+    "a_ht": ("kg/m**2", 1.0, "horizontal tail areal mass (tail_mass_model: areal; not G&G)"),
+    "a_vt": ("kg/m**2", 1.0, "vertical tail areal mass (tail_mass_model: areal; not G&G)"),
     # --- fixed masses ---
     "m_sys": ("kg", 0.65, "systems mass: propulsion, battery, servos, receiver"),
     "m_pay": ("kg", 1.0, "payload mass"),
@@ -93,4 +97,5 @@ def active_inputs(opts):
         skip |= {"t_at_spar", "k_fill", "clearance"}
     elif opts.r_tube_mode == "derived":
         skip.add("r_tube")
+    skip |= {"f_ht", "f_vt"} if opts.tail_mass_model == "areal" else {"a_ht", "a_vt"}
     return [name for name in INPUTS if name not in skip]

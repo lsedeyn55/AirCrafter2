@@ -25,6 +25,9 @@ class MassOptions(BaseModel):
                                "calibrated on the same basis (docs/studies/tail_boom_calibration.md)")
     r_tube_mode: Literal["fixed", "derived", "design_variable"] = "derived"
     n_panels: int = Field(1, ge=1)
+    tail_mass_model: Literal["gg", "areal"] = Field(
+        "gg", description="gg: m_ht, m_vt = f S/S_wing m_wing (Eqs. 34-35); areal: m = a S (kg/m^2, not G&G; "
+        "docs/studies/mass_calibration_usyd.md)")
     statistical_model: Literal["all", "balsa", "composite"] = "all"
     motor_inertia_relief: bool = Field(False, description="wing-mounted units relieve root bending and shear "
                                        "(flight and ground test); off = the published G&G model")

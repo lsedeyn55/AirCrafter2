@@ -37,6 +37,7 @@ COMPONENTS = [
     ("wing_mass_1", WingMass, {"n_panels": 1}),
     ("wing_mass_3", WingMass, {"n_panels": 3}),
     ("tail_mass", TailMass, {}),
+    ("tail_mass_areal", TailMass, {"tail_mass_model": "areal"}),
     ("fuselage_mass", FuselageMass, {}),
     ("gear_mass", GearMass, {}),
     ("mass_sum", MassSum, {}),
@@ -55,5 +56,25 @@ def test_check_partials(label, cls, opts):
         val = meta["val"]
         prob.set_val(f"comp.{name}", val * rng.uniform(0.8, 1.25, size=val.shape))
     prob.run_model()
+    data = prob.check_partials(method="cs", out_stream=None, compact_print=True)
+    assert_check_partials(data, atol=1e-8, rtol=1e-7)
+
+
+@pytest.mark.parametrize("cls,opts,values", [
+    (WingMass, {"n_panels": 2}, {"k_wing": 2.1, "f_build": 1.3}),
+    (TailMass, {"tail_mass_model": "areal"}, {"a_ht": 1.2, "a_vt": 1.4, "f_build": 1.3}),
+], ids=["wing_k_wing", "tail_areal_f_build"])
+def test_check_partials_construction_factors(cls, opts, values):
+    """k_wing != 1 and the areal tails with f_build != 1 (docs/studies/mass_calibration_usyd.md)."""
+    prob = om.Problem(reports=False)
+    prob.model.add_subsystem("comp", cls(**opts))
+    prob.setup(force_alloc_complex=True)
+    for name, val in values.items():
+        prob.set_val(f"comp.{name}", val)
+    prob.run_model()
+    if cls is TailMass:
+        assert prob.get_val("comp.m_ht")[0] == pytest.approx(1.2 * 0.1 * 1.3)
+    else:
+        assert prob.get_val("comp.m_wing")[0] == pytest.approx(2.1 * 1.12 * 1.3 * prob.get_val("comp.m_wing_bare")[0])
     data = prob.check_partials(method="cs", out_stream=None, compact_print=True)
     assert_check_partials(data, atol=1e-8, rtol=1e-7)

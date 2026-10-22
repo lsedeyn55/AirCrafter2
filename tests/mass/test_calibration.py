@@ -77,3 +77,73 @@ def test_refit_reproduces_default_f_tb():
         cases.append((c, {"m_tb": m}))
     res = fit_correction_factors(cases, ["f_tb"], x0=[1.0], bounds={"f_tb": (0.05, 100.0)})
     assert res.factors["f_tb"] == pytest.approx(0.847, abs=5e-4)
+
+
+# --- USYD calibration hook: external sizing, lumped targets, leave-one-out ----------------------------------------
+
+def _linear_case(name, m, S_ht, S_cb, l_tb, r_tb, targets):
+    """A CalibrationCase whose fitted outputs are linear in the factors: areal tails, external sizing (gear =
+    f_gear m), cargo bay f_cb S_cb, and a boom on its 1 mm minimum wall."""
+    from aircrafter2.config import MassConfig, load_yaml
+    from aircrafter2.mass.calibration import CalibrationCase
+
+    from ..conftest import CONFIGS
+
+    cfg = MassConfig(**load_yaml(CONFIGS / "mass_garcia_gamboa_2022.yaml"))
+    cfg.options.tail_mass_model = "areal"
+    cfg.inputs.update(b=1.6, c_mean=0.33, c_root=0.33, S_wing=0.53, t_at_spar=0.117, S_ht=S_ht, S_vt=0.06,
+                      S_cb=S_cb, l_ht=l_tb + 0.15, l_tb=l_tb, r_tb=r_tb, n=5.0, V_design=30.0, Cm=-0.08,
+                      CL_alpha=4.0, t_tb_min=1e-3, m_sys=0.0, m_pay=0.0)
+    return CalibrationCase(name=name, config=cfg, targets=targets, sizing_mass=m)
+
+
+def test_linear_fit_matches_hand_least_squares():
+    """Eq. 128 with external sizing and a lumped target on a case whose masses are linear in the factors: the hook
+    must return the hand-built linear least-squares solution of sum (m_calc / m_real - 1)^2."""
+    import numpy as np
+
+    from aircrafter2.mass.calibration import fit_correction_factors, leave_one_out, predict
+
+    rho, t = 1600.0, 1e-3
+    geo = {"A": dict(m=8.0, S_ht=0.19, S_cb=0.75, l_tb=0.85, r_tb=0.008),
+           "B": dict(m=11.8, S_ht=0.15, S_cb=0.47, l_tb=0.95, r_tb=0.010)}
+    real = {"A": {"m_ht": 0.20, "m_cb+m_tb": 1.45, "m_gear": 0.37},
+            "B": {"m_ht": 0.19, "m_cb": 0.62, "m_tb": 0.30, "m_gear": 0.30}}
+    cases = [_linear_case(n, targets=real[n], **g) for n, g in geo.items()]
+    factors = ["a_ht", "f_cb", "f_tb", "f_gear"]
+
+    def basis(g):  # d(output)/d(factor), by hand: areal tail, cargo bay, boom tube on the 1 mm wall, gear
+        tube = np.pi * (g["r_tb"] ** 2 - (g["r_tb"] - t) ** 2) * g["l_tb"] * rho
+        return {"m_ht": [g["S_ht"], 0, 0, 0], "m_cb": [0, g["S_cb"], 0, 0], "m_tb": [0, 0, tube, 0],
+                "m_gear": [0, 0, 0, g["m"]]}
+
+    rows = []
+    for n, g in geo.items():
+        B = basis(g)
+        for key, y in real[n].items():
+            rows.append(np.sum([B[k] for k in key.split("+")], axis=0) / y)
+    A = np.array(rows)
+    theta = np.linalg.lstsq(A, np.ones(len(rows)), rcond=None)[0]
+
+    res = fit_correction_factors(cases, factors, x0=[1.0, 1.0, 3.0, 0.03])
+    assert res.success
+    for f, v in zip(factors, theta):
+        assert res.factors[f] == pytest.approx(v, rel=1e-6), f
+    assert res.objective == pytest.approx(float(np.sum((A @ theta - 1.0) ** 2)), rel=1e-6)
+    _, pred = predict(cases[0], res.factors)  # external sizing: the gear sees the sizing mass, not a closure
+    assert pred["m_gear"] == pytest.approx(res.factors["f_gear"] * 8.0, rel=1e-12)
+
+    # leave-one-out on consistent synthetic data predicts the held-out case exactly
+    truth = dict(zip(factors, theta))
+    synth = []
+    for n, g in geo.items():
+        got, _ = predict(_linear_case(n, targets={"m_ht": 1.0}, **g), truth)
+        synth.append(_linear_case(n, targets={k: sum(got[p] for p in k.split("+")) for k in real[n]}, **g))
+    synth.append(_linear_case("C", targets={"m_ht": 0.2, "m_cb+m_tb": 1.0, "m_gear": 0.2},
+                              **dict(m=6.0, S_ht=0.2, S_cb=0.6, l_tb=0.7, r_tb=0.009)))
+    got_c, _ = predict(synth[2], truth)
+    synth[2].targets = {k: sum(got_c[p] for p in k.split("+")) for k in synth[2].targets}
+    loo = leave_one_out(synth, factors, x0=[1.0, 1.0, 3.0, 0.03])
+    for name, r in loo.items():
+        assert abs(r["structure_error"]) < 1e-6, name
+        assert all(abs(e) < 1e-6 for e in r["errors"].values()), name

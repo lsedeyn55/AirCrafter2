@@ -109,15 +109,51 @@ def _diff(a, b, path="", out=None):
     return out
 
 
+# The USYD mass calibration (docs/MASS_CALIBRATION_PLAN.md) changes, in every config with a mass model, the Step 1
+# inputs and the correction factors (to the values of placeholders.yaml), adds the tail model (areal; gg where a config
+# pins it for the f_ht/f_vt spreads), and, in the 2024-25 configs, Woombah's n_panels and cargo box (the ruleset).
+CAL_INPUTS = ["t_tube_min", "sigma_spar", "k_wing", "a_ht", "a_vt", "f_cb", "f_tb", "f_gear", "f_ht", "f_vt"]
+PINNED_GG = {"full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml", "full_mdo_rdo_fixed_kv.yaml",
+             "full_mdo_twin_rdo_fixed_kv.yaml", "dbf2025_multipoint_rdo_full.yaml"}
+
+
+def _calibration_changes(name, before):
+    pre = "base." if "base" in before else ""
+    b = before.get("base", before)
+    if "mass" not in b:
+        return {}
+    ph = expand_dotted(load_yaml(CONFIGS / "placeholders.yaml"))["mass"]
+    out = {f"{pre}mass.options.tail_mass_model": (None, "gg" if name in PINNED_GG else "areal")}
+    for k in CAL_INPUTS:
+        if b["mass"]["inputs"].get(k) != ph["inputs"][k]:
+            out[f"{pre}mass.inputs.{k}"] = (b["mass"]["inputs"].get(k), ph["inputs"][k])
+    if pre:  # the 2024-25 multipoint configs: Woombah's airframe from the ruleset
+        rs = expand_dotted(load_yaml(CONFIGS / "rulesets" / "dbf_2024_25.yaml"))
+        out[f"{pre}mass.options.n_panels"] = (b["mass"]["options"]["n_panels"], rs["mass"]["options"]["n_panels"])
+        for k in ("l_cb", "w_cb", "h_cb"):
+            out[f"{pre}geometry.{k}"] = (b["geometry"][k], rs["geometry"][k])
+    return out
+
+
+def _without_f_build_source(params):
+    """robust.parameters with the f_build/one-sided source tags dropped (the calibration cites them now)."""
+    return [{k: v for k, v in p.items() if not (p["name"] == "f_build" and k == "source")} for p in params or []]
+
+
 @pytest.mark.parametrize("name", sorted(json.loads((ROOT / "tests/data/configs_premigration.json").read_text())))
 def test_configs_load_as_before_the_migration_except_the_listed_changes(name):
     """Every 2024-25 config and variant loads to the same model_dump as before (a snapshot taken before the
-    migration); the single-point configs change exactly where the most-recent rule picked a newer value."""
+    migration); the single-point configs change exactly where the most-recent rule picked a newer value; and every
+    config changes where the USYD mass calibration says (values from the layer files)."""
     before = json.loads((ROOT / "tests/data/configs_premigration.json").read_text())[name]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         diff = _diff(before, _dump(name))
-    assert diff == EXPECTED_CHANGES.get(name, {})
+    rp = next((k for k in diff if k.endswith("robust.parameters")), None)
+    if rp:  # only the f_build source tag may change in the shared spreads
+        a, b = diff.pop(rp)
+        assert _without_f_build_source(a) == _without_f_build_source(b)
+    assert diff == {**EXPECTED_CHANGES.get(name, {}), **_calibration_changes(name, before)}
 
 
 # --- one place per value ------------------------------------------------------------------------------------------
@@ -129,7 +165,10 @@ ALLOWED = {"full_mdo_fixed_kv.yaml", "full_mdo_twin_fixed_kv.yaml", "full_mdo_rd
            "dbf2025_multipoint_rdo_calibrated.yaml", "dbf2025_multipoint_rdo_onesided.yaml",
            "dbf2025_multipoint_takeoff.yaml", "dbf2025_multipoint_rdo_takeoff.yaml", "woombah_2025.yaml",
            "mass_usyd_woombah.yaml", "uncertainty.yaml", "uncertainty_2025_reduced_calibrated.yaml",
-           "uncertainty_2025_reduced_onesided.yaml"}
+           "uncertainty_2025_reduced_onesided.yaml",
+           # the USYD mass calibration: G&G's published factors (verification, uncalibrated comparisons), the
+           # Woombah-out factors, and the full-set RDO configs that pin the gg tails for their f_ht/f_vt spreads
+           "mass_garcia_gamboa_2022.yaml", "mass_usyd_loo_woombah.yaml", "full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml"}
 
 
 def _config_files():

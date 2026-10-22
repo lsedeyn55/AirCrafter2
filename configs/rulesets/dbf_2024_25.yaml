@@ -16,6 +16,12 @@ course.preset: dbf_2025                      # -; cited; no Q; configs/courses/d
 course.pilot_reaction_time_s: 3.0            # s per lap; PLACEHOLDER; no Q; performance_modeller.m
 course.takeoff.start_offset_ft: 0.0          # ft; PLACEHOLDER; Q43; brake release on the start line (take-off on only)
 
+# --- airframe (Woombah's, the 2024-25 reference; docs/studies/mass_calibration_usyd.md cargo-box convention) ---
+mass.options.n_panels: 3                     # -; cited; Q50; Woombah's three-piece wing (2.95 ft mid-wing + two outer sections) [W p. 20]
+geometry.l_cb: 0.82                          # m = 1.64 + 1.05 ft; cited; Q50; cargo box = the constant-section fuselage (nose + centre sections) [W p. 19 Fig. 11]
+geometry.w_cb: 0.1194                        # m = 4.7 in; cited; Q50; [W p. 19 Fig. 11] (Table 30: 4.72 in maximum width)
+geometry.h_cb: 0.1194                        # m = 4.7 in; cited; Q50; [W p. 19 Fig. 11]
+
 # --- scoring ---
 multipoint.scoring.R2: 0.20                  # lb/s; PLACEHOLDER; Q35; best team's fuel weight / time
 multipoint.scoring.R3: 27.0                  # -; PLACEHOLDER; Q35; best team's laps + bonus / X-1 weight

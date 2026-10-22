@@ -5,6 +5,11 @@ extends: full_mdo.yaml
 
 propulsion: {prop: 10x7E}
 
+mass:
+  options:
+    tail_mass_model: gg   # G&G Eqs. 34-35 kept: uncertainty.yaml's f_ht / f_vt spreads need them (the USYD
+                          # calibration's areal tails have no f_ht, f_vt); the gg-form factors are in placeholders.yaml
+
 robust:
   enabled: true
   uncertainty_config: uncertainty.yaml   # the uncertain parameters (shared with examples/full_mdo.py)

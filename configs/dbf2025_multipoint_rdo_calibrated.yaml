@@ -1,3 +1,5 @@
+# SUPERSEDED (2026-10-23) by dbf2025_multipoint_rdo.yaml with the USYD-calibrated mass model (configs/placeholders.yaml
+# 'mass correction factors'; f_build nominal 1.0, LOO spread). Kept for the published calibrated RDO run.
 # CALIBRATED run: dbf2025_multipoint_rdo.yaml with f_build centred on Woombah's built/predicted structure, +/-30 % about
 # it (uncertainty_2025_reduced_calibrated.yaml, written by studies/results_2025.py calibrate). Decision 2026-10-21:
 # the Woombah ratio is a calibration (a nominal shift), not a spread.

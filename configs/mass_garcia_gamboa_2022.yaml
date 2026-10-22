@@ -1,10 +1,10 @@
 # Garcia & Gamboa (2022) mass model defaults: circular tube spar wing concept.
 # Source: Garcia, G.L. & Gamboa, P.V. (2022), Aeronaut. J. 126, 249-296, doi:10.1017/aer.2021.68
 #
-# These are the paper's values, used as PLACEHOLDERS until the model is
-# calibrated against USYD aircraft (see aircrafter2/mass/calibration.py and
-# docs/OPEN_QUESTIONS.md). All values are SI. Input names and units are listed
-# in aircrafter2/mass/garcia_gamboa/inputs.py.
+# These are the paper's values: the published model (verification, configs/verification/) and the uncalibrated
+# comparisons. Every problem config loads configs/placeholders.yaml above this file, and its 'mass correction factors
+# (USYD calibration)' block replaces the correction factors and the tail model (docs/studies/mass_calibration_usyd.md).
+# All values are SI. Input names and units are listed in aircrafter2/mass/garcia_gamboa/inputs.py.
 
 options:
   max_mode: ks                 # smooth max on the gradient path; "hard" for reporting/verification

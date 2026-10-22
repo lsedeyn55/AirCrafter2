@@ -1,3 +1,6 @@
+# SUPERSEDED (2026-10-23) by the three-aircraft USYD calibration: configs/placeholders.yaml 'mass correction factors'
+# block, and configs/mass_usyd_loo_woombah.yaml for the Woombah validation (docs/studies/mass_calibration_usyd.md).
+# Kept for the published validation_2025 runs.
 # Garcia & Gamboa correction factors refitted on ONE aircraft, Project Woombah (USYD DBF 2025), with the
 # Eq. 127 hook (aircrafter2/mass/calibration.py; studies/validation_2025.py calibrate).
 # One aircraft is one data point, and five factors against five component masses is an exact fit, not

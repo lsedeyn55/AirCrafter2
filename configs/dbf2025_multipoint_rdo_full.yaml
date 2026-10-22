@@ -5,6 +5,11 @@
 # maximise mu - k sigma of the flight score, mu -/+ beta sigma robust constraints; every spread is a PLACEHOLDER.
 extends: dbf2025_multipoint.yaml
 
+mass:
+  options:
+    tail_mass_model: gg   # G&G Eqs. 34-35 kept: uncertainty.yaml's f_ht / f_vt spreads need them (the USYD
+                          # calibration's areal tails have no f_ht, f_vt); the gg-form factors are in placeholders.yaml
+
 robust:
   enabled: true
   uncertainty_config: uncertainty.yaml   # the shared list (Kv a DV: Kv_factor, Rm_ref); m_pay is computed here (stores)

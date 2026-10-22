@@ -72,8 +72,11 @@ def test_f_build_one_reproduces_the_published_multipoint_nominal_bit_for_bit():
     from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
 
     warnings.filterwarnings("ignore")
+    from .migration import pre_calibration
+
     pub = json.loads((DATA / "multipoint_nominal_reference.json").read_text())  # frozen from the published commit
     mcfg = load_multipoint_config(CONFIGS / "dbf2025_multipoint.yaml")
+    pre_calibration(mcfg.base)  # the published results' mass model (never regenerated)
     for pt in ("M2", "M3"):
         mcfg.mp.points[pt].prop = pub["props"][pt]
     mcfg.base.propulsion.n_cells = float(pub["cells"])

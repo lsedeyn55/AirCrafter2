@@ -130,15 +130,17 @@ def test_robust_check_totals(robust_small):
 
 # --- regression: with RDO off, the deterministic problem is unchanged ---------------------------------
 # The reference was made from full_mdo.yaml / full_mdo_twin.yaml before Kv became a design variable; their fixed-Kv
-# versions must still reproduce it (the reference file is never regenerated for this).
+# versions must still reproduce it (the reference file is never regenerated for this). Since the USYD mass calibration
+# they do so with the pre-calibration mass model (tests/migration.py pre_calibration).
 @pytest.mark.parametrize("cfg_name,ref_name", [("full_mdo_fixed_kv.yaml", "full_mdo.yaml"),
                                                ("full_mdo_twin_fixed_kv.yaml", "full_mdo_twin.yaml")])
 def test_rdo_off_matches_pre_rdo_reference(cfg_name, ref_name):
+    from .migration import pre_calibration
     from .rdo_off_snapshot import snapshot
 
     assert not load_full_config(CONFIGS / cfg_name).robust.enabled
     ref = json.loads(REFERENCE.read_text())[ref_name]
-    now = snapshot(cfg_name)
+    now = snapshot(cfg_name, transform=pre_calibration)
     assert list(now) == list(ref)
     assert [c[0] for c in now["cons"]] == [c[0] for c in ref["cons"]]  # same constraints, same order
     assert now["cons"] == ref["cons"] and now["dvs"] == ref["dvs"] and now["objs"] == ref["objs"]

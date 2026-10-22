@@ -27,11 +27,13 @@ def _f(x):
     return [float(a) for a in np.ravel(x)]
 
 
-def snapshot(cfg_name, iters=3):
+def snapshot(cfg_name, iters=3, transform=None):
     from aircrafter2.problems.full_mdo import build_full_problem, load_full_config
 
     warnings.filterwarnings("ignore")
     cfg = load_full_config(ROOT / "configs" / cfg_name)
+    if transform:  # e.g. tests/migration.py pre_calibration
+        cfg = transform(cfg)
     prob = build_full_problem(cfg)
     prob.driver.options["disp"] = False
     prob.run_model()

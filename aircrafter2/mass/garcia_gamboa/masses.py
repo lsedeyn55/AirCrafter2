@@ -10,10 +10,13 @@ from ...analytic import AnalyticComponent, D
 
 
 BUILD_NOTE = """f_build (default 1, not G&G) is one multiplier on the whole structural mass, i.e. how heavy the airframe
-comes out when built (docs/RDO_REDUCED_PLAN.md). It scales m_wing (so the tails, m_ht and m_vt = f S/S_wing m_wing,
-follow), m_tb, m_cb and m_gear, inside the mass closure: the loads, the sizing, the total mass and the CG all see it.
-The breakdown of the bare wing (m_tube ... m_film, m_wing_bare) is not scaled. f_tb also scales the boom (overlap
-accepted: f_tb carries the CG effect at the tail, f_build the overall build)."""
+comes out when built (docs/RDO_REDUCED_PLAN.md). It scales m_wing, m_tb, m_cb and m_gear, and the tails: with
+tail_mass_model gg they follow m_wing (m_ht, m_vt = f S/S_wing m_wing), with areal (m = a S) they are scaled
+directly. It acts inside the mass closure: the loads, the sizing, the total mass and the CG all see it. The breakdown
+of the bare wing (m_tube ... m_film, m_wing_bare) is not scaled. f_tb also scales the boom (overlap accepted: f_tb
+carries the CG effect at the tail, f_build the overall build). Since the USYD calibration
+(docs/studies/mass_calibration_usyd.md) the correction factors carry the construction bias, and f_build stays at 1
+with its spread from the leave-one-out errors (OPEN_QUESTIONS Q39)."""
 
 
 class WingMass(AnalyticComponent):
@@ -25,7 +28,9 @@ class WingMass(AnalyticComponent):
     Eq. 31  m_le   = K_A,le (t/c) c^2 b rho_le
     Eq. 28  m_film = gamma_film K_P c b                          (gamma = t_film rho_film)
     Eq. 32  m_wing = f_wing^(n_panels - 1) (sum) (1 + S_winglet/S_wing)
-            (times f_build, not G&G: the build-mass factor, see BUILD_NOTE)
+            (times k_wing and f_build, not G&G: k_wing is the wing construction factor, fitted on the USYD
+            aircraft whatever their n_panels (docs/studies/mass_calibration_usyd.md; default 1); f_build is the
+            build-mass factor, see BUILD_NOTE)
 
     The exponent reading of Eq. 32 is confirmed by Tables 14-15 (PLAN G5).
     Ribs and LE/TE stringers are balsa (Table 13).
@@ -51,6 +56,7 @@ class WingMass(AnalyticComponent):
             "gamma_film": (0.036, "kg/m**2"),
             "f_wing": (1.12, None),
             "winglet_ratio": (0.0, None),
+            "k_wing": (1.0, None),
             "f_build": (1.0, None),
         }
         outs = {name: (0.1, "kg") for name in ["m_tube", "m_rib", "m_le", "m_te", "m_film", "m_wing_bare", "m_wing"]}
@@ -92,10 +98,12 @@ class WingMass(AnalyticComponent):
         f, wr = x["f_wing"], x["winglet_ratio"]
         F = f ** (npan - 1)
         dF = (npan - 1) * f ** (npan - 2) if npan > 1 else 0.0 * f
-        fb = x["f_build"]
-        m_wing = F * bare * (1.0 + wr) * fb  # Eq. 32 (x f_build)
-        g_wing = (F * (1.0 + wr) * fb) * g_bare + D({"f_wing": dF * bare * (1.0 + wr) * fb,
-                                                     "winglet_ratio": F * bare * fb, "f_build": F * bare * (1.0 + wr)})
+        fb, kw = x["f_build"], x["k_wing"]
+        m_wing = kw * F * bare * (1.0 + wr) * fb  # Eq. 32 (x k_wing x f_build)
+        g_wing = (kw * F * (1.0 + wr) * fb) * g_bare + D({"f_wing": kw * dF * bare * (1.0 + wr) * fb,
+                                                          "winglet_ratio": kw * F * bare * fb,
+                                                          "k_wing": F * bare * (1.0 + wr) * fb,
+                                                          "f_build": kw * F * bare * (1.0 + wr)})
 
         return ({"m_tube": m_tube, "m_rib": m_rib, "m_le": m_le, "m_te": m_te, "m_film": m_film,
                  "m_wing_bare": bare, "m_wing": m_wing},
@@ -104,22 +112,44 @@ class WingMass(AnalyticComponent):
 
 
 class TailMass(AnalyticComponent):
-    """Eq. 34  m_ht = f_ht S_ht/S_wing m_wing;  Eq. 35  m_vt = f_vt S_vt/S_wing m_wing."""
+    """tail_mass_model gg (default, G&G):
+        Eq. 34  m_ht = f_ht S_ht/S_wing m_wing;  Eq. 35  m_vt = f_vt S_vt/S_wing m_wing
+    tail_mass_model areal (not G&G): m_ht = a_ht S_ht f_build;  m_vt = a_vt S_vt f_build  (a in kg/m^2)
+
+    The USYD tails do not scale with their wings, but their areal masses are consistent
+    (docs/studies/mass_calibration_usyd.md). In gg mode f_build reaches the tails through m_wing; in areal mode it
+    multiplies them directly (BUILD_NOTE).
+    """
+
+    def initialize(self):
+        self.options.declare("tail_mass_model", default="gg", values=["gg", "areal"])
 
     def io(self):
-        ins = {
-            "m_wing": (0.7, "kg"),
-            "S_wing": (0.9, "m**2"),
-            "S_ht": (0.1, "m**2"),
-            "S_vt": (0.08, "m**2"),
-            "f_ht": (0.6411, None),
-            "f_vt": (0.3414, None),
-        }
+        if self.options["tail_mass_model"] == "areal":
+            # S_wing is kept (unused) so the group's interface is the same in both modes (it is promoted by name)
+            ins = {"S_wing": (0.9, "m**2"), "S_ht": (0.1, "m**2"), "S_vt": (0.08, "m**2"),
+                   "a_ht": (1.0, "kg/m**2"), "a_vt": (1.0, "kg/m**2"), "f_build": (1.0, None)}
+        else:
+            ins = {
+                "m_wing": (0.7, "kg"),
+                "S_wing": (0.9, "m**2"),
+                "S_ht": (0.1, "m**2"),
+                "S_vt": (0.08, "m**2"),
+                "f_ht": (0.6411, None),
+                "f_vt": (0.3414, None),
+            }
         return ins, {"m_ht": (0.05, "kg"), "m_vt": (0.03, "kg")}
 
     def evaluate(self, x):
-        mw, S = x["m_wing"], x["S_wing"]
         values, grads = {}, {}
+        if self.options["tail_mass_model"] == "areal":
+            fb = x["f_build"]
+            for surf in ("ht", "vt"):
+                a, Ss = x[f"a_{surf}"], x[f"S_{surf}"]
+                values[f"m_{surf}"] = a * Ss * fb
+                grads[f"m_{surf}"] = D({f"a_{surf}": Ss * fb, f"S_{surf}": a * fb, "f_build": a * Ss})
+            return values, grads
+        mw, S = x["m_wing"], x["S_wing"]
         for surf in ("ht", "vt"):
             f, Ss = x[f"f_{surf}"], x[f"S_{surf}"]
             m = f * Ss / S * mw

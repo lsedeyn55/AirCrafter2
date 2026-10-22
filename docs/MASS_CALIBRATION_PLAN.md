@@ -204,7 +204,32 @@ spar makes the single tube thick-walled (t/r up to 0.41), outside the thin-wall 
 - [OH] σ: "3.13 MPa" on p. 55 against 313 MPa on p. 35 (a typo).
 - [OH] y_motor: not dimensioned.
 
-## 7. Checkpoints
+## 7. Regression references (checkpoint 2)
+
+Every full config now loads the calibrated mass model, so every regenerable reference entry changes. Start point,
+one coupled analysis (`tests/configs_snapshot.py`, `tests/rdo_off_snapshot.py`). The largest relative change is
+m_wing (×3.1: k_wing 2.14 on a 1 mm spar, against 0.5 mm before), or wall_ratio (the spar wall doubles):
+
+| Reference entry | m_total (kg) | ThreeLapTime (s) | largest change |
+|---|---|---|---|
+| full_mdo.yaml | 2.766 → 3.552 (+28 %) | 77.53 → 79.07 (+2.0 %) | m_wing 206 % |
+| full_mdo_twin.yaml | 3.360 → 4.161 (+24 %) | 74.54 → 75.45 (+1.2 %) | m_wing 206 % |
+| full_mdo_fixed_kv.yaml | 2.741 → 3.527 (+29 %) | 81.44 → 83.52 (+2.6 %) | m_wing 206 % |
+| full_mdo_twin_fixed_kv.yaml | 3.283 → 4.082 (+24 %) | 77.16 → 78.18 (+1.3 %) | m_wing 206 % |
+| full_mdo_rdo.yaml | 2.766 → 3.530 (+28 %) | 78.82 → 80.42 (+2.0 %) | m_wing 206 % |
+| full_mdo_twin_rdo.yaml | 3.360 → 4.139 (+23 %) | 75.17 → 76.14 (+1.3 %) | m_wing 206 % |
+| full_mdo_rdo_fixed_kv.yaml | 2.741 → 3.505 (+28 %) | 83.23 → 85.99 (+3.3 %) | m_wing 206 % |
+| full_mdo_twin_rdo_fixed_kv.yaml | 3.283 → 4.060 (+24 %) | 78.18 → 79.27 (+1.4 %) | m_wing 206 % |
+| kv_dv:full_mdo.yaml | 2.766 → 3.552 (+28 %) | 77.53 → 79.06 (+2.0 %) | wall_ratio 100 % |
+| kv_dv:full_mdo_twin.yaml | 3.360 → 4.161 (+24 %) | 74.55 → 75.46 (+1.2 %) | wall_ratio 100 % |
+
+The `configs_reference.json` and `kv_dv_reference.json` entries are marked strict xfail (`tests/migration.py`) until
+they are regenerated in their own commit. **Not regenerated, ever:** `rdo_off_reference.json` (pre-RDO) and
+`multipoint_nominal_reference.json` (the published 2024-25 nominal). Their tests now apply the pre-calibration mass
+model (`tests/migration.py pre_calibration`), and both reproduce bit for bit. This also shows that nothing else in the
+model moved.
+
+## 8. Checkpoints
 
 1. This plan (commit).
 2. `k_wing`, `tail_mass_model`, `f_build` on the areal tails, the calibration hook (external sizing, lumped

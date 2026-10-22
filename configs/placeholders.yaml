@@ -35,14 +35,14 @@ propulsion.c_clear: 0.025                    # m; PLACEHOLDER; Q29; prop-tip cle
 mass.inputs.r_tb: 0.008                      # m; PLACEHOLDER; Q19; tail boom radius (16 mm tube)
 mass.inputs.x_gd: 0.25                       # chord fraction; PLACEHOLDER; Q4; ground-test hold point
 r_tube_min: 0.005                            # m; PLACEHOLDER; Q3; smallest spar tube (10 mm OD); sets the thinnest buildable section
-mass.inputs.k_fill: 0.85                     # -; PLACEHOLDER; Q5; tube fit (decision D1): allowed tube diameter / local section thickness
+mass.inputs.k_fill: 0.85                     # -; cited; Q5; tube fit (decision D1), a checked equivalence: one tube at 0.85 of the section depth gives the two-tube USYD spar mass within +9 % [OH] / -16 % [W] (docs/studies/mass_calibration_usyd.md)
 mass.inputs.clearance: 0.001                 # m; PLACEHOLDER; Q5; tube fit (decision D1)
-mass.inputs.t_tube_min: 5.0e-4               # m; PLACEHOLDER; Q3; spar tube minimum gauge (only with use_min_gauge)
+mass.inputs.t_tube_min: 1.0e-3               # m; cited; Q3; spar tube minimum gauge: every CF tube of [OH] (p. 36 '1 mm wall thickness'), [W] (pp. 20-21) and [HB] (p. 26 Table 24) has a 1.0 mm wall
 
 # --- materials and G&G inputs ---
-mass.inputs.sigma_spar: 7.2e+8               # Pa; cited; Q6; G&G Table 13, UD CFRP normal stress (ultimate); PLACEHOLDER for USYD
+mass.inputs.sigma_spar: 3.13e+8              # Pa; cited; Q6; USYD COTS CF tube measured strength, the design allowable [OH p. 35, p. 55 (printed '3.13 MPa', a typo)]; Spar Sizer 3.1 uses 340.7 MPa
 mass.inputs.tau_spar: 5.4e+7                 # Pa; cited; Q6; G&G Table 13, shear stress (ultimate); PLACEHOLDER for USYD
-mass.inputs.E_spar: 8.4e+10                  # Pa; cited; Q6; G&G Table 13; PLACEHOLDER for USYD
+mass.inputs.E_spar: 8.4e+10                  # Pa; cited; Q6; G&G Table 13; PLACEHOLDER for USYD: no USYD wing mass depends on it (the deflection limit never binds; docs/studies/mass_calibration_usyd.md)
 mass.inputs.G_spar: 5.0e+9                   # Pa; cited; Q6; G&G Table 13; PLACEHOLDER for USYD
 mass.inputs.rho_spar: 1600.0                 # kg/m^3; cited; Q6; G&G Table 13; PLACEHOLDER for USYD
 mass.inputs.sigma_tb: 7.2e+8                 # Pa; PLACEHOLDER; Q6; tail boom not tabulated: assumed UD CFRP as Table 13 (PLAN G17)
@@ -51,6 +51,22 @@ mass.inputs.E_tb: 8.4e+10                    # Pa; PLACEHOLDER; Q6; assumed UD C
 mass.inputs.rho_tb: 1600.0                   # kg/m^3; PLACEHOLDER; Q6; assumed UD CFRP (PLAN G17)
 mass.inputs.delta_tip_ratio: 0.1             # -; cited; Q12; G&G Table 3 (UBI15); Sec. 3.3.1 "typical upper value 0.1"; PLACEHOLDER for USYD
 mass.inputs.theta_tb_max: 0.017453           # rad = 1 deg; cited; Q12; G&G Table 3; PLACEHOLDER for USYD
+
+# --- mass correction factors (USYD calibration) ---
+# Eq. 128 over [OH] Orange Hornet (2024 USYD DBF report, Table 35 p. 42), [W] Woombah (Table 34 p. 45) and [HB]
+# Humpback (2026 report, Table 36 p. 44), written by studies/mass_calibration_usyd.py fit. Leave-one-out scatter and the
+# caveats (three aircraft, two fuselages, two gears): docs/studies/mass_calibration_usyd.md. G&G's own factors (Table 14)
+# stay in mass_garcia_gamboa_2022.yaml for the verification and the uncalibrated comparisons.
+mass.options.tail_mass_model: areal          # -; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB]: m_ht, m_vt = a S (lower objective and tail LOO errors than G&G's Eqs. 34-35)
+mass.inputs.k_wing: 2.1373                   # -; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB]
+mass.inputs.f_wing: 1.12                     # -; cited; Q46; G&G Table 14 (per panel joint, Eq. 32)
+mass.inputs.a_ht: 1.1757                     # kg/m^2; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB]
+mass.inputs.a_vt: 1.392                      # kg/m^2; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB]
+mass.inputs.f_cb: 1.2708                     # kg/m^2; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB] (two fuselages: weak)
+mass.inputs.f_tb: 3.2737                     # -; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB] (two fuselages: weak)
+mass.inputs.f_gear: 0.03016                  # -; cited; Q46; docs/studies/mass_calibration_usyd.md, Eq. 128 over [OH] [W] [HB] (two gears: weak)
+mass.inputs.f_ht: 0.6034                     # -; cited; Q46; gg form of the same fit, used only where a config pins tail_mass_model gg (the published full-set RDO configs)
+mass.inputs.f_vt: 0.6749                     # -; cited; Q46; gg form of the same fit, used only where a config pins tail_mass_model gg
 
 # --- payload ---
 mass.inputs.m_pay: 1.5                       # kg; PLACEHOLDER; Q12, Q19; payload of the single-point problems (the multipoint stores compute it)
@@ -99,6 +115,6 @@ course.takeoff.CL_ground: 0.15               # -; PLACEHOLDER; Q40; ground-roll 
 # these and the ruleset's lap.wind (d = 4; docs/RDO_REDUCED_PLAN.md, OPEN_QUESTIONS Q39). The published 15-parameter
 # set is configs/uncertainty.yaml (standalone).
 uncertainty:
-  - {name: f_build,    dist: uniform, nominal: 1.0, spread: 0.30, source: PLACEHOLDER}  # -; PLACEHOLDER; Q39; build-mass factor on the whole structure (wing, tails, boom, cargo bay, gear)
+  - {name: f_build,    dist: uniform, nominal: 1.0, spread: 0.30, source: 'USYD LOO'}  # -; cited; Q39; build-mass factor on the whole structure; spread = the largest |leave-one-out structure error| of the USYD calibration, rounded up to 5 % (docs/studies/mass_calibration_usyd.md)
   - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # -; PLACEHOLDER; Q32; G&G tail-boom factor
   - {name: m_avionics, dist: uniform, spread: 0.15, relative: true, source: PLACEHOLDER}  # -; PLACEHOLDER; Q32

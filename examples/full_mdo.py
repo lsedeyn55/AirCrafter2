@@ -89,7 +89,9 @@ def main():
     best_cfg = load_full_config(ROOT / "configs" / CFG[runs[best]["n"]])
     dvs = list(best_cfg.design_variables)
     motor = ["Kv_factor", "Rm_ref"] if kv_is_dv(best_cfg) else ["Kv", "Rm"]  # Kv a DV: Rm is computed from Rm_ref
-    assumptions = [k for k in ["m_pay", "f_tb", "f_cb", "f_gear", "f_ht", "f_vt", "e_spec", "R_cell", *motor,
+    # the tail factors of the configured tail mass model (areal since the USYD calibration: a_ht, a_vt)
+    tails = ["a_ht", "a_vt"] if best_cfg.mass.options.tail_mass_model == "areal" else ["f_ht", "f_vt"]
+    assumptions = [k for k in ["m_pay", "f_tb", "f_cb", "f_gear", *tails, "e_spec", "R_cell", *motor,
                                "m_avionics", "m_motor", "eta_h", "rho"] if k not in dvs]
     sens = sensitivities(prob, "ThreeLapTime", dvs + assumptions)
     w("| Variable | kind | sensitivity |")
@@ -112,8 +114,12 @@ def main():
 
     w("## 4. Monte Carlo on the best design (n = 40, independent)\n")
     # one source for the spreads: configs/uncertainty.yaml (also used by robust design optimisation)
-    dists = resolve(load_uncertainty(ROOT / "configs" / "uncertainty.yaml", kv_dv=kv_is_dv(best_cfg)),
-                    lambda name: v(prob, name))
+    # (f_ht, f_vt are G&G tail factors: with the areal tails of the USYD calibration they are not inputs, so they are
+    # left out of the sample; docs/studies/mass_calibration_usyd.md)
+    params = load_uncertainty(ROOT / "configs" / "uncertainty.yaml", kv_dv=kv_is_dv(best_cfg))
+    if best_cfg.mass.options.tail_mass_model == "areal":
+        params = [q for q in params if q.name not in ("f_ht", "f_vt")]
+    dists = resolve(params, lambda name: v(prob, name))
     w("Distributions (configs/uncertainty.yaml, PLACEHOLDERS, OPEN_QUESTIONS Q32): " + ", ".join(
         f"{d.name} {d.kind} {d.mean:.4g} +/- {d.scale:.3g}" for d in dists))
     w("")
