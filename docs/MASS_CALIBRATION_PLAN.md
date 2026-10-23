@@ -246,8 +246,9 @@ model moved.
 - Woombah validation, out-of-sample: `docs/studies/results/validation_2025.md` §2–3 (`studies/validation_2025.py woombah
   --mass gg|loo`). The pre-calibration run (`outputs/results/validation_woombah.json`) is kept; the superseded
   Woombah-only refit stays as a column.
-- Reduced-set RDO rerun on the calibrated model (2026-10-23, after the brief): calibration doc §10
-  (`studies/results_2025.py screen | rdo | robust_eval --set usyd`, runs `rdoru_*`, outputs in
-  `outputs/results/reduced_usyd/`; the published `rdor_*` runs are untouched). Not rerun: the full-set RDO and the
-  common evaluation's Monte Carlo and propagation. `results_2025.md`, `kv_study.md`, `rdo_study.md` and
-  `twin_motor_study.md` still show the uncalibrated model; INDEX.md says so.
+- RDO reruns on the calibrated model (2026-10-23, after the brief): the reduced set (calibration doc §10, `--set
+  usyd`, runs `rdoru_*`, `outputs/results/reduced_usyd/`), the full 15-parameter set (§11, `--set full_usyd`, runs
+  `rdofu_*`, `outputs/results/full_usyd/`), and the Monte Carlo at the calibrated deterministic and robust optima
+  plus the propagation check (§12). The published `rdor_*` / `rdo_*` runs and outputs are untouched. Not rerun:
+  the common evaluation of the other designs (Woombah, AirCrafter 1.0, the 2 L bottles). `results_2025.md`,
+  `kv_study.md`, `rdo_study.md` and `twin_motor_study.md` still show the uncalibrated model; INDEX.md says so.

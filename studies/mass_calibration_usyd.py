@@ -478,13 +478,26 @@ def fit():
 RUNS = OUT / "runs"
 PUBLISHED = "mp_6S_11x8E_10x7E"  # the published best deterministic case (results_2025.md §1), uncalibrated mass model
 CALIBRATED = ["mpcal_6S_11x8E_10x7E", "mpcal_6S_11x8E_10x7E_warm"]  # the same case, calibrated: cold / warm start
-RDO_RUNS = ["rdor_best", "rdor_ms0", "rdor_ms1"]  # the published reduced-set RDO (3 starts)
-# the same RDO on the calibrated model (studies/results_2025.py screen | rdo | robust_eval --set usyd)
-RDO_USYD = ["rdoru_best", "rdoru_ms0", "rdoru_ms1"]
+# the RDO sets rerun on the calibrated model (studies/results_2025.py screen | rdo | robust_eval | mc --set S),
+# against the published (uncalibrated) ones: runs, outputs directory
+RDO_SETS = {
+    "reduced": dict(title="the reduced-set RDO", set="usyd",
+                    pub=(["rdor_best", "rdor_ms0", "rdor_ms1"], OUT / "reduced"),
+                    cal=(["rdoru_best", "rdoru_ms0", "rdoru_ms1"], OUT / "reduced_usyd"),
+                    what="`configs/dbf2025_multipoint_rdo.yaml` (the reduced set f_build, f_tb, m_avionics, lap.wind; "
+                         "d = 4, UDR N = 9 nodes × 2 points), on the calibrated model with f_build ±30 % about 1.0 "
+                         "(§5)"),
+    "full": dict(title="the full-set RDO", set="full_usyd",
+                 pub=(["rdo_best", "rdo_ms0", "rdo_ms1"], OUT),
+                 cal=(["rdofu_best", "rdofu_ms0", "rdofu_ms1"], OUT / "full_usyd"),
+                 what="`configs/dbf2025_multipoint_rdo_full.yaml` (the published 15-parameter set, screened to "
+                      "d ≤ 7, UDR N = 2d + 1 nodes × 2 points), on the calibrated model with G&G's tail equations "
+                      "and their calibrated factors (the config's pin, §6: its f_ht/f_vt spreads need them)"),
+}
 
 
 def _sec_optimum(w, res):
-    """§9: the calibrated optimum against the published one, and the cost of rerunning the reduced-set RDO."""
+    """§9: the calibrated optimum against the published one; §10-12: the RDO sets and the Monte Carlo on it."""
     if not (RUNS / f"{PUBLISHED}.json").exists() or not any((RUNS / f"{t}.json").exists() for t in CALIBRATED):
         return
     pub = json.loads((RUNS / f"{PUBLISHED}.json").read_text())
@@ -533,65 +546,73 @@ def _sec_optimum(w, res):
     w("Active bounds: both " + (", ".join(sorted(pb & bb)) or "none") + "; published only: "
       + (", ".join(sorted(pb - bb)) or "none") + "; calibrated only: " + (", ".join(sorted(bb - pb)) or "none")
       + f". Kv set by: published {pub['kv_set_by']}; calibrated {best['kv_set_by']}.\n")
-    rdo = [json.loads((RUNS / f"{t}.json").read_text()) for t in RDO_RUNS if (RUNS / f"{t}.json").exists()]
-    if any((RUNS / f"{t}.json").exists() for t in RDO_USYD):
-        _sec_rdo(w, res, pub, best, rdo)
-    elif rdo:
-        res["rdo_cost"] = {r["tag"]: dict(time=r.get("time"), its=r.get("its"), start=r.get("start")) for r in rdo}
-        tot = sum(r.get("time", 0) for r in rdo)
-        w("**Cost of rerunning the reduced-set RDO (estimate, not run).** The published reduced-set RDO (d = 4, UDR "
-          "N = 9 nodes × 2 points) took " + ", ".join(f"`{r['tag']}` {r.get('time', 0) / 60:.0f} min "
-                                                      f"({r.get('its')} iterations, start {r.get('start')})" for r in rdo)
-          + f", run in parallel with {rdo[0].get('threads', '3')} threads each: {max(r.get('time', 0) for r in rdo) / 60:.0f} "
-          f"min wall, {tot / 3600:.1f} h of run time in total. A rerun on the calibrated model is the same problem size, "
-          "so expect the same order (the wall time above for the three starts in parallel, if the iteration counts "
-          "are similar), plus the downstream evaluations the results page needs (the common evaluation's Monte "
-          "Carlo, robust_eval and propagation; docs/studies/results/compute_performance.md), which were not timed "
-          "separately here. Not run (brief).\n")
+    for n, key in enumerate(RDO_SETS, start=10):
+        _sec_rdo(w, res, key, n, pub, best)
+    _sec_mc(w, res)
 
 
-def _sec_rdo(w, res, pub, det, rdo_pub):
-    """§10: the reduced-set RDO rerun on the calibrated model, against the published (uncalibrated) one."""
-    runs = [json.loads((RUNS / f"{t}.json").read_text()) for t in RDO_USYD if (RUNS / f"{t}.json").exists()]
-    ev_f = OUT / "reduced_usyd" / "robust_eval.json"
-    ev = json.loads(ev_f.read_text())["results"] if ev_f.exists() else {}
-    ev_pub = json.loads((OUT / "reduced" / "robust_eval.json").read_text())["results"]
-    nom_pub = json.loads((OUT / "reduced" / "common_nominal.json").read_text())["rdo"]["score"]["flight_score"]
+def _load_runs(tags):
+    return [json.loads((RUNS / f"{t}.json").read_text()) for t in tags if (RUNS / f"{t}.json").exists()]
+
+
+def _best_run(runs):
     ok = [r for r in runs if r.get("ok")]
-    bestr = max(ok, key=lambda r: r["summary"]["flight_score"]["robust"]) if ok else None
-    bestp = max((r for r in rdo_pub if r.get("ok")), key=lambda r: r["summary"]["flight_score"]["robust"])
-    res["rdo_usyd"] = dict(runs=runs, best=bestr["tag"] if bestr else None, robust_eval=ev)
-    w("\n## 10. Downstream: the reduced-set RDO on the calibrated model\n")
-    w("`studies/results_2025.py screen | rdo | robust_eval --set usyd`: `configs/dbf2025_multipoint_rdo.yaml` (the "
-      "reduced set f_build, f_tb, m_avionics, lap.wind; d = 4, UDR N = 9 nodes × 2 points, maximise μ − kσ with "
-      f"k = {runs[0]['k']:g}, robust constraints μ ∓ βσ with β = {runs[0]['beta']:g}), now on the calibrated mass "
-      f"model with f_build ±30 % about 1.0 (§5). Case `{runs[0]['case']}` (§9); the same three starts as the "
-      f"published run, {runs[0].get('threads', '3')} threads each, in parallel. Outputs in `outputs/results/"
-      "reduced_usyd/` and `runs/rdoru_*`; the published `rdor_*` runs are untouched.\n")
+    return max(ok, key=lambda r: r["summary"]["flight_score"]["robust"]) if ok else None
+
+
+def _json(path):
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def _sec_rdo(w, res, key, n, pub, det):
+    """One RDO set rerun on the calibrated model, against the published (uncalibrated) one."""
+    S = RDO_SETS[key]
+    runs, runs_pub = _load_runs(S["cal"][0]), _load_runs(S["pub"][0])
+    if not runs:
+        return
+    out_c, out_p = S["cal"][1], S["pub"][1]
+    ev = _json(out_c / "robust_eval.json").get("results", {})
+    ev_pub = _json(out_p / "robust_eval.json")["results"]
+    nom_pub = _json(out_p / "common_nominal.json")["rdo"]["score"]["flight_score"]
+    sc, sc_pub = _json(out_c / "screen.json"), _json(out_p / "screen.json")
+    bestr, bestp = _best_run(runs), _best_run(runs_pub)
+    res.setdefault("rdo_calibrated", {})[key] = dict(runs=runs, best=bestr["tag"] if bestr else None,
+                                                     robust_eval=ev, screen=sc.get("selected"))
+    w(f"\n## {n}. Downstream: {S['title']} on the calibrated model\n")
+    w(f"`studies/results_2025.py screen | rdo | robust_eval --set {S['set']}`: {S['what']}. Maximise μ − kσ with "
+      f"k = {runs[0]['k']:g}, robust constraints μ ∓ βσ with β = {runs[0]['beta']:g}. Case `{runs[0]['case']}` "
+      f"(§9); the same three starts as the published run, {runs[0].get('threads', '3')} threads each, in parallel. "
+      f"Outputs in `{out_c.relative_to(ROOT)}/` and `runs/{S['cal'][0][0].split('_')[0]}_*`; the published "
+      f"`{S['pub'][0][0].split('_')[0]}_*` runs are untouched.\n")
+    if sc.get("selected") != sc_pub.get("selected"):
+        w(f"Screened parameters (first-order variance at the deterministic optimum): published "
+          f"{', '.join(sc_pub['selected'])} (d = {len(sc_pub['selected'])}, threshold "
+          f"{'reached' if sc_pub['reached'] else 'not reached'}); calibrated {', '.join(sc['selected'])} "
+          f"(d = {len(sc['selected'])}, threshold {'reached' if sc['reached'] else 'not reached'}, minimum coverage "
+          f"{min(sc['coverage'].values()):.2f}).\n")
     w("| Run | model | start | converged | iterations | time (min) | μ | σ | μ − kσ |")
     w("|---|---|---|---|---:|---:|---:|---:|---:|")
-    for r, lab in [(r, "published (uncalibrated)") for r in rdo_pub] + [(r, "calibrated") for r in runs]:
+    for r, lab in [(r, "published (uncalibrated)") for r in runs_pub] + [(r, "calibrated") for r in runs]:
         fs = r["summary"]["flight_score"]
         w(f"| `{r['tag']}` | {lab} | {r.get('start')} | {'yes' if r.get('ok') else 'NO'} | {r.get('its')} | "
           f"{(r.get('time') or 0) / 60:.0f} | {fs['mu']:.4f} | {fs['sigma']:.4f} | {fs['robust']:.4f} |")
     tot = sum(r.get("time") or 0 for r in runs)
-    w(f"\nWall time {max(r.get('time') or 0 for r in runs) / 60:.0f} min, {tot / 3600:.1f} h of run time in total "
-      "(the estimate in the earlier version of this section: 38 min wall, 1.4 h).\n")
+    w(f"\nCalibrated: wall time {max(r.get('time') or 0 for r in runs) / 60:.0f} min, {tot / 3600:.1f} h of run time "
+      "in total.\n")
     if not bestr:
         w("No calibrated start converged.\n")
         return
-    rb = [r for r in ok if abs(r["summary"]["flight_score"]["robust"] - bestr["summary"]["flight_score"]["robust"]) < 1e-4]
+    rb = [r for r in runs if r.get("ok")
+          and abs(r["summary"]["flight_score"]["robust"] - bestr["summary"]["flight_score"]["robust"]) < 1e-4]
     w(f"Robust optimum: `{bestr['tag']}` ({len(rb)} of {len(runs)} starts within 1e-4 of it in μ − kσ).\n")
     de, re_ = ev.get(det["tag"]), ev.get(bestr["tag"])
     dp, rp = ev_pub[PUBLISHED], ev_pub["rdo"]
-    rows = [("μ − kσ", lambda e, r: e["robust"]), ("μ", lambda e, r: e["mu"]), ("σ", lambda e, r: e["sigma"])]
-    w("Deterministic and robust optima at the same nodes (robust_eval), and at nominal inputs (calm air, f_build 1):\n")
+    w("Deterministic and robust optima at the same nodes (robust_eval), and at nominal inputs (calm air):\n")
     w("| Quantity | published deterministic | published RDO (`" + bestp["tag"] + "`) | calibrated deterministic (`"
       + det["tag"] + "`) | calibrated RDO (`" + bestr["tag"] + "`) |")
     w("|---|---:|---:|---:|---:|")
-    for lab, fn in rows:
-        cells = [fn(dp, None), fn(rp, None)] + [fn(e, None) if e and "mu" in e else float("nan") for e in (de, re_)]
-        w(f"| {lab} | " + " | ".join(f"{x:.4f}" for x in cells) + " |")
+    for lab, k in (("μ − kσ", "robust"), ("μ", "mu"), ("σ", "sigma")):
+        w(f"| {lab} | " + " | ".join(f"{e[k]:.4f}" if e and k in e else "–" for e in (dp, rp, de, re_)) + " |")
     nom = [pub["score"]["flight_score"], nom_pub, (de or {}).get("nominal", float("nan")),
            (re_ or {}).get("nominal", float("nan"))]
     w("| nominal F | " + " | ".join(f"{x:.4f}" for x in nom) + " |")
@@ -608,6 +629,62 @@ def _sec_rdo(w, res, pub, det, rdo_pub):
     w("|---|---:|---:|---:|---:|")
     for k in keys:
         w(f"| {k} | " + " | ".join(f"{d['dv'][k]:.4g}" for d in (pub, bestp, det, bestr)) + " |")
+    w("")
+
+
+MC_LABELS = {"multipoint": "deterministic", "rdo": "RDO of the set", "rdo_full15": "reduced-set RDO, full set"}
+
+
+def _sec_mc(w, res):
+    """§12: the Monte Carlo of each set (1024 scrambled Sobol' points, seed 0, over every parameter of the set) at the
+    deterministic and robust optima, published and calibrated; the propagation check at the reduced-set optimum."""
+    sets = [(key, lab, out) for key, S in RDO_SETS.items()
+            for lab, out in (("published", S["pub"][1]), ("calibrated", S["cal"][1]))]
+    mcs = {(key, lab): _json(out / "mc.json") for key, lab, out in sets}
+    if not any(mcs[(k, "calibrated")] for k in RDO_SETS):
+        return
+    res["mc_calibrated"] = {k: mcs[(k, "calibrated")] for k in RDO_SETS}
+    w("\n## 12. Downstream: Monte Carlo at the optima\n")
+    w("`studies/results_2025.py mc | propagation --set usyd | full_usyd`: 1024 scrambled Sobol' points (seed 0, the "
+      "same points for every design of a set) over every parameter of the set (reduced: 4; full: 15, not only the "
+      "screened ones), at the deterministic optimum and the set's robust optimum; in the reduced set also the "
+      "reduced-set RDO design under the full set (`rdo_full15`, the out-of-set check), as published. Failed = MDA "
+      "non-convergence or the wind limit. The calibrated reduced-set runs shared the machine with the full-set RDO "
+      "(4 single-threaded workers), so their wall times are not comparable with the published ones.\n")
+    w("| Set | model | design | N | failed | μ F | σ F | 5th percentile F | largest P(violation) |")
+    w("|---|---|---|---:|---:|---:|---:|---:|---|")
+    viol = {}
+    for key, lab, _ in sets:
+        for d, m in mcs[(key, lab)].items():
+            if d not in MC_LABELS:
+                continue
+            st = m["stats"]["flight_score"]
+            pv = sorted(m["p_violation"].items(), key=lambda t: -t[1])
+            top = f"{pv[0][1]:.3f} ({pv[0][0]})" if pv and pv[0][1] > 0 else "0"
+            w(f"| {key} | {lab} | {MC_LABELS[d]} | {m['N']} | {m['failed']} | {st['mu']:.4f} | {st['sigma']:.4f} | "
+              f"{st['p5']:.4f} | {top} |")
+            for c, p in m["p_violation"].items():
+                if p > 0:
+                    viol.setdefault(c, {})[(key, lab, d)] = p
+    if viol:
+        cols = [(key, lab, d) for key, lab, _ in sets for d in mcs[(key, lab)] if d in MC_LABELS]
+        w("\nP(violation) of every constraint violated in any sample (each mission point's own constraints):\n")
+        w("| Constraint | " + " | ".join(f"{k} {lab} {MC_LABELS[d]}" for k, lab, d in cols) + " |")
+        w("|---|" + "---:|" * len(cols))
+        for c in sorted(viol):
+            w(f"| {c} | " + " | ".join(f"{viol[c].get(col, 0.0):.3f}" for col in cols) + " |")
+    pr = {lab: _json(out / "propagation.json") for key, lab, out in sets if key == "reduced"}
+    if pr.get("calibrated"):
+        w("\nPropagation check at the reduced-set robust optimum: the RDO's UDR rule against Smolyak level 2 and the "
+          "Sobol' Monte Carlo over the four parameters.\n")
+        w("| Method | published N | published μ F | published σ F | calibrated N | calibrated μ F | calibrated σ F |")
+        w("|---|---:|---:|---:|---:|---:|---:|")
+        for meth in ("udr", "smolyak", "sobol"):
+            a, b = pr["published"]["methods"][meth], pr["calibrated"]["methods"][meth]
+            fa, fb = a["stats"].get("flight_score", {}), b["stats"].get("flight_score", {})
+            w(f"| {meth} | {a['N']} | {fa.get('mu', float('nan')):.4f} | {fa.get('sigma', float('nan')):.4f} | "
+              f"{b['N']} | {fb.get('mu', float('nan')):.4f} | {fb.get('sigma', float('nan')):.4f} |")
+        res["propagation_calibrated"] = pr["calibrated"]
     w("")
 
 

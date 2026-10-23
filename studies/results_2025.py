@@ -176,7 +176,10 @@ UQ_SETS = {"full": dict(name="full", cfg=RDO_FULL_CFG, out=OUT, prefix="rdo_", s
                               out=OUT / "reduced_calibrated", prefix="rdorc_", select=False),
            # the reduced set on the USYD-calibrated mass model (docs/studies/mass_calibration_usyd.md), from the
            # calibrated deterministic optimum (--case mpcal_6S_11x8E_10x7E); the published rdor_* runs stay as they are
-           "usyd": dict(name="usyd", cfg=RDO_CFG, out=OUT / "reduced_usyd", prefix="rdoru_", select=False)}
+           "usyd": dict(name="usyd", cfg=RDO_CFG, out=OUT / "reduced_usyd", prefix="rdoru_", select=False),
+           # the full 15-parameter set on the calibrated model (gg tails, the config's pin; screened as published)
+           "full_usyd": dict(name="full_usyd", cfg=RDO_FULL_CFG, out=OUT / "full_usyd", prefix="rdofu_", select=True)}
+CALIBRATED_SETS = ("usyd", "full_usyd")  # their common evaluation: the calibrated optima only (mc_designs)
 UQ = dict(UQ_SETS["reduced"])
 
 
@@ -444,6 +447,13 @@ def mc_designs(labels=None):
     """The common-evaluation designs: [(label, MultipointConfig with the RDO parameter list, dv)]."""
     from aircrafter2.problems.multipoint import load_multipoint_config
 
+    if UQ["name"] in CALIBRATED_SETS:  # the calibrated deterministic optimum (the screened case) and the set's RDO
+        sc = json.loads((UQ["out"] / "screen.json").read_text())
+        out = [("multipoint", _mcfg_for(load(sc["case"])), load(sc["case"])["dv"])]
+        r = best_rdo()
+        if r:
+            out.append(("rdo", _mcfg_for(load(r["case"])), r["dv"]))
+        return [d for d in out if labels is None or d[0] in labels]
     rob = load_multipoint_config(UQ["cfg"]).base.robust
     out = []
     w = json.loads((OUT / "validation_woombah.json").read_text())
@@ -541,7 +551,7 @@ def robust_eval(workers=5):
     from aircrafter2.robustness.sampling import evaluate
 
     sc = json.loads((UQ["out"] / "screen.json").read_text())
-    if UQ["name"] == "usyd":  # the calibrated deterministic optimum and the set's robust optimum only
+    if UQ["name"] in CALIBRATED_SETS:  # the calibrated deterministic optimum and the set's robust optimum only
         designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in (load(sc["case"]), best_rdo()) if d]
     else:
         designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in deterministic_cases() if d.get("ok")]
@@ -552,7 +562,7 @@ def robust_eval(workers=5):
         rob = mcfg.base.robust
         p = build_multipoint_problem(mcfg, driver=False)
         nominal = None
-        if UQ["name"] == "usyd":  # the nominal (calm-air) score, for the cost of robustness
+        if UQ["name"] in CALIBRATED_SETS:  # the nominal (calm-air) score, for the cost of robustness
             for k, x in dv.items():
                 p.set_val(k, x)
             p.run_model()
@@ -1445,6 +1455,7 @@ if __name__ == "__main__":
     ap.add_argument("--R2", type=float)
     ap.add_argument("--R3", type=float)
     ap.add_argument("--start")
+    ap.add_argument("--workers", type=int, default=5, help="processes of the sampled evaluations (mc, propagation)")
     ap.add_argument("--bottle", help="external tank bottle: a key of stores.BOTTLES (default the config's 1 L)")
     a = ap.parse_args()
     use_set(a.set)
@@ -1462,13 +1473,13 @@ if __name__ == "__main__":
     elif a.part == "rdo":
         rdo(a.tag, a.case, a.start, index=a.index)
     elif a.part == "mc":
-        monte_carlo(mc_designs(a.labels))
+        monte_carlo(mc_designs(a.labels), workers=a.workers)
         r = best_rdo()
-        if UQ["name"] != "full" and r and (a.labels is None or "rdo_full15" in a.labels):
+        if UQ["name"] not in ("full", "full_usyd") and r and (a.labels is None or "rdo_full15" in a.labels):
             # out-of-set check: the new robust design under the full 15-parameter set
-            monte_carlo([("rdo_full15", _mcfg_for(load(r["case"]), cfg=RDO_FULL_CFG), r["dv"])])
+            monte_carlo([("rdo_full15", _mcfg_for(load(r["case"]), cfg=RDO_FULL_CFG), r["dv"])], workers=a.workers)
     elif a.part == "propagation":
-        propagation()
+        propagation(workers=a.workers)
     elif a.part == "classify":
         classify_mc_failures()
     elif a.part == "multistart":
@@ -1478,6 +1489,6 @@ if __name__ == "__main__":
     elif a.part == "common":
         common(a.labels)
     elif a.part == "robust_eval":
-        robust_eval()
+        robust_eval(workers=a.workers)
     else:
         report()

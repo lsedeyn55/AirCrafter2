@@ -244,7 +244,7 @@ Active bounds: both b (upper), fuel_mass (upper); published only: l_ht (upper); 
 
 ## 10. Downstream: the reduced-set RDO on the calibrated model
 
-`studies/results_2025.py screen | rdo | robust_eval --set usyd`: `configs/dbf2025_multipoint_rdo.yaml` (the reduced set f_build, f_tb, m_avionics, lap.wind; d = 4, UDR N = 9 nodes × 2 points, maximise μ − kσ with k = 1, robust constraints μ ∓ βσ with β = 2), now on the calibrated mass model with f_build ±30 % about 1.0 (§5). Case `mpcal_6S_11x8E_10x7E` (§9); the same three starts as the published run, 3 threads each, in parallel. Outputs in `outputs/results/reduced_usyd/` and `runs/rdoru_*`; the published `rdor_*` runs are untouched.
+`studies/results_2025.py screen | rdo | robust_eval --set usyd`: `configs/dbf2025_multipoint_rdo.yaml` (the reduced set f_build, f_tb, m_avionics, lap.wind; d = 4, UDR N = 9 nodes × 2 points), on the calibrated model with f_build ±30 % about 1.0 (§5). Maximise μ − kσ with k = 1, robust constraints μ ∓ βσ with β = 2. Case `mpcal_6S_11x8E_10x7E` (§9); the same three starts as the published run, 3 threads each, in parallel. Outputs in `outputs/results/reduced_usyd/` and `runs/rdoru_*`; the published `rdor_*` runs are untouched.
 
 | Run | model | start | converged | iterations | time (min) | μ | σ | μ − kσ |
 |---|---|---|---|---:|---:|---:|---:|---:|
@@ -255,11 +255,11 @@ Active bounds: both b (upper), fuel_mass (upper); published only: l_ht (upper); 
 | `rdoru_ms0` | calibrated | sobol0 | yes | 53 | 32 | 5.0900 | 0.0130 | 5.0770 |
 | `rdoru_ms1` | calibrated | sobol1 | yes | 44 | 28 | 5.0900 | 0.0130 | 5.0770 |
 
-Wall time 34 min, 1.6 h of run time in total (the estimate in the earlier version of this section: 38 min wall, 1.4 h).
+Calibrated: wall time 34 min, 1.6 h of run time in total.
 
 Robust optimum: `rdoru_best` (3 of 3 starts within 1e-4 of it in μ − kσ).
 
-Deterministic and robust optima at the same nodes (robust_eval), and at nominal inputs (calm air, f_build 1):
+Deterministic and robust optima at the same nodes (robust_eval), and at nominal inputs (calm air):
 
 | Quantity | published deterministic | published RDO (`rdor_ms0`) | calibrated deterministic (`mpcal_6S_11x8E_10x7E`) | calibrated RDO (`rdoru_best`) |
 |---|---:|---:|---:|---:|
@@ -285,4 +285,87 @@ Calibrated: the robust optimum changes μ − kσ by -0.0004 against the determi
 | throttle_M2 | 0.8232 | 0.9474 | 0.7891 | 0.7876 |
 | throttle_M3 | 0.8077 | 0.9342 | 0.7704 | 0.7721 |
 | fuel_mass | 5.897 | 5.897 | 5.897 | 5.897 |
+
+
+## 11. Downstream: the full-set RDO on the calibrated model
+
+`studies/results_2025.py screen | rdo | robust_eval --set full_usyd`: `configs/dbf2025_multipoint_rdo_full.yaml` (the published 15-parameter set, screened to d ≤ 7, UDR N = 2d + 1 nodes × 2 points), on the calibrated model with G&G's tail equations and their calibrated factors (the config's pin, §6: its f_ht/f_vt spreads need them). Maximise μ − kσ with k = 1, robust constraints μ ∓ βσ with β = 2. Case `mpcal_6S_11x8E_10x7E` (§9); the same three starts as the published run, 3 threads each, in parallel. Outputs in `outputs/results/full_usyd/` and `runs/rdofu_*`; the published `rdo_*` runs are untouched.
+
+Screened parameters (first-order variance at the deterministic optimum): published f_tb, f_ht, Kv_factor, Rm_ref, eta_h, lap.thrust_factor, store_drag_factor (d = 7, threshold not reached); calibrated f_tb, f_cb, f_ht, Kv_factor, eta_h, lap.thrust_factor, store_drag_factor (d = 7, threshold not reached, minimum coverage 0.76).
+
+| Run | model | start | converged | iterations | time (min) | μ | σ | μ − kσ |
+|---|---|---|---|---:|---:|---:|---:|---:|
+| `rdo_best` | published (uncalibrated) | mp_6S_11x8E_10x7E | yes | 26 | 25 | 5.1040 | 0.0187 | 5.0852 |
+| `rdo_ms0` | published (uncalibrated) | sobol0 | yes | 46 | 46 | 5.1040 | 0.0187 | 5.0852 |
+| `rdo_ms1` | published (uncalibrated) | sobol1 | yes | 67 | 68 | 5.1040 | 0.0187 | 5.0852 |
+| `rdofu_best` | calibrated | mpcal_6S_11x8E_10x7E | yes | 28 | 38 | 5.0644 | 0.0175 | 5.0469 |
+| `rdofu_ms0` | calibrated | sobol0 | yes | 49 | 63 | 5.0644 | 0.0173 | 5.0471 |
+| `rdofu_ms1` | calibrated | sobol1 | yes | 55 | 69 | 5.0644 | 0.0173 | 5.0471 |
+
+Calibrated: wall time 69 min, 2.8 h of run time in total.
+
+Robust optimum: `rdofu_ms0` (2 of 3 starts within 1e-4 of it in μ − kσ).
+
+Deterministic and robust optima at the same nodes (robust_eval), and at nominal inputs (calm air):
+
+| Quantity | published deterministic | published RDO (`rdo_ms1`) | calibrated deterministic (`mpcal_6S_11x8E_10x7E`) | calibrated RDO (`rdofu_ms0`) |
+|---|---:|---:|---:|---:|
+| μ − kσ | 5.1092 | 5.0852 | 5.0715 | 5.0471 |
+| μ | 5.1258 | 5.1040 | 5.0880 | 5.0644 |
+| σ | 0.0166 | 0.0187 | 0.0165 | 0.0173 |
+| nominal F | 5.1394 | 5.1111 | 5.0989 | 5.0715 |
+| robust constraints violated | points.M2.energy_margin, points.M2.rpm_margin, points.M3.SM, points.M2.laps_frac | none | points.M2.energy_margin, points.M2.rpm_margin, points.M3.SM, points.M2.laps_frac | none |
+
+Calibrated: the robust optimum changes μ − kσ by -0.0244 against the deterministic one (4 robust constraints violated there, 0 at the robust optimum) and costs 0.0274 in nominal F (published: -0.0240 and 0.0283).
+
+| Design variable | published deterministic | published RDO | calibrated deterministic | calibrated RDO |
+|---|---:|---:|---:|---:|
+| b | 1.829 | 1.829 | 1.829 | 1.829 |
+| c | 0.2892 | 0.3041 | 0.2777 | 0.3187 |
+| tc_scale | 1.089 | 1.062 | 1.178 | 1.034 |
+| l_ht | 1.2 | 1.2 | 0.8377 | 0.954 |
+| S_ht | 0.04462 | 0.04934 | 0.05891 | 0.06816 |
+| S_vt | 0.01612 | 0.01695 | 0.02217 | 0.02235 |
+| Kv | 728.5 | 720.8 | 759.5 | 612.7 |
+| capacity_M2 | 1.026 | 1.05 | 1.077 | 1.117 |
+| capacity_M3 | 2.252 | 2.252 | 2.252 | 2.252 |
+| throttle_M2 | 0.8232 | 0.7821 | 0.7891 | 0.9248 |
+| throttle_M3 | 0.8077 | 0.8025 | 0.7704 | 0.9387 |
+| fuel_mass | 5.897 | 5.897 | 5.897 | 5.897 |
+
+
+## 12. Downstream: Monte Carlo at the optima
+
+`studies/results_2025.py mc | propagation --set usyd | full_usyd`: 1024 scrambled Sobol' points (seed 0, the same points for every design of a set) over every parameter of the set (reduced: 4; full: 15, not only the screened ones), at the deterministic optimum and the set's robust optimum; in the reduced set also the reduced-set RDO design under the full set (`rdo_full15`, the out-of-set check), as published. Failed = MDA non-convergence or the wind limit. The calibrated reduced-set runs shared the machine with the full-set RDO (4 single-threaded workers), so their wall times are not comparable with the published ones.
+
+| Set | model | design | N | failed | μ F | σ F | 5th percentile F | largest P(violation) |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| reduced | published | deterministic | 1024 | 0 | 5.1284 | 0.0097 | 5.1106 | 0.866 (points.M2.energy_margin) |
+| reduced | published | RDO of the set | 1024 | 0 | 5.1282 | 0.0094 | 5.1108 | 0.028 (points.M2.energy_margin) |
+| reduced | published | reduced-set RDO, full set | 1024 | 0 | 5.1253 | 0.0175 | 5.0953 | 0.499 (points.M2.rpm_margin) |
+| reduced | calibrated | deterministic | 1024 | 0 | 5.0905 | 0.0131 | 5.0681 | 0.621 (points.M2.energy_margin) |
+| reduced | calibrated | RDO of the set | 1024 | 0 | 5.0900 | 0.0130 | 5.0679 | 0.016 (points.M3.SM) |
+| reduced | calibrated | reduced-set RDO, full set | 1024 | 0 | 5.0868 | 0.0192 | 5.0546 | 0.495 (points.M2.rpm_margin) |
+| full | published | deterministic | 1024 | 0 | 5.1259 | 0.0171 | 5.0963 | 0.520 (points.M2.energy_margin) |
+| full | published | RDO of the set | 1024 | 0 | 5.1036 | 0.0198 | 5.0698 | 0.027 (points.M3.SM) |
+| full | calibrated | deterministic | 1024 | 0 | 5.0876 | 0.0190 | 5.0561 | 0.512 (points.M2.energy_margin) |
+| full | calibrated | RDO of the set | 1024 | 0 | 5.0636 | 0.0215 | 5.0255 | 0.026 (points.M2.rpm_margin) |
+
+P(violation) of every constraint violated in any sample (each mission point's own constraints):
+
+| Constraint | reduced published deterministic | reduced published RDO of the set | reduced published reduced-set RDO, full set | reduced calibrated deterministic | reduced calibrated RDO of the set | reduced calibrated reduced-set RDO, full set | full published deterministic | full published RDO of the set | full calibrated deterministic | full calibrated RDO of the set |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| points.M2.SM | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.001 |
+| points.M2.energy_margin | 0.866 | 0.028 | 0.405 | 0.621 | 0.012 | 0.341 | 0.520 | 0.001 | 0.512 | 0.004 |
+| points.M2.laps_frac | 0.866 | 0.028 | 0.405 | 0.621 | 0.012 | 0.341 | 0.520 | 0.001 | 0.512 | 0.004 |
+| points.M2.rpm_margin | 0.506 | 0.001 | 0.499 | 0.499 | 0.000 | 0.495 | 0.500 | 0.017 | 0.500 | 0.026 |
+| points.M3.SM | 0.462 | 0.000 | 0.000 | 0.435 | 0.016 | 0.000 | 0.407 | 0.027 | 0.155 | 0.003 |
+
+Propagation check at the reduced-set robust optimum: the RDO's UDR rule against Smolyak level 2 and the Sobol' Monte Carlo over the four parameters.
+
+| Method | published N | published μ F | published σ F | calibrated N | calibrated μ F | calibrated σ F |
+|---|---:|---:|---:|---:|---:|---:|
+| udr | 9 | 5.1283 | 0.0094 | 9 | 5.0900 | 0.0130 |
+| smolyak | 49 | 5.1283 | 0.0094 | 49 | 5.0900 | 0.0130 |
+| sobol | 1024 | 5.1282 | 0.0094 | 1024 | 5.0900 | 0.0130 |
 
