@@ -173,7 +173,10 @@ UQ_SETS = {"full": dict(name="full", cfg=RDO_FULL_CFG, out=OUT, prefix="rdo_", s
            "onesided": dict(name="onesided", cfg=ROOT / "configs" / "dbf2025_multipoint_rdo_onesided.yaml",
                             out=OUT / "reduced_onesided", prefix="rdoro_", select=False),
            "calibrated": dict(name="calibrated", cfg=ROOT / "configs" / "dbf2025_multipoint_rdo_calibrated.yaml",
-                              out=OUT / "reduced_calibrated", prefix="rdorc_", select=False)}
+                              out=OUT / "reduced_calibrated", prefix="rdorc_", select=False),
+           # the reduced set on the USYD-calibrated mass model (docs/studies/mass_calibration_usyd.md), from the
+           # calibrated deterministic optimum (--case mpcal_6S_11x8E_10x7E); the published rdor_* runs stay as they are
+           "usyd": dict(name="usyd", cfg=RDO_CFG, out=OUT / "reduced_usyd", prefix="rdoru_", select=False)}
 UQ = dict(UQ_SETS["reduced"])
 
 
@@ -538,13 +541,22 @@ def robust_eval(workers=5):
     from aircrafter2.robustness.sampling import evaluate
 
     sc = json.loads((UQ["out"] / "screen.json").read_text())
-    designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in deterministic_cases() if d.get("ok")]
-    designs += [d for d in mc_designs() if d[0] != "multipoint"]
+    if UQ["name"] == "usyd":  # the calibrated deterministic optimum and the set's robust optimum only
+        designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in (load(sc["case"]), best_rdo()) if d]
+    else:
+        designs = [(d["tag"], _mcfg_for(d), d["dv"]) for d in deterministic_cases() if d.get("ok")]
+        designs += [d for d in mc_designs() if d[0] != "multipoint"]
     out = {}
     for label, mcfg, dv in designs:
         mcfg.base.robust.active = sc["selected"]
         rob = mcfg.base.robust
         p = build_multipoint_problem(mcfg, driver=False)
+        nominal = None
+        if UQ["name"] == "usyd":  # the nominal (calm-air) score, for the cost of robustness
+            for k, x in dv.items():
+                p.set_val(k, x)
+            p.run_model()
+            nominal = v(p, "flight_score")
         dists, act = resolved_dists_mp(mcfg, lambda n: v(p, f"points.M2.{n}"))
         rule = make_rule(rob, act)
         base = {d.name: d.mean for d in dists}
@@ -553,6 +565,8 @@ def robust_eval(workers=5):
         rn = robust_names(mcfg, extra=("points.M2.laps_frac",))
         ev = evaluate(mcfg, dv, rows, ["flight_score"] + rn, workers)
         res = dict(N=rule.n, failed=len(ev["failed"]), robust_violated=[])
+        if nominal is not None:
+            res["nominal"] = nominal
         if not ev["failed"]:
             mu, var = rule.moments(ev["values"][:, 0])
             sig = float(np.sqrt(max(var, 0.0)))

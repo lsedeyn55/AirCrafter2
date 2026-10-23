@@ -1339,21 +1339,880 @@
   ],
   "best": "mpcal_6S_11x8E_10x7E"
  },
- "rdo_cost": {
-  "rdor_best": {
-   "time": 907.4435290629917,
-   "its": 22,
-   "start": "mp_6S_11x8E_10x7E"
-  },
-  "rdor_ms0": {
-   "time": 1975.8678456440102,
-   "its": 49,
-   "start": "sobol0"
-  },
-  "rdor_ms1": {
-   "time": 2277.175559049996,
-   "its": 56,
-   "start": "sobol1"
+ "rdo_usyd": {
+  "runs": [
+   {
+    "tag": "rdoru_best",
+    "case": "mpcal_6S_11x8E_10x7E",
+    "ok": true,
+    "its": 62,
+    "error": null,
+    "time": 2068.7436435399977,
+    "N": 9,
+    "active": [
+     "f_build",
+     "f_tb",
+     "m_avionics",
+     "lap.wind"
+    ],
+    "dv": {
+     "b": 1.8288000000000002,
+     "c": 0.27377616655756537,
+     "tc_scale": 1.1975406519486824,
+     "camber_scale": 1.1526183765460865,
+     "l_ht": 0.8158968223966349,
+     "S_ht": 0.05880175550209157,
+     "S_vt": 0.022445165818537626,
+     "x_cb_frac": 0.2722691983360003,
+     "Kv": 759.5201270509585,
+     "capacity_M2": 1.107677098591693,
+     "x_batt_M2": -0.10152681466861993,
+     "throttle_M2": 0.7875828060484055,
+     "capacity_M3": 2.252252252252252,
+     "x_batt_M3": 0.031147779321925532,
+     "throttle_M3": 0.7720563494958013,
+     "fuel_mass": 5.8967008100000005
+    },
+    "start": "mpcal_6S_11x8E_10x7E",
+    "summary": {
+     "flight_score": {
+      "mu": 5.089990667607624,
+      "sigma": 0.01298098812625154,
+      "lo": 5.06402869135512,
+      "hi": 5.115952643860127,
+      "robust": 5.077009679481372
+     },
+     "points.M2.stall_margin": {
+      "mu": 20.622208441890294,
+      "sigma": 0.4391961611876223,
+      "lo": 19.74381611951505,
+      "hi": 21.50060076426554
+     },
+     "points.M2.thrust_margin_static": {
+      "mu": 22.165623503739166,
+      "sigma": 2.0383497231348153,
+      "lo": 18.088924057469534,
+      "hi": 26.2423229500088
+     },
+     "points.M2.energy_margin": {
+      "mu": 3282.1755697376466,
+      "sigma": 1610.167701477692,
+      "lo": 61.84016678226271,
+      "hi": 6502.51097269303
+     },
+     "points.M2.rpm_margin": {
+      "mu": 6.194406291234377,
+      "sigma": 3.0972031483703133,
+      "lo": -5.5062496784330506e-09,
+      "hi": 12.388812587975004
+     },
+     "points.M2.I_margin": {
+      "mu": 29.437480208028497,
+      "sigma": 9.954421394447145e-06,
+      "lo": 29.43746029918571,
+      "hi": 29.437500116871284
+     },
+     "points.M2.SM": {
+      "mu": 0.08839627659810123,
+      "sigma": 0.011498549151061625,
+      "lo": 0.06539917829597798,
+      "hi": 0.11139337490022448
+     },
+     "points.M2.wall_ratio": {
+      "mu": 0.06646178233390003,
+      "sigma": 0.0010445470316007136,
+      "lo": 0.0643726882706986,
+      "hi": 0.06855087639710146
+     },
+     "points.M2.r_tube": {
+      "mu": 0.015220590184958364,
+      "sigma": 1.0005419542290496e-08,
+      "lo": 0.015220570174119279,
+      "hi": 0.015220610195797448
+     },
+     "points.M3.stall_margin": {
+      "mu": 22.559264530484796,
+      "sigma": 0.6183501721003763,
+      "lo": 21.322564186284044,
+      "hi": 23.79596487468555
+     },
+     "points.M3.thrust_margin_static": {
+      "mu": 31.31778089328605,
+      "sigma": 1.2546716897803263,
+      "lo": 28.808437513725394,
+      "hi": 33.8271242728467
+     },
+     "points.M3.energy_margin": {
+      "mu": 160529.64596482582,
+      "sigma": 830.2236519267144,
+      "lo": 158869.19866097238,
+      "hi": 162190.09326867925
+     },
+     "points.M3.rpm_margin": {
+      "mu": 907.3908472849912,
+      "sigma": 0.5834568666829943,
+      "lo": 906.2239335516252,
+      "hi": 908.5577610183572
+     },
+     "points.M3.I_margin": {
+      "mu": 38.68974330463586,
+      "sigma": 9.954421394447145e-06,
+      "lo": 38.689723395793074,
+      "hi": 38.68976321347865
+     },
+     "points.M3.SM": {
+      "mu": 0.138020467646032,
+      "sigma": 0.030989766167225277,
+      "lo": 0.07604093531158146,
+      "hi": 0.19999999998048257
+     },
+     "points.M3.wall_ratio": {
+      "mu": 0.06646178233390003,
+      "sigma": 0.0010445470316007136,
+      "lo": 0.0643726882706986,
+      "hi": 0.06855087639710146
+     },
+     "points.M3.r_tube": {
+      "mu": 0.015220590184958364,
+      "sigma": 1.0005419542290496e-08,
+      "lo": 0.015220570174119279,
+      "hi": 0.015220610195797448
+     },
+     "points.M2.laps_frac": {
+      "mu": 3.095494872425788,
+      "sigma": 0.04774743630746347,
+      "lo": 2.999999999810861,
+      "hi": 3.190989745040715
+     }
+    },
+    "nodes": [
+     {
+      "point": "M2",
+      "node": 0,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 1,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 2,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 3,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 4,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 5,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 6,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 7,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 8,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 0,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 1,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 2,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 3,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 4,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 5,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 6,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 7,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 8,
+      "solves": 62,
+      "attempts": 62,
+      "failed_attempts": 0
+     }
+    ],
+    "props": {
+     "M2": "11x8E",
+     "M3": "10x7E"
+    },
+    "cells": 6.0,
+    "k": 1.0,
+    "beta": 2.0,
+    "git": "7ed0985",
+    "threads": "3"
+   },
+   {
+    "tag": "rdoru_ms0",
+    "case": "mpcal_6S_11x8E_10x7E",
+    "ok": true,
+    "its": 53,
+    "error": null,
+    "time": 1940.6588752889984,
+    "N": 9,
+    "active": [
+     "f_build",
+     "f_tb",
+     "m_avionics",
+     "lap.wind"
+    ],
+    "dv": {
+     "b": 1.8288,
+     "c": 0.2737774518076732,
+     "tc_scale": 1.1975254694102029,
+     "camber_scale": 1.152628855306903,
+     "l_ht": 0.8158946223213578,
+     "S_ht": 0.05880246611532519,
+     "S_vt": 0.022445331695826402,
+     "x_cb_frac": 0.15459396661613473,
+     "Kv": 634.0979662538314,
+     "capacity_M2": 1.107677406012236,
+     "x_batt_M2": -0.06828394494149566,
+     "throttle_M2": 0.9433638164731037,
+     "capacity_M3": 2.252252252252252,
+     "x_batt_M3": 0.08235055731885711,
+     "throttle_M3": 0.9247662531551362,
+     "fuel_mass": 5.896700809999999
+    },
+    "start": "sobol0",
+    "summary": {
+     "flight_score": {
+      "mu": 5.089990768483647,
+      "sigma": 0.012981089089689563,
+      "lo": 5.064028590304267,
+      "hi": 5.115952946663026,
+      "robust": 5.077009679393957
+     },
+     "points.M2.stall_margin": {
+      "mu": 20.622194741435344,
+      "sigma": 0.43920077227792187,
+      "lo": 19.7437931968795,
+      "hi": 21.500596285991186
+     },
+     "points.M2.thrust_margin_static": {
+      "mu": 22.165662796521428,
+      "sigma": 2.0383744965322075,
+      "lo": 18.08891380345701,
+      "hi": 26.242411789585844
+     },
+     "points.M2.energy_margin": {
+      "mu": 3282.2068440668754,
+      "sigma": 1610.1829841259405,
+      "lo": 61.84087581499443,
+      "hi": 6502.572812318756
+     },
+     "points.M2.rpm_margin": {
+      "mu": 6.194341882671633,
+      "sigma": 3.0971700711051784,
+      "lo": 1.7404612764337912e-06,
+      "hi": 12.38868202488199
+     },
+     "points.M2.I_margin": {
+      "mu": 29.437469321281583,
+      "sigma": 9.977236724119234e-06,
+      "lo": 29.437449366808135,
+      "hi": 29.43748927575503
+     },
+     "points.M2.SM": {
+      "mu": 0.09022398807784221,
+      "sigma": 0.010583945741681646,
+      "lo": 0.06905609659447892,
+      "hi": 0.1113918795612055
+     },
+     "points.M2.wall_ratio": {
+      "mu": 0.06646282310203142,
+      "sigma": 0.0010450461946175027,
+      "lo": 0.06437273071279641,
+      "hi": 0.06855291549126642
+     },
+     "points.M2.r_tube": {
+      "mu": 0.015220461124065505,
+      "sigma": 9.989152094422374e-09,
+      "lo": 0.015220441145761317,
+      "hi": 0.015220481102369694
+     },
+     "points.M3.stall_margin": {
+      "mu": 22.559244523474632,
+      "sigma": 0.6183569569360491,
+      "lo": 21.322530609602534,
+      "hi": 23.79595843734673
+     },
+     "points.M3.thrust_margin_static": {
+      "mu": 31.317802516722253,
+      "sigma": 1.2546863338647551,
+      "lo": 28.80842984899274,
+      "hi": 33.82717518445176
+     },
+     "points.M3.energy_margin": {
+      "mu": 160529.59261785573,
+      "sigma": 830.2268709517107,
+      "lo": 158869.1388759523,
+      "hi": 162190.04635975914
+     },
+     "points.M3.rpm_margin": {
+      "mu": 907.391433876179,
+      "sigma": 0.583412639078079,
+      "lo": 906.2246085980229,
+      "hi": 908.5582591543351
+     },
+     "points.M3.I_margin": {
+      "mu": 38.68973729642144,
+      "sigma": 9.862632300490635e-06,
+      "lo": 38.68971757115684,
+      "hi": 38.68975702168604
+     },
+     "points.M3.SM": {
+      "mu": 0.11980183514528372,
+      "sigma": 0.026996243640769534,
+      "lo": 0.06580934786374465,
+      "hi": 0.1737943224268228
+     },
+     "points.M3.wall_ratio": {
+      "mu": 0.06646282310203142,
+      "sigma": 0.0010450461946175027,
+      "lo": 0.06437273071279641,
+      "hi": 0.06855291549126642
+     },
+     "points.M3.r_tube": {
+      "mu": 0.015220461124065505,
+      "sigma": 9.989152094422374e-09,
+      "lo": 0.015220441145761317,
+      "hi": 0.015220481102369694
+     },
+     "points.M2.laps_frac": {
+      "mu": 3.0954957872680806,
+      "sigma": 0.047747893665415146,
+      "lo": 2.99999999993725,
+      "hi": 3.190991574598911
+     }
+    },
+    "nodes": [
+     {
+      "point": "M2",
+      "node": 0,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 1,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 2,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 3,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 4,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 5,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 6,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 7,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 8,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 0,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 1,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 2,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 3,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 4,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 5,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 6,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 7,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 8,
+      "solves": 53,
+      "attempts": 53,
+      "failed_attempts": 0
+     }
+    ],
+    "props": {
+     "M2": "11x8E",
+     "M3": "10x7E"
+    },
+    "cells": 6.0,
+    "k": 1.0,
+    "beta": 2.0,
+    "git": "7ed0985",
+    "threads": "3"
+   },
+   {
+    "tag": "rdoru_ms1",
+    "case": "mpcal_6S_11x8E_10x7E",
+    "ok": true,
+    "its": 44,
+    "error": null,
+    "time": 1694.4721747150033,
+    "N": 9,
+    "active": [
+     "f_build",
+     "f_tb",
+     "m_avionics",
+     "lap.wind"
+    ],
+    "dv": {
+     "b": 1.8288000000000002,
+     "c": 0.27353450126312573,
+     "tc_scale": 1.1986260267803677,
+     "camber_scale": 1.1618703509621398,
+     "l_ht": 0.815305384327966,
+     "S_ht": 0.05874057190774481,
+     "S_vt": 0.022441620903529896,
+     "x_cb_frac": 0.3688337947823097,
+     "Kv": 919.6106729270446,
+     "capacity_M2": 1.1079298543526448,
+     "x_batt_M2": -0.029663358151236857,
+     "throttle_M2": 0.6505069958189733,
+     "capacity_M3": 2.252252252252252,
+     "x_batt_M3": 0.055191153808253096,
+     "throttle_M3": 0.637586096055437,
+     "fuel_mass": 5.8967008100000005
+    },
+    "start": "sobol1",
+    "summary": {
+     "flight_score": {
+      "mu": 5.08999034087632,
+      "sigma": 0.012981226509972795,
+      "lo": 5.0640278878563745,
+      "hi": 5.115952793896266,
+      "robust": 5.077009114366348
+     },
+     "points.M2.stall_margin": {
+      "mu": 20.62581885884533,
+      "sigma": 0.4388422213862793,
+      "lo": 19.748134416072773,
+      "hi": 21.50350330161789
+     },
+     "points.M2.thrust_margin_static": {
+      "mu": 22.177272787409866,
+      "sigma": 2.037930900691898,
+      "lo": 18.101410986026067,
+      "hi": 26.253134588793664
+     },
+     "points.M2.energy_margin": {
+      "mu": 3281.302991527976,
+      "sigma": 1609.7659666216684,
+      "lo": 61.77105828463891,
+      "hi": 6500.834924771312
+     },
+     "points.M2.rpm_margin": {
+      "mu": 6.144327291725761,
+      "sigma": 3.0721630219112583,
+      "lo": 1.2479032447387794e-06,
+      "hi": 12.288653335548279
+     },
+     "points.M2.I_margin": {
+      "mu": 29.433851183291075,
+      "sigma": 9.999999999999999e-06,
+      "lo": 29.433831183291076,
+      "hi": 29.433871183291075
+     },
+     "points.M2.SM": {
+      "mu": 0.07345477726661265,
+      "sigma": 0.011727388993189012,
+      "lo": 0.049999999280234624,
+      "hi": 0.09690955525299066
+     },
+     "points.M2.wall_ratio": {
+      "mu": 0.06647420720829282,
+      "sigma": 0.0010583526589021484,
+      "lo": 0.06435750189048853,
+      "hi": 0.06859091252609711
+     },
+     "points.M2.r_tube": {
+      "mu": 0.015220929119733176,
+      "sigma": 1e-08,
+      "lo": 0.015220909119733176,
+      "hi": 0.015220949119733176
+     },
+     "points.M3.stall_margin": {
+      "mu": 22.55238614096932,
+      "sigma": 0.6181046677776619,
+      "lo": 21.316176805413996,
+      "hi": 23.78859547652464
+     },
+     "points.M3.thrust_margin_static": {
+      "mu": 31.311291310774884,
+      "sigma": 1.254667939923991,
+      "lo": 28.801955430926903,
+      "hi": 33.820627190622865
+     },
+     "points.M3.energy_margin": {
+      "mu": 160522.59560283407,
+      "sigma": 830.3457300768225,
+      "lo": 158861.90414268043,
+      "hi": 162183.2870629877
+     },
+     "points.M3.rpm_margin": {
+      "mu": 909.0977903363098,
+      "sigma": 0.5703264752741655,
+      "lo": 907.9571373857615,
+      "hi": 910.2384432868581
+     },
+     "points.M3.I_margin": {
+      "mu": 38.69552774286654,
+      "sigma": 1.0045371805053953e-05,
+      "lo": 38.69550765212293,
+      "hi": 38.69554783361015
+     },
+     "points.M3.SM": {
+      "mu": 0.11087101166660833,
+      "sigma": 0.030416649519707392,
+      "lo": 0.050037712627193545,
+      "hi": 0.1717043107060231
+     },
+     "points.M3.wall_ratio": {
+      "mu": 0.06647420720829282,
+      "sigma": 0.0010583526589021484,
+      "lo": 0.06435750189048853,
+      "hi": 0.06859091252609711
+     },
+     "points.M3.r_tube": {
+      "mu": 0.015220929119733176,
+      "sigma": 1e-08,
+      "lo": 0.015220909119733176,
+      "hi": 0.015220949119733176
+     },
+     "points.M2.laps_frac": {
+      "mu": 3.0954411580793666,
+      "sigma": 0.04772057980210214,
+      "lo": 2.9999999984751624,
+      "hi": 3.190882317683571
+     }
+    },
+    "nodes": [
+     {
+      "point": "M2",
+      "node": 0,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 1,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 2,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 3,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 4,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 5,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 6,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 7,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M2",
+      "node": 8,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 0,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 1,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 2,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 3,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 4,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 5,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 6,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 7,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     },
+     {
+      "point": "M3",
+      "node": 8,
+      "solves": 44,
+      "attempts": 44,
+      "failed_attempts": 0
+     }
+    ],
+    "props": {
+     "M2": "11x8E",
+     "M3": "10x7E"
+    },
+    "cells": 6.0,
+    "k": 1.0,
+    "beta": 2.0,
+    "git": "7ed0985",
+    "threads": "3"
+   }
+  ],
+  "best": "rdoru_best",
+  "robust_eval": {
+   "mpcal_6S_11x8E_10x7E": {
+    "N": 9,
+    "failed": 0,
+    "robust_violated": [
+     "points.M2.energy_margin",
+     "points.M2.rpm_margin",
+     "points.M3.SM",
+     "points.M2.laps_frac"
+    ],
+    "nominal": 5.099347351429076,
+    "mu": 5.090539189809116,
+    "sigma": 0.013138385383198786,
+    "robust": 5.077400804425917
+   },
+   "rdoru_best": {
+    "N": 9,
+    "failed": 0,
+    "robust_violated": [],
+    "nominal": 5.098639211361991,
+    "mu": 5.089990667607616,
+    "sigma": 0.012980987163304779,
+    "robust": 5.077009680444311
+   }
   }
  }
 }

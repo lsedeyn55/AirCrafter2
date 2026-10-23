@@ -246,5 +246,8 @@ model moved.
 - Woombah validation, out-of-sample: `docs/studies/results/validation_2025.md` §2–3 (`studies/validation_2025.py woombah
   --mass gg|loo`). The pre-calibration run (`outputs/results/validation_woombah.json`) is kept; the superseded
   Woombah-only refit stays as a column.
-- Not done (brief): RDO reruns; the cost estimate is in the calibration doc §9. `results_2025.md`, `kv_study.md`,
-  `rdo_study.md` and `twin_motor_study.md` still show the uncalibrated model; INDEX.md says so.
+- Reduced-set RDO rerun on the calibrated model (2026-10-23, after the brief): calibration doc §10
+  (`studies/results_2025.py screen | rdo | robust_eval --set usyd`, runs `rdoru_*`, outputs in
+  `outputs/results/reduced_usyd/`; the published `rdor_*` runs are untouched). Not rerun: the full-set RDO and the
+  common evaluation's Monte Carlo and propagation. `results_2025.md`, `kv_study.md`, `rdo_study.md` and
+  `twin_motor_study.md` still show the uncalibrated model; INDEX.md says so.

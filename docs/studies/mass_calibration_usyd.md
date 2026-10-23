@@ -241,5 +241,48 @@ Calibrated optimum: `mpcal_6S_11x8E_10x7E`.
 Active constraints (within 1e-4 of the reference): both points.M2.V_h (lower), points.M2.V_v (lower), points.M2.energy_margin (lower), points.M2.laps_frac (lower), points.M2.rpm_margin (lower), points.M3.V_h (lower), points.M3.V_v (lower), rules_M3.energy_margin_Wh (lower); published only: none; calibrated only: none.
 Active bounds: both b (upper), fuel_mass (upper); published only: l_ht (upper); calibrated only: none. Kv set by: published points.M2.rpm_margin (lower); calibrated points.M2.rpm_margin (lower).
 
-**Cost of rerunning the reduced-set RDO (estimate, not run).** The published reduced-set RDO (d = 4, UDR N = 9 nodes × 2 points) took `rdor_best` 15 min (22 iterations, start mp_6S_11x8E_10x7E), `rdor_ms0` 33 min (49 iterations, start sobol0), `rdor_ms1` 38 min (56 iterations, start sobol1), run in parallel with 3 threads each: 38 min wall, 1.4 h of run time in total. A rerun on the calibrated model is the same problem size, so expect the same order (the wall time above for the three starts in parallel, if the iteration counts are similar), plus the downstream evaluations the results page needs (the common evaluation's Monte Carlo, robust_eval and propagation; docs/studies/results/compute_performance.md), which were not timed separately here. Not run (brief).
+
+## 10. Downstream: the reduced-set RDO on the calibrated model
+
+`studies/results_2025.py screen | rdo | robust_eval --set usyd`: `configs/dbf2025_multipoint_rdo.yaml` (the reduced set f_build, f_tb, m_avionics, lap.wind; d = 4, UDR N = 9 nodes × 2 points, maximise μ − kσ with k = 1, robust constraints μ ∓ βσ with β = 2), now on the calibrated mass model with f_build ±30 % about 1.0 (§5). Case `mpcal_6S_11x8E_10x7E` (§9); the same three starts as the published run, 3 threads each, in parallel. Outputs in `outputs/results/reduced_usyd/` and `runs/rdoru_*`; the published `rdor_*` runs are untouched.
+
+| Run | model | start | converged | iterations | time (min) | μ | σ | μ − kσ |
+|---|---|---|---|---:|---:|---:|---:|---:|
+| `rdor_best` | published (uncalibrated) | mp_6S_11x8E_10x7E | yes | 22 | 15 | 5.1283 | 0.0094 | 5.1188 |
+| `rdor_ms0` | published (uncalibrated) | sobol0 | yes | 49 | 33 | 5.1283 | 0.0094 | 5.1188 |
+| `rdor_ms1` | published (uncalibrated) | sobol1 | yes | 56 | 38 | 5.1283 | 0.0094 | 5.1188 |
+| `rdoru_best` | calibrated | mpcal_6S_11x8E_10x7E | yes | 62 | 34 | 5.0900 | 0.0130 | 5.0770 |
+| `rdoru_ms0` | calibrated | sobol0 | yes | 53 | 32 | 5.0900 | 0.0130 | 5.0770 |
+| `rdoru_ms1` | calibrated | sobol1 | yes | 44 | 28 | 5.0900 | 0.0130 | 5.0770 |
+
+Wall time 34 min, 1.6 h of run time in total (the estimate in the earlier version of this section: 38 min wall, 1.4 h).
+
+Robust optimum: `rdoru_best` (3 of 3 starts within 1e-4 of it in μ − kσ).
+
+Deterministic and robust optima at the same nodes (robust_eval), and at nominal inputs (calm air, f_build 1):
+
+| Quantity | published deterministic | published RDO (`rdor_ms0`) | calibrated deterministic (`mpcal_6S_11x8E_10x7E`) | calibrated RDO (`rdoru_best`) |
+|---|---:|---:|---:|---:|
+| μ − kσ | 5.1187 | 5.1188 | 5.0774 | 5.0770 |
+| μ | 5.1284 | 5.1283 | 5.0905 | 5.0900 |
+| σ | 0.0097 | 0.0094 | 0.0131 | 0.0130 |
+| nominal F | 5.1394 | 5.1386 | 5.0993 | 5.0986 |
+| robust constraints violated | points.M2.energy_margin, points.M2.rpm_margin, points.M3.SM, points.M2.laps_frac | none | points.M2.energy_margin, points.M2.rpm_margin, points.M3.SM, points.M2.laps_frac | none |
+
+Calibrated: the robust optimum changes μ − kσ by -0.0004 against the deterministic one (4 robust constraints violated there, 0 at the robust optimum) and costs 0.0007 in nominal F (published: +0.0001 and 0.0009).
+
+| Design variable | published deterministic | published RDO | calibrated deterministic | calibrated RDO |
+|---|---:|---:|---:|---:|
+| b | 1.829 | 1.829 | 1.829 | 1.829 |
+| c | 0.2892 | 0.2778 | 0.2777 | 0.2738 |
+| tc_scale | 1.089 | 1.085 | 1.178 | 1.198 |
+| l_ht | 1.2 | 1.2 | 0.8377 | 0.8159 |
+| S_ht | 0.04462 | 0.04117 | 0.05891 | 0.0588 |
+| S_vt | 0.01612 | 0.01549 | 0.02217 | 0.02245 |
+| Kv | 728.5 | 632.3 | 759.5 | 759.5 |
+| capacity_M2 | 1.026 | 1.038 | 1.077 | 1.108 |
+| capacity_M3 | 2.252 | 2.252 | 2.252 | 2.252 |
+| throttle_M2 | 0.8232 | 0.9474 | 0.7891 | 0.7876 |
+| throttle_M3 | 0.8077 | 0.9342 | 0.7704 | 0.7721 |
+| fuel_mass | 5.897 | 5.897 | 5.897 | 5.897 |
 

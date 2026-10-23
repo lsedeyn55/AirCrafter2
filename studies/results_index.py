@@ -115,8 +115,9 @@ def main():
       "correction factors fitted on Orange Hornet, Woombah and Humpback, in `configs/placeholders.yaml`) the "
       "optimisations run with the calibrated model. This reverses the earlier rule of running every optimisation "
       "uncalibrated. The Woombah validation stays out-of-sample: it uses the factors fitted without Woombah "
-      "(`configs/mass_usyd_loo_woombah.yaml`). One deterministic optimum has been rerun on the calibrated model "
-      "(`mass_calibration_usyd.md` §9); the RDO has not.\n\n")
+      "(`configs/mass_usyd_loo_woombah.yaml`). One deterministic optimum (`mass_calibration_usyd.md` §9) and the "
+      "reduced-set RDO (§10) have been rerun on the calibrated model; the full-set RDO and the Monte Carlo "
+      "evaluations have not.\n\n")
     w("## Pages, tables and JSON\n\n")
     w("| page | JSON | commit | script | configs | tables (section) |\n|---|---|---|---|---|---|\n")
     for page, js, script, cfg in PAGES:
@@ -149,8 +150,8 @@ def main():
       "interference factors and the X-1's t/c (Q37: covered by the store drag factor's ±30 %); the bottle empty "
       "masses (Q36: grams against kilograms of fuel); the pylons' spanwise station (Q36: carried as fuselage "
       "payload, conservative for the spar); the uncalibrated mass model of the published results (light on "
-      "Woombah, validation_2025.md §2; the calibrated model and its effect on one optimum: "
-      "docs/studies/mass_calibration_usyd.md §9); the missing take-off in the lap model (off in every published result; it biases M2 high unevenly, "
+      "Woombah, validation_2025.md §2; the calibrated model and its effect on one optimum and on the reduced-set "
+      "RDO: docs/studies/mass_calibration_usyd.md §9–10); the missing take-off in the lap model (off in every published result; it biases M2 high unevenly, "
       "favouring heavy designs: ΔF −0.008 for the 0.5 L optimum to −0.053 for 2 L, no ranking change at nominal "
       "inputs, but every optimum then violates M2's energy constraint and the RDO design two robust constraints, both restored by re-optimising (§9); "
       "docs/studies/takeoff_study.md); the motor catalogue and Kv bounds "
