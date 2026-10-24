@@ -87,7 +87,7 @@ def ranking():
         rows.append((f"uncertainty spread (reduced set, active): {UNC_SPREAD.get(k, k)}", math.sqrt(v),
                      "first-order sigma of F at the deterministic optimum (abs(dF/dp) x sigma_p)"))
     rr = (R["uq"]["reduced"].get("robust_eval") or {}).get("results", {})
-    rc = (R["uq"]["calibrated"].get("robust_eval") or {}).get("results", {})
+    rc = ((R["uq"].get("calibrated") or {}).get("robust_eval") or {}).get("results", {})  # dropped on the calibrated model
     base = R["best_case"]
     if base in rr and base in rc and "mu" in rr[base] and "mu" in rc[base]:
         cal = R["uq"]["calibrated"]["calibration"]["f_build"]

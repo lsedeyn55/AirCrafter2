@@ -21,7 +21,8 @@ roll is read).
 
 Woombah as built: configs/woombah_2025.yaml in validation_2025.md's three cases (full throttle; the logged-current
 throttles; those and the logged take-off masses through the m_ballast hook), with the throttles and ballast read from
-docs/studies/results/validation_2025.json (not re-solved), take-off off and on.
+outputs/results/validation_woombah_cal.json (validation_2025.py woombah --mass cal: the calibrated factors the config
+resolves to, as results_2025's common evaluation; not re-solved), take-off off and on.
 
 Wind limit: per design and point, the largest steady wind (lap.wind, the robustness input: headwind on the head
 straights) for which the lap is still valid (no AnalysisError), by stepping the wind in 0.01 m/s on the lap component
@@ -307,7 +308,7 @@ def _woombah_job(job):
 
 
 def woombah(workers=4):
-    val = json.loads((ROOT / "docs" / "studies" / "results" / "validation_2025.json").read_text())["woombah"]
+    val = json.loads((ROOT / "outputs" / "results" / "validation_woombah_cal.json").read_text())
     lt = val["logged_throttle"]
     th = (lt["M2"]["throttle"], lt["M3"]["throttle"])
     ballast = val["cases"]["logged_current_and_mass"]["ballast_kg"]

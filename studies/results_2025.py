@@ -454,12 +454,18 @@ def mc_designs(labels=None):
         if r:
             out.append(("rdo", _mcfg_for(load(r["case"])), r["dv"]))
         return [d for d in out if labels is None or d[0] in labels]
-    rob = load_multipoint_config(UQ["cfg"]).base.robust
+    ucfg = load_multipoint_config(UQ["cfg"])
+    rob = ucfg.base.robust
     out = []
-    w = json.loads((OUT / "validation_woombah.json").read_text())
-    if "logged_current" in w["cases"]:  # Woombah as built, at the throttles it was flown at (Table 38 currents)
+    # Woombah as built, at the throttles it was flown at (Table 38 currents), on the calibrated model (in-sample: it is
+    # one of the three calibration aircraft; studies/validation_2025.py woombah --mass cal)
+    w = json.loads((OUT / "validation_woombah_cal.json").read_text())
+    if "logged_current" in w["cases"]:
         wm = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
         wm.base.robust = rob.model_copy(deep=True)
+        # the set's tail form: the full set pins gg tails (its f_ht / f_vt spreads), as every other design here
+        wm.base.mass.options = wm.base.mass.options.model_copy(
+            update={"tail_mass_model": ucfg.base.mass.options.tail_mass_model})
         out.append(("woombah", wm, w["cases"]["logged_current"]["dv"]))
     for tag in ("ac1_direct", "ac1_completed"):
         if (RUNS / f"{tag}.json").exists():
@@ -887,7 +893,7 @@ def collect():
     R["normalisation"] = dict(grid=sorted(grid, key=lambda r: (r["f2"], r["f3"])))
 
     R["uq"] = {}
-    for name in ("reduced", "full", "calibrated", "onesided"):
+    for name in ("reduced", "full", "onesided"):  # "calibrated" (Woombah-only f_build) dropped on the calibrated model
         use_set(name)
         R["uq"][name] = _set_block()
     use_set("reduced")
@@ -1134,11 +1140,10 @@ def _sec_variants(w, R):
         w("\nMDA failures: " + ", ".join(f"{m} {meths[m]['failed']}/{meths[m]['N']}" for m in meths) + ". Largest "
           "Monte Carlo P(violation): " + (", ".join(f"{k.replace('points.', '')} {x:.3f}" for k, x in sorted(
               meths["sobol"]["p_violation"].items(), key=lambda t: -t[1])[:4] if x > 0) or "none") + ".\n")
-    for name, title, what in (("calibrated", "7b. Calibrated build mass",
-                               "f_build centred on Woombah's built/predicted structure (solved through the closure), "
-                               "+/-30 % about it (decision 2026-10-21: the Woombah ratio is a calibration, not a "
-                               "spread)"),
-                              ("onesided", "7c. One-sided build mass (sensitivity)",
+    w("\n### 7b. Calibrated build mass (dropped)\n\nThe Woombah-only f_build calibration (2.74, ±30 % about it) of the "
+      "uncalibrated pages would count the build bias twice on the calibrated model, whose correction factors carry it "
+      "(docs/studies/mass_calibration_usyd.md); it is in the pre-calibration pages (git tag `results-uncalibrated`).\n")
+    for name, title, what in (("onesided", "7c. One-sided build mass (sensitivity)",
                                "f_build on [1.0, 1.3] (nominal 1.15 +/- 0.15: the reference node sits at a 15 % "
                                "heavier structure)")):
         V = R["uq"][name]

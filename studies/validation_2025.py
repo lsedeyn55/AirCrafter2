@@ -3,6 +3,8 @@
     .venv/bin/python studies/validation_2025.py corners      # MDA over the Kv / throttle / prop corners (v_top check)
     .venv/bin/python studies/validation_2025.py woombah --mass gg    # Woombah, G&G (uncalibrated) mass factors
     .venv/bin/python studies/validation_2025.py woombah --mass loo   # Woombah, USYD factors fitted WITHOUT Woombah
+    .venv/bin/python studies/validation_2025.py woombah --mass cal   # Woombah, the calibrated factors (in-sample; for
+                                                                     # results_2025 and takeoff_study, not the page)
     .venv/bin/python studies/validation_2025.py calibrate    # SUPERSEDED Woombah-only refit (configs/mass_usyd_woombah.yaml)
     .venv/bin/python studies/validation_2025.py report       # docs/studies/results/validation_2025.{md,json} + figures
 
@@ -75,7 +77,10 @@ def git_hash():
                           text=True).stdout.strip()
 
 
-MASS_VARIANTS = {"gg": "G&G factors (uncalibrated)", "loo": "USYD factors without Woombah (out-of-sample)"}
+MASS_VARIANTS = {"gg": "G&G factors (uncalibrated)", "loo": "USYD factors without Woombah (out-of-sample)",
+                 "cal": "USYD factors (calibrated, in-sample)"}
+REPORT_VARIANTS = ("gg", "loo")  # the page's validation; "cal" is the in-sample case results_2025's common evaluation
+#                                  and takeoff_study score Woombah with (the same model as every other design)
 
 
 def mass_override(variant):
@@ -89,6 +94,8 @@ def mass_override(variant):
     if variant == "loo":
         d = load_yaml(ROOT / "configs" / "mass_usyd_loo_woombah.yaml")
         return d.get("options", {}), d["inputs"]
+    if variant == "cal":  # the loaded config's own (calibrated) factors
+        return {}, {}
     raise ValueError(variant)
 
 
@@ -363,7 +370,7 @@ def report():
            "and 400 KV with the 9x6E): the aircraft cannot hold level flight, so the speed balance has no solution. "
            "That is a physically infeasible design, not a speed above v_top; an optimiser step into it stops the run "
            "as MDA non-convergence (reported separately from constraint violation).\n")
-    runs = {m: load(f"woombah_{m}") for m in MASS_VARIANTS if (OUT / f"validation_woombah_{m}.json").exists()}
+    runs = {m: load(f"woombah_{m}") for m in REPORT_VARIANTS if (OUT / f"validation_woombah_{m}.json").exists()}
     if "gg" in runs:
         wb = runs["gg"]
         out["woombah"] = wb
