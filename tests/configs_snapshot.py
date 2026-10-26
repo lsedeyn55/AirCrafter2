@@ -8,6 +8,7 @@ Regenerated 2026-10-22 after the placeholders migration (docs/PLACEHOLDERS_RULES
 full_mdo_twin, full_mdo_rdo and full_mdo_twin_rdo changed (newer motor, battery, x_motor, take-off distance); the
 four *_fixed_kv entries reproduced bit for bit.
 Regenerated 2026-10-23 after the USYD mass calibration (docs/MASS_CALIBRATION_PLAN.md §7): every entry changed.
+Regenerated 2026-10-27 after the Q45 fix (lap 1's clustered grid): only lap-1-derived outputs moved (<= 5e-7).
 """
 
 import json

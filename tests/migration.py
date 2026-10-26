@@ -4,18 +4,15 @@ The placeholders migration (docs/PLACEHOLDERS_RULESETS_PLAN.md) changed full_mdo
 full_mdo_twin_rdo; their entries in configs_reference.json and kv_dv_reference.json were regenerated on 2026-10-22
 with the user's go-ahead (the unchanged entries reproduced bit for bit), so the set is empty again. The USYD mass
 calibration (2026-10-23, docs/MASS_CALIBRATION_PLAN.md §7) changed every full config; all their entries were
-regenerated in their own commit, and the set is empty again. For a future
+regenerated in their own commit, and the set is empty again. The Q45 fix (2026-10-27, lap 1's clustered grid) moved
+only lap-1-derived outputs (<= 5e-7 relative); the eight single-point entries were regenerated in their own commit. For a future
 deliberate change, list the configs here: the reference tests then mark them strict xfail until the references are
 regenerated, so a test fails loudly if a changed config still matches its old reference (or an unchanged one stops
 matching)."""
 
 import pytest
 
-# The Q45 fix (2026-10-27, docs/RESULTS_2026_PLAN.md §4.6): lap 1's first straight on a clustered grid moves only the
-# lap-1-derived outputs (<= 5e-7 relative in the single-point references); regenerated in the next commit.
-CHANGED_BY_MIGRATION = {"full_mdo.yaml", "full_mdo_twin.yaml", "full_mdo_fixed_kv.yaml", "full_mdo_twin_fixed_kv.yaml",
-                        "full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml", "full_mdo_rdo_fixed_kv.yaml",
-                        "full_mdo_twin_rdo_fixed_kv.yaml"}
+CHANGED_BY_MIGRATION = set()
 REASON = "effective values changed deliberately; reference not regenerated pending the user's go-ahead"
 
 
