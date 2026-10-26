@@ -369,3 +369,18 @@ clean run each (saves ≈ 5 h).
    conservative), or let the flown counts drop below the capacity rule (more DVs).
 9. **Calibration LOO** (§0): investigate why [OH]'s LOO moved (−26 → −34 %) before the 2025-26 runs and keep
    ±30 % if the published value is reproduced, or adopt ±35 % (the committed code's value) for the 2025-26 study.
+
+### Decided at checkpoint 1 (2026-10-26)
+
+1. Turn drift behind a switch `course.turn_drift`: off by default (every 2024-25 config and reference bit for bit),
+   on in the 2025-26 configs.
+2. **Uncertain set (d = 5):** f_build, **banner-drag factor C_D,b (uniform 0.019–0.028, [HB] Table 41) in place of
+   f_tb**, m_avionics, wind speed, wind direction; confirmed against the checkpoint-2 screening (f_tb's contribution
+   on the payload-sized fuselage is reported). f_tb moves to the out-of-set Monte Carlo.
+3. **SM upper bound from the modelled as-flown USYD aircraft:** the largest modelled SM of Woombah (with its M3
+   battery station corrected to Table 34's M2 station) and Humpback (checkpoint 2), rounded up to 0.01.
+4. **Calibration LOO:** investigate first (about an hour at the start of checkpoint 2); keep ±30 % if the published
+   −26 % reproduces, else adopt the committed code's value and regenerate the calibration page.
+5. Not asked, recommendation stands unless you say otherwise: AirCrafter 1.0 M15 fixed in `2026` mode behind a
+   switch; NI_max 2800, B_max 1500; wind 0–10 m/s; course `dbf_2025_360_mid` with the banner deployed at the start
+   of the downwind leg; flown payload counts = capacity.
