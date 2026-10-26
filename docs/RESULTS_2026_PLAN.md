@@ -384,3 +384,23 @@ clean run each (saves ≈ 5 h).
 5. Not asked, recommendation stands unless you say otherwise: AirCrafter 1.0 M15 fixed in `2026` mode behind a
    switch; NI_max 2800, B_max 1500; wind 0–10 m/s; course `dbf_2025_360_mid` with the banner deployed at the start
    of the downwind leg; flown payload counts = capacity.
+
+## Checkpoint 2 (2026-10-27)
+
+**Built** (commits `f6f5432`, references `9d3e02d`): `dbf2026`, the payload / banner / payload-fuselage stores, the
+multipoint problem by ruleset kind, the wind vector with turn drift behind `course.turn_drift`, the banner's
+deployment in the lap model, the Q45 fix, AirCrafter 1.0 `2026` mode (M15 fixed), `studies/results_2026.py`,
+`validation_2026.py`, `q45_resolution.py`; tests (`tests/test_results_2026.py`). Decided during the build:
+
+- **Calibration LOO** (Q9 of §9): the fold fit did not hold the unidentified factors (f_tb) at their G&G values, so a
+  rerun leaked the calibrated f_tb (fitted with [OH]) into [OH]'s own fold. Fixed: [OH] LOO −25.8 % (published
+  −26.3 %), f_build stays ±30 %, the combined factors are unchanged.
+- **SM upper bound 0.47** (decision 2026-10-27): Humpback's modelled SM is 0.39–0.46 (Q62).
+- **`propulsion.f_fit` 0.95** in the 2025-26 configs (0.8 default kept): Humpback's props cruise at J ≈ 0.9 J_max;
+  at 0.8 the M2 cruise lay past the fit nodes (T 5 % low there) and every start point violated v_fit_margin; at 0.95
+  the top node stays inside the APC data (J 0.762 < 0.783, 19x12E) and T at cruise is within 1.4 %.
+- **Start throttle 1.0 in M3**: a cold M3 MDA at part throttle can fail; warm starts converge down to 0.5.
+- **Q45**: clustered lap-1 grid, ≤ 0.03 % against 640 steps up to the validity edge (old grid: up to 3 %).
+- **AirCrafter 1.0 cost**: 0.43 ms per call (not 3.6 ms), so the coarse grid of §6 took 6 min; the shipped steps
+  (0.5 kg, battery fraction 0.1, banner 25 in) cost about 25 min.
+- **Woombah's M3 station** (Q58) recorded, not changed (Phase A frozen).
