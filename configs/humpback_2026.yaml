@@ -1,0 +1,33 @@
+# Project Humpback (USYD DBF 2025-26) as built, for analysis-only validation (studies/validation_2026.py). Everything
+# not listed here is configs/dbf2026_multipoint.yaml (Humpback's powertrain and components, the ruleset). [HB] = 2026
+# USYD DBF Design Report, printed page / table. Modelling differences are flagged in the comments and in
+# docs/studies/results_2026/validation_2026.md.
+extends: dbf2026_multipoint.yaml
+
+geometry:
+  l_ht: 1.100                    # m, tail arm [HB p. 26]
+  S_ht: 0.14839                  # m^2, 230 in^2 [HB p. 36]
+  S_vt: 0.05865                  # m^2, 90.9 in^2 [HB p. 36]
+
+stability:
+  AR_ht: 4.0                     # [HB p. 36]
+  AR_vt: 1.5                     # [HB p. 36]
+
+# The as-built design: rectangular wing 59 in x 14.57 in [HB p. 36] (868 in^2 printed: 59 x 14.57 = 859.6 in^2,
+# flagged; the span and chord are used); end-plates not modelled. S3016 as seeded (tc, camber scale 1).
+initial: {b: 1.4986, c: 0.37008, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 2.0, v: 30.0, l_ht: 1.100,
+          S_ht: 0.14839, S_vt: 0.05865, x_cb_frac: 0.416, Kv: 245.0}
+          # x_cb_frac: the payload bay centre over the passengers' CG 6.06 in [HB Table 36] / 14.57 in
+
+multipoint:
+  points:
+    M2: {prop: 19x12E}           # as flown in §5.3.10 [HB p. 42]; Table 42 flights 19x10 and 19x12 (set per case)
+    M3: {prop: 19x10E}           # Table 42 M3 flights: 19x10 [HB p. 58]
+  per_point_initial:
+    capacity_M2: 3.3             # Ah, GNB 8S 3300 mAh, 97.68 Wh [HB p. 42] (§4.8.3 prints 3380 mAh, the drawing 3350)
+    capacity_M3: 3.3
+    x_batt_M2: -0.3505           # m, -13.8 in [HB Table 36]
+    x_batt_M3: -0.3505
+    throttle_M2: 1.0             # design case; the validation also solves the logged currents [HB Table 42]
+    throttle_M3: 1.0
+  payload_initial: {n_p: 42.0, n_c: 14.0, L_banner: 197.0}   # [HB Table 36; p. 40]

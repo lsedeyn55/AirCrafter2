@@ -11,7 +11,11 @@ matching)."""
 
 import pytest
 
-CHANGED_BY_MIGRATION = set()
+# The Q45 fix (2026-10-27, docs/RESULTS_2026_PLAN.md §4.6): lap 1's first straight on a clustered grid moves only the
+# lap-1-derived outputs (<= 5e-7 relative in the single-point references); regenerated in the next commit.
+CHANGED_BY_MIGRATION = {"full_mdo.yaml", "full_mdo_twin.yaml", "full_mdo_fixed_kv.yaml", "full_mdo_twin_fixed_kv.yaml",
+                        "full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml", "full_mdo_rdo_fixed_kv.yaml",
+                        "full_mdo_twin_rdo_fixed_kv.yaml"}
 REASON = "effective values changed deliberately; reference not regenerated pending the user's go-ahead"
 
 
@@ -31,9 +35,11 @@ PRE_CALIBRATION_BOX = dict(l_cb=0.40, w_cb=0.12, h_cb=0.12)
 
 
 def pre_calibration(cfg):
-    """A FullMDOConfig (or a multipoint config's base) with the pre-calibration mass model, in place."""
+    """A FullMDOConfig (or a multipoint config's base) with the pre-calibration mass model and the uniform lap-1 grid
+    (before the Q45 fix), in place: the model of the frozen references."""
     cfg.mass.options = cfg.mass.options.model_copy(update=PRE_CALIBRATION_MASS["options"])
     cfg.mass.inputs.update(PRE_CALIBRATION_MASS["inputs"])
     for k, v in PRE_CALIBRATION_BOX.items():
         setattr(cfg.geometry, k, v)
+    cfg.course.lap1_cluster = 1.0  # the uniform lap-1 grid of every published result before the Q45 fix (2026-10-27)
     return cfg

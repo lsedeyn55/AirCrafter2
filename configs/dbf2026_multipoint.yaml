@@ -1,0 +1,49 @@
+# 2025-26 DBF ruleset (Banner Towing Bush Plane): multipoint design problem, M2 (charter: passengers and cargo) + M3
+# (banner) on one airframe. Problem: aircrafter2/problems/multipoint.py (kind dbf2026); plan and sources:
+# docs/RESULTS_2026_PLAN.md. Citations: [R26] 2026-DBF-Rules.pdf printed page; [HB] Project Humpback report printed
+# page / table; [TM7] T-Motor AT7215 folder. PLACEHOLDER = not sourced (docs/OPEN_QUESTIONS.md). The propulsion layout
+# and components are Humpback's (configs/rulesets/dbf_2025_26.yaml); the airframe is the design.
+extends: full_mdo.yaml
+ruleset: rulesets/dbf_2025_26.yaml           # site, mission, scoring, payload and banner bounds, rule limits, wind spreads
+
+airfoil: {seed: s3016, n_modes: 0}           # S3016 [HB Table 24 p. 26] (p. 36 prints 'SD3016', Q51)
+mass:
+  inputs:
+    n: 5.0                                   # 5 g limit, FOS 1.5 [HB p. 26, p. 36]; the same for every design
+
+propulsion:
+  n_motors: 1                                # single nose tractor [HB p. 4, Table 15 p. 16]
+  battery_topology: per_motor                # one pack per propulsion system [R26 p. 16]
+  n_cells: 8                                 # 8S [HB p. 28, Table 27 p. 29] (cells are enumerated: 6S, 8S)
+  rpm_fraction: 1.0                          # of APC's 150000/D for Thin Electric props [APC Rev 5]: the relaxed
+                                             # set (decision 5); 0.85 (propSelector.m, [HB] Eq. 10) is the old set
+  prop: 19x12E                               # overridden per point (multipoint.points)
+  v_top: 80.0                                # m/s, T(v) fit range (as 2024-25; checked by v_fit_margin)
+  fit_range: throttle                        # T(v) fit below the windmill speed at each throttle (part throttle)
+  f_fit: 0.95                                # v_fit_max = 0.95 J_max n0 D: Humpback's low-Kv, high-pitch props cruise at
+                                             # J ~ 0.9 J_max, past the 2024-25 default 0.8's fit nodes (T 5 % low at
+                                             # cruise); at 0.95 the top node stays inside the APC data (J 0.762 <
+                                             # J_max 0.783, 19x12E) and T at cruise is within 1.4 % (checkpoint 2)
+
+design_variables:
+  b: {lower: 0.9144, upper: 1.524}           # m: 3 ft (RAC >= 0.90 [R26 p. 10]) to 5 ft [R26 p. 10]
+  Kv: {lower: 200.0, upper: 270.0}           # rpm/V: the AT7215 family's catalogue windings 200-270 KV [TM7]
+  capacity: {lower: 0.5, upper: 4.0}         # Ah per pack; the 100 Wh total [R26 p. 16] is a constraint
+  x_batt: {lower: -0.6, upper: 0.2}          # m; Humpback's pack at -13.8 in = -0.35 m [HB Table 36]
+  l_ht: {lower: 0.4, upper: 1.4}             # m; Humpback 1.1 m [HB p. 26]
+  S_ht: {lower: 0.02, upper: 0.25}           # m^2; Humpback 230 in^2 = 0.148 m^2 [HB p. 36]
+  S_vt: {lower: 0.01, upper: 0.10}           # m^2; Humpback 90.9 in^2 = 0.059 m^2
+
+initial: {b: 1.4986, c: 0.3701, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 2.0, v: 30.0, capacity: 3.3,
+          l_ht: 1.1, S_ht: 0.1484, S_vt: 0.0586, x_batt: -0.35, Kv: 245.0}
+          # Humpback as the start [HB p. 36]: 59 in x 14.57 in, 8S 3300 mAh
+
+multipoint:
+  points:
+    M2: {prop: 19x12E}                       # enumerated: 18x10E, 19x10E, 19x12E [HB Table 27 p. 29]; the prop may
+    M3: {prop: 19x12E}                       # change per attempt [R26 p. 13]; M3: 18x12E, 19x12E, 22x12E
+  per_point: [capacity, x_batt, throttle]
+  per_point_bounds:
+    throttle: {lower: 0.5, upper: 1.0}       # pilot setting per flight (as 2024-25)
+  per_point_initial: {throttle_M2: 1.0, throttle_M3: 1.0}  # a cold M3 MDA at part throttle can fail; the
+                                             # optimiser moves it (warm starts converge to 0.5)

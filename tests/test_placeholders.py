@@ -18,7 +18,7 @@ from aircrafter2.problems.multipoint import load_multipoint_config
 ROOT = Path(__file__).resolve().parents[1]
 CONFIGS = ROOT / "configs"
 LAYER_FILES = [CONFIGS / "placeholders.yaml", CONFIGS / "rulesets" / "dbf_2024_25.yaml",
-               CONFIGS / "rulesets" / "generic.yaml"]
+               CONFIGS / "rulesets" / "generic.yaml", CONFIGS / "rulesets" / "dbf_2025_26.yaml"]
 
 
 def _write(path, text):
@@ -153,7 +153,26 @@ def test_configs_load_as_before_the_migration_except_the_listed_changes(name):
     if rp:  # only the f_build source tag may change in the shared spreads
         a, b = diff.pop(rp)
         assert _without_f_build_source(a) == _without_f_build_source(b)
+    for k in [k for k in diff if _new_field(k, diff[k])]:
+        del diff[k]
     assert diff == {**EXPECTED_CHANGES.get(name, {}), **_calibration_changes(name, before)}
+
+
+# Schema fields added after the snapshot (docs/RESULTS_2026_PLAN.md, 2026-10-27): absent before, now at their defaults
+# (or, for the 2025-26 store set, the universal values every multipoint config loads from placeholders.yaml and
+# never uses: mp.kind is dbf2025)
+NEW_FIELDS = {"course.turn_drift": False, "course.lap1_cluster": 2.0, "propulsion.f_fit": 0.8, "mp.kind": "dbf2025",
+              "mp.payload": {}, "mp.payload_initial": {}, "mp.rules.pax_per_cargo_min": None}
+
+
+def _new_field(path, change):
+    before, now = change
+    key = path[5:] if path.startswith("base.") else path
+    if before is not None:
+        return False
+    if key == "mp.stores2026" or key.startswith("mp.stores2026."):
+        return True
+    return key in NEW_FIELDS and NEW_FIELDS[key] == now
 
 
 # --- one place per value ------------------------------------------------------------------------------------------
@@ -168,7 +187,9 @@ ALLOWED = {"full_mdo_fixed_kv.yaml", "full_mdo_twin_fixed_kv.yaml", "full_mdo_rd
            "uncertainty_2025_reduced_onesided.yaml",
            # the USYD mass calibration: G&G's published factors (verification, uncalibrated comparisons), the
            # Woombah-out factors, and the full-set RDO configs that pin the gg tails for their f_ht/f_vt spreads
-           "mass_garcia_gamboa_2022.yaml", "mass_usyd_loo_woombah.yaml", "full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml"}
+           "mass_garcia_gamboa_2022.yaml", "mass_usyd_loo_woombah.yaml", "full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml",
+           # the 2025-26 study: the Humpback-out factors and Humpback as built (docs/RESULTS_2026_PLAN.md)
+           "mass_usyd_loo_humpback.yaml", "humpback_2026.yaml"}
 
 
 def _config_files():

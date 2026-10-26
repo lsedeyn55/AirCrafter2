@@ -1,0 +1,18 @@
+# Robust design optimisation of the 2025-26 multipoint problem (aircrafter2/robustness/rdo_multipoint.py), the
+# uncertain set of docs/RESULTS_2026_PLAN.md §7 (decision 2026-10-26): f_build (cited, USYD LOO), the banner-drag factor
+# (cited, [HB] Table 41), m_avionics, wind speed and wind direction (PLACEHOLDERS); d = 5, UDR N = 11 nodes x 2 points.
+# f_tb stays in the parameter list (placeholders.yaml) but is held at its nominal: its contribution is reported by the
+# screening. Everything not listed here is configs/dbf2026_multipoint.yaml.
+extends: dbf2026_multipoint.yaml
+
+robust:
+  enabled: true
+  active: [f_build, banner_drag_factor, m_avionics, lap.wind, lap.wind_dir]
+  quadrature: udr
+  points: 3
+  objective: mean_plus_k_sigma           # with the score maximised: mu - k sigma
+  k: 1.0
+  beta: 2.0
+  robust_constraints: [energy_margin, thrust_margin_static, stall_margin, SM, wall_ratio, r_tube, rpm_margin, I_margin]
+  screening_threshold: 0.9
+  max_dim: 7

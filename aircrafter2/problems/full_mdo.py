@@ -93,6 +93,8 @@ class PropulsionInputs(BaseModel):
     v_top: float = Field(40.0, description="m/s, top of the T(v) fit range")
     fit_range: Literal["fixed", "throttle"] = Field("fixed", description="T(v) fit nodes in [0, v_top], or scaled "
                                                     "below the windmill speed at this throttle (part throttle)")
+    f_fit: float = Field(0.8, gt=0.0, le=1.0, description="fit_range = throttle: top of the T(v) fit, v_fit_max = f_fit "
+                         "J_max n0 D (n0 the no-load rotor speed); keep the top node inside the APC data (C_T >= 0)")
 
     @model_validator(mode="after")
     def _check_layout(self):
@@ -257,7 +259,16 @@ class FullMDA(om.Group):
                            + (["l_nac", "d_nac", "Q_nac"] if twin else []),
                            promotes_outputs=["CD_extra", "CD_tail", "CD_fus", "CD_nac"])
         stores = self.options["stores"]
-        if stores is not None:  # external stores: mass, CG and drag (stores.py)
+        if stores is not None and is_2026(stores):  # 2025-26 payload, banner and payload fuselage (stores2026.py)
+            from ..stores2026 import Stores2026
+
+            scfg, flags = stores
+            self.add_subsystem("stores", Stores2026(config=scfg, **flags),
+                               promotes_inputs=["S", "c", "n_p", "n_c", "banner_drag_factor"]
+                               + (["L_banner"] if flags.get("banner") else []),
+                               promotes_outputs=["m_pay", "x_pay", "CD_stores", "CD_banner", "dCD_stowed",
+                                                 "m_banner"])
+        elif stores is not None:  # external stores: mass, CG and drag (stores.py)
             from ..stores import Stores
 
             scfg, flags = stores
@@ -266,6 +277,7 @@ class FullMDA(om.Group):
                                + (["fuel_mass"] if flags.get("fuel") else []),
                                promotes_outputs=["m_pay", "x_pay", "CD_stores", "CD_tanks", "CD_pylons", "CD_x1",
                                                  "fuel_capacity"])
+        if stores is not None:
             self.add_subsystem("cd_extra_total", om.ExecComp("CD_extra_total = CD_extra + CD_stores"),
                                promotes=["*"])
         cd_extra = "CD_extra_total" if stores is not None else "CD_extra"
@@ -316,6 +328,13 @@ class FullMDA(om.Group):
         self.linear_solver = om.DirectSolver()
 
 
+def is_2026(stores):
+    """True for the 2025-26 store set (stores2026.Store2026Config): payload, banner and the payload fuselage."""
+    from ..stores2026 import Store2026Config
+
+    return stores is not None and isinstance(stores[0], Store2026Config)
+
+
 def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", stores=None):
     """The coupled analysis of one mission point.
 
@@ -327,6 +346,10 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
     a, st = cfg.aero, cfg.stability
     m.add_subsystem("airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes),
                     promotes=["*"])
+    if is_2026(stores):  # the payload fuselage, from the payload counts (design variables): before the planform
+        from ..stores2026 import PayloadFuselage
+
+        m.add_subsystem("payload_fuselage", PayloadFuselage(config=stores[0]), promotes=["*"])
     m.add_subsystem("planform", RectPlanform(), promotes=["*"])
     m.add_subsystem("tail", TailGeometry(), promotes=["*"])
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
@@ -336,7 +359,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
                         promotes_outputs=["Kv_eff", "Rm", "I0"])
     m.add_subsystem("propulsion", Powertrain(prop=pr.prop, v_top=pr.v_top, n_motors=pr.n_motors,
                                              battery_topology=pr.battery_topology, apc_dir=pr.apc_dir,
-                                             fit_range=pr.fit_range),
+                                             fit_range=pr.fit_range, f_fit=pr.f_fit),
                     promotes_inputs=["rho", "capacity", "throttle", "n_cells", "V_cell", "R_cell", "usable_fraction",
                                      "e_spec", ("Kv", "Kv_eff") if kv_is_dv(cfg) else "Kv", "Rm", "I0", "m_motor",
                                      "m_esc", "m_prop", "m_nacelle", "m_avionics"],
@@ -372,14 +395,19 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
                     promotes=["E_mission", "E_usable"])
     co = cfg.course
     lap1, lap_other = co.lap_options()
+    banner = stores is not None and stores[1].get("banner", False)
     m.add_subsystem("lap", SmoothLapModel(rho_ks=a.rho_ks, power_mode="propulsion", lap1=lap1, lap_other=lap_other,
                                           pilot_reaction_time=co.pilot_reaction_time_s,
                                           takeoff=co.takeoff.in_mission_time,
-                                          start_offset_ft=co.takeoff.start_offset_ft),
+                                          start_offset_ft=co.takeoff.start_offset_ft,
+                                          lap1_cluster=co.lap1_cluster, turn_drift=co.turn_drift,
+                                          banner_stowed_legs=co.banner_stowed_legs() if banner else ()),
                     promotes_inputs=["CD0", "CD1", "k", "rho", "g", "T_coeffs", "P_coeffs", ("V", "v"), ("S", "S"),
                                      ("m", "m_total"), ("E_avail", "E_mission")],
                     promotes_outputs=["*"])
     m.connect("cruise.CL_max", ["lap.CL_max", "lap.CL_to"])
+    if banner:  # lap 1's legs before deployment fly the stowed banner instead of the towed one
+        m.connect("dCD_stowed", "lap.dCD_stowed")
 
     # stability: stations and grouped masses
     m.add_subsystem("stations", om.ExecComp(
@@ -434,6 +462,8 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
                              ("m_pay", cfg.mass.inputs.get("m_pay", 1.0), "kg"), ("mu", 1.8e-5, "Pa*s")]:
         if name == "m_pay" and stores is not None:
             continue  # computed by the stores
+        if name in ("l_cb", "w_cb", "h_cb") and is_2026(stores):
+            continue  # the payload fuselage, sized by the payload counts (stores2026.py)
         m.set_input_defaults(name, val, units=units)
     if pr.n_motors == 2:
         if pr.station_mode == "absolute":

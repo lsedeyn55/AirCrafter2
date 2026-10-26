@@ -71,6 +71,26 @@ mass.inputs.f_vt: 0.6749                     # -; cited; Q46; gg form of the sam
 # --- payload ---
 mass.inputs.m_pay: 1.5                       # kg; PLACEHOLDER; Q12, Q19; payload of the single-point problems (the multipoint stores compute it)
 
+# --- 2025-26 payload and banner (stores2026.py; universal: the contest's payload and the banner material) ---
+# [R26] = 2026-DBF-Rules.pdf printed page; [HB] = Project Humpback report printed page / table (docs/RESULTS_2026_PLAN.md)
+multipoint.stores2026.m_duck: 0.01987        # kg = 1.84 lb / 42; cited; Q54; [HB p. 44 Table 36] (rules 0.6-0.7 oz [R26 p. 11]: the top)
+multipoint.stores2026.m_puck: 0.17010        # kg = 6 oz; cited; Q54; hockey puck [R26 p. 11] = 5.25 lb / 14 [HB Table 36]
+multipoint.stores2026.m_seat: 0.005          # kg per passenger; PLACEHOLDER; Q54; EPE floor recess and peeled foam [HB pp. 41-42], not weighed
+multipoint.stores2026.m_slot: 0.010          # kg per cargo; PLACEHOLDER; Q54; runners and hatch foam [HB pp. 41-42], not weighed
+multipoint.stores2026.pax_pitch: 0.023587    # m = 39 in / 42; PLACEHOLDER; Q55; derived from [HB]: passenger bay 39 x 7.7 in for 42 ducks, 3 abreast [HB p. 36, p. 22]
+multipoint.stores2026.car_pitch: 0.042636    # m = 23.5 in / 14; PLACEHOLDER; Q55; derived from [HB]: cargo bay 23.5 in for two bays of 7 [HB p. 36, p. 21]
+multipoint.stores2026.w_cb: 0.19812          # m = 7.8 in; PLACEHOLDER; Q55; derived from [HB]: fuselage maximum width [HB p. 36]
+multipoint.stores2026.h_cb: 0.1397           # m = 5.5 in; PLACEHOLDER; Q55; derived from [HB]: fuselage maximum height [HB p. 36]
+multipoint.stores2026.x_pax_frac: 0.41592    # chord fraction = 6.06 / 14.57 in; cited; no Q; passenger CG from the wing LE [HB Table 36]
+multipoint.stores2026.x_car_frac: 0.23541    # chord fraction = 3.43 / 14.57 in; cited; no Q; cargo CG [HB Table 36]
+multipoint.stores2026.banner_ar: 5.0         # -; cited; no Q; length / height at the rule limit [R26 p. 12], as every [HB] banner (p. 23)
+multipoint.stores2026.banner_rho_A: 0.067133  # kg/m^2 = 0.22 oz/ft^2; cited; Q56; ripstop nylon [HB p. 19]
+multipoint.stores2026.m_banner_ballast: 0.13608  # kg = 0.3 lb; cited; Q56; lower-corner ballast [HB p. 41]
+multipoint.stores2026.m_banner_mech: 0.0766  # kg = 0.169 lb; cited; Q56; by difference: [HB] Table 36 'banner with deployment' 1.21 lb at 197 in, less the fabric 0.741 lb and the ballast 0.30 lb
+multipoint.stores2026.cd_banner: 0.0235      # on L x H; cited; Q56; [HB p. 57 Table 41] ripstop, LE-only reinforcement: 0.019-0.028 over 118-275 in, mid-range (mean 0.0237)
+multipoint.stores2026.dcd_stowed: 0.004      # on the wing area; cited; Q56; stowed banner [HB p. 33 Table 29] (undercarriage 0.0050 -> 0.0090)
+multipoint.stores2026.x_banner_frac: 0.47083  # chord fraction = 6.86 / 14.57 in; cited; no Q; banner with deployment [HB Table 36]
+
 # --- fuselage ---
 geometry.l_cb: 0.40                          # m; PLACEHOLDER; Q19; cargo bay box length
 geometry.w_cb: 0.12                          # m; PLACEHOLDER; Q19; cargo bay box width

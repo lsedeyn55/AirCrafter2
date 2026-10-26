@@ -1,0 +1,91 @@
+{
+ "inputs": {
+  "m": 4.5,
+  "S": 0.55,
+  "rho": 1.18,
+  "CD0": 0.035,
+  "CD1": 0.0,
+  "k": 0.075,
+  "CL_max": 1.3,
+  "CL_to": 1.3,
+  "n_struct": 5.0,
+  "mu_roll": 0.02,
+  "takeoff_distance": 106.68,
+  "mission_time": 300.0,
+  "E_avail": 250000.0,
+  "g": 9.81,
+  "V": 22.0,
+  "T_coeffs": [
+   30.0,
+   -0.4,
+   -0.008,
+   0.0
+  ],
+  "P_coeffs": [
+   700.0,
+   5.0,
+   0.1,
+   0.0
+  ]
+ },
+ "course": "dbf_2025_360_mid",
+ "note": "lap model before the wind-direction change (git 0cba32e..e309bfd, uniform lap-1 grid)",
+ "values": {
+  "off_0.0": {
+   "Lap1time": 32.18188838578478,
+   "otherLapTime": 30.32042571276793,
+   "laps_frac": 8.34393149852071,
+   "ThreeLapTime": 92.82273981132064,
+   "energy_3laps": 90621.4282099402
+  },
+  "off_3.0": {
+   "Lap1time": 32.574530296322266,
+   "otherLapTime": 30.383414683254742,
+   "laps_frac": 8.31386202340675,
+   "ThreeLapTime": 93.34135966283175,
+   "energy_3laps": 91130.2541794532
+  },
+  "off_6.0": {
+   "Lap1time": 33.531711912729776,
+   "otherLapTime": 30.938722845769483,
+   "laps_frac": 8.155627830480837,
+   "ThreeLapTime": 95.40915760426874,
+   "energy_3laps": 93097.02334465222
+  },
+  "off_9.0": {
+   "Lap1time": 35.23578544989369,
+   "otherLapTime": 32.07463111081858,
+   "laps_frac": 7.859525131597619,
+   "ThreeLapTime": 99.38504767153086,
+   "energy_3laps": 96849.97184976982
+  },
+  "on_0.0": {
+   "Lap1time": 33.561025884147384,
+   "otherLapTime": 30.320425718220253,
+   "laps_frac": 8.312372199548172,
+   "ThreeLapTime": 94.2018773205879,
+   "energy_3laps": 91562.4516866659
+  },
+  "on_3.0": {
+   "Lap1time": 33.63374184871767,
+   "otherLapTime": 30.383414687347344,
+   "laps_frac": 8.28888072152145,
+   "ThreeLapTime": 94.40057122341236,
+   "energy_3laps": 91876.99930158326
+  },
+  "on_6.0": {
+   "Lap1time": 34.205385576727814,
+   "otherLapTime": 30.93872284735488,
+   "laps_frac": 8.139507017018087,
+   "ThreeLapTime": 96.08283127143758,
+   "energy_3laps": 93587.57619016286
+  },
+  "on_9.0": {
+   "Lap1time": 35.371392162961854,
+   "otherLapTime": 32.07463111236007,
+   "laps_frac": 7.8563869008442175,
+   "ThreeLapTime": 99.520654387682,
+   "energy_3laps": 96948.86540838885
+  }
+ }
+}

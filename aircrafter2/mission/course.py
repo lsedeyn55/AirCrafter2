@@ -2,7 +2,7 @@
 
 A course is one lap from the start line, as an ordered list of legs:
     straight   length_ft > 0 and the along-track wind on it: head, tail or none (crosswind: no along-track component)
-    turn       angle_deg > 0 (turns ignore drift)
+    turn       angle_deg > 0 (turns ignore the wind unless turn_drift is on)
 Lengths in feet and angles in degrees, as the rules write them. ``lap1_legs`` optionally gives a different first lap.
 
 Presets are YAML files in configs/courses/ (``name``, ``citation``, ``legs``, optional ``lap1_legs``). The default,
@@ -61,6 +61,11 @@ class CourseConfig(BaseModel):
     legs: Optional[list[Leg]] = Field(None, description="one lap from the start line, in order (overrides the preset)")
     lap1_legs: Optional[list[Leg]] = Field(None, description="a different first lap (default: the same legs)")
     pilot_reaction_time_s: float = Field(3.0, ge=0.0, description="s per lap (performance_modeller.m)")
+    turn_drift: bool = Field(False, description="carry each turn's wind drift (wind x turn time) to the next straight "
+                             "(docs/RESULTS_2026_PLAN.md §4.7). False: the original model (turns ignore the wind)")
+    lap1_cluster: float = Field(2.0, ge=1.0, description="grid exponent of lap 1's first straight (nodes at "
+                                "s_i = L (i/N)^p, clustered at its slow start; OPEN_QUESTIONS Q45). 1 = the uniform "
+                                "grid of every result before 2026-10-27")
     takeoff: TakeoffConfig = TakeoffConfig()
 
     @model_validator(mode="after")
@@ -90,6 +95,18 @@ class CourseConfig(BaseModel):
         lap1, other = self.resolve()
         return lap_legs(lap1), lap_legs(other)
 
+    def banner_stowed_legs(self):
+        """Lap-1 leg indices flown before the banner is deployed: up to the first downwind (tail-wind) straight that
+        follows the first turn (rules 2026 p. 20: deployed 'after the first upwind turn ... on the down wind leg')."""
+        lap1, _ = self.resolve()
+        seen_turn = False
+        for i, leg in enumerate(lap1):
+            if leg.kind == "turn":
+                seen_turn = True
+            elif seen_turn and leg.wind == "tail":
+                return tuple(range(i))
+        raise ValueError("course: no downwind straight after a turn in lap 1, so the banner cannot be deployed")
+
     def summary(self):
         """The course actually flown, for a run's outputs (results.json)."""
         lap1, other = self.resolve()
@@ -97,7 +114,7 @@ class CourseConfig(BaseModel):
                     legs=[leg.model_dump(exclude_none=True) for leg in other],
                     lap1_legs=None if lap1 == other else [leg.model_dump(exclude_none=True) for leg in lap1],
                     lap_length_ft=lap_length_ft(other), pilot_reaction_time_s=self.pilot_reaction_time_s,
-                    takeoff=self.takeoff.model_dump())
+                    takeoff=self.takeoff.model_dump(), turn_drift=self.turn_drift)
 
 
 def preset_path(name):
