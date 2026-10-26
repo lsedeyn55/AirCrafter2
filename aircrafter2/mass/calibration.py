@@ -69,6 +69,15 @@ def _as_case(c, i):
     return CalibrationCase(name=f"case{i}", config=cfg, targets=real)
 
 
+def _with_inputs(case, inputs):
+    """A copy of a case with config inputs overridden (held factors)."""
+    from dataclasses import replace
+
+    cfg = case.config.model_copy(deep=True)
+    cfg.inputs.update(inputs)
+    return replace(case, config=cfg)
+
+
 def predicted(masses, key):
     """A target's model value: one output, or the sum of '+'-joined outputs."""
     return sum(masses[k] for k in key.split("+"))
@@ -176,6 +185,9 @@ def leave_one_out(cases, factors, x0=None, bounds=None, fixed=None):
     for i, held in enumerate(cases):
         rest = cases[:i] + cases[i + 1:]
         names, held_at = factors(rest) if callable(factors) else (factors, {})
+        if held_at:  # the held factors apply to the fold's fit too, not only to the prediction (else the fit
+            # would use whatever the case configs carry, e.g. factors calibrated with the left-out case in the data)
+            rest = [_with_inputs(c, held_at) for c in rest]
         start = None if x0 is None else [x0[f] for f in names] if isinstance(x0, dict) else x0
         fit = fit_correction_factors(rest, names, x0=start, bounds=bounds)
         use = {**(fixed or {}), **held_at, **fit.factors}
