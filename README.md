@@ -199,7 +199,7 @@ topic in `examples/`, `verification/` or `studies/`; rerun the script rather tha
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # ~220 tests: check_partials, check_totals, verification, CLI, UI
+.venv/bin/python -m pytest          # 355 tests (2026-10-26): check_partials, check_totals, verification, CLI, UI
 ```
 
 ## Layout

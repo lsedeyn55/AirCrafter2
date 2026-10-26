@@ -108,6 +108,17 @@ TWIN_OPTIONS = dict(motor_inertia_relief=False, nacelle_torsion=True)
 
 
 def git_hash():
+    """Short HEAD commit, with '-dirty' when tracked files differ from it (the page then names an uncommitted tree)."""
+    dirty = subprocess.run(["git", "diff", "--quiet", "HEAD"], cwd=ROOT).returncode != 0
+    return git_head() + ("-dirty" if dirty else "")
+
+
+def _gits(objs):
+    """The commits a list of run/output JSONs were generated at, for a section's provenance line."""
+    return ", ".join(sorted({o.get("git") or "?" for o in objs})) or "?"
+
+
+def git_head():
     return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                           text=True).stdout.strip()
 
@@ -476,19 +487,23 @@ def fit():
 
 # --- downstream: one deterministic 2024-25 optimum (studies/results_2025.py optimise) -------------------------------
 RUNS = OUT / "runs"
+# the published (uncalibrated) runs and outputs, archived when outputs/results was rerun on the calibrated model
+# (git tag results-uncalibrated; docs/studies/results/INDEX.md)
+PUB_OUT = ROOT / "outputs" / "results_uncalibrated"
+PUB_RUNS = PUB_OUT / "runs"
 PUBLISHED = "mp_6S_11x8E_10x7E"  # the published best deterministic case (results_2025.md §1), uncalibrated mass model
 CALIBRATED = ["mpcal_6S_11x8E_10x7E", "mpcal_6S_11x8E_10x7E_warm"]  # the same case, calibrated: cold / warm start
 # the RDO sets rerun on the calibrated model (studies/results_2025.py screen | rdo | robust_eval | mc --set S),
 # against the published (uncalibrated) ones: runs, outputs directory
 RDO_SETS = {
     "reduced": dict(title="the reduced-set RDO", set="usyd",
-                    pub=(["rdor_best", "rdor_ms0", "rdor_ms1"], OUT / "reduced"),
+                    pub=(["rdor_best", "rdor_ms0", "rdor_ms1"], PUB_OUT / "reduced"),
                     cal=(["rdoru_best", "rdoru_ms0", "rdoru_ms1"], OUT / "reduced_usyd"),
                     what="`configs/dbf2025_multipoint_rdo.yaml` (the reduced set f_build, f_tb, m_avionics, lap.wind; "
                          "d = 4, UDR N = 9 nodes × 2 points), on the calibrated model with f_build ±30 % about 1.0 "
                          "(§5)"),
     "full": dict(title="the full-set RDO", set="full_usyd",
-                 pub=(["rdo_best", "rdo_ms0", "rdo_ms1"], OUT),
+                 pub=(["rdo_best", "rdo_ms0", "rdo_ms1"], PUB_OUT),
                  cal=(["rdofu_best", "rdofu_ms0", "rdofu_ms1"], OUT / "full_usyd"),
                  what="`configs/dbf2025_multipoint_rdo_full.yaml` (the published 15-parameter set, screened to "
                       "d ≤ 7, UDR N = 2d + 1 nodes × 2 points), on the calibrated model with G&G's tail equations "
@@ -498,9 +513,9 @@ RDO_SETS = {
 
 def _sec_optimum(w, res):
     """§9: the calibrated optimum against the published one; §10-12: the RDO sets and the Monte Carlo on it."""
-    if not (RUNS / f"{PUBLISHED}.json").exists() or not any((RUNS / f"{t}.json").exists() for t in CALIBRATED):
+    if not (PUB_RUNS / f"{PUBLISHED}.json").exists() or not any((RUNS / f"{t}.json").exists() for t in CALIBRATED):
         return
-    pub = json.loads((RUNS / f"{PUBLISHED}.json").read_text())
+    pub = json.loads((PUB_RUNS / f"{PUBLISHED}.json").read_text())
     cal = [json.loads((RUNS / f"{t}.json").read_text()) for t in CALIBRATED if (RUNS / f"{t}.json").exists()]
     ok = [r for r in cal if r.get("ok") and "score" in r]
     best = max(ok, key=lambda r: r["score"]["flight_score"]) if ok else None
@@ -511,7 +526,8 @@ def _sec_optimum(w, res):
       f"{pub['props']['M3']} in M3, 1 L bottles, take-off off as published). Runs: "
       + "; ".join(f"`{r['tag']}` (start: {r.get('start') or 'config initial'}, {'converged' if r.get('ok') else 'NOT converged'}, "
                   f"{r.get('its')} iterations, {r.get('time', 0):.0f} s)" for r in cal)
-      + f". Published: `{PUBLISHED}` (git {pub['git']}, uncalibrated, n_panels 1, 0.40 × 0.12 × 0.12 m box).\n")
+      + f". Published: `{PUBLISHED}` (git {pub['git']}, uncalibrated, n_panels 1, 0.40 × 0.12 × 0.12 m box). "
+      f"Calibrated runs generated at git {_gits(cal)}.\n")
     if not best:
         w("No calibrated run converged.\n")
         return
@@ -551,8 +567,8 @@ def _sec_optimum(w, res):
     _sec_mc(w, res)
 
 
-def _load_runs(tags):
-    return [json.loads((RUNS / f"{t}.json").read_text()) for t in tags if (RUNS / f"{t}.json").exists()]
+def _load_runs(tags, runs=RUNS):
+    return [json.loads((runs / f"{t}.json").read_text()) for t in tags if (runs / f"{t}.json").exists()]
 
 
 def _best_run(runs):
@@ -567,7 +583,7 @@ def _json(path):
 def _sec_rdo(w, res, key, n, pub, det):
     """One RDO set rerun on the calibrated model, against the published (uncalibrated) one."""
     S = RDO_SETS[key]
-    runs, runs_pub = _load_runs(S["cal"][0]), _load_runs(S["pub"][0])
+    runs, runs_pub = _load_runs(S["cal"][0]), _load_runs(S["pub"][0], PUB_RUNS)
     if not runs:
         return
     out_c, out_p = S["cal"][1], S["pub"][1]
@@ -583,7 +599,7 @@ def _sec_rdo(w, res, key, n, pub, det):
       f"k = {runs[0]['k']:g}, robust constraints μ ∓ βσ with β = {runs[0]['beta']:g}. Case `{runs[0]['case']}` "
       f"(§9); the same three starts as the published run, {runs[0].get('threads', '3')} threads each, in parallel. "
       f"Outputs in `{out_c.relative_to(ROOT)}/` and `runs/{S['cal'][0][0].split('_')[0]}_*`; the published "
-      f"`{S['pub'][0][0].split('_')[0]}_*` runs are untouched.\n")
+      f"`{S['pub'][0][0].split('_')[0]}_*` runs are untouched. Calibrated runs generated at git {_gits(runs)}.\n")
     if sc.get("selected") != sc_pub.get("selected"):
         w(f"Screened parameters (first-order variance at the deterministic optimum): published "
           f"{', '.join(sc_pub['selected'])} (d = {len(sc_pub['selected'])}, threshold "
@@ -650,7 +666,8 @@ def _sec_mc(w, res):
       "screened ones), at the deterministic optimum and the set's robust optimum; in the reduced set also the "
       "reduced-set RDO design under the full set (`rdo_full15`, the out-of-set check), as published. Failed = MDA "
       "non-convergence or the wind limit. The calibrated reduced-set runs shared the machine with the full-set RDO "
-      "(4 single-threaded workers), so their wall times are not comparable with the published ones.\n")
+      "(4 single-threaded workers), so their wall times are not comparable with the published ones. Calibrated "
+      "Monte Carlo generated at git " + _gits([m for k in RDO_SETS for m in mcs[(k, "calibrated")].values()]) + ".\n")
     w("| Set | model | design | N | failed | μ F | σ F | 5th percentile F | largest P(violation) |")
     w("|---|---|---|---:|---:|---:|---:|---:|---|")
     viol = {}
@@ -699,7 +716,9 @@ def report():
     L = []
     w = L.append
     w("# Mass-model calibration on three USYD aircraft\n")
-    w(f"Generated by `studies/mass_calibration_usyd.py report` from `fit` (git {res['git']}); no hand-typed numbers. "
+    res["report_git"] = git_hash()
+    w(f"Generated by `studies/mass_calibration_usyd.py report` (git {res['report_git']}) from `fit` (§1–8, git "
+      f"{res['git']}); §9–12 name the commit their runs were generated at. No hand-typed numbers. "
       "Plan, data checks and decisions: `docs/MASS_CALIBRATION_PLAN.md`. Model: `aircrafter2/mass/` "
       "(`docs/modules/mass.md`); fitting hook: `aircrafter2/mass/calibration.py` (G&G Eqs. 127-128, relative "
       "residuals, equal weights).\n")

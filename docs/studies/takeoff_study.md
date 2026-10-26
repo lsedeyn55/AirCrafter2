@@ -1,5 +1,7 @@
 # Take-off in the mission time: re-analysis of the 2024-25 designs
 
+> **Uncalibrated (2026-10-26).** This page was computed on the uncalibrated (G&G) mass model and has not been rerun on the calibrated one. The 2025-26 pages (`docs/studies/results_2026/`, take-off on, calibrated mass model) supersede it for the thesis.
+
 Script: `studies/takeoff_study.py` (`run`, `woombah`, `wind`, `robust`, `resolution`, `reopt`, `report`). Its outputs are in
 `outputs/takeoff/`, which git ignores. Config: `configs/dbf2025_multipoint_takeoff.yaml`. It extends
 `dbf2025_multipoint.yaml` and switches `course.takeoff.in_mission_time` on. The model and its decisions are in

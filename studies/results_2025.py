@@ -188,6 +188,8 @@ def use_set(name):
     UQ.update(UQ_SETS[name])
     UQ["out"].mkdir(parents=True, exist_ok=True)
 MC_N = 1024
+# the full 15-parameter set on the calibrated model: its RDO, Monte Carlo and common evaluation
+FULL_NOTE = "docs/studies/mass_calibration_usyd.md §11–12"
 
 
 def calibrate():
@@ -417,7 +419,12 @@ def monte_carlo(designs, n=MC_N, workers=5):
 
 def classify_mc_failures(workers=5):
     """Re-run the failed Monte Carlo samples of this set's designs (written before failures were classified) to split
-    them into MDA non-convergence and the wind limit (a headwind near M3's V_stall: no flight); updates mc.json."""
+    them into MDA non-convergence and the wind limit (a headwind near M3's V_stall: no flight); updates mc.json.
+    Skips (with a message) when the set has no Monte Carlo yet."""
+    if not (UQ["out"] / "mc.json").exists():
+        print(f"classify: no {UQ['out'].relative_to(ROOT)}/mc.json (no Monte Carlo of the {UQ['name']} set): skipped",
+              flush=True)
+        return
     summary = json.loads((UQ["out"] / "mc.json").read_text())
     designs = {lab: (mcfg, dv) for lab, mcfg, dv in mc_designs()}
     for label, m in summary.items():
@@ -702,7 +709,7 @@ def _set_block():
         runs.append({k: d.get(k) for k in ("tag", "ok", "its", "error", "time", "N", "active", "start", "dv",
                                           "summary", "nodes", "k", "beta", "case")})
     br = best_rdo()
-    main = UQ["name"] in ("reduced", "full")
+    main = UQ["name"] == "reduced"  # the full set's common evaluation is not on these pages (FULL_NOTE)
     return dict(name=UQ["name"], cfg=str(UQ["cfg"].relative_to(ROOT)), out=str(o.relative_to(ROOT)),
                 screen=rd("screen.json"), node_check=rd("node_check.json"), rdo=runs,
                 rdo_best=br["tag"] if br else None, mc=rd("mc.json") or {}, robust_eval=rd("robust_eval.json"),
@@ -757,8 +764,7 @@ def _figures(R):
         f_norm.size = (0.7, 0.75)
         files.append(_fig("results_normalisation", f_norm))
 
-    for name, suffix in (("reduced", ""), ("full", "_full")):
-        files += _figures_set(R, R["uq"][name], suffix)
+    files += _figures_set(R, R["uq"]["reduced"], "")
     return files
 
 
@@ -984,8 +990,9 @@ def _rdo_findings(R, base):
     if Bf["rdo_best"]:
         r = next(x for x in Bf["rdo"] if x["tag"] == Bf["rdo_best"])
         s = r["summary"]["flight_score"]
-        F.append(f"Full set (published, section 7d): RDO mu - k sigma {s['robust']:.4f} (mu {s['mu']:.4f}, sigma "
-                 f"{s['sigma']:.4f}) over 7 of 15 parameters.")
+        F.append(f"Full 15-parameter set on the calibrated model: RDO mu - k sigma {s['robust']:.4f} (mu "
+                 f"{s['mu']:.4f}, sigma {s['sigma']:.4f}) over the {len(r['active'])} screened parameters; its Monte "
+                 f"Carlo and common evaluation are in {FULL_NOTE}, not on this page.")
     return F
 
 
@@ -1047,7 +1054,7 @@ def _sec_robust(w, R, B, ok):
         w(f"**Contributions** at {s_['case']} (first-order variance (dq/dp sigma)^2 at the means; every parameter is "
           f"active, d = {s_['d']}, N = {2 * s_['d'] + 1} UDR nodes, so this is a table, not a selection). Means: "
           + ", ".join(f"{k} {x:g}" for k, x in s_["means"].items()) + ". sigma(4) and sigma(15) are the root of the "
-          "summed variance over this set and over the full set's 15 (section 7d); 'share of 15' = their variance "
+          "summed variance over this set and over the full set's 15 (its screening at the same case); 'share of 15' = their variance "
           "ratio; the last columns are each parameter's share of this set's variance.\n\n")
         rows = []
         for q, c in s_["contrib"].items():
@@ -1145,7 +1152,7 @@ def _sec_variants(w, R):
       "(docs/studies/mass_calibration_usyd.md); it is in the pre-calibration pages (git tag `results-uncalibrated`).\n")
     for name, title, what in (("onesided", "7c. One-sided build mass (sensitivity)",
                                "f_build on [1.0, 1.3] (nominal 1.15 +/- 0.15: the reference node sits at a 15 % "
-                               "heavier structure)")):
+                               "heavier structure)"),):
         V = R["uq"][name]
         if not V["rdo"] and not V["screen"]:
             continue
@@ -1188,7 +1195,7 @@ def render(R):
       "check, Monte Carlo); every number below is read from `docs/studies/results/results_2025.json`. Configs: "
       "`configs/dbf2025_multipoint.yaml` (deterministic), `configs/dbf2025_multipoint_rdo.yaml` (robust: the reduced "
       "mass-and-wind set, f_build, f_tb, m_avionics and wind, docs/RDO_REDUCED_PLAN.md; the published 15-parameter set "
-      "is `configs/dbf2025_multipoint_rdo_full.yaml`, kept in sections 3b and 7d), "
+      f"is `configs/dbf2025_multipoint_rdo_full.yaml`, on the calibrated model in {FULL_NOTE}), "
       "`configs/woombah_2025.yaml` (Woombah as built). Scoring `dbf2025`: F = M1 + M2 + M3, "
       f"M2 = 1 + (W_fuel/t_3laps)/R2, M3 = 2 + (n_pre + B/W_X1)/R3 with **R2 = {sc['R2']:g} lb/s and R3 = "
       f"{sc['R3']:g} (PLACEHOLDERS, OPEN_QUESTIONS Q35)**, B = {sc.get('bonus', 0):g}. Validation of Woombah: "
@@ -1289,10 +1296,13 @@ def render(R):
 
     # ------------------------------------------------------------------ method comparison
     w("## 2. Method comparison (the AirCrafter 2.0 multipoint analysis at nominal inputs)\n")
-    w("Woombah: as built, at the throttles that reproduce its logged currents (validation_2025.md). AirCrafter 1.0 "
+    w("Woombah: as built, at the throttles that reproduce its logged currents, on the calibrated mass model (in-sample: "
+      "Woombah is one of the three calibration aircraft; the out-of-sample check is validation_2025.md). AirCrafter 1.0 "
       "direct = mapping (a), completed = mapping (b) (span, chord and fuel fixed at AirCrafter 1.0's values, the rest "
-      f"optimised). Multipoint = {base}. RDO = {B['rdo_best'] or 'not run'} (reduced set; the 15-parameter RDO is in sections 3b and 7d)."
-      + (" **AirCrafter 1.0's fuel (19.2 lb) does not fit in two 1 L bottles, so both mappings fly 2 L bottles** "
+      f"optimised). Multipoint = {base}. RDO = {B['rdo_best'] or 'not run'} (reduced set; the 15-parameter RDO is in "
+      f"{FULL_NOTE})."
+      + (f" **AirCrafter 1.0's fuel ({own['ac1_direct']['fuel_lb']:.1f} lb) does not fit in two 1 L bottles, so both "
+         "mappings fly 2 L bottles** "
          "(smallest bottle that holds it); the like-for-like AirCrafter 2.0 design is multipoint_2L (the same case "
          "re-optimised with 2 L bottles, section 1b)." if "multipoint_2L" in designs else "") + "\n")
     labs = [d for d in designs if nom.get(d, {}).get("ok")]
@@ -1340,12 +1350,8 @@ def render(R):
     # ------------------------------------------------------------------ common evaluation
     w("## 3. Common evaluation\n")
     _sec_common(w, R, R["uq"]["reduced"], "")
-    if R["uq"]["full"]["mc"]:
-        w("\n### 3b. Full set (15 parameters, published)\n")
-        w("The published common evaluation (commit c0c09bd) over the 15-parameter set of "
-          "`configs/dbf2025_multipoint_rdo_full.yaml`, with that set's RDO design as `rdo`. Kept for reference; the "
-          "main results above use the reduced set.\n")
-        _sec_common(w, R, R["uq"]["full"], "_full")
+    w(f"\nThe common evaluation over the full 15-parameter set (the published section 3b) is not repeated here: on the "
+      f"calibrated model it covers the multipoint and RDO designs only, in {FULL_NOTE}.\n")
     # ------------------------------------------------------------------ bookends
     w("## 4. Mission bookends\n")
     w("The same multipoint problem (both missions flown, every constraint at both points) with the objective reduced "
@@ -1425,17 +1431,15 @@ def render(R):
     w("## 7. Robust vs deterministic\n")
     _sec_robust(w, R, R["uq"]["reduced"], ok)
     _sec_variants(w, R)
-    if R["uq"]["full"]["rdo"]:
-        w("\n### 7d. Full set (15 parameters, published)\n")
-        w("The published RDO (commit c0c09bd) over the 15-parameter set screened to d = 7 "
-          "(`configs/dbf2025_multipoint_rdo_full.yaml`). Kept for reference.\n\n")
-        _sec_robust(w, R, R["uq"]["full"], ok)
+    w(f"\nThe RDO over the full 15-parameter set (the published section 7d) on the calibrated model: {FULL_NOTE}.\n")
     w("\n## Caveats\n")
     w("- R2, R3 are PLACEHOLDERS (Q35); section 5 shows what moves with them.\n"
-      "- No take-off in the lap model (switch `course.takeoff.in_mission_time`, off here). The bias is not uniform: it favours heavy designs (re-analysis with take-off on: ΔF −0.008 for the 0.5 L optimum to −0.053 for 2 L, −0.020 multipoint, −0.021 RDO; no ranking change at nominal inputs). With take-off on, every optimum here violates M2's energy constraint and the RDO design violates two robust constraints. Re-optimised with take-off on, the best case is feasible again at F 5.1200 and the RDO design meets every robust constraint and stays ahead in mu − kσ (docs/studies/takeoff_study.md §9).\n"
+      "- No take-off in the lap model (switch `course.takeoff.in_mission_time`, off here). The bias is not uniform: it favours heavy designs (uncalibrated model, not rerun: re-analysis with take-off on: ΔF −0.008 for the 0.5 L optimum to −0.053 for 2 L, −0.020 multipoint, −0.021 RDO; no ranking change at nominal inputs). With take-off on, every optimum here violates M2's energy constraint and the RDO design violates two robust constraints. Re-optimised with take-off on, the best case is feasible again at F 5.1200 and the RDO design meets every robust constraint and stays ahead in mu − kσ (docs/studies/takeoff_study.md §9).\n"
       "- Bottle dimensions and masses, the store interference factors and the store drag spread are PLACEHOLDERS "
       "(Q36, Q37); every uncertainty spread is a PLACEHOLDER (configs/uncertainty.yaml).\n"
-      "- The mass model is uncalibrated (validation_2025.md: 24–41 % light on Woombah).\n"
+      "- The mass model is the USYD-calibrated one (docs/studies/mass_calibration_usyd.md). Woombah is one of its three "
+      "calibration aircraft, so its column here is in-sample; the out-of-sample check (factors fitted without Woombah) "
+      "is validation_2025.md.\n"
       "- The full ranked list of placeholders affecting the results is in INDEX.md.\n")
     return "\n".join(L)
 
