@@ -72,6 +72,8 @@ class RulesConfig(BaseModel):
     span_max_ft: float = Field(description="maximum wingspan (ft): the upper bound of b")
     pax_per_cargo_min: Optional[float] = Field(None, description="2025-26: passengers per cargo the aircraft must "
                                                "carry (n_p >= this x n_c); None for other rulesets")
+    fuselage_span_ratio_max: Optional[float] = Field(None, description="2025-26: payload fuselage length / span "
+                                                     "upper limit (an engineering cap, PLACEHOLDER); None = no cap")
 
 
 class MultipointSettings(BaseModel):
@@ -202,6 +204,8 @@ def multipoint_constraints(mcfg):
         cons.append(("points.M2.laps_frac", dict(lower=mcfg.mp.rules.laps_m2_min)))
     if mcfg.mp.rules.pax_per_cargo_min is not None:
         cons.append(("rules.pax_margin", dict(lower=0.0, ref=10.0)))
+    if mcfg.mp.rules.fuselage_span_ratio_max is not None:
+        cons.append(("rules.fuselage_margin", dict(lower=0.0, ref=0.1)))
     return cons
 
 
@@ -245,11 +249,19 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
     r = mcfg.mp.rules
     eqs = ["togw_margin = togw_max - m_total"]
     kw = dict(togw_margin={"units": "kg"}, togw_max={"units": "kg", "val": r.togw_max_lb * LB}, m_total={"units": "kg"})
+    promo = []
     if r.pax_per_cargo_min is not None:  # 2025-26: >= 3 passengers per cargo [2026 rules p. 10]
         eqs.append("pax_margin = n_p - ratio * n_c")
         kw.update(ratio={"val": r.pax_per_cargo_min})
-    m.add_subsystem("rules", om.ExecComp(eqs, **kw),
-                    promotes_inputs=["n_p", "n_c"] if r.pax_per_cargo_min is not None else [])
+        promo += ["n_p", "n_c"]
+    if r.fuselage_span_ratio_max is not None:  # 2025-26: payload fuselage no longer than a multiple of the span
+        eqs.append("fuselage_margin = ratio_fus * b - l_cb")
+        kw.update(ratio_fus={"val": r.fuselage_span_ratio_max}, b={"units": "m"}, l_cb={"units": "m"},
+                  fuselage_margin={"units": "m"})
+        promo += ["b"]
+    m.add_subsystem("rules", om.ExecComp(eqs, **kw), promotes_inputs=promo)
+    if r.fuselage_span_ratio_max is not None:
+        m.connect("points.M2.l_cb", "rules.l_cb")
     m.connect("points.M2.m_total", "rules.m_total")
     for p in POINTS:
         m.add_subsystem(f"rules_{p}", om.ExecComp(

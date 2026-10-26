@@ -58,12 +58,13 @@ multipoint.rules.c_rating: 60.0              # C; PLACEHOLDER; Q8; GNB 8S pack C
 multipoint.rules.laps_m2_min: null           # laps; cited; no Q; M2 has no lap requirement [R26 p. 19]
 multipoint.rules.span_max_ft: 5.0            # ft; cited; no Q; maximum wingspan [R26 p. 10]: the upper bound of b
 multipoint.rules.pax_per_cargo_min: 3.0      # -; cited; no Q; >= 3 passengers per piece of cargo [R26 p. 10] (a capacity rule, applied to the flown counts)
+multipoint.rules.fuselage_span_ratio_max: 1.5  # -; PLACEHOLDER; Q55; payload fuselage length <= 1.5 x span (decision 2026-10-27): the counts' growth is otherwise unbounded (the Ground Mission's loading time is not modelled, Q53); Humpback: 0.99 m / 1.50 m = 0.66
 
 # --- payload and banner design variables ---
 multipoint.payload.n_p.lower: 3.0            # passengers; cited; no Q; >= 3 passengers [R26 p. 10]
-multipoint.payload.n_p.upper: 90.0           # passengers; PLACEHOLDER; Q55; search bound, about 2x Humpback's 42
+multipoint.payload.n_p.upper: 500.0           # passengers; PLACEHOLDER; Q55; no bound in practice: the fuselage-length cap binds (decision 2026-10-27)
 multipoint.payload.n_c.lower: 1.0            # cargo; cited; no Q; >= 1 cargo [R26 p. 11]
-multipoint.payload.n_c.upper: 30.0           # cargo; PLACEHOLDER; Q55; search bound, about 2x Humpback's 14
+multipoint.payload.n_c.upper: 200.0           # cargo; PLACEHOLDER; Q55; no bound in practice: the fuselage-length cap binds
 multipoint.payload.L_banner.lower: 10.0      # in; cited; no Q; minimum banner length [R26 p. 12]
 multipoint.payload.L_banner.upper: 275.0     # in; PLACEHOLDER; Q56; the longest banner the team built [HB p. 41 Table 34]
 multipoint.payload_initial.n_p: 42.0         # passengers; cited; no Q; Humpback [HB Table 36]
