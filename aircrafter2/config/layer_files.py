@@ -199,15 +199,25 @@ def _line_of(path, parts):
     return start + 1
 
 
-def overridden_by(config_path, parameter, ruleset_path=None):
-    """'file:line' of the file that overrides a layer value for this config (its extends: chain, or the ruleset for a
-    placeholders value), or '' when the layer value reaches the run. mass.inputs.* is matched against the config's
-    mass: block (mass_config sits below the placeholders, so it never overrides)."""
+def set_in(config_path, parameter):
+    """(file, 1-based line) of the first file of config_path's extends: chain that sets the dotted parameter, or
+    None when no file of the chain sets it."""
     parts = parameter.split(".")
     for f in _chain(config_path):
         raw = yaml.safe_load(f.read_text()) or {}
         if _get(raw, parts):
-            return f"{_rel(f)}:{_line_of(f, parts)}"
+            return f, _line_of(f, parts)
+    return None
+
+
+def overridden_by(config_path, parameter, ruleset_path=None):
+    """'file:line' of the file that overrides a layer value for this config (its extends: chain, or the ruleset for a
+    placeholders value), or '' when the layer value reaches the run. mass.inputs.* is matched against the config's
+    mass: block (mass_config sits below the placeholders, so it never overrides)."""
+    hit = set_in(config_path, parameter)
+    if hit is not None:
+        return f"{_rel(hit[0])}:{hit[1]}"
+    parts = parameter.split(".")
     if ruleset_path is not None:
         rs = expand_dotted(load_yaml(ruleset_path))
         if _get(rs, parts):

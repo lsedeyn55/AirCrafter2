@@ -52,6 +52,8 @@ EXTRA_REF = {"n_p": 10.0, "n_c": 10.0, "L_banner": 100.0}  # optimiser scaling o
 # structural sizing inputs of an externally sized point, from the sizing point: mass, speed, wing Cm and CL_alpha
 SIZING_LINKS = [("m_total", "m_sizing"), ("v", "v_sizing"), ("cruise.Cm_wing", "Cm_sizing"),
                 ("cruise.CL_alpha", "CL_alpha_sizing")]
+# the flight-safety constraints that fail the M1 check (m1_check); the model-validity limits are only reported
+M1_SAFETY = frozenset({"stall_margin", "SM", "thrust_margin_static", "wall_ratio", "r_tube", "turn_speed_margin"})
 
 
 class PointConfig(BaseModel):
@@ -372,8 +374,7 @@ def m1_check(mcfg, prob):
             or (kw.get("upper") is not None and cons[n] > kw["upper"] + 1e-6)]
     # pass = the rule (3 laps in the window) and the flight-safety constraints; model-validity limits (v_fit_margin:
     # the light M1 aircraft can outrun the T(v) fit at M3's throttle) and the others are reported, not failed on
-    safety = {"stall_margin", "SM", "thrust_margin_static", "wall_ratio", "r_tube", "turn_speed_margin"}
-    ok = v("laps_frac") >= 3.0 and not (set(viol) & safety)
+    ok = v("laps_frac") >= 3.0 and not (set(viol) & M1_SAFETY)
     return dict(passed=bool(ok), laps_frac=v("laps_frac"), ThreeLapTime=v("ThreeLapTime"), m_total=v("m_total"),
                 violated=viol, constraints=cons)
 
