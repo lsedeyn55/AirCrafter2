@@ -2,6 +2,7 @@
 driver list, every constraint has a register entry, every AnalysisError and report-only check in the code is
 accounted for, and every limit is traced to the file and line that sets its effective value."""
 
+import json
 import re
 from pathlib import Path
 
@@ -255,3 +256,146 @@ def test_dv_bound_rules_caption():
     texts = [t for _, t in CV.dv_bound_rules(load("dbf2026_multipoint.yaml"))]
     assert any("span <= 5 ft" in t for t in texts) and any("RAC >= 0.90" in t for t in texts)
     assert CV.dv_bound_rules(load("full_mdo.yaml")) == []
+
+
+# --- checkpoint 2: the tab's edits, on/off, saving -----------------------------------------------------------------------
+
+def _driver(cfg):
+    prob = CV.setup_problem(cfg)
+    keys = ("lower", "upper", "equals", "ref", "units", "scaler", "adder")
+    meta = lambda d: [(n, {k: m.get(k) for k in keys}) for n, m in d.items()]  # noqa: E731
+    return meta(prob.driver._designvars), meta(prob.driver._cons), meta(prob.driver._objs)
+
+
+@pytest.mark.parametrize("name", ["full_mdo.yaml", "full_mdo_rdo.yaml", "full_mdo_twin_fixed_kv.yaml",
+                                  "dbf2026_multipoint.yaml"])
+def test_no_edits_reproduce_the_config_and_its_driver(name):
+    cfg = load(name)
+    sp = not hasattr(cfg, "mp")
+    run = CV.apply_limits(cfg, {}, off=CV.config_off(cfg) if sp else None)
+    assert run.model_dump() == cfg.model_dump()
+    assert _driver(run) == _driver(cfg)
+
+
+def test_switched_off_constraint_leaves_the_run(tmp_path):
+    from aircrafter2.api import run_design
+
+    cfg = load("full_mdo_fixed_kv.yaml")
+    cfg.aero.num_y = 11
+    kw = dict(optimise=False, figures=False, sensitivities=False, n2=False)
+    run_design(cfg, out_dir=tmp_path / "on", **kw)
+    run_design(CV.apply_limits(cfg, off={"rpm_margin"}), out_dir=tmp_path / "off", **kw)
+    on = json.loads((tmp_path / "on" / "constraints.json").read_text())
+    off = json.loads((tmp_path / "off" / "constraints.json").read_text())
+    assert [c["name"] for c in on["constraints"]] == [n for n, _ in full_constraints(cfg)]
+    assert len(off["constraints"]) == len(on["constraints"]) - 1 and off["disabled"] == ["rpm_margin"]
+    assert "rpm_margin" not in {c["name"] for c in off["constraints"]}
+    summary = [line for line in (tmp_path / "off" / "summary.md").read_text().splitlines() if line]
+    assert summary[1].startswith("**Constraints switched off for this run: `rpm_margin`")  # right below the title
+    assert "switched off" not in (tmp_path / "on" / "summary.md").read_text()
+
+
+def test_unknown_disabled_constraint_raises():
+    cfg = load("full_mdo.yaml")
+    cfg.disabled_constraints = ["nonexistent"]
+    with pytest.raises(ValueError, match="nonexistent"):
+        full_constraints(cfg)
+    cfg.disabled_constraints = ["energy_margin"]
+    with pytest.raises(ValueError, match="require_3lap_energy"):
+        full_constraints(cfg)
+
+
+def test_validation():
+    cfg = load("full_mdo.yaml")
+    assert CV.validate_limits(cfg) == []
+    bad = CV.apply_limits(cfg, {"stability.SM_min": 0.3, "propulsion.rpm_fraction": 1.2, "propulsion.I_max": -1.0})
+    errs = " ".join(CV.validate_limits(bad))
+    assert "SM_min (0.3) must not exceed stability.SM_max" in errs and "(0, 1]" in errs and "I_max must be > 0" in errs
+    assert CV.validate_limits(load("dbf2026_multipoint.yaml")) == []
+
+
+def test_round_trip_one_value_per_source(tmp_path):
+    """One edit per source kind (placeholders, ruleset, problem config) and a comment edit, in a copy of configs/:
+    the values change on reload, every other byte stays, the comments are kept."""
+    import shutil
+
+    shutil.copytree(CONFIGS, tmp_path / "configs")
+    c = tmp_path / "configs"
+    files = {f: f.read_bytes() for f in c.rglob("*.yaml")}
+    mp = c / "dbf2026_multipoint.yaml"
+    res = CV.save_limits(mp, {"stability.SM_min": 0.06, "stability.SM_max": 0.45, "propulsion.rpm_fraction": 0.95},
+                         {"stability.SM_min": dict(status="cited", Q="Q9", source="a test source")})
+    assert not res["errors"]
+    changed = {f: (a, f.read_bytes()) for f, a in files.items() if f.read_bytes() != a}
+    assert set(changed) == {c / "placeholders.yaml", c / "rulesets/dbf_2025_26.yaml", mp}
+    for f, (a, b) in changed.items():
+        a, b = a.decode().splitlines(), b.decode().splitlines()
+        diff = [(x, y) for x, y in zip(a, b) if x != y]
+        assert len(a) == len(b) and len(diff) == 1, (f, diff)
+        x, y = diff[0]
+        assert x.split("#", 1)[0].split(":")[0] == y.split("#", 1)[0].split(":")[0]  # same key
+        if f.name != "placeholders.yaml":  # the comment is kept (placeholders: edited on purpose)
+            assert x.split("#", 1)[1] == y.split("#", 1)[1]
+    assert "# -; cited; Q9; a test source" in (c / "placeholders.yaml").read_text()
+    m = load_multipoint_config(mp)
+    assert (m.base.stability.SM_min, m.base.stability.SM_max, m.base.propulsion.rpm_fraction) == (0.06, 0.45, 0.95)
+
+
+def test_saving_a_code_default_is_an_error(tmp_path):
+    import shutil
+
+    shutil.copytree(CONFIGS, tmp_path / "configs")
+    res = CV.save_limits(tmp_path / "configs" / "full_mdo.yaml", {"propulsion.pack_I_max": 80.0})
+    assert res["errors"] and "code default" in res["errors"][0] and not res["written"]
+
+
+def test_study_readers():
+    r = CV.study_readers(CONFIGS)
+    ph = r[(CONFIGS / "placeholders.yaml").resolve()]
+    assert {"studies/results_2026.py", "studies/results_2025.py", "studies/validation_2026.py"} <= set(ph)
+    mp = r[(CONFIGS / "dbf2026_multipoint.yaml").resolve()]
+    assert {"studies/results_2026.py", "studies/validation_2026.py"} <= set(mp)  # validation: humpback extends it
+    assert "studies/results_2025.py" not in mp
+    assert "studies/aircrafter1_2025.py" in r[(CONFIGS / "dbf2025_multipoint.yaml").resolve()]  # via import
+
+
+def test_run_states():
+    rows = [dict(section=1, name="SM", constraint="SM"), dict(section=1, name="rpm_margin", constraint="rpm_margin"),
+            dict(section=1, name="r_tube", constraint="r_tube"), dict(section=2, name="post.I_margin",
+                                                                      constraint="post.I_margin")]
+    cj = dict(tol=1e-8, constraints=[
+        dict(name="SM", lower=0.05, upper=0.2, equals=None, ref=None, value=0.05),
+        dict(name="rpm_margin", lower=0.0, upper=None, equals=None, ref=1000.0, value=-5.0),
+        dict(name="r_tube", lower=0.005, upper=None, equals=None, ref=0.01, value=0.008)])
+    CV.run_states(rows, cj, {"limits": {"I_margin_A": 3.0}})
+    assert [r["state"] for r in rows] == ["active", "violated", "inactive", "ok"]
+    assert rows[1]["margin"] == -5.0
+
+
+def test_tab_paths_are_not_edited_elsewhere():
+    paths = CV.tab_paths()
+    assert not {p for p in paths if CV.edit_in(p)}
+    assert "energy_reserve" not in paths and "mu_roll" not in paths  # model inputs: their own tabs
+    assert {"stability.SM_max", "propulsion.rpm_fraction", "takeoff_distance", "require_3lap_energy"} <= paths
+
+
+def test_editor_changes_map_cells_to_config_paths():
+    """The table editor: an SM upper edit is stability.SM_max, a stall_margin lower edit is ignored (hard-coded), the
+    rpm limit cell is rpm_fraction, unticking 'on' switches rpm_margin off, ticking 'robust' adds V_h."""
+    import pandas as pd
+
+    rows = [r for r in CV.constraint_table(load("full_mdo_rdo.yaml")) if r["section"] == 1]
+    cols = ["on", "robust", "lower", "upper", "limit"]
+    before = pd.DataFrame([dict(on=True, robust=r["robust"], lower=r["lower"], upper=r["upper"], limit=r["limit"])
+                           for r in rows], columns=cols)
+    after = before.copy()
+    idx = {r["name"]: i for i, r in enumerate(rows)}
+    after.at[idx["stats.SM_hi"], "upper"] = 0.3
+    after.at[idx["stats.stall_margin_lo"], "lower"] = 1.0
+    after.at[idx["nodes.n0.rpm_margin"], "limit"] = 0.9
+    after.at[idx["nodes.n0.rpm_margin"], "on"] = False
+    after.at[idx["nodes.n0.V_h"], "robust"] = True
+    edits, off, robust, ignored = CV.editor_changes(rows, before, after, {}, set(), ["SM"])
+    assert edits == {"stability.SM_max": 0.3, "propulsion.rpm_fraction": 0.9}
+    assert off == {"rpm_margin"} and robust == ["SM", "V_h"]
+    assert len(ignored) == 1 and ignored[0].startswith("stats.stall_margin_lo: its lower is not a config value")

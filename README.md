@@ -61,6 +61,7 @@ A run writes into its output folder:
 | File | What |
 |---|---|
 | `summary.md`, `results.json` | optimum, constraints and margins, sensitivities |
+| `constraints.json` | the driver's constraints: bounds, refs and values (the UI's Constraints tab), and any switched off |
 | `geometry.json` | full geometry of the result, for the OpenVSP mock-up (docs/modules/vsp.md) |
 | `vsp/` (with `--vsp`) | `.vsp3`, `.stp`, `.stl`, three-view and isometric figures, `vsp_check.md` |
 | `figures/*.pdf` (+ `.png`) | planform, airfoil, spanwise lift, drag breakdown, mass breakdown, convergence, sensitivities |
@@ -157,9 +158,10 @@ Both files are written one value per line, as a dotted path into the config with
 `*_fixed_kv.yaml` variants pin the AIAC-era motor values that way, and `woombah_2025.yaml` its as-built geometry.
 Edit a value in either file and every config that uses it picks it up, `studies/results_2025.py` included.
 
-In the UI (`aircrafter2 ui`), the main area has three tabs:
+In the UI (`aircrafter2 ui`), the main area has four tabs:
 - **Design and mission**: design-variable bounds, key assumptions, the Mission column (take-off switch, `mu_roll`,
   reaction time) and the course editor.
+- **Constraints**: every constraint, check and limit of the selected problem (below).
 - **Placeholders**: one editable table for `placeholders.yaml` and a second one for the RDO spreads.
 - **Ruleset**: a selector over `configs/rulesets/` and the same kind of table for the chosen file.
 
@@ -168,8 +170,47 @@ instead, so an edit there won't reach that config's runs. **Save** writes the ed
 keeping every comment and the order. **Discard changes** drops them. Unsaved edits still apply to the current run, and
 a note says so.
 
-For a multipoint (2024-25) config, the UI shows only the two layer tabs, because it runs single-point problems. The
-2024-25 runs are `studies/results_2025.py`.
+For a multipoint config, the UI shows the Constraints tab and the two layer tabs, with no Run button, because it runs
+single-point problems. The multipoint runs are `studies/results_2025.py` and `studies/results_2026.py`.
+
+#### The Constraints tab
+
+The tab lists everything but the design-variable bounds (those stay in Design and mission, and Kv in the sidebar; a
+caption lists the rules that are enforced as bounds, such as span <= 5 ft). It reads the set-up problem the run
+would build, not a copy (`aircrafter2/constraints_view.py`), in five sections:
+
+1. **Optimiser constraints**: the driver's list (deterministic or RDO, single-point or multipoint), with the raw
+   bounds, an effective limit in physical units (e.g. `rpm(v) <= 1 x 150000/19 in = 7,895 rpm`) and **set in**: the
+   file and line that sets each limit's effective value (problem config, ruleset, placeholders, mass config, code
+   default, or hard-coded file:line).
+2. **Post-checks**: `check_fixed_limits`, `m1_check`, the OEI check.
+3. **Analysis limits and report-only checks**: the wind limit (`AnalysisError`), report-only outputs, the G&G sizing
+   criteria. Read-only, labelled not enforced.
+4. **MDA balances**: L = W, T = D and the mass closure, with their solvers. Read-only.
+5. **Limit fields this problem doesn't use**, greyed out.
+
+Edit **lower** / **upper** where a config value is the bound (SM_min, V_h_max, wall_ratio_max, ...), and **limit**
+where a margin's 0 bound stands for a physical limit (rpm_fraction, I_max, takeoff_distance, togw_max_lb, ...). These
+values are edited only here; the layer editors leave their rows out. A value that is also a model input (`mu_roll`,
+`energy_reserve`, `v_top`, `k_lof`, the G&G sizing inputs) is shown read-only, with the tab it is edited in. An
+invalid limit (lower > upper, a fraction outside (0, 1], a non-positive physical limit) blocks Run.
+
+For single-point runs, **on** switches a constraint off for this run (`energy_margin` is `require_3lap_energy`, the
+others `disabled_constraints`); a safety constraint switched off gets a warning, and the run's summary lists it at the
+top. With RDO on, **robust** chooses `robust.robust_constraints`. After a run the tab shows each constraint's value,
+margin and state (active, inactive or violated), from the run's `constraints.json`.
+
+**Save (constraints)** writes each changed value back to the file and line that sets it, keeping the comment (the
+status, Q and source of a layer-file value are editable in the tab's comments table). Before writing a file that a
+study script reads (found by parsing `studies/` and `verification/`), the tab lists those scripts and asks for a
+confirmation: saving changes the inputs of their next runs. On/off and robust choices are not saved, except
+`require_3lap_energy` and `robust_constraints`, which are config fields. **Discard changes** drops the edits; **Reset to
+config values** also resets on/off and robust.
+
+To add a constraint, add it to the problem (`full_constraints`, `multipoint_constraints` or a scoring plug-in's
+`constraints()`) and give it an `Entry` in `constraints_view.REGISTER` (and its editable cells in `CELLS`). A driver
+constraint with no entry, or a margin output that is neither constrained nor registered, is an error, so it cannot
+drop out of the tab silently (`tests/test_constraints_view.py`).
 
 ## Documentation
 

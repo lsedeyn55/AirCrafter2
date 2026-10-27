@@ -146,17 +146,18 @@ def _ph_frame(configs, **values):
 
 
 def test_streamlit_three_tabs_and_multipoint_view():
-    """full_mdo.yaml: the three tabs; dbf2025_multipoint.yaml: the two layer tabs, an info box, no Run button."""
+    """full_mdo.yaml: the four tabs; dbf2025_multipoint.yaml: Constraints and the two layer tabs, an info box, no Run
+    button."""
     from streamlit.testing.v1 import AppTest
 
     at = AppTest.from_file(str(APP), default_timeout=300)
     at.run()
     assert not at.exception
-    assert [t.label for t in at.tabs] == ["Design and mission", "Placeholders", "Ruleset"]
+    assert [t.label for t in at.tabs] == ["Design and mission", "Constraints", "Placeholders", "Ruleset"]
     assert any(b.label == "Save (placeholders)" for b in at.button) and any(b.label == "Run" for b in at.button)
     at.sidebar.selectbox[0].set_value("dbf2025_multipoint.yaml").run()
     assert not at.exception
-    assert [t.label for t in at.tabs] == ["Placeholders", "Ruleset"]
+    assert [t.label for t in at.tabs] == ["Constraints", "Placeholders", "Ruleset"]
     assert not any(b.label == "Run" for b in at.button)
     assert any("multipoint" in i.value and "results_2025.py" in i.value for i in at.info)
     assert at.selectbox[0].value == "rulesets/dbf_2024_25.yaml"  # the config's ruleset by default
@@ -212,3 +213,113 @@ def test_streamlit_save_writes_the_file_and_discard_restores(tmp_path, monkeypat
     assert not at.exception and not any("Unsaved edits" in i.value for i in at.info)
     assert (c / "placeholders.yaml").read_text() == saved
     assert (CONFIGS / "placeholders.yaml").read_text().splitlines() == before  # the real file was never touched
+
+
+# --- the Constraints tab (aircrafter2/constraints_view.py) ------------------------------------------------------------
+
+def _cons_key(cfg, ruleset):
+    return f"cons_{cfg}_{ruleset}"
+
+
+def _app(cfg=None):
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(APP), default_timeout=900)
+    at.run()
+    if cfg:
+        at.sidebar.selectbox[0].set_value(cfg).run()
+    return at
+
+
+def test_constraints_tab_renders():
+    for cfg, tabs in (("full_mdo.yaml", 4), ("full_mdo_twin.yaml", 4), ("dbf2026_multipoint.yaml", 3)):
+        at = _app(None if cfg == "full_mdo.yaml" else cfg)
+        assert not at.exception, cfg
+        assert len(at.tabs) == tabs and at.tabs[1 if tabs == 4 else 0].label == "Constraints"
+        assert any(c.value.startswith("Design-variable bounds: Design and mission tab (Kv: sidebar)") for c in at.caption)
+        assert any(b.label == "Save (constraints)" for b in at.button)
+        assert any(b.label == "Run" for b in at.button) == (tabs == 4)
+    assert any("span <= 5 ft" in c.value for c in at.caption)  # dbf2026: the rules enforced as DV bounds
+
+
+def test_constraint_rows_left_out_of_the_layer_editors():
+    at = _app()
+    ph = at.session_state[f"{PH_KEY}_df"]
+    assert "stability.SM_max" not in set(ph["parameter"]) and "energy_reserve" in set(ph["parameter"])
+    assert any(c.value.startswith("Constraint limits (SM, tail volumes") for c in at.caption)
+
+
+def test_constraints_sm_max_edit_reaches_the_driver_bound(tmp_path, monkeypatch):
+    """An unsaved SM_max edit in the Constraints tab sets the SM bound of an Analyse run (num_y 11)."""
+    monkeypatch.setenv("AIRCRAFTER2_OUTPUTS", str(tmp_path))  # the run's folder: not outputs/ui_runs
+    at = _app()
+    at.session_state[f"{_cons_key('full_mdo.yaml', 'rulesets/generic.yaml')}_edits"] = {"stability.SM_max": 0.3}
+    at.run()
+    assert any("Unsaved edits in the Constraints tab" in i.value for i in at.info)
+    at.sidebar.select_slider[0].set_value(11)
+    _button(at, "Run").click().run()
+    assert not at.exception
+    cons = json.loads((Path(at.session_state["last"]) / "constraints.json").read_text())["constraints"]
+    assert Path(at.session_state["last"]).is_relative_to(tmp_path)
+    sm = next(c for c in cons if c["name"] == "SM")
+    assert (sm["lower"], sm["upper"]) == (0.05, 0.3)
+    assert (CONFIGS / "placeholders.yaml").read_text().count("stability.SM_max: 0.20 ") == 1  # not saved
+
+
+def test_constraints_lower_above_upper_blocks_run():
+    at = _app()
+    at.session_state[f"{_cons_key('full_mdo.yaml', 'rulesets/generic.yaml')}_edits"] = {"stability.SM_min": 0.3}
+    at.run()
+    assert not at.exception
+    assert any("must not exceed stability.SM_max" in e.value for e in at.error)
+    assert _button(at, "Run").disabled and _button(at, "Save (constraints)").disabled
+
+
+def test_constraints_switch_off_warns_for_safety():
+    at = _app()
+    at.session_state[f"{_cons_key('full_mdo.yaml', 'rulesets/generic.yaml')}_off"] = ["stall_margin"]
+    at.run()
+    assert not at.exception
+    assert any("Safety constraints switched off for this run: stall_margin" in w.value for w in at.warning)
+    assert not _button(at, "Run").disabled
+
+
+def test_constraints_save_guard_on_a_study_config():
+    """dbf2026_multipoint.yaml: an edit to a file the study scripts read shows them and needs the confirmation."""
+    at = _app("dbf2026_multipoint.yaml")
+    at.session_state[f"{_cons_key('dbf2026_multipoint.yaml', 'rulesets/dbf_2025_26.yaml')}_edits"] = {
+        "propulsion.rpm_fraction": 0.95}
+    at.run()
+    assert not at.exception
+    guard = [w.value for w in at.warning if "Saving changes the inputs of these studies' next runs" in w.value]
+    assert guard and "results_2026.py" in guard[0] and "dbf2026_multipoint.yaml" in guard[0]
+    assert _button(at, "Save (constraints)").disabled
+    [c for c in at.checkbox if c.label == "I understand: save anyway"][0].check().run()
+    assert not _button(at, "Save (constraints)").disabled  # not clicked: the real configs stay untouched
+
+
+def test_constraints_save_writes_the_line_in_place(tmp_path, monkeypatch):
+    """Save (constraints) in a temporary copy of configs/: the guard confirmed, the problem-config line is rewritten
+    in place (comment kept), nothing else changes, and the tab reloads with no unsaved edits."""
+    import shutil
+
+    shutil.copytree(CONFIGS, tmp_path / "configs")
+    c = tmp_path / "configs"
+    monkeypatch.setenv("AIRCRAFTER2_CONFIGS", str(c))
+    files = {f: f.read_bytes() for f in c.rglob("*.yaml")}
+    at = _app("dbf2026_multipoint.yaml")
+    at.session_state[f"{_cons_key('dbf2026_multipoint.yaml', 'rulesets/dbf_2025_26.yaml')}_edits"] = {
+        "propulsion.rpm_fraction": 0.95}
+    at.run()
+    [w for w in at.checkbox if w.label == "I understand: save anyway"][0].check().run()
+    _button(at, "Save (constraints)").click().run()
+    assert not at.exception
+    changed = [f for f, b in files.items() if f.read_bytes() != b]
+    assert changed == [c / "dbf2026_multipoint.yaml"]
+    before = files[changed[0]].decode().splitlines()
+    after = changed[0].read_text().splitlines()
+    diff = [(a, b) for a, b in zip(before, after) if a != b]
+    assert len(before) == len(after) and len(diff) == 1
+    assert diff[0][1].startswith("  rpm_fraction: 0.95 ") and diff[0][0].split("#")[1] == diff[0][1].split("#")[1]
+    assert not any("Unsaved edits in the Constraints tab" in i.value for i in at.info)
+    assert (CONFIGS / "dbf2026_multipoint.yaml").read_bytes() != changed[0].read_bytes()  # the real file untouched

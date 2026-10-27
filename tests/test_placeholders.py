@@ -162,7 +162,8 @@ def test_configs_load_as_before_the_migration_except_the_listed_changes(name):
 # (or, for the 2025-26 store set, the universal values every multipoint config loads from placeholders.yaml and
 # never uses: mp.kind is dbf2025)
 NEW_FIELDS = {"course.turn_drift": False, "course.lap1_cluster": 2.0, "propulsion.f_fit": 0.8, "mp.kind": "dbf2025",
-              "mp.payload": {}, "mp.payload_initial": {}, "mp.rules.pax_per_cargo_min": None}
+              "mp.payload": {}, "mp.payload_initial": {}, "mp.rules.pax_per_cargo_min": None,
+              "disabled_constraints": []}  # 2026-10-27: the Constraints tab's on/off
 
 
 def _new_field(path, change):

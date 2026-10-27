@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from aircrafter2 import constraints_view as CV
 from aircrafter2.api import reanalyse_with_motor, run_design, validate_kv_dv
 from aircrafter2.config.layer_files import (frame_to_rows, frame_to_spreads, layer_files_of, overridden_by,
                                             read_rows, rows_to_frame, rows_to_layer, save_rows, spread_overridden_by,
@@ -27,7 +28,7 @@ from aircrafter2.scoring import available
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIGS = Path(os.environ.get("AIRCRAFTER2_CONFIGS", ROOT / "configs"))  # configurable for tests (a temporary copy)
-OUTPUTS = ROOT / "outputs"
+OUTPUTS = Path(os.environ.get("AIRCRAFTER2_OUTPUTS", ROOT / "outputs"))  # likewise (tests: a temporary folder)
 
 st.set_page_config(page_title="AirCrafter 2.0", layout="wide")
 st.title("AirCrafter 2.0")
@@ -55,12 +56,18 @@ def _same(a, b, keys):
     return all(str(a.get(k)) == str(b.get(k)) for k in keys)
 
 
+CONSTRAINT_ROWS = CV.tab_paths()  # constraint limits: edited (and saved back here) in the Constraints tab only
+
+
 def layer_editor(path, label, overridden, spread_over):
     """Editors for one layer file (values, then RDO spreads); Save / Discard. Returns the layer data with the
-    current (possibly unsaved) edits, which the run uses."""
+    current (possibly unsaved) edits, which the run uses. The constraint-limit rows are left to the Constraints tab:
+    not shown, never rewritten here, but still in the returned layer data."""
     name = _rel(path)
     key = f"layer_{cfg_name}_{name}"
-    rows, spreads = read_rows(path)
+    all_rows, spreads = read_rows(path)
+    hidden = [r for r in all_rows if r["parameter"] in CONSTRAINT_ROWS]
+    rows = [r for r in all_rows if r["parameter"] not in CONSTRAINT_ROWS]
     if f"{key}_v" not in st.session_state:
         st.session_state[f"{key}_v"] = 0
     if f"{key}_df" not in st.session_state:
@@ -71,12 +78,15 @@ def layer_editor(path, label, overridden, spread_over):
     st.caption(f"`configs/{name}`: one row per value. Edit value, status and source; **overridden by** names the file "
                f"and line of `{cfg_name}` (or its extends: chain) that sets the value instead, so an edit there will "
                "not reach this config's runs.")
+    if hidden:
+        st.caption("Constraint limits (SM, tail volumes, rpm fraction, current limit, take-off distance, rule "
+                   "limits, ...): **Constraints tab**, which saves them back into this file.")
     edited = st.data_editor(
         st.session_state[f"{key}_df"], key=f"{key}_ed{v}", hide_index=True, width="stretch",
         disabled=["area", "parameter", "units", "Q", "overridden by", "line"],
         column_config={"status": st.column_config.SelectboxColumn("status", options=["PLACEHOLDER", "cited"]),
                        "line": None})
-    new_rows = frame_to_rows(edited)
+    new_rows = [r for r in frame_to_rows(edited) if r["parameter"] not in CONSTRAINT_ROWS]
     new_sp = spreads
     if spreads:
         st.markdown("**RDO spreads** (shared uncertain parameters; merged by name with a config's uncertainty file)")
@@ -109,10 +119,223 @@ def layer_editor(path, label, overridden, spread_over):
             st.session_state.pop(f"{key}_{k}", None)
         st.session_state[f"{key}_v"] += 1
         st.rerun()
-    return rows_to_layer(new_rows, new_sp if spreads else None)
+    return rows_to_layer(new_rows + hidden, new_sp if spreads else None)
 
 
-tab_names = (["Placeholders", "Ruleset"] if is_multipoint else ["Design and mission", "Placeholders", "Ruleset"])
+# --- the Constraints tab: every constraint, check and limit but the design-variable bounds (constraints_view.py) ------
+GROUPS = ["performance", "propulsion", "stability", "structure", "aero", "twin", "rules", "scoring"]
+CELL_HELP = {
+    "lower": "the driver's lower bound: editable where a config value is the bound (SM_min, V_h_min, V_v_min, "
+             "r_tube_min, laps_m2_min)",
+    "upper": "the driver's upper bound: editable where a config value is the bound (SM_max, V_h_max, V_v_max, "
+             "wall_ratio_max, sigma_cap)",
+    "limit": "the physical limit behind a margin's 0 bound (column 'limit field'): rpm_fraction, I_max, pack_I_max, "
+             "takeoff_distance, c_clear, the rule limits (togw_max_lb, energy_total_max_Wh, fuse_max_A, c_rating, "
+             "pax_per_cargo_min, fuselage_span_ratio_max), rudder_max_deg, oei_speed_factor"}
+
+
+@st.cache_data(show_spinner=False)
+def _study_readers(configs_dir):
+    return {str(k): v for k, v in CV.study_readers(configs_dir).items()}
+
+
+def _frame(rows, cols):
+    order = {g: i for i, g in enumerate(GROUPS)}
+    rows = sorted(rows, key=lambda r: (order.get(r["group"], len(GROUPS)), r["point"]))
+    return rows, pd.DataFrame([{c: r.get(c) for c in cols} for r in rows], columns=cols)
+
+
+def constraints_tab(cfg, key, runnable):
+    """The Constraints tab for cfg (FullMDOConfig or MultipointConfig, the layer tabs' unsaved edits included).
+    State per config and ruleset (session_state[key + _edits | _comments | _off | _robust | _v]). Returns
+    (the config the run uses, error messages that block Run, safety constraints switched off)."""
+    ss = st.session_state
+    mp = not runnable
+    base = cfg.base if mp else cfg
+    rdo = runnable and base.robust.enabled
+    for suffix, default in (("edits", {}), ("comments", {}), ("robust", None), ("v", 0)):
+        ss.setdefault(f"{key}_{suffix}", default.copy() if isinstance(default, dict) else default)
+    if runnable:
+        ss.setdefault(f"{key}_off", sorted(CV.config_off(cfg)))
+    edits, comments = ss[f"{key}_edits"], ss[f"{key}_comments"]
+    off = set(ss.get(f"{key}_off", []))
+    st.caption("Design-variable bounds: Design and mission tab (Kv: sidebar).")
+    rules = CV.dv_bound_rules(cfg)
+    if rules:
+        st.caption("Rules enforced as design-variable bounds (not rows below): " + "; ".join(t for _, t in rules)
+                   + ". Span: Ruleset tab; the others: the config's design_variables and multipoint.payload.")
+    st.caption("Edit **lower** / **upper** where a config value is the bound, and **limit** where a margin's 0 "
+               "bound stands for a physical limit (the **limit field** column names it). Unsaved edits apply to the "
+               "current run; Save writes each value to the file and line in **set in**. "
+               + ("On/off and robust apply to this run only and are not saved, except require_3lap_energy "
+                  "(energy_margin's on) and robust.robust_constraints, which are config fields."
+                  if runnable else "Multipoint configs are run by the study scripts, so there is no on/off here."))
+
+    # the table: every constraint present (switched-off ones too), with the edits and the robust choice
+    tcfg = CV.apply_limits(cfg, edits, off=set() if runnable else None)
+    robust = None
+    if rdo:
+        from aircrafter2.problems.full_mdo import full_constraints
+
+        names = [n for n, _ in full_constraints(tcfg)]
+        sel = ss[f"{key}_robust"] if ss[f"{key}_robust"] is not None else list(base.robust.robust_constraints)
+        robust = [n for n in sel if n in names]
+        tcfg.robust.robust_constraints = robust
+    errors = CV.validate_limits(tcfg)
+    try:
+        with st.spinner("Setting up the problem (constraints) ..."):
+            rows = CV.constraint_table(tcfg, config_path=cfg_path, placeholders_path=ph_path,
+                                       ruleset_path=rs_path)
+    except ValueError as exc:
+        st.error(f"Constraints table: {exc}")
+        return cfg, [str(exc)], []
+    if runnable:
+        names = {r["constraint"] for r in rows if r["section"] == 1}
+        off &= names
+    last = ss.get("last")
+    if last and ss.get("last_cons_key") == key:
+        out = Path(last)
+        cj = json.loads((out / "constraints.json").read_text()) if (out / "constraints.json").exists() else {}
+        rj = json.loads((out / "results.json").read_text()) if (out / "results.json").exists() else {}
+        CV.run_states(rows, cj, rj)
+        st.caption(f"value, margin and state: run {out.name} (active: |margin| / ref < {CV.ACTIVE_TOL:g}; "
+                   f"violated: beyond the bound by more than the driver's tolerance {cj.get('tol', '-')}).")
+    for r in rows:
+        r.update(on=r["constraint"] not in off, robust=r["constraint"] in (robust or []),
+                 display=r["name"] if r["section"] == 1 else r["constraint"])
+
+    v = ss[f"{key}_v"]
+    new_edits, new_off, new_robust, ignored = dict(edits), set(off), list(robust or []), []
+    for section in (1, 2):
+        sec = [r for r in rows if r["section"] == section]
+        if not sec:
+            continue
+        st.markdown(f"**{section}. {CV.SECTIONS[section]}**")
+        cols = (["on"] if runnable and section == 1 else []) + (["robust"] if rdo and section == 1 else []) + [
+            "group", "point", "display", "definition", "lower", "upper", "limit", "limit_field", "units",
+            "effective", "set_in", "status", "Q", "kind", "value", "margin", "state"]
+        sec, df = _frame(sec, cols)
+        shape = hash(tuple(r["name"] for r in sec))
+        edited = st.data_editor(
+            df, key=f"{key}_ed{section}_{v}_{shape}", hide_index=True, width="stretch",
+            disabled=[c for c in cols if c not in ("on", "robust", "lower", "upper", "limit")],
+            column_config={"on": st.column_config.CheckboxColumn("on", help="off: dropped from this run"),
+                           "robust": st.column_config.CheckboxColumn("robust", help="mu -/+ beta sigma (RDO)"),
+                           "lower": st.column_config.NumberColumn("lower", help=CELL_HELP["lower"], format="%g"),
+                           "upper": st.column_config.NumberColumn("upper", help=CELL_HELP["upper"], format="%g"),
+                           "limit": st.column_config.NumberColumn("limit", help=CELL_HELP["limit"], format="%g"),
+                           "display": st.column_config.TextColumn("constraint"),
+                           "limit_field": st.column_config.TextColumn("limit field"),
+                           "effective": st.column_config.TextColumn("effective limit"),
+                           "set_in": st.column_config.TextColumn("set in")})
+        new_edits, new_off, new_robust, more = CV.editor_changes(sec, df, edited, new_edits, new_off, new_robust)
+        ignored += more
+    for msg in ignored:
+        st.warning(f"Edit ignored: {msg}.")
+    if new_edits != edits or new_off != off or (rdo and new_robust != robust):
+        ss[f"{key}_edits"] = new_edits
+        if runnable:
+            ss[f"{key}_off"] = sorted(new_off)
+        if rdo and new_robust != robust:
+            ss[f"{key}_robust"] = list(dict.fromkeys(new_robust))
+        ss[f"{key}_v"] += 1
+        st.rerun()
+
+    for section, note in ((3, "not enforced by the optimiser"), (4, "solved by the MDA's solvers"),
+                          (5, "not used by this problem")):
+        sec = [r for r in rows if r["section"] == section]
+        if not sec:
+            continue
+        st.markdown(f"**{section}. {CV.SECTIONS[section]}** ({note}; read-only)")
+        sec, df = _frame(sec, ["group", "point", "constraint", "definition", "effective", "units", "set_in",
+                               "status", "kind"])
+        df.insert(3, "enforced", note if section != 3 else [
+            "by the G&G sizing" if r["constraint"].startswith("sizing.") else "not enforced" for r in sec])
+        st.dataframe(df.style.set_properties(color="gray") if section == 5 else df, hide_index=True,
+                     width="stretch", column_config={"effective": "effective limit / value", "set_in": "set in"})
+
+    # comments of the layer-file values (status, Q, source), as in the layer editors
+    paths = sorted({p for r in rows for p in r["cells"].values()})
+    srcs = {p: next(s for r in rows for s in r["sources"] if s["path"] == p) for p in paths
+            if any(s["path"] == p for r in rows for s in r["sources"])}
+    layer = [p for p in paths if p in srcs and srcs[p]["kind"] in ("placeholders", "ruleset")]
+    if layer:
+        with st.expander("Comments of the limit values in the layer files (status, Q, source)"):
+            cdf = pd.DataFrame([dict(parameter=p, value=CV.get_value(tcfg, p), set_in=srcs[p]["text"],
+                                     **{k: comments.get(p, {}).get(k, srcs[p][k]) for k in ("status", "Q", "source")})
+                                for p in layer])
+            ced = st.data_editor(cdf, key=f"{key}_com_{v}", hide_index=True, width="stretch",
+                                 disabled=["parameter", "value", "set_in"],
+                                 column_config={"status": st.column_config.SelectboxColumn(
+                                     "status", options=["PLACEHOLDER", "cited"]), "set_in": "set in"})
+            new_c = {r["parameter"]: {k: r[k] or "" for k in ("status", "Q", "source")}
+                     for r in ced.to_dict("records")
+                     if any((r[k] or "") != srcs[r["parameter"]][k] for k in ("status", "Q", "source"))}
+            if new_c != comments:
+                ss[f"{key}_comments"] = new_c
+                st.rerun()
+
+    # the config the run uses
+    run_cfg = CV.apply_limits(cfg, edits, off=off if runnable else None, robust=[n for n in robust if n not in off]
+                              if rdo else None)
+    if rdo:
+        with st.sidebar:
+            st.caption(f"{len(run_cfg.robust.robust_constraints)} robust constraints (Constraints tab): "
+                       + ", ".join(run_cfg.robust.robust_constraints))
+    safety_off = sorted(n for n in off if CV.REGISTER[n].kind == "safety")
+
+    # save / discard / reset
+    values = dict(edits)
+    if runnable and ("energy_margin" in off) == cfg.require_3lap_energy:
+        values["require_3lap_energy"] = "energy_margin" not in off
+    if rdo and ss[f"{key}_robust"] is not None and run_cfg.robust.robust_constraints != list(
+            base.robust.robust_constraints):
+        values["robust.robust_constraints"] = run_cfg.robust.robust_constraints
+    unsaved = bool(values or comments)
+    if unsaved:
+        st.info("Unsaved edits in the Constraints tab: they apply to the current run. Save writes them to the files "
+                "that set them.")
+    for msg in errors:
+        st.error(msg)
+    files = sorted({str(CV.limit_source(p, cfg_path, ph_path, rs_path)["file"]) for p in set(values) | set(comments)}
+                   - {"None"})
+    readers = _study_readers(str(CONFIGS))
+    hit = {f: readers.get(str(Path(f).resolve()), []) for f in files}
+    hit = {f: s for f, s in hit.items() if s}
+    ok = True
+    if unsaved and hit:
+        st.warning("Saving changes the inputs of these studies' next runs:\n\n" + "\n".join(
+            f"- `{_rel(f)}`: read by {', '.join(s)}" for f, s in hit.items()))
+        ok = st.checkbox("I understand: save anyway", key=f"{key}_guard_{v}")
+    b1, b2, b3 = st.columns(3)
+    if b1.button("Save (constraints)", key=f"{key}_save", disabled=not unsaved or bool(errors) or not ok):
+        res = CV.save_limits(cfg_path, values, comments, ph_path, rs_path)
+        for msg in res["errors"]:
+            st.error(msg)
+        if not res["errors"]:
+            for k in ("edits", "comments", "robust"):
+                ss.pop(f"{key}_{k}", None)
+            ss.pop(f"{key}_off", None)
+            for k in [k for k in ss if str(k).startswith(f"layer_{cfg_name}_")]:
+                if str(k).endswith(("_df", "_sp")):
+                    ss.pop(k)
+            ss["saved_msg"] = "Saved " + ", ".join(_rel(f) for f in res["written"]) + "."
+            st.rerun()
+    if b2.button("Discard changes (constraints)", key=f"{key}_discard", disabled=not (edits or comments)):
+        for k in ("edits", "comments"):
+            ss.pop(f"{key}_{k}", None)
+        ss[f"{key}_v"] += 1
+        st.rerun()
+    if b3.button("Reset to config values", key=f"{key}_reset"):
+        for k in ("edits", "comments", "robust", "off"):
+            ss.pop(f"{key}_{k}", None)
+        ss[f"{key}_v"] += 1
+        st.rerun()
+    return run_cfg, errors, safety_off
+
+
+tab_names = (["Constraints", "Placeholders", "Ruleset"] if is_multipoint
+             else ["Design and mission", "Constraints", "Placeholders", "Ruleset"])
 tabs = dict(zip(tab_names, st.tabs(tab_names)))
 if st.session_state.get("saved_msg"):
     st.success(st.session_state.pop("saved_msg"))
@@ -132,10 +355,16 @@ with tabs["Ruleset"]:
     rs_layer = layer_editor(rs_path, "ruleset", {r["parameter"]: overridden_by(cfg_path, r["parameter"])
                                                  for r in rs_rows},
                             {s["name"]: spread_overridden_by(cfg_path, s["name"]) for s in rs_spreads})
+cons_key = f"cons_{cfg_name}_{rs_name}"
 if is_multipoint:
-    st.info("This is a multipoint (2024-25) config: the UI runs single-point problems only. Edit and save its "
-            "placeholders and ruleset here; the 2024-25 runs are `studies/results_2025.py` (and "
-            "`studies/takeoff_study.py`), which read the same files.")
+    from aircrafter2.problems.multipoint import load_multipoint_config
+
+    with tabs["Constraints"]:
+        constraints_tab(load_multipoint_config(cfg_path, placeholders=ph_layer, ruleset=rs_layer), cons_key,
+                        runnable=False)
+    st.info("This is a multipoint config: the UI runs single-point problems only. Edit and save its constraints, "
+            "placeholders and ruleset here; the runs are `studies/results_2025.py` (and `studies/takeoff_study.py`) "
+            "and `studies/results_2026.py`, which read the same files.")
     st.stop()
 cfg = load_full_config(cfg_path, placeholders=ph_layer, ruleset=rs_layer)
 with st.sidebar:
@@ -253,7 +482,8 @@ with tabs["Design and mission"]:
         cfg.mass.inputs["n"] = st.number_input("Load factor", 1.0, 12.0, float(cfg.mass.inputs.get("n", 5.0)))
         cfg.propulsion.n_cells = st.number_input("Battery cells (series)", 1.0, 12.0, float(cfg.propulsion.n_cells),
                                                  1.0)
-        st.caption("Payload mass, current limit, energy reserve and the other placeholders: Placeholders tab.")
+        st.caption("Payload mass, energy reserve and the other placeholders: Placeholders tab; the current limit and "
+                   "the other constraint limits: Constraints tab.")
     with c3:
         st.subheader("Mission")
         to0 = cfg.course.takeoff
@@ -262,8 +492,8 @@ with tabs["Design and mission"]:
                             "time and energy: the rules time every mission from the first throttle advance. Off: the "
                             "original model, lap 1 starts in the air at V_stall (every published result)")
         k_lof, cl_ground, start_off = to0.k_lof, to0.CL_ground, to0.start_offset_ft
-        st.caption(f"Take-off parameters: k_lof {k_lof:g}, CL_ground {cl_ground:g} and the take-off distance "
-                   f"{cfg.takeoff_distance:g} m (Eq. 3.3) are in the Placeholders tab; the start offset "
+        st.caption(f"Take-off parameters: k_lof {k_lof:g}, CL_ground {cl_ground:g} are in the Placeholders tab, the "
+                   f"take-off distance {cfg.takeoff_distance:g} m (Eq. 3.3) in the Constraints tab; the start offset "
                    f"({start_off:g} ft) and the mission time ({cfg.mission_time:g} s) in the Ruleset tab.")
         cfg.mu_roll = st.number_input("Rolling friction mu_roll", 0.0, 0.5, float(cfg.mu_roll), 0.01,
                                       help="used by the Eq. 3.3 constraint and, with take-off on, the ground roll")
@@ -375,19 +605,29 @@ with tabs["Design and mission"]:
                         st.error(str(exc))
 
 
+with tabs["Constraints"]:
+    run_cfg, cons_errors, safety_off = constraints_tab(cfg, cons_key, runnable=True)
+
 # --- run (below the tabs) -------------------------------------------------------------------------------------------
+if run_cfg.disabled_constraints or not run_cfg.require_3lap_energy:
+    off_now = list(run_cfg.disabled_constraints) + ([] if run_cfg.require_3lap_energy else ["energy_margin"])
+    st.caption("Switched off for this run (Constraints tab): " + ", ".join(off_now))
+if safety_off:
+    st.warning(f"Safety constraints switched off for this run: {', '.join(safety_off)}.")
 try:
     if cfg.robust.enabled:
         check_kv_robust(cfg)
 except ValueError as exc:
     kv_errors.append(str(exc))
     st.error(str(exc))
-if st.button("Run", type="primary", disabled=bool(kv_errors or course_errors)):
+if cons_errors:
+    st.error("Run is blocked by an invalid limit in the Constraints tab.")
+if st.button("Run", type="primary", disabled=bool(kv_errors or course_errors or cons_errors)):
     out = OUTPUTS / "ui_runs" / time.strftime("%Y%m%d_%H%M%S")  # named studies stay at the top of outputs/
     with st.status("Running AirCrafter 2.0 ...", expanded=True) as status:
         t0 = time.perf_counter()
         try:
-            res = run_design(cfg, optimise=mode == "Optimise", out_dir=out, figures=figs,
+            res = run_design(run_cfg, optimise=mode == "Optimise", out_dir=out, figures=figs,
                              sensitivities=mode == "Optimise", progress=lambda s: st.write(f"{s} ..."))
         except Exception as exc:  # show the failure to the user instead of a stack trace
             status.update(label=f"Failed: {exc}", state="error")
@@ -395,9 +635,10 @@ if st.button("Run", type="primary", disabled=bool(kv_errors or course_errors)):
         status.update(label=f"Done in {time.perf_counter() - t0:.0f} s (success = {res.success}, "
                       f"iterations = {res.iterations})", state="complete")
     st.session_state["last"] = out
+    st.session_state["last_cons_key"] = cons_key
     p = res.prob
     st.session_state["last_design"] = dict(
-        cfg=cfg.model_copy(deep=True), dv={k: float(p.get_val(k)[0]) for k in cfg.design_variables},
+        cfg=run_cfg.model_copy(deep=True), dv={k: float(p.get_val(k)[0]) for k in cfg.design_variables},
         motor=res.values["motor"], m_motor=float(cfg.propulsion.m_motor),
         reference={k: float(p.get_val(k)[0]) for k in ["score", "ThreeLapTime", "m_total", "I_margin", "rpm_margin",
                                                        "energy_margin", "thrust_margin_static", "SM"]})

@@ -152,6 +152,43 @@ def save_rows(path, rows, spreads=None):
     return changed
 
 
+def save_config_value(path, line, key, value):
+    """Set one value in a problem config in place: the value of `key` on 1-based `line` (a block line
+    'key: value  # comment' or a flow mapping '{a: 1, key: value}'), keeping the rest of the line and the comment
+    column. The file is re-parsed before writing: the key must read back as the value elsewhere unchanged."""
+    path = Path(path)
+    lines = path.read_text().splitlines(keepends=True)
+    text = lines[line - 1].rstrip("\n")
+    body, hash_, comment = text.partition("#")
+    new = "[" + ", ".join(fmt_value(v) for v in value) + "]" if isinstance(value, (list, tuple)) else fmt_value(value)
+    m = re.search(rf"(^|[\s{{,]){re.escape(key)}:(\s*)(\[[^\]]*\]|[^,}}]*?)(\s*)(?=[,}}]|$)", body)
+    if m is None:
+        raise ValueError(f"{path.name}:{line}: no '{key}:' to edit")
+    head = body[:m.start(3)] + new
+    tail = body[m.end(3):]
+    stripped = (head + tail).rstrip()
+    if hash_:
+        out = stripped.ljust(len(body)) if len(stripped) < len(body) else stripped + "  "
+        out = out + "#" + comment
+    else:
+        out = stripped
+    lines[line - 1] = out + "\n"
+    old_data, new_data = yaml.safe_load("".join(path.read_text())), yaml.safe_load("".join(lines))
+    if old_data is not None and _strip_key(old_data, key) != _strip_key(new_data, key):
+        raise ValueError(f"{path.name}:{line}: editing {key} would change other values")
+    path.write_text("".join(lines))
+    return line
+
+
+def _strip_key(data, key):
+    """data with every `key` removed (to compare a file before and after one value changed)."""
+    if isinstance(data, dict):
+        return {k: _strip_key(v, key) for k, v in data.items() if k != key}
+    if isinstance(data, list):
+        return [_strip_key(v, key) for v in data]
+    return data
+
+
 def rows_to_layer(rows, spreads=None):
     """Layer data (as load_layer gives it) from rows: the UI's unsaved edits applied to a run."""
     data = expand_dotted({r["parameter"]: r["value"] for r in rows})

@@ -3,8 +3,8 @@
     from aircrafter2.api import run_design
     result = run_design("configs/full_mdo.yaml", optimise=True, out_dir="outputs/demo")
 
-Writes into out_dir: summary.md, results.json, geometry.json (3D rebuild data), cases.sql (driver history), n2.html, xdsm.tex,
-xdsm.pdf and figures/*.pdf.
+Writes into out_dir: summary.md, results.json, constraints.json (the driver's constraints: bounds and values),
+geometry.json (3D rebuild data), cases.sql (driver history), n2.html, xdsm.tex, xdsm.pdf and figures/*.pdf.
 
 With an enabled ``robust:`` block (e.g. configs/full_mdo_rdo.yaml) the robust problem is optimised instead
 (aircrafter2.robustness.rdo_problem); the summary adds the robust statistics (mu, sigma, mu -/+ beta sigma) and the
@@ -122,6 +122,30 @@ def motor_report(prob, cfg, tol=1e-4):
     return out
 
 
+def switched_off(cfg):
+    """The constraints this run leaves out: disabled_constraints, and energy_margin without require_3lap_energy."""
+    return list(cfg.disabled_constraints) + ([] if cfg.require_3lap_energy else ["energy_margin"])
+
+
+def constraint_values(prob, cons):
+    """[dict(name, lower, upper, equals, ref, units, value, values)] of [(name, add_constraint kwargs)] on prob.
+    value: the element nearest its bound (vector constraints, e.g. cruise.cl_margin_sec)."""
+    out = []
+    for name, kw in cons:
+        vals = np.ravel(prob.get_val(name, units=kw.get("units"))).astype(float)
+        lo, hi, eq = kw.get("lower"), kw.get("upper"), kw.get("equals")
+        slack = np.full(vals.shape, np.inf)
+        if lo is not None:
+            slack = np.minimum(slack, vals - lo)
+        if hi is not None:
+            slack = np.minimum(slack, hi - vals)
+        if eq is not None:
+            slack = np.minimum(slack, -np.abs(vals - eq))
+        out.append(dict(name=name, lower=lo, upper=hi, equals=eq, ref=kw.get("ref"), units=kw.get("units"),
+                        value=float(vals[int(np.argmin(slack))]), values=vals.tolist()))
+    return out
+
+
 KV_INPUT_RANGE = (100.0, 5000.0)  # rpm/V, the range the UI accepts for any Kv entry
 
 
@@ -197,11 +221,16 @@ def _run_robust(cfg, optimise, progress):
     if optimise and not error:
         robust["objective_value"] = float(np.ravel(rp.get_val("stats.score_robust" if cfg.robust.objective ==
                                                             "mean_plus_k_sigma" else "stats.score_mu"))[0])
+    from .robustness.rdo_problem import robust_constraints
+    from .scoring import get_plugin
+
+    plugin = get_plugin(cfg.scoring.plugin, **cfg.scoring.options)
+    cons = constraint_values(rp, robust_constraints(cfg, full_constraints(cfg), rp.rdo["quantities"][1:], plugin))
     prob = build_full_problem(cfg, driver=False)  # the robust design, at the config's nominal parameter values
     for name in cfg.design_variables:
         prob.set_val(name, rp.get_val(name))
     prob.run_model()
-    return prob, success, its, robust
+    return prob, success, its, robust, cons
 
 
 def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=True, design_space=False,
@@ -213,9 +242,9 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
     if cfg.robust.enabled:
         if progress:
             progress("solving (robust)")
-        prob, success, its, robust = _run_robust(cfg, optimise, progress)
+        prob, success, its, robust, cons = _run_robust(cfg, optimise, progress)
         return _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, None, n2,
-                       progress, optimise, robust)
+                       progress, optimise, robust, cons)
     prob = build_full_problem(cfg, driver=optimise)
     case_file = None
     if optimise and record and out:
@@ -239,7 +268,12 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
 
 
 def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, case_file, n2, progress,
-            optimise, robust=None):
+            optimise, robust=None, cons=None):
+    if cons is None:  # deterministic: add_full_driver's list (the plug-in's constraints, then full_constraints)
+        from .scoring import get_plugin
+
+        plugin = get_plugin(cfg.scoring.plugin, **cfg.scoring.options)
+        cons = constraint_values(prob, plugin.constraints() + full_constraints(cfg))
     values = {k: v for k, _, _, v in summary_table(prob)}
     if robust is not None:
         values["robust"] = robust
@@ -269,6 +303,8 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
         sens = sens_fn(prob, "score", dvs + sensitivity_assumptions(cfg, extra))
         values["sensitivities"] = sens
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
+    (out / "constraints.json").write_text(json.dumps(dict(disabled=switched_off(cfg), tol=cfg.tol, robust=robust
+                                                          is not None, constraints=cons), indent=2, default=float))
     from .geometry.export import export_geometry, write_geometry
 
     geo = export_geometry(prob, cfg, config_path=None if isinstance(config, FullMDOConfig) else config,
@@ -278,10 +314,14 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
              f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
              f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "
              f"iterations = {its}.\n", "| Quantity | Value | Unit |", "|---|---:|---|"]
+    off = switched_off(cfg)
+    if off:  # the UI's Constraints tab switched constraints off: say so first
+        lines.insert(1, f"**Constraints switched off for this run: {', '.join(f'`{n}`' for n in off)}.**\n")
     if robust is not None:
-        lines[1] = lines[1].replace("Optimised", "Robust-optimised")
-        lines[2:2] = _robust_lines(robust)
-        lines.insert(len(_robust_lines(robust)) + 2, "Design analysed at the config's nominal parameter values:\n")
+        lines[1 + bool(off)] = lines[1 + bool(off)].replace("Optimised", "Robust-optimised")
+        top = 2 + bool(off)
+        lines[top:top] = _robust_lines(robust)
+        lines.insert(len(_robust_lines(robust)) + top, "Design analysed at the config's nominal parameter values:\n")
     lines += [f"| {desc} (`{k}`) | {v:.5g} | {unit} |" for k, unit, desc, v in summary_table(prob)]
     lines += _motor_lines(values["motor"])
     co = values["course"]
@@ -290,7 +330,7 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
               f"{'on' if co['takeoff']['in_mission_time'] else 'off'}."]
     lines += leg_lines(values.get("legs"))
     (out / "summary.md").write_text("\n".join(lines) + "\n")
-    result.files += [out / "results.json", out / "summary.md"]
+    result.files += [out / "results.json", out / "constraints.json", out / "summary.md"]
     if n2:
         om.n2(prob, outfile=str(out / "n2.html"), display_in_notebook=False, show_browser=False)
         result.files.append(out / "n2.html")

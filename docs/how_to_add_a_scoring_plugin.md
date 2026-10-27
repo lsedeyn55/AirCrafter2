@@ -34,6 +34,9 @@ class DBF2027Mission2(ScoringPlugin):
         return [("laps_frac", dict(lower=3.0))]
 ```
 
+A new constraint name also needs an `Entry` in `aircrafter2/constraints_view.REGISTER` (the UI's Constraints tab
+lists every driver constraint and raises on one it has no entry for); `laps_frac` already has one.
+
 Model names you can use include the following (see `aircrafter2/api.py` `SUMMARY_KEYS` and the N2 diagram):
 
 | Group | Names |

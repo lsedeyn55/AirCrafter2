@@ -155,6 +155,8 @@ class FullMDOConfig(AeroMassProblemConfig):
     energy_reserve: float = Field(0.2, description="fraction of usable battery energy kept in reserve "
                                   "(PLACEHOLDER, OPEN_QUESTIONS Q24)")
     require_3lap_energy: bool = Field(True, description="constrain the reserve-adjusted energy to cover 3 laps")
+    disabled_constraints: list[str] = Field([], description="full_constraints names left out of this run (the UI's "
+                                            "Constraints tab); energy_margin is require_3lap_energy instead")
     mockup: MockupInputs = Field(MockupInputs(), description="3D mock-up placement only (aircrafter2.vsp); never "
                                  "enters the model")
     robust: RobustConfig = Field(RobustConfig(), description="robust design optimisation (off by default; "
@@ -507,7 +509,21 @@ def full_constraints(cfg: FullMDOConfig):
     if cfg.propulsion.n_motors == 2:  # prop-to-prop clearance is implied by the fuselage one: reported only
         cons += [("fus_clear_margin", dict(lower=0.0, ref=0.01)),
                  ("tip_clear_margin", dict(lower=0.0, ref=0.01))]
-    return cons
+    return drop_disabled(cfg, cons)
+
+
+def drop_disabled(cfg, cons):
+    """cons without cfg.disabled_constraints; an unknown name (or energy_margin: use require_3lap_energy) raises."""
+    off = list(cfg.disabled_constraints)
+    if not off:
+        return cons
+    if "energy_margin" in off:
+        raise ValueError("disabled_constraints cannot contain energy_margin: set require_3lap_energy: false instead")
+    names = [n for n, _ in cons]
+    unknown = sorted(set(off) - set(names))
+    if unknown:
+        raise ValueError(f"disabled_constraints {unknown} are not constraints of this problem ({names})")
+    return [(n, kw) for n, kw in cons if n not in off]
 
 
 def add_full_driver(prob, cfg: FullMDOConfig):

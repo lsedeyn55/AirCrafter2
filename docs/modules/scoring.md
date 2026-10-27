@@ -3,6 +3,9 @@
 The objective lives in a scoring plug-in, not in the disciplines (`docs/how_to_add_a_scoring_plugin.md`). The score
 component always exists (also in analysis runs), and is the objective only when optimising.
 
+A plug-in's `constraints()` (like any new constraint) needs an entry in the constraints register,
+`aircrafter2/constraints_view.REGISTER`: the UI's Constraints tab refuses a driver constraint it cannot describe.
+
 | Plug-in | Use | Objective |
 |---|---|---|
 | `three_lap_time` | placeholder, single-point problems (`full_mdo`) | minimise the 3-lap time |

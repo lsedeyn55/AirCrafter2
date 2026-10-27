@@ -177,10 +177,13 @@ _POST = [
                "r_tube (the others are reported)"),
     Entry("oei.rudder", "one engine inoperative (post-check)", "deg",
           "rudder for the live unit's yaw at oei_speed_factor x V_stall <= rudder_max_deg", "stability", "safety",
-          ("stability.rudder_max_deg", "stability.oei_speed_factor"), section=2,
+          ("stability.rudder_max_deg",), section=2,
           applies=lambda c: c["twin"] and not c["multipoint"],
           anchors=((FM, r"OEI post-check only"), ("aircrafter2/stability/static.py", r"report-only post-check")),
           note="oei_check (report only, D8); model inputs eta_v, rudder_tau, AR_vt: Placeholders tab"),
+    Entry("oei.speed", "OEI check speed (post-check)", "-", "the OEI check is flown at oei_speed_factor x V_stall",
+          "stability", "safety", ("stability.oei_speed_factor",), section=2,
+          applies=lambda c: c["twin"] and not c["multipoint"], note="oei_check"),
 ]
 
 _ANALYSIS = [
@@ -262,9 +265,40 @@ _MDA = [
 
 REGISTER = {e.name: e for e in _OPT + _POST + _ANALYSIS + _MDA}
 
+# the config value behind each editable cell of a row: lower / upper are the driver's bounds themselves; limit is the
+# value behind a margin's 0 bound (the physical limit). Every path here is edited in the Constraints tab only.
+CELLS = {
+    "SM": dict(lower="stability.SM_min", upper="stability.SM_max"),
+    "V_h": dict(lower="stability.V_h_min", upper="stability.V_h_max"),
+    "V_v": dict(lower="stability.V_v_min", upper="stability.V_v_max"),
+    "wall_ratio": dict(upper="wall_ratio_max"),
+    "r_tube": dict(lower="r_tube_min"),
+    "laps_frac": dict(lower="multipoint.rules.laps_m2_min"),
+    "stats.score_sigma": dict(upper="robust.sigma_cap"),
+    "thrust_margin_static": dict(limit="takeoff_distance"),
+    "rpm_margin": dict(limit="propulsion.rpm_fraction"),
+    "I_margin": dict(limit="propulsion.I_max"),
+    "I_pack_margin": dict(limit="propulsion.pack_I_max"),
+    "fus_clear_margin": dict(limit="propulsion.c_clear"),
+    "rules.energy_margin_Wh": dict(limit="multipoint.rules.energy_total_max_Wh"),
+    "rules.fuse_margin": dict(limit="multipoint.rules.fuse_max_A"),
+    "rules.fuse_margin_C": dict(limit="multipoint.rules.c_rating"),
+    "rules.togw_margin": dict(limit="multipoint.rules.togw_max_lb"),
+    "rules.pax_margin": dict(limit="multipoint.rules.pax_per_cargo_min"),
+    "rules.fuselage_margin": dict(limit="multipoint.rules.fuselage_span_ratio_max"),
+    "post.I_margin": dict(limit="propulsion.I_max"),
+    "post.rpm_margin": dict(limit="propulsion.rpm_fraction"),
+    "post.I_pack_margin": dict(limit="propulsion.pack_I_max"),
+    "oei.rudder": dict(limit="stability.rudder_max_deg"),
+    "oei.speed": dict(limit="stability.oei_speed_factor"),
+}
+# config fields the tab edits through its on and robust columns (saved: they are config fields)
+SWITCH_PATHS = ("require_3lap_energy", "robust.robust_constraints")
+
 # config values that set a limit but are also model inputs: shown read-only here, edited where they are now
 EDIT_ELSEWHERE = {
     "mu_roll": "Design and mission tab",
+    "energy_reserve": "Placeholders tab",  # also the lap model's E_avail (laps_frac)
     "propulsion.v_top": "problem config (not in the UI)",
     "propulsion.f_fit": "problem config (not in the UI)",
     "course.takeoff.k_lof": "Placeholders tab",
@@ -578,6 +612,8 @@ def effective_limit(name, c, mcfg=None, kw=None):
         return f"sigma(score) <= {_g(c.robust.sigma_cap)}"
     if name == "m1.laps":
         return "laps >= 3 (M1: 3 laps in the window)"
+    if name == "oei.speed":
+        return f"V_check = {_g(st.oei_speed_factor)} V_stall"
     if name == "oei.rudder":
         return f"delta_rudder <= {_g(st.rudder_max_deg)} deg at {_g(st.oei_speed_factor)} V_stall"
     if name == "wind.lift_off":
@@ -614,7 +650,7 @@ def _row(section, e, name, point, c, mcfg, paths, sources):
                 effective=effective_limit(e.name, c, mcfg), set_in="; ".join(set_in_text), sources=srcs,
                 limit_paths=list(paths), editable=[s["path"] for s in srcs if not s["edit_in"]],
                 status=first["status"] if first else "", Q=first["Q"] if first else "", kind=e.kind,
-                robust=False, variant="", note=e.note)
+                robust=False, variant="", note=e.note, cells=row_cells(e.name), limit_field=None, limit=None)
 
 
 def constraint_table(cfg, robust=None, config_path=None, placeholders_path=None, ruleset_path=None, reduced=True):
@@ -663,6 +699,7 @@ def constraint_table(cfg, robust=None, config_path=None, placeholders_path=None,
         if row["robust"]:
             row["effective"] = _robust_text(reg, kw, base.robust.beta, variant) + (
                 f"  [{row['effective']}]" if row["effective"] else "")
+        row["cells"] = row_cells(reg, variant)
         rows.append(row)
 
     # sections 2-4
@@ -710,7 +747,13 @@ def constraint_table(cfg, robust=None, config_path=None, placeholders_path=None,
                          con_units=None, units="", effective="off (None)" if val is None else _g(val),
                          set_in=f"{path}: {src['text']}", sources=[dict(path=path, edit_in=edit_in(path), **src)],
                          limit_paths=[path], editable=[], status=src["status"], Q=src["Q"], kind="",
-                         robust=False, variant="", note=""))
+                         robust=False, variant="", note="", cells={}, limit_field=None, limit=None))
+    for r in rows:
+        if not mp:  # e.g. a single-point plug-in's laps_frac bound is the plug-in's own, not multipoint.rules
+            r["cells"] = {k: v for k, v in r["cells"].items() if not v.startswith("multipoint.")}
+        if r["cells"].get("limit"):
+            r["limit_field"] = r["cells"]["limit"]
+            r["limit"] = get_value(cfg, r["limit_field"])
     return rows
 
 
@@ -758,3 +801,277 @@ def format_table(rows, sections=(1, 2, 3, 4, 5)):
             lines.append(f"  {name:40s} {r['point']:3s} lo={f(r['lower']):9s} hi={f(r['upper']):9s} "
                          f"| {r['effective'] or r['definition']} | {r['set_in'] or '-'} | {r['status']}")
     return "\n".join(lines)
+
+
+# --- the tab: editable cells, edits, validation, saving ----------------------------------------------------------------
+
+def row_cells(name, variant=""):
+    """{'lower' | 'upper' | 'limit': config path} of a row's editable cells (robust lo / hi rows: their own bound)."""
+    cells = {k: v for k, v in CELLS.get(name, {}).items() if not edit_in(v)}
+    if variant == "lo":
+        cells.pop("upper", None)
+    elif variant == "hi":
+        cells.pop("lower", None)
+    return cells
+
+
+def tab_paths():
+    """Every config path the Constraints tab edits (the layer editors leave these rows to it)."""
+    return {p for c in CELLS.values() for p in c.values() if not edit_in(p)} | set(SWITCH_PATHS)
+
+
+def set_value(cfg, path, value):
+    """Set a dotted limit path on a FullMDOConfig or MultipointConfig in place (multipoint.* -> mcfg.mp)."""
+    if _is_mp(cfg):
+        node, parts = (cfg.mp, path.split(".")[1:]) if path.startswith("multipoint.") else (cfg.base, path.split("."))
+    else:
+        node, parts = cfg, path.split(".")
+    for k in parts[:-1]:
+        node = node[k] if isinstance(node, dict) else getattr(node, k)
+    if isinstance(node, dict):
+        node[parts[-1]] = value
+    else:
+        setattr(node, parts[-1], value)
+
+
+def config_off(cfg):
+    """The constraints a single-point config switches off itself: disabled_constraints, energy_margin when
+    require_3lap_energy is false."""
+    return set(cfg.disabled_constraints) | (set() if cfg.require_3lap_energy else {"energy_margin"})
+
+
+def apply_limits(cfg, edits=None, off=None, robust=None):
+    """A copy of cfg with the tab's choices: edits {path: value}; off (single-point: the constraint names switched
+    off; energy_margin is require_3lap_energy, the others disabled_constraints; None = unchanged); robust
+    (robust_constraints; None = unchanged). With no edits, off = config_off(cfg) and robust None, the copy equals cfg."""
+    c = cfg.model_copy(deep=True)
+    for path, val in (edits or {}).items():
+        set_value(c, path, val)
+    if off is not None:
+        if _is_mp(c):
+            raise ValueError("constraints cannot be switched off in a multipoint config (the UI does not run them)")
+        off = set(off)
+        c.require_3lap_energy = "energy_margin" not in off
+        c.disabled_constraints = sorted(off - {"energy_margin"})
+    if robust is not None:
+        (c.base if _is_mp(c) else c).robust.robust_constraints = list(robust)
+    return c
+
+
+FRACTIONS = ("propulsion.rpm_fraction", "wall_ratio_max")
+NONNEGATIVE = ("multipoint.rules.laps_m2_min", "multipoint.rules.pax_per_cargo_min", "propulsion.c_clear")
+PAIRS = [("stability.SM_min", "stability.SM_max"), ("stability.V_h_min", "stability.V_h_max"),
+         ("stability.V_v_min", "stability.V_v_max")]
+
+
+def validate_limits(cfg, paths=None):
+    """Messages for invalid limit values of cfg (empty = valid): lower <= upper, fractions in (0, 1], positive
+    physical limits (non-negative where 0 means 'none'). paths: the ones to check (default: every tab path)."""
+    errs = []
+    paths = sorted(tab_paths() - set(SWITCH_PATHS)) if paths is None else paths
+    for path in paths:
+        if path.startswith("multipoint.") and not _is_mp(cfg):
+            continue
+        v = get_value(cfg, path)
+        if v is None:
+            continue
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or v != v:
+            errs.append(f"{path} must be a number (got {v!r}).")
+        elif path in FRACTIONS and not 0.0 < v <= 1.0:
+            errs.append(f"{path} is a fraction: it must lie in (0, 1] (got {v:g}).")
+        elif path in NONNEGATIVE and v < 0.0:
+            errs.append(f"{path} must be >= 0 (got {v:g}).")
+        elif path not in FRACTIONS + NONNEGATIVE and v <= 0.0:
+            errs.append(f"{path} must be > 0 (got {v:g}).")
+    for lo, hi in PAIRS:
+        a, b = get_value(cfg, lo), get_value(cfg, hi)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not a <= b:
+            errs.append(f"{lo} ({a:g}) must not exceed {hi} ({b:g}).")
+    return errs
+
+
+def save_limits(config_path, values, comments=None, placeholders_path=None, ruleset_path=None):
+    """Write limit values back to the file and line that sets each one's effective value: layer files with
+    layer_files.save_rows (comment fields from `comments` {path: dict(status, Q, source)}), problem and mass configs
+    in place with layer_files.save_config_value (comment kept). values: {path: value} (only changed ones).
+    Returns dict(written={file: [lines]}, errors=[...]); a path set nowhere but in the code is an error."""
+    from .config.layer_files import layer_files_of, read_rows, save_config_value, save_rows
+
+    if placeholders_path is None and ruleset_path is None:
+        placeholders_path, ruleset_path = layer_files_of(config_path)
+    comments = comments or {}
+    layer_rows, written, errors = {}, {}, []
+    for path in sorted(set(values) | set(comments)):
+        src = limit_source(path, config_path, placeholders_path, ruleset_path)
+        if src["kind"] in ("placeholders", "ruleset"):
+            f = src["file"]
+            if f not in layer_rows:
+                layer_rows[f] = ({r["line"]: r for r in read_rows(f)[0]}, set())
+            rows, touched = layer_rows[f]
+            row = rows[src["line"]]
+            if path in values:
+                row["value"] = values[path]
+            row.update({k: v for k, v in comments.get(path, {}).items() if k in ("status", "Q", "source")})
+            touched.add(src["line"])
+        elif src["kind"] in ("problem config", "mass config"):
+            if path in values:
+                save_config_value(src["file"], src["line"], path.split(".")[-1], values[path])
+                written.setdefault(src["file"], []).append(src["line"])
+        else:
+            errors.append(f"{path} is a {src['text']}: no file sets it, so it cannot be saved in place (add it "
+                          f"to {Path(config_path).name} first)")
+    for f, (rows, touched) in layer_rows.items():
+        lines = save_rows(f, [rows[i] for i in sorted(touched)])
+        if lines:
+            written.setdefault(f, []).extend(lines)
+    return dict(written=written, errors=errors)
+
+
+# --- which study scripts read a file ----------------------------------------------------------------------------------
+
+def _config_closure(f):
+    """The files a load of config f reads: f, its extends: chain, its layer files, mass_config, uncertainty_config."""
+    from .config.layer_files import _chain, layer_files_of
+    from .config.loader import load_yaml
+
+    out = set()
+    try:
+        chain = _chain(f)
+    except Exception:  # not a config (a list, a course): itself only
+        return {Path(f).resolve()}
+    out |= {Path(c).resolve() for c in chain}
+    try:
+        out |= {Path(x).resolve() for x in layer_files_of(f) if x}
+        data = load_yaml(f)
+    except Exception:
+        return out
+    for key in ("mass_config",):
+        if data.get(key):
+            out.add((Path(f).parent / data[key]).resolve())
+    unc = (data.get("robust") or {}).get("uncertainty_config")
+    if unc:
+        out.add((Path(f).parent / unc).resolve())
+    return out
+
+
+def study_readers(configs_dir, script_dirs=(ROOT / "studies", ROOT / "verification")):
+    """{file (resolved): [script, ...]}: the files each study / verification script reads through the configs it
+    names. Found by parsing the scripts (no import): string literals that are a .yaml file name, through the study
+    modules each script imports, each config expanded to its extends: chain, layer files and the files it names."""
+    import ast
+
+    configs_dir = Path(configs_dir)
+    scripts = {}
+    for d in script_dirs:
+        for f in sorted(Path(d).glob("*.py")):
+            scripts.setdefault(f.stem, f)
+    names, imports = {}, {}
+    for stem, f in scripts.items():
+        tree = ast.parse(f.read_text())
+        names[stem] = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                       and re.fullmatch(r"[\w./-]+\.ya?ml", n.value)}
+        imp = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                imp |= {a.name.split(".")[-1] for a in n.names}
+            elif isinstance(n, ast.ImportFrom) and n.module:
+                imp.add(n.module.split(".")[-1])
+        imports[stem] = imp & set(scripts)
+
+    def all_names(stem, seen):
+        seen.add(stem)
+        out = set(names[stem])
+        for m in imports[stem] - seen:
+            out |= all_names(m, seen)
+        return out
+
+    readers = {}
+    for stem, f in scripts.items():
+        label = f"{f.parent.name}/{f.name}"
+        for name in all_names(stem, set()):
+            rel = name[len("configs/"):] if name.startswith("configs/") else name
+            target = configs_dir / rel
+            if not target.is_file():
+                continue
+            for g in _config_closure(target):
+                readers.setdefault(g, set()).add(label)
+    return {k: sorted(v) for k, v in readers.items()}
+
+
+# --- run values -------------------------------------------------------------------------------------------------------
+
+ACTIVE_TOL = 1e-4  # |margin| / ref below this: active (api.motor_report's tolerance)
+
+
+def margin_of(value, lower=None, upper=None, equals=None):
+    """Signed distance to the nearest bound (< 0: outside)."""
+    m = []
+    if lower is not None:
+        m.append(value - lower)
+    if upper is not None:
+        m.append(upper - value)
+    if equals is not None:
+        m.append(-abs(value - equals))
+    return min(m) if m else None
+
+
+def run_states(rows, constraints_json, results_json=None):
+    """Fill value, margin and state (active / inactive / violated) of the optimiser rows from a run's
+    constraints.json (by driver name), and of the post-check rows from its results.json. In place; returns rows."""
+    cj = constraints_json or {}
+    tol = cj.get("tol", 1e-8)
+    by = {c["name"]: c for c in cj.get("constraints", [])}
+    post = {}
+    if results_json:
+        lim, oei = results_json.get("limits") or {}, results_json.get("oei") or {}
+        post = {"post.I_margin": lim.get("I_margin_A"), "post.rpm_margin": lim.get("rpm_margin"),
+                "post.I_pack_margin": lim.get("I_pack_margin_A"), "oei.rudder": oei.get("rudder_margin_deg")}
+    for r in rows:
+        r.update(value=None, margin=None, state="")
+        if r["section"] == 1 and r["name"] in by:
+            c = by[r["name"]]
+            m = margin_of(c["value"], c["lower"], c["upper"], c["equals"])
+            scaled = m / (c["ref"] or 1.0)
+            r.update(value=c["value"], margin=m,
+                     state="violated" if scaled < -tol else "active" if abs(scaled) < ACTIVE_TOL else "inactive")
+        elif r["section"] == 2 and post.get(r["constraint"]) is not None:
+            m = post[r["constraint"]] + (1.0 if r["constraint"] == "post.rpm_margin" else 0.0)  # -1 rpm tolerance
+            r.update(value=post[r["constraint"]], margin=m, state="violated" if m < 0 else "ok")
+    return rows
+
+
+# --- the tab's table editor -------------------------------------------------------------------------------------------
+
+OPTIONAL = ("multipoint.rules.laps_m2_min", "propulsion.pack_I_max", "robust.sigma_cap")  # None = no limit
+
+
+def _num(x):
+    return None if x is None or (isinstance(x, float) and x != x) else x
+
+
+def editor_changes(rows, before, after, edits, off, robust):
+    """What one section's table edit means: (edits {path: value}, off, robust, ignored messages). rows: the
+    section's rows in table order; before / after: the frame given to st.data_editor and the one it returned.
+    A lower / upper / limit cell edits the config path in row['cells']; a cell with no config value behind it is
+    ignored (with a message), as is emptying a value that cannot be None."""
+    edits, off, robust, ignored = dict(edits), set(off), list(robust), []
+    for i, r in enumerate(rows):
+        for col in ("lower", "upper", "limit"):
+            if col not in before:
+                continue
+            old, new = _num(before.at[i, col]), _num(after.at[i, col])
+            if old == new:
+                continue
+            path = r["cells"].get(col)
+            name = r["name"] if r["section"] == 1 else r["constraint"]
+            if path is None:
+                ignored.append(f"{name}: its {col} is not a config value ({r['set_in'] or 'fixed'})")
+            elif new is None and path not in OPTIONAL:
+                ignored.append(f"{path} cannot be empty")
+            else:
+                edits[path] = None if new is None else float(new)
+        if "on" in before and bool(after.at[i, "on"]) != bool(before.at[i, "on"]):
+            (off.discard if after.at[i, "on"] else off.add)(r["constraint"])
+        if "robust" in before and bool(after.at[i, "robust"]) != bool(before.at[i, "robust"]):
+            robust = robust + [r["constraint"]] if after.at[i, "robust"] else [n for n in robust if n != r["constraint"]]
+    return edits, off, list(dict.fromkeys(robust)), ignored

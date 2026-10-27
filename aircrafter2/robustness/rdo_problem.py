@@ -201,23 +201,9 @@ def build_robust_problem(cfg, driver=True):
         for name, bd in cfg.design_variables.items():
             m.add_design_var(name, lower=bd.lower, upper=bd.upper, units=DV_UNITS.get(name), ref=DV_REF.get(name))
         oref = plugin.ref if plugin.sense == "min" else -plugin.ref
-        if rob.objective == "mean_plus_k_sigma":
-            m.add_objective("stats.score_robust", ref=oref)
-        else:
-            m.add_objective("stats.score_mu", ref=oref)
-            m.add_constraint("stats.score_sigma", upper=rob.sigma_cap, ref=plugin.ref)
-        for name, kw in cons:
-            if name in robust_names:
-                k = key_of(name)
-                ref = kw.get("ref")
-                if kw.get("lower") is not None:
-                    m.add_constraint(f"stats.{k}_lo", lower=kw["lower"], ref=ref)
-                if kw.get("upper") is not None:
-                    m.add_constraint(f"stats.{k}_hi", upper=kw["upper"], ref=ref)
-            else:  # deterministic, at the reference node
-                m.add_constraint(f"nodes.n0.{name}", **kw)
-        for name, kw in plugin.constraints():
-            m.add_constraint(f"nodes.n0.{name}", **kw)
+        m.add_objective("stats.score_robust" if rob.objective == "mean_plus_k_sigma" else "stats.score_mu", ref=oref)
+        for name, kw in robust_constraints(cfg, cons, robust_names, plugin):
+            m.add_constraint(name, **kw)
     prob.setup()
 
     for j in range(N):
@@ -235,6 +221,27 @@ def build_robust_problem(cfg, driver=True):
     prob.rdo = dict(rule=rule, dists=dists, active=act, values=values, solvers=solvers,
                     quantities=["score"] + robust_names, N=N)
     return prob
+
+
+def robust_constraints(cfg, cons, robust_names, plugin):
+    """[(name, add_constraint kwargs)] of the robust driver, in order: the sigma cap (mean_sigma_cap), then each
+    constraint as mu -/+ beta sigma (robust_names) or at the reference node n0, then the plug-in's at n0."""
+    rob = cfg.robust
+    out = []
+    if rob.objective != "mean_plus_k_sigma":
+        out.append(("stats.score_sigma", dict(upper=rob.sigma_cap, ref=plugin.ref)))
+    for name, kw in cons:
+        if name in robust_names:
+            k = key_of(name)
+            ref = kw.get("ref")
+            if kw.get("lower") is not None:
+                out.append((f"stats.{k}_lo", dict(lower=kw["lower"], ref=ref)))
+            if kw.get("upper") is not None:
+                out.append((f"stats.{k}_hi", dict(upper=kw["upper"], ref=ref)))
+        else:  # deterministic, at the reference node
+            out.append((f"nodes.n0.{name}", kw))
+    out += [(f"nodes.n0.{name}", kw) for name, kw in plugin.constraints()]
+    return out
 
 
 def node_report(prob):
