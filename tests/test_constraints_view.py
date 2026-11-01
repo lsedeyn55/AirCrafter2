@@ -323,8 +323,8 @@ def test_round_trip_one_value_per_source(tmp_path):
     c = tmp_path / "configs"
     files = {f: f.read_bytes() for f in c.rglob("*.yaml")}
     mp = c / "dbf2026_multipoint.yaml"
-    res = CV.save_limits(mp, {"stability.SM_min": 0.06, "stability.SM_max": 0.45, "propulsion.rpm_fraction": 0.95},
-                         {"stability.SM_min": dict(status="cited", Q="Q9", source="a test source")})
+    res = CV.save_limits(mp, {"stability.V_h_min": 0.36, "stability.SM_max": 0.45, "propulsion.rpm_fraction": 0.95},
+                         {"stability.V_h_min": dict(status="cited", Q="Q9", source="a test source")})
     assert not res["errors"]
     changed = {f: (a, f.read_bytes()) for f, a in files.items() if f.read_bytes() != a}
     assert set(changed) == {c / "placeholders.yaml", c / "rulesets/dbf_2025_26.yaml", mp}
@@ -338,7 +338,7 @@ def test_round_trip_one_value_per_source(tmp_path):
             assert x.split("#", 1)[1] == y.split("#", 1)[1]
     assert "# -; cited; Q9; a test source" in (c / "placeholders.yaml").read_text()
     m = load_multipoint_config(mp)
-    assert (m.base.stability.SM_min, m.base.stability.SM_max, m.base.propulsion.rpm_fraction) == (0.06, 0.45, 0.95)
+    assert (m.base.stability.V_h_min, m.base.stability.SM_max, m.base.propulsion.rpm_fraction) == (0.36, 0.45, 0.95)
 
 
 def test_saving_a_code_default_is_an_error(tmp_path):

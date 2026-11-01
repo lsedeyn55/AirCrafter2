@@ -10,7 +10,7 @@
 # Edit here or in the UI's Placeholders tab (which saves in place, keeping every comment).
 
 # --- energy and battery ---
-energy_reserve: 0.2                          # fraction of usable energy; PLACEHOLDER; Q24; keep 20 % of the usable battery energy in reserve
+energy_reserve: 0.2                          # fraction of usable energy; PLACEHOLDER; Q24; keep 20 % of the usable battery energy in reserve (2025-26: set in rulesets/dbf_2025_26.yaml, Q24)
 propulsion.R_cell: 0.005                     # ohm per cell; PLACEHOLDER; Q8; Dualsky 70C internal resistance not reported
 propulsion.V_cell: 3.7                       # V; PLACEHOLDER; Q8; LiPo nominal
 propulsion.e_spec: 134.3                     # Wh/kg; cited; Q8; 49.95 Wh per 2250 mAh 6S pack [W p. 22] / 0.82 lb per pack (batteries x2 = 1.64 lb [W p. 45 Table 34])
@@ -108,7 +108,7 @@ stability.x_avionics: -0.10                  # m from wing LE; PLACEHOLDER; Q23
 stability.x_gear: 0.05                       # m from wing LE; PLACEHOLDER; Q23
 
 # --- stability limits ---
-stability.SM_min: 0.05                       # -; PLACEHOLDER; Q9
+stability.SM_min: 0.05                       # -; PLACEHOLDER; Q9; (2025-26: set in rulesets/dbf_2025_26.yaml, Q9)
 stability.SM_max: 0.20                       # -; PLACEHOLDER; Q9
 stability.V_h_min: 0.35                      # -; PLACEHOLDER; Q9; around Raymer Table 6.4 values
 stability.V_h_max: 0.65                      # -; PLACEHOLDER; Q9
