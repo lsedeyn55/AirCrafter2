@@ -404,3 +404,33 @@ deployment in the lap model, the Q45 fix, AirCrafter 1.0 `2026` mode (M15 fixed)
 - **AirCrafter 1.0 cost**: 0.43 ms per call (not 3.6 ms), so the coarse grid of §6 took 6 min; the shipped steps
   (0.5 kg, battery fraction 0.1, banner 25 in) cost about 25 min.
 - **Woombah's M3 station** (Q58) recorded, not changed (Phase A frozen).
+
+## Placeholder fixes before the final run (2026-11-01/02)
+
+Branch `placeholder-fixes-2026` (configs `0f27643`, validation page `a2db0f4`), from the review "AirCrafter 2.0
+Placeholder Ranges" (30 Oct 2026). All values are in `configs/rulesets/dbf_2025_26.yaml`, so the 2024-25 and
+single-point configs are unchanged. This supersedes the SM lower bound of §4.5 (0.05) and the ±45° wind direction of §4.7 and §7.
+
+1. **Energy reserve counted once:** `energy_reserve` 0.2 → 0.0. `usable_fraction` 0.8 already holds Humpback's
+   single 20 % margin (80 Wh of 100 Wh, [HB p. 12 Table 7]); 0.2 on top flew 64 % of the pack, now 80 % (Q24).
+2. **SM lower bound in the model's frame:** `stability.SM_min` 0.05 → 0.25. A real 5–10 % floor plus the model's NP
+   offset of ~0.2 c aft of eCalc (Q9, Q62); `SM_max` 0.47 was already in the model's frame.
+3. **Sourced values:** `multipoint.rules.c_rating` 60 → 100 (GNB 8S 3300 mAh 100C, Q8); `propulsion.m_prop`
+   0.086 → 0.098 kg (APC LP19012E, Q61); `stability.tc_tail` 0.10 → 0.101 (SD8020, UIUC coordinates); `takeoff_distance`
+   106.68 m unchanged, now cited ([HB p. 12 Table 7]).
+4. **Wind direction ±45° → ±30°** (σ 17°, inside the daytime Pasquill classes B–D; Woodward 1998; Q59). The UDR
+   direction nodes move from ±34.9° to ±23.2°.
+
+Effect on Humpback as built (calibrated, validation_2026.md): F 5.086 → 5.323, M2 laps 6.96 → 8.76 (8 flown), M3 laps
+4.57 → 5.69, SM 0.389/0.421 → 0.391/0.425. Found while checking (open, for the user):
+
+- **The cold-start smoke run fails** (`studies/results_2026.py optimise`, default settings, from Humpback). SLSQP's
+  first step (Kv to its 200 lower bound, M3 throttle 0.795, S_ht 0.148 → 0.096 m²) lands where the M3 MDA has no
+  solution (NaN residuals, iteration 3). The trigger is `energy_reserve` 0.0 alone: with only SM_min, m_prop or tc_tail
+  new, the cold start converges (F 5.9634, 5.9616, 5.9635; before the fixes 5.9636). The design that run converged to also
+  fails a cold MDA (with old and new values), so `--start` from it does not help. The deterministic driver has no
+  MDA-failure back-off (only the robust IPOPT path has one).
+- **Humpback's M1 post-check (USYD factors without Humpback) now fails on SM:** 0.4676 → 0.4718 > SM_max 0.47 (the
+  heavier prop at the nose). SM_max was set from the M2/M3 values only.
+- **The X-1's t/c** (`multipoint.stores.x1_wing_tc` 0.10, 2024-25 ruleset) is the same SD8020: 0.101 would apply, not
+  changed (2024-25 references frozen).
