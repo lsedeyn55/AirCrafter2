@@ -372,6 +372,7 @@ class FullMDA(om.Group):
     def setup(self):
         cfg = self.options["cfg"]
         a = cfg.aero
+        # --- drag outside the wing: parasite, stores, drag areas ---
         twin = cfg.propulsion.n_motors == 2
         self.add_subsystem(
             "parasite",
@@ -433,6 +434,7 @@ class FullMDA(om.Group):
         terms = ["CD_extra"] + (["CD_stores"] if stores is not None else []) + (["CD_areas"] if area else [])
         if len(terms) > 1:
             self.add_subsystem("cd_extra_total", om.ExecComp("CD_extra_total = " + " + ".join(terms)), promotes=["*"])
+        # --- the cruise aero point ---
         cd_extra = cd_extra_name(cfg, stores)
         self.add_subsystem(
             "cruise",
@@ -449,6 +451,7 @@ class FullMDA(om.Group):
         self.connect(cd_extra, "cruise.perf.CD_extra")
         self.add_subsystem("thrust_at_v", PolyAt(), promotes_inputs=[("coeffs", "T_coeffs"), "v"])
 
+        # --- the balances: L = W and T = D ---
         bal = om.BalanceComp()
         bal.add_balance(
             "alpha_cruise",
@@ -469,6 +472,7 @@ class FullMDA(om.Group):
         self.connect("cruise.D", "balance.D_cruise")
         self.connect("thrust_at_v.y", "balance.T_cruise")
 
+        # --- the mass group ---
         mass_opts = cfg.mass.options.model_copy(update={"standalone_solver": True, "n_motor_pairs": 1 if twin else 0})
         if self.options["sizing"] == "own":
             self.add_subsystem(
@@ -504,6 +508,7 @@ class FullMDA(om.Group):
             self.connect("cruise.Cm_wing", "Cm")
             self.connect("cruise.CL_alpha", "CL_alpha")
 
+        # --- the solvers ---
         if self.options["retry"]:
             from ..robustness.rdo_problem import RetryNewton
 
@@ -581,6 +586,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         (StoreConfig, Stores flags): external stores replace the payload input m_pay and its station (stores.py), and
         add their drag to CD_extra.
     """
+    # --- airfoil and geometry ---
     aero_cfg, stab_cfg = cfg.aero, cfg.stability
     m.add_subsystem(
         "airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes), promotes=["*"]
@@ -592,6 +598,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
     m.add_subsystem("planform", RectPlanform(), promotes=["*"])
     m.add_subsystem("tail", TailGeometry(), promotes=["*"])
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
+    # --- propulsion ---
     prop_cfg = cfg.propulsion
     if kv_is_dv(cfg):  # the reference motor rewound to the design Kv: Rm, I0 follow Kv
         m.add_subsystem(
@@ -651,10 +658,12 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
     )
     if prop_cfg.n_motors == 2:  # wing station and prop clearances (docs/DECISIONS.md#plan-d8)
         m.add_subsystem("motor_placement", MotorPlacement(station_mode=prop_cfg.station_mode), promotes=["*"])
+    # --- the MDA ---
     m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry, sizing=sizing, stores=stores), promotes=["*"])
     cd_extra = cd_extra_name(cfg, stores)
 
     # polar from three coupled aero points (as in lap_mdo)
+    # --- the polar, from three aero points ---
     m.add_subsystem("turn_alpha", TurnAlpha(frac=cfg.polar_turn_frac))
     m.connect("alpha_cruise", "turn_alpha.alpha_c")
     m.connect("cruise.vlm.wing_perf.CL", "turn_alpha.CL_c")
@@ -682,6 +691,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         m.connect(f"{name}.vlm.wing_perf.CL", f"polar.CL_{i}")
         m.connect(f"{name}.CD", f"polar.CD_{i}")
 
+    # --- the lap model ---
     m.add_subsystem(
         "mission_energy",
         om.ExecComp(
@@ -729,6 +739,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         m.connect("dCD_stowed", "lap.dCD_stowed")
 
     # stability: stations and grouped masses
+    # --- stability ---
     m.add_subsystem(
         "stations",
         om.ExecComp(
@@ -800,6 +811,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         m.connect("stations.x_cb", ["stability.x_cb", "stability.x_pay"])
 
     # rotor speed rises with flight speed, so the RPM limit is checked at the top (full-throttle level) speed
+    # --- the limits ---
     m.add_subsystem("rpm_at_v", PolyAt(), promotes_inputs=[("coeffs", "RPM_coeffs"), "v"])
     top = (
         "v_fit_max" if prop_cfg.fit_range == "throttle" else "v_top"
@@ -844,6 +856,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         promotes=["*"],
     )
 
+    # --- input defaults ---
     geo_cfg = cfg.geometry
     for name, val, units in [
         ("b", cfg.initial.get("b", 1.2), "m"),

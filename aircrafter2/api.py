@@ -510,6 +510,7 @@ def _finish(
     cons=None,
 ):
     """Collect a run's values and write its outputs."""
+    # --- values ---
     if cons is None:  # deterministic: add_full_driver's list (the plug-in's constraints, then full_constraints)
         from .scoring import get_plugin
 
@@ -531,6 +532,7 @@ def _finish(
     if not out:
         return result
 
+    # --- sensitivities ---
     sens = None
     dvs = list(cfg.design_variables)
     if sensitivities:
@@ -543,6 +545,7 @@ def _finish(
             extra = ["m_nacelle", "Q_nac", "y_m" if cfg.propulsion.station_mode == "absolute" else "y_motor"]
         sens = sens_fn(prob, "score", dvs + sensitivity_assumptions(cfg, extra))
         values["sensitivities"] = sens
+    # --- results and geometry files ---
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
     (out / "constraints.json").write_text(
         json.dumps(
@@ -562,6 +565,7 @@ def _finish(
         case_id=out.name,
     )
     result.files.append(write_geometry(geo, out / "geometry.json"))
+    # --- the summary ---
     lines = [
         "# AirCrafter 2.0 result\n",
         f"Config: scoring = `{cfg.scoring.plugin}`, prop = "
@@ -590,6 +594,7 @@ def _finish(
     lines += leg_lines(values.get("legs"))
     (out / "summary.md").write_text("\n".join(lines) + "\n")
     result.files += [out / "results.json", out / "constraints.json", out / "summary.md"]
+    # --- N2 diagram and figures ---
     if n2:
         om.n2(prob, outfile=str(out / "n2.html"), display_in_notebook=False, show_browser=False)
         result.files.append(out / "n2.html")

@@ -1,6 +1,8 @@
-"""AirCrafter 2.0 Streamlit UI: a thin layer over aircrafter2.api.run_design.
+"""AirCrafter 2.0 Streamlit UI: a thin layer over api.run_design and constraints_view.py.
 
 Start with:  aircrafter2 ui      (or: streamlit run aircrafter2/ui/app.py)
+Read top to bottom on every interaction: the sidebar, the layer tabs (placeholders and ruleset), the Constraints tab,
+the design inputs, then Run. The tabs are described in the README, "Placeholders and rulesets".
 """
 
 import json
@@ -70,11 +72,13 @@ ph_path, cfg_ruleset = layer_files_of(cfg_path)
 
 # --- the layer tabs: placeholders.yaml and the ruleset, edited (and saved in place) before the config is loaded ------
 def _rel(path):
+    """A path relative to configs/, or just its name."""
     path = Path(path).resolve()
     return str(path.relative_to(CONFIGS.resolve())) if path.is_relative_to(CONFIGS.resolve()) else path.name
 
 
 def _same(a, b, keys):
+    """True if two rows agree on these keys."""
     return all(str(a.get(k)) == str(b.get(k)) for k in keys)
 
 
@@ -176,10 +180,12 @@ CELL_HELP = {
 
 @st.cache_data(show_spinner=False)
 def _study_readers(configs_dir):
+    """constraints_view.study_readers with string keys, for the session cache."""
     return {str(k): v for k, v in CV.study_readers(configs_dir).items()}
 
 
 def _frame(rows, cols):
+    """Rows sorted by group and point, and their table."""
     order = {g: i for i, g in enumerate(GROUPS)}
     rows = sorted(rows, key=lambda r: (order.get(r["group"], len(GROUPS)), r["point"]))
     return rows, pd.DataFrame([{c: r.get(c) for c in cols} for r in rows], columns=cols)
@@ -189,6 +195,7 @@ def constraints_tab(cfg, key, runnable):
     """The Constraints tab for cfg (FullMDOConfig or MultipointConfig, the layer tabs' unsaved edits included).
     State per config and ruleset (session_state[key + _edits | _comments | _off | _robust | _v]). Returns
     (the config the run uses, error messages that block Run, safety constraints switched off)."""
+    # --- state and captions ---
     ss = st.session_state
     mp = not runnable
     base = cfg.base if mp else cfg
@@ -220,6 +227,7 @@ def constraints_tab(cfg, key, runnable):
     )
 
     # the table: every constraint present (switched-off ones too), with the edits and the robust choice
+    # --- the table with the current edits ---
     tcfg = CV.apply_limits(cfg, edits, off=set() if runnable else None)
     robust = None
     if rdo:
@@ -256,6 +264,7 @@ def constraints_tab(cfg, key, runnable):
             display=r["name"] if r["section"] == 1 else r["constraint"],
         )
 
+    # --- sections 1 and 2: the editors ---
     v = ss[f"{key}_v"]
     new_edits, new_off, new_robust, ignored = dict(edits), set(off), list(robust or []), []
     for section in (1, 2):
@@ -319,6 +328,7 @@ def constraints_tab(cfg, key, runnable):
         ss[f"{key}_v"] += 1
         st.rerun()
 
+    # --- sections 3 to 5: read-only ---
     for section, note in (
         (3, "not enforced by the optimiser"),
         (4, "solved by the MDA's solvers"),
@@ -346,6 +356,7 @@ def constraints_tab(cfg, key, runnable):
         )
 
     # comments of the layer-file values (status, Q, source), as in the layer editors
+    # --- the comments table ---
     paths = sorted({p for r in rows for p in r["cells"].values()})
     srcs = {
         p: next(s for r in rows for s in r["sources"] if s["path"] == p)
@@ -387,6 +398,7 @@ def constraints_tab(cfg, key, runnable):
                 st.rerun()
 
     # the config the run uses
+    # --- what the run uses ---
     run_cfg = CV.apply_limits(
         cfg, edits, off=off if runnable else None, robust=[n for n in robust if n not in off] if rdo else None
     )
@@ -399,6 +411,7 @@ def constraints_tab(cfg, key, runnable):
     safety_off = sorted(n for n in off if CV.REGISTER[n].kind == "safety")
 
     # save / discard / reset
+    # --- saving ---
     values = dict(edits)
     if runnable and ("energy_margin" in off) == cfg.require_3lap_energy:
         values["require_3lap_energy"] = "energy_margin" not in off

@@ -1,24 +1,9 @@
-"""Inventory of a problem's constraints, checks and limits (the UI's Constraints tab): everything but the design-variable
-bounds, with the limit, its units and the file and line that set it.
+"""Inventory of a problem's constraints, checks and limits (the UI's Constraints tab), with each limit's source.
 
-    constraint_table(cfg, ...)   rows in five sections:
-        1  optimiser constraints   the driver's list, read from the set-up problem (deterministic or RDO, single-point
-                                   or multipoint), in the driver's order, with the raw lower / upper / equals / ref
-        2  post-checks             check_fixed_limits, m1_check, oei_check: checked after a run, never constraints
-        3  analysis limits         AnalysisError raise sites (the wind limit), report-only outputs, the G&G sizing
-                                   criteria: not enforced by the optimiser
-        4  MDA balances            L = W, T = D and the mass closure, solved by the MDA's own solvers
-        5  unused limit fields     limit fields of the schema that no row of sections 1-4 reads for this problem
-
-The optimiser section is never a hand-kept copy: the problem is built and set up (setup + final_setup, no run_model)
-and its driver's constraints are joined to REGISTER. A driver constraint with no register entry raises
-UnregisteredConstraint, and so does a margin output of the model that is neither constrained nor in the register:
-a new constraint or check cannot drop out of the tab silently. To add a constraint: add it to the problem
-(full_constraints, multipoint_constraints, a scoring plug-in) and add its Entry to REGISTER below.
-
-RDO problems are set up with a one-node rule (udr, no active parameter): the driver's constraints do not depend on the
-rule (they are the stats.* moments and the reference node n0), and the full rule takes 4-21 s to set up
-(tests/test_constraints_view.py checks that both give the same list).
+Lists everything but the design-variable bounds, with the limit, its units and the file and line that set it, in five
+sections. It reads the set-up problem the run would build, joined to REGISTER below, so a constraint can't drop out of
+the tab silently. The UI (ui/app.py) and tests/test_constraints_view.py read it. How to add a constraint, and what the
+five sections are: docs/modules/constraints.md.
 """
 
 import contextlib
@@ -346,10 +331,12 @@ _OPT = [
 
 
 def _mp(ctx):
+    """True for a multipoint problem (a section 2-4 row's applies)."""
     return ctx["multipoint"]
 
 
 def _sp(ctx):
+    """True for a single-point problem (a section 2-4 row's applies)."""
     return not ctx["multipoint"]
 
 
@@ -723,7 +710,7 @@ CELLS = {
 # config fields the tab edits through its on and robust columns (saved: they are config fields)
 SWITCH_PATHS = ("require_3lap_energy", "robust.robust_constraints")
 
-# config values that set a limit but are also model inputs: shown read-only here, edited where they are now
+# config values that set a limit but are also model inputs: shown read-only here, edited elsewhere
 EDIT_ELSEWHERE = {
     "mu_roll": "Design and mission tab",
     "energy_reserve": "Placeholders tab",  # also the lap model's E_avail (laps_frac)
@@ -744,7 +731,17 @@ SCAN_WAIVED = {
 
 
 def edit_in(path):
-    """Where a limit path is edited when not in the Constraints tab ('' = here)."""
+    """Where a limit path is edited when it isn't in the Constraints tab.
+
+    Parameters
+    ----------
+    path : str
+
+    Returns
+    -------
+    str
+        '' = here.
+    """
     if path in EDIT_ELSEWHERE:
         return EDIT_ELSEWHERE[path]
     return next((v for k, v in EDIT_ELSEWHERE_PREFIX.items() if path.startswith(k)), "")
@@ -754,7 +751,20 @@ def edit_in(path):
 
 
 def code_lines(file, pattern):
-    """['file:line', ...] of every line of file (repo-relative) matching the regex; raises if none matches."""
+    """Find a pattern's lines in a source file.
+
+    Parameters
+    ----------
+    file : str
+        Repository-relative path.
+    pattern : str
+        Regular expression.
+
+    Returns
+    -------
+    list of str
+        'file:line' of every matching line. Raises LookupError if none matches.
+    """
     hits = [
         f"{file}:{i}"
         for i, line in enumerate((ROOT / file).read_text().splitlines(), start=1)
@@ -766,7 +776,17 @@ def code_lines(file, pattern):
 
 
 def code_line(file, pattern):
-    """'file:line' of the first line of file (repo-relative) matching the regex."""
+    """The first of code_lines.
+
+    Parameters
+    ----------
+    file, pattern : str
+        As in code_lines.
+
+    Returns
+    -------
+    str
+    """
     return code_lines(file, pattern)[0]
 
 
@@ -787,10 +807,23 @@ def _code_default(cls, path):
 
 
 def limit_source(path, config_path, placeholders_path=None, ruleset_path=None):
-    """Where the effective value of a limit path is set: dict(kind, file, line, status, Q, source, text).
+    """Where the effective value of a limit path is set.
 
-    kind: 'problem config' (the config or its extends: chain), 'ruleset', 'placeholders', 'mass config', or
-    'code default'. Reuses layer_files (set_in: the extends: chain; read_rows: the layer files)."""
+    Reuses layer_files (set_in: the extends: chain; read_rows: the layer files).
+
+    Parameters
+    ----------
+    path : str
+        Dotted limit path.
+    config_path : str or Path
+    placeholders_path, ruleset_path : path, optional
+
+    Returns
+    -------
+    dict
+        kind ('problem config' (the config or its extends: chain), 'ruleset', 'placeholders', 'mass config' or 'code
+        default'), file, line, status, Q, source, text.
+    """
     from .config.layer_files import read_rows, set_in, split_comment
     from .config.loader import load_yaml
 
@@ -798,6 +831,7 @@ def limit_source(path, config_path, placeholders_path=None, ruleset_path=None):
     base = config_path.parent
 
     def rel(f):
+        """A path relative to the config's folder, or just its name."""
         f = Path(f).resolve()
         return str(f.relative_to(base.resolve())) if f.is_relative_to(base.resolve()) else f.name
 
@@ -848,17 +882,28 @@ def limit_source(path, config_path, placeholders_path=None, ruleset_path=None):
     return dict(kind="code default", file=None, line=None, status="", Q="", source="", text=text or "code default")
 
 
-# --- the problem's context and values ----------------------------------------------------------------------------------
+# --- the problem's context and values ---------------------------------------------------------------------------------
 
 
 def _is_mp(cfg):
+    """True for a MultipointConfig."""
     from .problems.multipoint import MultipointConfig
 
     return isinstance(cfg, MultipointConfig)
 
 
 def get_value(cfg, path):
-    """The value of a dotted limit path in a FullMDOConfig or MultipointConfig (multipoint.* -> mcfg.mp)."""
+    """The value of a dotted limit path in a config (multipoint.* -> mcfg.mp).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    path : str
+
+    Returns
+    -------
+    object
+    """
     if _is_mp(cfg):
         if path.startswith("multipoint."):
             node, parts = cfg.mp, path.split(".")[1:]
@@ -874,6 +919,17 @@ def get_value(cfg, path):
 
 
 def problem_context(cfg, robust):
+    """The switches that decide which rows apply: the ctx of Entry.applies.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    robust : bool
+
+    Returns
+    -------
+    dict
+    """
     base = cfg.base if _is_mp(cfg) else cfg
     from .problems.full_mdo import kv_is_dv
 
@@ -890,6 +946,7 @@ def problem_context(cfg, robust):
 
 
 def _point_cfg(cfg, point):
+    """The config of one point, or the base config."""
     if not _is_mp(cfg):
         return cfg
     return cfg.point_config(point) if point else cfg.base
@@ -902,12 +959,29 @@ CON_KEYS = ("lower", "upper", "equals", "ref", "units")
 
 
 def _key(cfg, robust):
+    """Cache key of a config and its robust setting."""
     return (type(cfg).__name__, cfg.model_dump_json(), bool(robust))
 
 
 def setup_problem(cfg, robust=None, reduced=True):
-    """The problem a run would build, set up (setup + final_setup; no run_model). robust None: the config's
-    robust.enabled. reduced: RDO on a one-node rule (same driver constraints; module docstring)."""
+    """The problem a run would build, set up (setup + final_setup; no run_model).
+
+    RDO (robust design optimisation) problems can be set up on a one-node rule (udr, no active parameter). The driver's
+    constraints don't depend on the rule, as they are the stats.* moments and the reference node n0, and the full rule
+    takes 4-21 s to set up (tests/test_constraints_view.py checks that both give the same list).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    robust : bool, optional
+        None: the config's robust.enabled.
+    reduced : bool
+        RDO on a one-node rule.
+
+    Returns
+    -------
+    om.Problem
+    """
     import openmdao.api as om
 
     mp = _is_mp(cfg)
@@ -945,8 +1019,20 @@ def setup_problem(cfg, robust=None, reduced=True):
 
 
 def driver_constraints(cfg, robust=None, reduced=True):
-    """[(driver name, dict(lower, upper, equals, ref, units))] of the set-up problem, in the driver's order (bounds
-    raw; an absent bound None), and the model's output names. Cached per config and settings."""
+    """The driver's constraints and the model's output names. Cached per config and settings.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    robust, reduced
+        As in setup_problem.
+
+    Returns
+    -------
+    (list of (str, dict), list of str)
+        (driver name, dict(lower, upper, equals, ref, units)) in the driver's order, bounds raw and an absent bound
+        None; and the output names.
+    """
     key = _key(cfg, robust) + (reduced,)
     if key not in _CACHE:
         prob = setup_problem(cfg, robust, reduced)
@@ -963,8 +1049,18 @@ def driver_constraints(cfg, robust=None, reduced=True):
 
 
 def parse_driver_name(name):
-    """(register name, point, variant) of a driver constraint: variant '' (deterministic), 'n0' (RDO, deterministic
-    at the reference node), 'lo' / 'hi' (RDO, mu -/+ beta sigma), 'sigma' (stats.score_sigma)."""
+    """Split a driver constraint's name.
+
+    Parameters
+    ----------
+    name : str
+
+    Returns
+    -------
+    (str, str, str)
+        (register name, point, variant). variant: '' (deterministic), 'n0' (RDO, deterministic at the reference node),
+        'lo' or 'hi' (RDO, mu -/+ beta sigma), 'sigma' (stats.score_sigma).
+    """
     variant = ""
     if name == "stats.score_sigma":
         return name, "", "sigma"
@@ -993,6 +1089,7 @@ def _base_output(name):
 
 
 def _prop_rpm_limit(c):
+    """(prop diameter in inches, 150000/D), or (None, None) without APC data."""
     from .propulsion.apc import INCH, load_prop
 
     try:
@@ -1004,11 +1101,27 @@ def _prop_rpm_limit(c):
 
 
 def _g(x):
+    """A number in %g form, anything else as str."""
     return f"{x:g}" if isinstance(x, (int, float)) and not isinstance(x, bool) else str(x)
 
 
 def effective_limit(name, c, mcfg=None, kw=None):
-    """A readable limit in physical units for one register entry at point config c ('' if it needs a run)."""
+    """A readable limit in physical units for one register entry at a point config.
+
+    Parameters
+    ----------
+    name : str
+    c : FullMDOConfig
+        The point's config.
+    mcfg : MultipointConfig, optional
+    kw : dict, optional
+        Unused.
+
+    Returns
+    -------
+    str
+        '' if it needs a run.
+    """
     from .stores import LB
 
     st, pr = c.stability, c.propulsion
@@ -1082,6 +1195,7 @@ def effective_limit(name, c, mcfg=None, kw=None):
 
 
 def _robust_text(base_name, kw, beta, side):
+    """The mu -/+ beta sigma form of a robust row's limit."""
     q = base_name.split(".")[-1]
     if side == "lo":
         return f"mu({q}) - {_g(beta)} sigma({q}) >= {_g(kw['lower'])}"
@@ -1092,10 +1206,12 @@ def _robust_text(base_name, kw, beta, side):
 
 
 def _hard_text(e):
+    """The 'hard-coded at file:line' texts of an entry."""
     return [f"hard-coded at {code_line(f, p)} ({what})" for f, p, what in e.hard_coded]
 
 
 def _row(section, e, name, point, c, mcfg, paths, sources):
+    """One table row of an entry."""
     srcs = [dict(path=p, edit_in=edit_in(p), **sources[p]) for p in paths]
     set_in_text = [
         f"{s['path']}: {s['text']}" + (f" (edit in: {s['edit_in']})" if s["edit_in"] else "") for s in srcs
@@ -1133,12 +1249,24 @@ def _row(section, e, name, point, c, mcfg, paths, sources):
 
 
 def constraint_table(cfg, robust=None, config_path=None, placeholders_path=None, ruleset_path=None, reduced=True):
-    """Rows of the five sections (module docstring) for a FullMDOConfig or MultipointConfig.
+    """The rows of the five sections for a config.
 
-    robust        None: the config's robust.enabled; True / False: RDO on / off (the UI's switch)
-    config_path   the problem config (its extends: chain); placeholders_path / ruleset_path: the layer files the
-                  run uses (default: the ones the config names). Without config_path the 'set in' columns are empty.
-    Raises UnregisteredConstraint for a driver constraint or an unconstrained margin output with no register entry.
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    robust : bool, optional
+        None: the config's robust.enabled. True or False: RDO on or off (the UI's switch).
+    config_path : path, optional
+        The problem config (its extends: chain). Without it, the 'set in' columns are empty.
+    placeholders_path, ruleset_path : path, optional
+        The layer files the run uses. Default: the ones the config names.
+    reduced : bool
+        As in setup_problem.
+
+    Returns
+    -------
+    list of dict
+        Raises UnregisteredConstraint for a driver constraint or an unconstrained margin output with no register entry.
     """
     from .config.layer_files import layer_files_of
 
@@ -1154,6 +1282,7 @@ def constraint_table(cfg, robust=None, config_path=None, placeholders_path=None,
     src_cache = {}
 
     def sources(paths):
+        """The sources of limit paths, cached in src_cache."""
         for p in paths:
             if p not in src_cache:
                 src_cache[p] = (
@@ -1274,7 +1403,16 @@ def constraint_table(cfg, robust=None, config_path=None, placeholders_path=None,
 
 
 def all_limit_fields(multipoint):
-    """Every limit path the register reads, plus the schema's other limit fields (EXTRA_LIMIT_FIELDS)."""
+    """Every limit path the register reads, plus the schema's other limit fields (EXTRA_LIMIT_FIELDS).
+
+    Parameters
+    ----------
+    multipoint : bool
+
+    Returns
+    -------
+    list of str
+    """
     paths = {p for e in REGISTER.values() for p in e.limit_paths} | set(EXTRA_LIMIT_FIELDS)
     paths |= {"robust.beta", "multipoint.rules.span_max_ft"}
     if not multipoint:
@@ -1283,7 +1421,17 @@ def all_limit_fields(multipoint):
 
 
 def dv_bound_rules(cfg):
-    """[(limit path or '', text)]: the rules enforced as design-variable bounds (not rows; the tab's caption)."""
+    """The rules enforced as design-variable bounds (not rows; the tab's caption).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+
+    Returns
+    -------
+    list of (str, str)
+        (limit path or '', text).
+    """
     if not _is_mp(cfg):
         return []
     r, mp = cfg.mp.rules, cfg.mp
@@ -1313,9 +1461,20 @@ SECTIONS = {
 
 
 def format_table(rows, sections=(1, 2, 3, 4, 5)):
-    """Plain-text table: section, constraint, point, lower, upper, effective limit, set in, status."""
+    """Plain-text table: section, constraint, point, lower, upper, effective limit, set in, status.
+
+    Parameters
+    ----------
+    rows : list of dict
+    sections : iterable of int
+
+    Returns
+    -------
+    str
+    """
 
     def f(x):
+        """A cell's text: '' for None, %g for a float."""
         return "" if x is None else (f"{x:g}" if isinstance(x, float) else str(x))
 
     lines = []
@@ -1331,11 +1490,22 @@ def format_table(rows, sections=(1, 2, 3, 4, 5)):
     return "\n".join(lines)
 
 
-# --- the tab: editable cells, edits, validation, saving ----------------------------------------------------------------
+# --- the tab: editable cells, edits, validation, saving ---------------------------------------------------------------
 
 
 def row_cells(name, variant=""):
-    """{'lower' | 'upper' | 'limit': config path} of a row's editable cells (robust lo / hi rows: their own bound)."""
+    """A row's editable cells; a robust lo or hi row keeps only its own bound.
+
+    Parameters
+    ----------
+    name : str
+    variant : str
+
+    Returns
+    -------
+    dict
+        {'lower' | 'upper' | 'limit': config path}.
+    """
     cells = {k: v for k, v in CELLS.get(name, {}).items() if not edit_in(v)}
     if variant == "lo":
         cells.pop("upper", None)
@@ -1345,12 +1515,24 @@ def row_cells(name, variant=""):
 
 
 def tab_paths():
-    """Every config path the Constraints tab edits (the layer editors leave these rows to it)."""
+    """Every config path the Constraints tab edits (the layer editors leave these rows to it).
+
+    Returns
+    -------
+    set of str
+    """
     return {p for c in CELLS.values() for p in c.values() if not edit_in(p)} | set(SWITCH_PATHS)
 
 
 def set_value(cfg, path, value):
-    """Set a dotted limit path on a FullMDOConfig or MultipointConfig in place (multipoint.* -> mcfg.mp)."""
+    """Set a dotted limit path on a config in place (multipoint.* -> mcfg.mp).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    path : str
+    value : object
+    """
     if _is_mp(cfg):
         node, parts = (cfg.mp, path.split(".")[1:]) if path.startswith("multipoint.") else (cfg.base, path.split("."))
     else:
@@ -1364,15 +1546,41 @@ def set_value(cfg, path, value):
 
 
 def config_off(cfg):
-    """The constraints a single-point config switches off itself: disabled_constraints, energy_margin when
-    require_3lap_energy is false."""
+    """The constraints a single-point config switches off itself: disabled_constraints, and energy_margin when
+    require_3lap_energy is false.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+
+    Returns
+    -------
+    set of str
+    """
     return set(cfg.disabled_constraints) | (set() if cfg.require_3lap_energy else {"energy_margin"})
 
 
 def apply_limits(cfg, edits=None, off=None, robust=None):
-    """A copy of cfg with the tab's choices: edits {path: value}; off (single-point: the constraint names switched
-    off; energy_margin is require_3lap_energy, the others disabled_constraints; None = unchanged); robust
-    (robust_constraints; None = unchanged). With no edits, off = config_off(cfg) and robust None, the copy equals cfg."""
+    """A copy of cfg with the tab's choices.
+
+    With no edits, off = config_off(cfg) and robust None, the copy equals cfg.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    edits : dict, optional
+        {path: value}.
+    off : iterable of str, optional
+        Single-point: the constraint names switched off (energy_margin is require_3lap_energy, the others
+        disabled_constraints). None = unchanged.
+    robust : list of str, optional
+        robust_constraints. None = unchanged.
+
+    Returns
+    -------
+    FullMDOConfig or MultipointConfig
+        Raises ValueError for off on a multipoint config.
+    """
     c = cfg.model_copy(deep=True)
     for path, val in (edits or {}).items():
         set_value(c, path, val)
@@ -1397,8 +1605,20 @@ PAIRS = [
 
 
 def validate_limits(cfg, paths=None):
-    """Messages for invalid limit values of cfg (empty = valid): lower <= upper, fractions in (0, 1], positive
-    physical limits (non-negative where 0 means 'none'). paths: the ones to check (default: every tab path)."""
+    """Messages for invalid limit values: lower <= upper, fractions in (0, 1], positive physical limits (non-negative
+    where 0 means 'none').
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+    paths : iterable of str, optional
+        The ones to check. Default: every tab path.
+
+    Returns
+    -------
+    list of str
+        Empty if valid.
+    """
     errs = []
     paths = sorted(tab_paths() - set(SWITCH_PATHS)) if paths is None else paths
     for path in paths:
@@ -1423,10 +1643,25 @@ def validate_limits(cfg, paths=None):
 
 
 def save_limits(config_path, values, comments=None, placeholders_path=None, ruleset_path=None):
-    """Write limit values back to the file and line that sets each one's effective value: layer files with
-    layer_files.save_rows (comment fields from `comments` {path: dict(status, Q, source)}), problem and mass configs
-    in place with layer_files.save_config_value (comment kept). values: {path: value} (only changed ones).
-    Returns dict(written={file: [lines]}, errors=[...]); a path set nowhere but in the code is an error."""
+    """Write limit values back to the file and line that sets each one's effective value.
+
+    Layer files go through layer_files.save_rows, and problem and mass configs through layer_files.save_config_value
+    (comment kept). A path set nowhere but in the code is an error.
+
+    Parameters
+    ----------
+    config_path : path
+    values : dict
+        {path: value}, only the changed ones.
+    comments : dict, optional
+        {path: dict(status, Q, source)} of layer-file comment fields.
+    placeholders_path, ruleset_path : path, optional
+
+    Returns
+    -------
+    dict
+        written = {file: [lines]}, errors = [...].
+    """
     from .config.layer_files import layer_files_of, read_rows, save_config_value, save_rows
 
     if placeholders_path is None and ruleset_path is None:
@@ -1490,9 +1725,21 @@ def _config_closure(f):
 
 
 def study_readers(configs_dir, script_dirs=(ROOT / "studies", ROOT / "verification")):
-    """{file (resolved): [script, ...]}: the files each study / verification script reads through the configs it
-    names. Found by parsing the scripts (no import): string literals that are a .yaml file name, through the study
-    modules each script imports, each config expanded to its extends: chain, layer files and the files it names."""
+    """The files each study or verification script reads, through the configs it names.
+
+    Found by parsing the scripts (no import): string literals that are a .yaml file name, through the study modules each
+    script imports, with each config expanded to its extends: chain, layer files and the files it names.
+
+    Parameters
+    ----------
+    configs_dir : path
+    script_dirs : iterable of path
+
+    Returns
+    -------
+    dict
+        {file (resolved): [script, ...]}.
+    """
     import ast
 
     configs_dir = Path(configs_dir)
@@ -1517,6 +1764,7 @@ def study_readers(configs_dir, script_dirs=(ROOT / "studies", ROOT / "verificati
         imports[stem] = imp & set(scripts)
 
     def all_names(stem, seen):
+        """The YAML names a script reads, through the study modules it imports."""
         seen.add(stem)
         out = set(names[stem])
         for m in imports[stem] - seen:
@@ -1542,7 +1790,17 @@ ACTIVE_TOL = 1e-4  # |margin| / ref below this: active (api.motor_report's toler
 
 
 def margin_of(value, lower=None, upper=None, equals=None):
-    """Signed distance to the nearest bound (< 0: outside)."""
+    """Signed distance to the nearest bound; < 0 means outside.
+
+    Parameters
+    ----------
+    value : float
+    lower, upper, equals : float, optional
+
+    Returns
+    -------
+    float or None
+    """
     m = []
     if lower is not None:
         m.append(value - lower)
@@ -1554,8 +1812,22 @@ def margin_of(value, lower=None, upper=None, equals=None):
 
 
 def run_states(rows, constraints_json, results_json=None):
-    """Fill value, margin and state (active / inactive / violated) of the optimiser rows from a run's
-    constraints.json (by driver name), and of the post-check rows from its results.json. In place; returns rows."""
+    """Fill value, margin and state of the rows from a run's files, in place.
+
+    Optimiser rows (state active, inactive or violated) come from constraints.json by driver name, and the checks made
+    after a run from results.json.
+
+    Parameters
+    ----------
+    rows : list of dict
+    constraints_json : dict
+    results_json : dict, optional
+
+    Returns
+    -------
+    list of dict
+        rows.
+    """
     cj = constraints_json or {}
     tol = cj.get("tol", 1e-8)
     by = {c["name"]: c for c in cj.get("constraints", [])}
@@ -1591,14 +1863,32 @@ OPTIONAL = ("multipoint.rules.laps_m2_min", "propulsion.pack_I_max", "robust.sig
 
 
 def _num(x):
+    """None for an empty table cell (None or NaN), else the cell."""
     return None if x is None or (isinstance(x, float) and x != x) else x
 
 
 def editor_changes(rows, before, after, edits, off, robust):
-    """What one section's table edit means: (edits {path: value}, off, robust, ignored messages). rows: the
-    section's rows in table order; before / after: the frame given to st.data_editor and the one it returned.
-    A lower / upper / limit cell edits the config path in row['cells']; a cell with no config value behind it is
-    ignored (with a message), as is emptying a value that cannot be None."""
+    """What one section's table edit means.
+
+    A lower, upper or limit cell edits the config path in row['cells']. A cell with no config value behind it is ignored
+    (with a message), as is emptying a value that can't be None.
+
+    Parameters
+    ----------
+    rows : list of dict
+        The section's rows, in table order.
+    before, after : pandas.DataFrame
+        The frame given to st.data_editor, and the one it returned.
+    edits : dict
+    off : set of str
+    robust : list of str
+        The tab's choices so far.
+
+    Returns
+    -------
+    (dict, set, list, list)
+        edits {path: value}, off, robust, and the ignored messages.
+    """
     edits, off, robust, ignored = dict(edits), set(off), list(robust), []
     for i, r in enumerate(rows):
         for col in ("lower", "upper", "limit"):

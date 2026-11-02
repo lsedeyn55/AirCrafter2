@@ -28,6 +28,7 @@ def main(argv=None):
     int
         Exit code.
     """
+    # --- arguments ---
     ap = argparse.ArgumentParser(prog="aircrafter2", description="AirCrafter 2.0: DBF MDAO framework")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="optimise (or analyse) a design from a YAML config")
@@ -73,6 +74,7 @@ def main(argv=None):
     sub.add_parser("ui", help="start the Streamlit UI")
     args = ap.parse_args(argv)
 
+    # --- the commands other than run ---
     if args.cmd == "plugins":
         from .scoring import available
 
@@ -91,6 +93,7 @@ def main(argv=None):
     from .api import run_design
     from .problems.full_mdo import WOOMBAH_Y_M, PropulsionInputs, load_full_config
 
+    # --- run: config overrides ---
     cfg = load_full_config(args.config)
     if args.prop:
         cfg.propulsion.prop = args.prop
@@ -113,6 +116,7 @@ def main(argv=None):
             )
             return 2
         cfg.robust.enabled = bool(args.robust)
+    # --- run: the design ---
     out = args.out or str(Path("outputs") / Path(args.config).stem)
     res = run_design(
         cfg,

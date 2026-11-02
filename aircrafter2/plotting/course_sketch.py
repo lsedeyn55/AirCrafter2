@@ -1,9 +1,9 @@
-"""Top-view schematic of a course (docs/modules/mission.md, Course): drawn from the legs, for the UI.
+"""Top-view schematic of a course, drawn from the legs, for the UI (docs/modules/mission.md, "Course").
 
-Straights are drawn to scale (ft). Turns are arcs of a fixed **schematic** radius: to the left, except whole 360 deg
-loops, drawn to the right so they stay outside the course (the lap model ignores the turn direction, and its turn
-radius comes from the flight state, not from the course). The first straight
-starts at the start line heading +x; the wind arrow points along the wind (it blows against the head-wind straights).
+Straights are drawn to scale (ft). Turns are arcs of a fixed schematic radius: to the left, except whole 360 deg loops,
+drawn to the right so they stay outside the course (the lap model ignores the turn direction, and its turn radius comes
+from the flight state, not from the course). The first straight starts at the start line heading +x; the wind arrow
+points along the wind (it blows against the head-wind straights).
 """
 
 import numpy as np
@@ -38,6 +38,7 @@ def _path(legs, r=R_SCHEMATIC_FT, n_arc=60):
 
 
 def _draw(ax, legs, title, takeoff_on=False, start_offset_ft=0.0):
+    """Draw one lap on an axis."""
     from matplotlib.patches import Rectangle
 
     segs, head_hdgs = _path(legs)
@@ -88,7 +89,20 @@ def _draw(ax, legs, title, takeoff_on=False, start_offset_ft=0.0):
 
 
 def course_sketch(other, lap1=None, takeoff_on=False, start_offset_ft=0.0):
-    """Matplotlib figure of a lap (and of a different lap 1 beside it, if given). Legs: lists of course.Leg."""
+    """Matplotlib figure of a lap, and of a different lap 1 beside it, if given.
+
+    Parameters
+    ----------
+    other : list of course.Leg
+    lap1 : list of course.Leg, optional
+    takeoff_on : bool
+        Draw the runway.
+    start_offset_ft : float
+
+    Returns
+    -------
+    Figure
+    """
     import matplotlib
 
     matplotlib.use("Agg")

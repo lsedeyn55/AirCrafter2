@@ -1,6 +1,7 @@
 """One call from a saved run to the OpenVSP mock-up: build, consistency check, figures.
 
-Used by `aircrafter2 vsp <run_dir>`, `aircrafter2 run <cfg> --vsp`, the Streamlit UI and studies/vsp_mockup.py.
+Used by `aircrafter2 vsp <run_dir>`, `aircrafter2 run <cfg> --vsp`, the Streamlit UI and studies/vsp_mockup.py. See
+docs/modules/vsp.md.
 """
 
 from pathlib import Path
@@ -9,7 +10,24 @@ from ..geometry.export import load_geometry
 
 
 def build_run(run_dir, out_dir=None, name=None, figures=True, incidence=None):
-    """run_dir holds geometry.json (or is the file itself). Writes into out_dir (default <run_dir>/vsp/)."""
+    """Build the mock-up of a saved run.
+
+    Parameters
+    ----------
+    run_dir : path
+        Holds geometry.json, or is the file itself.
+    out_dir : path, optional
+        Default: <run_dir>/vsp/.
+    name : str, optional
+    figures : bool
+    incidence : str, optional
+        "zero" or "cruise".
+
+    Returns
+    -------
+    dict
+        build's result, plus check, geom, and meshes with figures on.
+    """
     from . import render as R
     from .build import build
     from .check import vsp_check

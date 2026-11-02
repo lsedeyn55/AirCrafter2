@@ -323,6 +323,7 @@ def build_robust_problem(cfg, driver=True):
     )
     from ..scoring import get_plugin
 
+    # --- checks and sizes ---
     rob = cfg.robust
     check_kv_robust(cfg)  # again: the UI edits a validated config
     if rob.dv_tolerances:
@@ -341,6 +342,7 @@ def build_robust_problem(cfg, driver=True):
     if missing:
         raise ValueError(f"robust.robust_constraints {missing} are not constraints of this problem")
 
+    # --- the nodes ---
     prob = om.Problem(reports=False)
     m = prob.model
     nodes = m.add_subsystem("nodes", om.ParallelGroup(), promotes_inputs=dvs)
@@ -354,6 +356,7 @@ def build_robust_problem(cfg, driver=True):
         start = cfg.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper)
         m.set_input_defaults(name, cfg.initial.get(name, start), units=DV_UNITS.get(name))
 
+    # --- the statistics ---
     ref_of = {n: kw.get("ref") or 1.0 for n, kw in cons}
     quantities = {"score": rob.sigma_eps * plugin.ref}
     quantities.update({key_of(n): rob.sigma_eps * ref_of[n] for n in robust_names})
@@ -374,6 +377,7 @@ def build_robust_problem(cfg, driver=True):
         for n in robust_names:
             m.connect(f"nodes.n{j}.{n}", f"stats.{key_of(n)}_n{j}")
 
+    # --- the driver ---
     if driver:
         if rob.optimizer == "ipopt":
             prob.driver = om.pyOptSparseDriver(optimizer="IPOPT", print_results=False)
@@ -394,6 +398,7 @@ def build_robust_problem(cfg, driver=True):
         m.add_objective("stats.score_robust" if rob.objective == "mean_plus_k_sigma" else "stats.score_mu", ref=oref)
         for name, kw in robust_constraints(cfg, cons, robust_names, plugin):
             m.add_constraint(name, **kw)
+    # --- values at the nodes ---
     prob.setup()
 
     for j in range(N):

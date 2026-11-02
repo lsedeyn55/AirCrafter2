@@ -1,7 +1,7 @@
-"""Thesis figures from a solved full-model problem (aircrafter2.problems.full_mdo).
+"""Thesis figures from a solved full-model problem (problems/full_mdo.py), called by api.py and the study scripts.
 
-Every function takes the problem (already run), draws one figure and saves it as vector PDF.
-`make_all` writes the standard set into a folder.
+Every function takes the problem (already run), draws one figure and saves it as vector PDF. make_all writes the
+standard set into a folder.
 """
 
 from pathlib import Path
@@ -14,10 +14,22 @@ from .style import PALETTE, figure, save
 
 
 def v(p, k):
+    """One scalar output of the problem.
+
+    Parameters
+    ----------
+    p : om.Problem
+    k : str
+
+    Returns
+    -------
+    float
+    """
     return float(np.ravel(p.get_val(k))[0])
 
 
 def _has(p, k):
+    """True if the problem has this variable."""
     try:
         p.get_val(k)
         return True
@@ -26,6 +38,7 @@ def _has(p, k):
 
 
 def _n_motors(p):
+    """The number of motors, from the motor masses."""
     return int(round(v(p, "m_motor_group") / v(p, "m_motor_unit")))
 
 
@@ -71,6 +84,19 @@ def planform(p, path, underlay=None):
 
 
 def airfoil(p, path, seed=None):
+    """The airfoil section, and the seed, if given.
+
+    Parameters
+    ----------
+    p : om.Problem
+    path : str or Path
+    seed : dict, optional
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     up, lo = p.get_val("upper_weights"), p.get_val("lower_weights")
     le, te = v(p, "le_weight"), v(p, "te_thickness")
     xy = cst.coordinates(up, lo, le, te, 151)
@@ -93,6 +119,18 @@ def airfoil(p, path, seed=None):
 
 
 def spanwise_lift(p, path):
+    """Section c_l along the span at the cruise and turn points, with the section c_l,max.
+
+    Parameters
+    ----------
+    p : om.Problem
+    path : str or Path
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     fig, ax = figure(1.0, 0.45)
     for name, col in [("cruise", PALETTE[0]), ("turn", PALETTE[1])]:
         y = p.get_val(f"{name}.mesh.mesh")[0, :, 1]
@@ -108,6 +146,18 @@ def spanwise_lift(p, path):
 
 
 def drag_breakdown(p, path):
+    """Drag breakdown.
+
+    Parameters
+    ----------
+    p : om.Problem
+    path : str or Path
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     parts = {
         "induced (VLM)": v(p, "cruise.vlm.wing_perf.CDi"),
         "wing profile (NeuralFoil)": v(p, "cruise.CDp"),
@@ -128,6 +178,18 @@ def drag_breakdown(p, path):
 
 
 def mass_breakdown(p, path):
+    """Mass breakdown.
+
+    Parameters
+    ----------
+    p : om.Problem
+    path : str or Path
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     groups = {
         "wing spar tube": v(p, "m_tube") * _wing_factor(p),
         "wing ribs, LE/TE, film": (v(p, "m_rib") + v(p, "m_le") + v(p, "m_te") + v(p, "m_film")) * _wing_factor(p),
@@ -164,11 +226,25 @@ def mass_breakdown(p, path):
 
 
 def _wing_factor(p):
+    """m_wing / m_wing_bare, or 1."""
     bare = v(p, "m_wing_bare")
     return v(p, "m_wing") / bare if bare else 1.0
 
 
 def convergence(case_file, path, objective="score"):
+    """Optimiser convergence from a case file.
+
+    Parameters
+    ----------
+    case_file : path
+    path : str or Path
+    objective : str
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     import openmdao.api as om
 
     cr = om.CaseReader(str(case_file))
@@ -201,6 +277,21 @@ def convergence(case_file, path, objective="score"):
 
 
 def sensitivity_bars(sens, path, dvs=()):
+    """Bar chart of the normalised sensitivities.
+
+    Parameters
+    ----------
+    sens : dict
+        {name: sensitivity}.
+    path : str or Path
+    dvs : iterable of str
+        Design variables, coloured apart from the assumptions.
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     items = sorted(sens.items(), key=lambda kv: abs(kv[1]))
     fig, ax = figure(1.0, 0.55)
     cols = [PALETTE[0] if k in dvs else PALETTE[3] for k, _ in items]
@@ -244,6 +335,24 @@ def design_space(p, x1, x2, n, out, path, x1_range=None, x2_range=None):
 
 
 def make_all(p, out_dir, seed=None, case_file=None, sens=None, dvs=(), design_space_args=None):
+    """Write the standard figure set into a folder.
+
+    Parameters
+    ----------
+    p : om.Problem
+    out_dir : path
+    seed : dict, optional
+    case_file : path, optional
+    sens : dict, optional
+    dvs : iterable of str
+    design_space_args : dict, optional
+        x1, x2, n, out, x1_range, x2_range of design_space.
+
+    Returns
+    -------
+    list
+        The files written.
+    """
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     files = [

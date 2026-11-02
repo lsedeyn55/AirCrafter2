@@ -1,10 +1,9 @@
 """Thesis figures of the OpenVSP mock-up, rendered from its exported STL meshes (no OpenVSP needed).
 
-OpenVSP 3.55.0 can only screenshot through its FLTK GUI (ScreenGrab needs VSP_USE_FLTK and a running GUI), so it
-cannot render headlessly. The builder exports one STL per component; this module draws them with matplotlib:
-orthographic three-views as depth-sorted 2D projections (the top view uses the same axes as
-plotting.figures.planform: y across, x down) and an orthographic isometric. Meshes are rasterised inside the PDF;
-text and axes stay vector.
+OpenVSP 3.55.0 can only screenshot through its FLTK GUI (ScreenGrab needs VSP_USE_FLTK and a running GUI), so it can't
+render headlessly. The builder exports one STL per component, and this module draws them with matplotlib: orthographic
+three-views as depth-sorted 2D projections (the top view uses the same axes as plotting.figures.planform: y across, x
+down) and an orthographic isometric. Meshes are rasterised inside the PDF; text and axes stay vector.
 """
 
 from pathlib import Path
@@ -31,7 +30,17 @@ DPI = 300
 
 
 def read_stl(path):
-    """(n, 3, 3) triangle array from an ASCII or binary STL."""
+    """Read an ASCII or binary STL.
+
+    Parameters
+    ----------
+    path : path
+
+    Returns
+    -------
+    array, shape (n, 3, 3)
+        Triangles.
+    """
     data = Path(path).read_bytes()
     if data[:5] == b"solid" and b"facet" in data[:400]:
         v = [ln.split()[1:4] for ln in data.decode().splitlines() if ln.strip().startswith("vertex")]
@@ -42,10 +51,23 @@ def read_stl(path):
 
 
 def load_meshes(component_stls):
+    """Read the component STLs, without the markers.
+
+    Parameters
+    ----------
+    component_stls : dict
+        {component: path}.
+
+    Returns
+    -------
+    dict
+        {component: triangle array}.
+    """
     return {k: read_stl(p) for k, p in component_stls.items() if k != "markers" and Path(p).exists()}
 
 
 def _shade(tris, colour, light=LIGHT):
+    """Flat-shaded face colours of triangles under a fixed light (two-sided Lambert)."""
     n = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
     nn = np.linalg.norm(n, axis=1, keepdims=True)
     n = np.divide(n, nn, out=np.zeros_like(n), where=nn > 0)
@@ -63,7 +85,18 @@ def _view_axes(view):
 
 
 def draw_projection(ax, meshes, view, alpha=1.0, flat=None):
-    """Draw every component's triangles projected onto the view plane, painter-sorted by depth."""
+    """Draw every component's triangles projected onto the view plane, painter-sorted by depth.
+
+    Parameters
+    ----------
+    ax : Axes
+    meshes : dict
+    view : str
+        "top", "side" or "front".
+    alpha : float
+    flat : str, optional
+        One flat colour.
+    """
     h, v, d, s = _view_axes(view)
     polys, cols, depth = [], [], []
     for comp in ORDER:
@@ -83,6 +116,7 @@ def draw_projection(ax, meshes, view, alpha=1.0, flat=None):
 
 
 def _markers_2d(ax, geom, view):
+    """Draw the CG and NP markers on a 2D view."""
     st, z = geom["stations"], -geom["cargo_bay"]["height_m"] / 2.0
     pts = {"top": lambda x: (0.0, x), "side": lambda x: (x, z), "front": lambda x: (0.0, z)}[view]
     if view == "front":
@@ -101,6 +135,20 @@ def _markers_2d(ax, geom, view):
 
 
 def three_view(geom, meshes, path, title=None):
+    """The three-view figure.
+
+    Parameters
+    ----------
+    geom : dict
+    meshes : dict
+    path : path
+    title : str, optional
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     fig, axs = figure(1.0, 0.95, nrows=2, ncols=2, gridspec_kw=dict(height_ratios=[1.6, 1.0], hspace=0.35, wspace=0.25))
     for ax, view, lab in [
         (axs[0, 0], "top", ("y (m)", "x (m)")),
@@ -127,6 +175,7 @@ def three_view(geom, meshes, path, title=None):
 
 
 def _caption(geom):
+    """The figure's caption text from the geometry."""
     P, W, pv = geom["propulsion"], geom["wing"], geom["provenance"]
     lay = "1 nose tractor" if P["n_motors"] == 1 else f"2 wing tractors at y = ±{P['y_m_m']:.3f} m"
     return (
@@ -140,6 +189,19 @@ def _caption(geom):
 
 
 def draw_iso(ax, meshes, geom=None, elev=22.0, azim=-128.0, limits=None, zoom=1.35):
+    """Draw the isometric on 3D axes.
+
+    Parameters
+    ----------
+    ax : Axes3D
+    meshes : dict
+    geom : dict, optional
+    elev, azim : float
+        Camera angles [deg].
+    limits : list, optional
+        Axis limits from iso_limits.
+    zoom : float
+    """
     ax.set_proj_type("ortho")
     for comp in ORDER:
         if comp not in meshes:
@@ -181,6 +243,18 @@ def draw_iso(ax, meshes, geom=None, elev=22.0, azim=-128.0, limits=None, zoom=1.
 
 
 def iso_limits(point_sets, pad=0.03):
+    """Equal-span axis limits around point sets.
+
+    Parameters
+    ----------
+    point_sets : iterable of array
+    pad : float
+        Fraction of the span.
+
+    Returns
+    -------
+    list of (float, float)
+    """
     p = np.concatenate([np.asarray(s).reshape(-1, 3) for s in point_sets])
     lo, hi = p.min(axis=0), p.max(axis=0)
     span = (hi - lo).max()
@@ -188,6 +262,21 @@ def iso_limits(point_sets, pad=0.03):
 
 
 def isometric(geom, meshes, path, limits=None, title=True):
+    """The isometric figure.
+
+    Parameters
+    ----------
+    geom : dict
+    meshes : dict
+    path : path
+    limits : list, optional
+    title : bool
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     fig = figure(0.8, 0.75)[0]
     fig.clf()
     ax = fig.add_subplot(projection="3d")
@@ -200,7 +289,19 @@ def isometric(geom, meshes, path, limits=None, title=True):
 
 
 def side_by_side(items, path, labels):
-    """Isometrics of several designs at the same scale and camera. items: list of (geom, meshes)."""
+    """Isometrics of several designs at the same scale and camera.
+
+    Parameters
+    ----------
+    items : list of (geom, meshes)
+    path : path
+    labels : list of str
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     limits = iso_limits([m.reshape(-1, 3) for _, ms in items for m in ms.values()])
     w = TEXT_WIDTH_IN
     fig = figure(1.0, 0.30)[0]

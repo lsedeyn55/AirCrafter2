@@ -10,6 +10,7 @@ PALETTE = ["#1b4f72", "#c0392b", "#117a65", "#b9770e", "#6c3483", "#5d6d7e", "#2
 
 
 def apply():
+    """Set the figure style on matplotlib's rcParams."""
     plt.rcParams.update(
         {
             "font.family": "serif",
@@ -38,7 +39,18 @@ def apply():
 
 
 def figure(width=1.0, aspect=0.62, **kw):
-    """New figure `width` x text width wide, height = aspect x width."""
+    """New figure `width` x text width wide, height = aspect x width.
+
+    Parameters
+    ----------
+    width, aspect : float
+    **kw
+        Passed to plt.subplots.
+
+    Returns
+    -------
+    (Figure, Axes)
+    """
     apply()
     w = TEXT_WIDTH_IN * width
     return plt.subplots(figsize=(w, w * aspect), **kw)
@@ -48,7 +60,21 @@ ALSO_PNG = True  # PNG copies for the UI and quick looks; the PDFs are the thesi
 
 
 def save(fig, path, dpi=None):
-    """Save `path` (PDF: vector, rasterised artists at `dpi`) plus a PNG copy (`dpi`, default 200)."""
+    """Save a figure, plus a PNG copy of a PDF, and close it.
+
+    Parameters
+    ----------
+    fig : Figure
+    path : str or Path
+        PDF: vector, with rasterised artists at dpi.
+    dpi : float, optional
+        PNG default 200.
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     from pathlib import Path
 
     fig.savefig(path, dpi=dpi or "figure")

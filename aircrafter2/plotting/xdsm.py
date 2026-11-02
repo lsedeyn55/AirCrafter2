@@ -1,7 +1,8 @@
-"""XDSM of the AirCrafter 2.0 MDF architecture (docs/PLAN.md §4, as built in full_mdo).
+"""XDSM of the AirCrafter 2.0 MDF (multidisciplinary feasible) architecture, as built in problems/full_mdo.py.
 
 write_tex   pyXDSM TikZ source (compile with LaTeX, e.g. Overleaf; needs the pyxdsm .sty files).
 draw_pdf    a matplotlib quick-look version (no LaTeX needed).
+Called by api.py; see docs/PLAN.md section 4 for the architecture.
 """
 
 from pathlib import Path
@@ -55,9 +56,21 @@ DATA = [  # (from, to, label)  upper triangle: feed-forward; lower: feedback
 
 
 def write_tex(path):
+    """Write the pyXDSM TikZ source.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    Path
+        The .tex file.
+    """
     from pyxdsm.XDSM import FUNC, OPT, SOLVER, XDSM
 
     def tex(label):
+        """A label with LaTeX escapes."""
         for a, b in [("_", r"\_"), ("α", r"$\alpha$"), ("²", r"$^2$"), ("&", r"\&")]:
             label = label.replace(a, b)
         return label.replace("\n", r"\\ ")
@@ -74,6 +87,17 @@ def write_tex(path):
 
 
 def draw_pdf(path):
+    """Draw the matplotlib quick-look version.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
     n = len(BLOCKS)
     idx = {bid: i for i, (bid, _, _) in enumerate(BLOCKS)}
     import textwrap

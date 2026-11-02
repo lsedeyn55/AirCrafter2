@@ -159,6 +159,7 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
     """
     from ..robustness.rdo_problem import RetryNewton  # noqa: F401  (the MDAs are RetryNewton via mda_retry)
 
+    # --- sizes ---
     rob = mcfg.base.robust
     template = make_rule(rob, _template_dists(mcfg))
     N = template.n
@@ -166,6 +167,7 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
     rnames = robust_names(mcfg, extra_robust)
     dvs = list(mcfg.all_dvs())
 
+    # --- the nodes ---
     prob = om.Problem(reports=False)
     m = prob.model
     nodes = m.add_subsystem("nodes", om.ParallelGroup(), promotes_inputs=dvs)
@@ -175,6 +177,7 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
         nodes.add_subsystem(f"n{j}", g, promotes_inputs=dvs)
     set_dv_defaults(m, mcfg)
 
+    # --- the statistics ---
     ref_of = {n: kw.get("ref") or 1.0 for n, kw in cons}
     quantities = {"flight_score": rob.sigma_eps * 5.0}
     quantities.update({key_of(n): rob.sigma_eps * ref_of[n] for n in rnames})
@@ -187,6 +190,7 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
         for n in rnames:
             m.connect(f"nodes.n{j}.{n}", f"stats.{key_of(n)}_n{j}")
 
+    # --- the driver ---
     if driver:
         b = mcfg.base
         prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=b.tol, maxiter=b.maxiter, disp=True)
@@ -201,6 +205,7 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
                     m.add_constraint(f"stats.{k}_hi", upper=kw["upper"], ref=kw.get("ref"))
             else:
                 m.add_constraint(f"nodes.n0.{name}", **kw)
+    # --- values at the nodes ---
     prob.setup()
 
     for j in range(N):

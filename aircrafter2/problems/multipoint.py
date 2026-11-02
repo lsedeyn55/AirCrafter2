@@ -322,6 +322,7 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
     from ..scoring.dbf2025 import DBF2025, DBF2025Score
     from ..scoring.dbf2026 import DBF2026, DBF2026Score
 
+    # --- the mission points ---
     shared = list(mcfg.shared_dvs)
     per = mcfg.mp.per_point
     extra = list(mcfg.extra_dvs())
@@ -345,6 +346,7 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
     if defaults:
         set_dv_defaults(m, mcfg)
 
+    # --- the score ---
     if mcfg.mp.kind == "dbf2026":
         plugin = DBF2026(**mcfg.mp.scoring)
         m.add_subsystem(
@@ -367,6 +369,7 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
         m.connect("points.M2.ThreeLapTime", "scoring.t3_M2")
         m.connect("points.M3.laps_frac", "scoring.laps_M3")
 
+    # --- the rule limits ---
     r = mcfg.mp.rules
     eqs = ["togw_margin = togw_max - m_total"]
     kw = dict(togw_margin={"units": "kg"}, togw_max={"units": "kg", "val": r.togw_max_lb * LB}, m_total={"units": "kg"})

@@ -1,15 +1,9 @@
-"""Build an OpenVSP 3.55.0 model from geometry.json.
+"""Build an OpenVSP 3.55.0 model from geometry.json. See docs/modules/vsp.md.
 
-Frame: the framework's own (origin at the wing root LE, x aft, y to starboard, z up), in metres. OpenVSP models
-carry no length unit, so the model is built in metres and the STEP/IGES export unit is set to metres
-(STEPSettings:LenUnit = LEN_M, saved in the .vsp3).
-
-From the result: wing span / chord / airfoil, tail areas / aspect ratios / c/4 stations / t/c, boom start / length /
-radius, cargo-bay box and station, prop diameter and stations, nacelle length and diameter, spar station and radius,
-CG and NP. Illustrative (mockup_assumptions): vertical placement, blade shape, spinner, nacelle shape, the nose motor
-mount, fairings.
-
-Every key parameter is read back after it is set (`readback` in the result).
+Frame: the framework's own (origin at the wing root leading edge, x aft, y to starboard, z up), in metres. OpenVSP
+models carry no length unit, so the model is built in metres and the STEP/IGES export unit is set to metres
+(STEPSettings:LenUnit = LEN_M, saved in the .vsp3). Every key parameter is read back after it's set (`readback` in the
+result). What comes from the result and what's illustrative: docs/modules/vsp.md and `mockup_assumptions`.
 """
 
 import time
@@ -23,6 +17,7 @@ EXPORT_SET = None  # set index holding everything except the markers (assigned a
 
 
 def _vsp():
+    """The openvsp module. Raises RuntimeError if it's missing."""
     require_openvsp()
     import openvsp as vsp
 
@@ -30,14 +25,24 @@ def _vsp():
 
 
 def write_dat(coords, path, name):
-    """Selig-format airfoil file (name line, then x y)."""
+    """Write a Selig-format airfoil file: a name line, then x y.
+
+    Parameters
+    ----------
+    coords : array (n, 2)
+    path : path
+    name : str
+    """
     path = Path(path)
     path.write_text(name + "\n" + "\n".join(f"{x:.8f} {y:.8f}" for x, y in coords) + "\n")
     return path
 
 
 class _Builder:
+    """Thin helper over the OpenVSP API: remembers the components, markers and read-back values."""
+
     def __init__(self, vsp):
+        """Keep the openvsp module."""
         self.vsp = vsp
         self.readback = {}
         self.components = {}  # name -> list of geom ids
@@ -45,6 +50,7 @@ class _Builder:
 
     # --- helpers -------------------------------------------------------------------------------------------------
     def setp(self, gid, name, group, value):
+        """Set a parameter of a geometry. Raises KeyError if it doesn't exist."""
         vsp = self.vsp
         pid = vsp.FindParm(gid, name, group)
         if not pid:
@@ -53,6 +59,7 @@ class _Builder:
         return pid
 
     def setx(self, xsec, name, value):
+        """Set a cross-section parameter. Raises KeyError if it doesn't exist."""
         pid = self.vsp.GetXSecParm(xsec, name)
         if not pid:
             raise KeyError(f"OpenVSP xsec parm {name} not found")
@@ -60,6 +67,7 @@ class _Builder:
         return pid
 
     def place(self, gid, x=0.0, y=0.0, z=0.0, rx=0.0, ry=0.0, rz=0.0):
+        """Place a geometry: position [m] and rotation [deg]."""
         for n, val in [
             ("X_Rel_Location", x),
             ("Y_Rel_Location", y),
@@ -71,6 +79,7 @@ class _Builder:
             self.setp(gid, n, "XForm", val)
 
     def add(self, typ, name, component, marker=False):
+        """Add a geometry to a component, or as a marker."""
         gid = self.vsp.AddGeom(typ)
         self.vsp.SetGeomName(gid, name)
         (self.markers if marker else self.components.setdefault(component, [])).append(gid)
@@ -146,6 +155,7 @@ class _Builder:
         return gid
 
     def pod(self, name, component, length, diameter, marker=False):
+        """A streamlined pod along +x."""
         gid = self.add("POD", name, component, marker=marker)
         self.setp(gid, "Length", "Design", length)
         # OpenVSP 3.55 POD: max diameter = 2 Length / FineRatio (measured: FineRatio 6 on a 0.15 m pod gives a
@@ -154,12 +164,14 @@ class _Builder:
         return gid
 
     def prop(self, name, component, diameter, n_blades):
+        """A propeller disc, with its blades illustrative."""
         gid = self.add("PROP", name, component)
         self.setp(gid, "Diameter", "Design", diameter)
         self.setp(gid, "NumBlade", "Design", n_blades)
         return gid
 
     def sphere(self, name, r):
+        """A marker sphere (CG, NP)."""
         gid = self.add("ELLIPSOID", name, None, marker=True)
         for n in ("A_Radius", "B_Radius", "C_Radius"):
             self.setp(gid, n, "Design", r)
@@ -167,7 +179,22 @@ class _Builder:
 
 
 def build(geom, out_dir, name=None, incidence=None):
-    """Build, export and read back. Returns a dict with the file paths, the read-back values and the build time."""
+    """Build, export and read back a model.
+
+    Parameters
+    ----------
+    geom : dict
+        geometry.json's content.
+    out_dir : path
+    name : str, optional
+    incidence : str, optional
+        "zero" or "cruise"; default: the geometry's mockup option.
+
+    Returns
+    -------
+    dict
+        files, readback, build_s, name. Raises RuntimeError without OpenVSP.
+    """
     vsp = _vsp()
     t0 = time.perf_counter()
     out = Path(out_dir)
@@ -273,6 +300,7 @@ def build(geom, out_dir, name=None, incidence=None):
     rb["n_props"] = len(props)
 
     def bbox(g):
+        """A geometry's bounding box from OpenVSP."""
         return {k: vsp.GetParmVal(g, k, "BBox") for k in ("X_Min", "X_Len", "Y_Len", "Z_Len")}
 
     checks = {
@@ -327,6 +355,7 @@ def build(geom, out_dir, name=None, incidence=None):
 
 
 def _export_stl(vsp, path, set_index):
+    """Export one set as STL, and delete the mesh geometry OpenVSP adds."""
     mesh = vsp.ExportFile(str(path), set_index, vsp.EXPORT_STL)
     if mesh:
         vsp.DeleteGeom(mesh)

@@ -1,8 +1,8 @@
 """vsp_check.md: read the saved .vsp3 back and compare it with geometry.json.
 
-Reloads the written file (so the check covers the file round trip), reads the key parameters and CompGeom
-wetted areas, and compares them with the framework values. The framework is never changed to match: differences
-are explained in the report, and anything over 5 % is listed for docs/OPEN_QUESTIONS.md.
+Reloads the written file, so the check covers the file round trip, reads the key parameters and CompGeom wetted areas,
+and compares them with the framework values. The framework is never changed to match: differences are explained in the
+report, and anything over 5 % is listed for docs/OPEN_QUESTIONS.md. See docs/modules/vsp.md.
 """
 
 from pathlib import Path
@@ -15,6 +15,7 @@ FLAG = 0.05
 
 
 def _geoms(vsp):
+    """{geometry name: [ids]} of the loaded model."""
     out = {}
     for g in vsp.FindGeoms():
         out.setdefault(vsp.GetGeomName(g), []).append(g)
@@ -22,6 +23,7 @@ def _geoms(vsp):
 
 
 def _airfoil_tc(vsp, wing_id):
+    """The wing section's t/c as OpenVSP has it."""
     xs = vsp.GetXSec(vsp.GetXSecSurf(wing_id, 0), 0)
     up = np.array([(p.x(), p.y()) for p in vsp.GetAirfoilUpperPnts(xs)])
     lo = np.array([(p.x(), p.y()) for p in vsp.GetAirfoilLowerPnts(xs)])
@@ -60,7 +62,21 @@ def _cst_shape_difference(vsp, geom):
 
 
 def vsp_check(geom, vsp3_path, md_path=None):
-    """Rows (quantity, OpenVSP, framework, % difference, note) and the > 5 % list; writes md_path if given."""
+    """Compare the saved model with the framework values.
+
+    Parameters
+    ----------
+    geom : dict
+    vsp3_path : path
+    md_path : path, optional
+        Write the report here.
+
+    Returns
+    -------
+    dict
+        rows (quantity, OpenVSP, framework, % difference, note), wetted, flagged (the list over 5 %), cst_max_dy. Raises
+        RuntimeError without OpenVSP.
+    """
     require_openvsp()
     import openvsp as vsp
 
@@ -72,9 +88,11 @@ def vsp_check(geom, vsp3_path, md_path=None):
     )
 
     def gp(gid, n, grp):
+        """One OpenVSP parameter."""
         return vsp.GetParmVal(gid, n, grp)
 
     def bb(gid):
+        """A geometry's bounding box."""
         return {k: gp(gid, k, "BBox") for k in ("X_Min", "Y_Min", "Z_Min", "X_Len", "Y_Len", "Z_Len")}
 
     wing, ht, vt, cb, tb = (G[n][0] for n in ("Wing", "HorizontalTail", "VerticalTail", "CargoBay", "TailBoom"))
@@ -83,8 +101,10 @@ def vsp_check(geom, vsp3_path, md_path=None):
     rows = []
 
     def row(q, a, e, note=""):
+        """Append one comparison row."""
         rows.append((q, a, e, (a - e) / e * 100.0 if e else float("nan"), note))
 
+    # --- parameters: wing, tails, cargo bay, boom, props ---
     chord_w = vsp.GetParmVal(vsp.GetXSecParm(vsp.GetXSec(vsp.GetXSecSurf(wing, 0), 1), "Root_Chord"))
     row("wing span (m)", gp(wing, "TotalSpan", "WingGeom"), W["span_m"])
     row("wing area (m²)", gp(wing, "TotalArea", "WingGeom"), W["area_m2"])
@@ -136,6 +156,7 @@ def vsp_check(geom, vsp3_path, md_path=None):
             row(f"{vsp.GetGeomName(n)} length (m)", bb(n)["X_Len"], P["l_nac_m"])
 
     # CompGeom wetted areas of the export set (no markers) vs the framework's own formulas (aero/parasite.py)
+    # --- wetted areas (CompGeom) ---
     mesh = vsp.ComputeCompGeom(vsp.SET_FIRST_USER, False, 0)
     rid = vsp.FindLatestResultsID("Comp_Geom")
     wet, theo = {}, {}
@@ -172,6 +193,7 @@ def vsp_check(geom, vsp3_path, md_path=None):
         )
     cst_d, cst_x = _cst_shape_difference(vsp, geom)
 
+    # --- what is over the limit ---
     flagged = [r for r in rows if abs(r[3]) > 100 * FLAG] + [
         (f"{r[0]} area (CompGeom theoretical vs framework)", r[1], r[3], r[4], "")
         for r in wet_rows
@@ -183,6 +205,7 @@ def vsp_check(geom, vsp3_path, md_path=None):
 
 
 def _write_md(path, geom, rows, wet_rows, flagged, cst, vsp3_path):
+    """Write the report."""
     pv = geom["provenance"]
     L = [
         f"# OpenVSP consistency check: {pv.get('case_id') or Path(vsp3_path).stem}\n",
