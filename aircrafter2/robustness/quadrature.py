@@ -36,11 +36,11 @@ from scipy.stats import qmc
 class Rule:
     name: str
     nodes: np.ndarray  # (N, d), physical values
-    a: np.ndarray      # (N,)
-    D: np.ndarray      # (N,)    Q = diag(D) - U diag(c) U^T
-    U: np.ndarray      # (N, r)
-    c: np.ndarray      # (r,)
-    psd: bool          # Q positive semi-definite (var >= 0 for any f)
+    a: np.ndarray  # (N,)
+    D: np.ndarray  # (N,)    Q = diag(D) - U diag(c) U^T
+    U: np.ndarray  # (N, r)
+    c: np.ndarray  # (r,)
+    psd: bool  # Q positive semi-definite (var >= 0 for any f)
 
     @property
     def n(self):

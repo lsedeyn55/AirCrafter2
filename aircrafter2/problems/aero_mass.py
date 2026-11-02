@@ -32,8 +32,27 @@ from .wing_aero import Bounds
 
 SHARED_AERO = ["b", "c", "v", "rho", "mu", "upper_weights", "lower_weights", "le_weight", "te_thickness"]
 # mass inputs that other disciplines provide (connected), so the config must not set them
-MASS_FROM_OTHERS = {"b", "c_mean", "c_root", "S_wing", "tc", "t_at_spar", "A_c2", "P_c", "x_spar", "l_ht",
-                    "l_tb", "S_ht", "S_vt", "S_cb", "Cm", "CL_alpha", "V_design", "rho", "g"}
+MASS_FROM_OTHERS = {
+    "b",
+    "c_mean",
+    "c_root",
+    "S_wing",
+    "tc",
+    "t_at_spar",
+    "A_c2",
+    "P_c",
+    "x_spar",
+    "l_ht",
+    "l_tb",
+    "S_ht",
+    "S_vt",
+    "S_cb",
+    "Cm",
+    "CL_alpha",
+    "V_design",
+    "rho",
+    "g",
+}
 
 
 class GeometryInputs(BaseModel):
@@ -93,24 +112,44 @@ class AeroMassMDA(om.Group):
     def setup(self):
         cfg = self.options["cfg"]
         a = cfg.aero
-        self.add_subsystem("cruise", WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
-                                              max_mode=a.max_mode, rho_ks=a.rho_ks),
-                           promotes_inputs=SHARED_AERO + [("alpha", "alpha_cruise")])
+        self.add_subsystem(
+            "cruise",
+            WingAero(
+                num_x=a.num_x,
+                num_y=a.num_y,
+                spacing=a.spacing,
+                nf=a.nf_settings(),
+                max_mode=a.max_mode,
+                rho_ks=a.rho_ks,
+            ),
+            promotes_inputs=SHARED_AERO + [("alpha", "alpha_cruise")],
+        )
         bal = om.BalanceComp()
-        bal.add_balance("alpha_cruise", units="deg", eq_units="N", lhs_name="L_cruise", rhs_name="W",
-                        val=cfg.initial.get("alpha_cruise", 6.0), normalize=True)
+        bal.add_balance(
+            "alpha_cruise",
+            units="deg",
+            eq_units="N",
+            lhs_name="L_cruise",
+            rhs_name="W",
+            val=cfg.initial.get("alpha_cruise", 6.0),
+            normalize=True,
+        )
         self.add_subsystem("lift_balance", bal, promotes_inputs=["W"], promotes_outputs=["alpha_cruise"])
         self.connect("cruise.L", "lift_balance.L_cruise")
 
         mass_opts = cfg.mass.options.model_copy(update={"standalone_solver": True})
-        self.add_subsystem("mass", GarciaGamboaMass(config=mass_opts),
-                           promotes_inputs=["*", ("tc", "tc_max"), ("S_wing", "S"), ("V_design", "v")],
-                           promotes_outputs=["*"])
+        self.add_subsystem(
+            "mass",
+            GarciaGamboaMass(config=mass_opts),
+            promotes_inputs=["*", ("tc", "tc_max"), ("S_wing", "S"), ("V_design", "v")],
+            promotes_outputs=["*"],
+        )
         self.connect("cruise.Cm_wing", "Cm")
         self.connect("cruise.CL_alpha", "CL_alpha")
 
-        newton = om.NewtonSolver(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
-                                 iprint=-1, err_on_non_converge=True)
+        newton = om.NewtonSolver(
+            solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10, iprint=-1, err_on_non_converge=True
+        )
         newton.linesearch = om.BoundsEnforceLS()
         self.nonlinear_solver = newton
         self.linear_solver = om.DirectSolver()
@@ -118,22 +157,33 @@ class AeroMassMDA(om.Group):
 
 def add_aero_mass_model(m, cfg: AeroMassProblemConfig):
     """Add airfoil, geometry and the aero + mass MDA to a model (all promoted)."""
-    m.add_subsystem("airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes),
-                    promotes=["*"])
+    m.add_subsystem(
+        "airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes), promotes=["*"]
+    )
     m.add_subsystem("planform", RectPlanform(), promotes=["*"])
     m.add_subsystem("tail", TailGeometry(), promotes=["*"])
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
     m.add_subsystem("mda", AeroMassMDA(cfg=cfg), promotes=["*"])
-    m.add_subsystem("power", om.ExecComp("P_cruise = D * V", P_cruise={"units": "W"}, D={"units": "N"},
-                                         V={"units": "m/s"}), promotes_outputs=["P_cruise"])
+    m.add_subsystem(
+        "power",
+        om.ExecComp("P_cruise = D * V", P_cruise={"units": "W"}, D={"units": "N"}, V={"units": "m/s"}),
+        promotes_outputs=["P_cruise"],
+    )
     m.connect("cruise.D", "power.D")
     m.connect("v", "power.V")
 
     geo = cfg.geometry
-    for name, val, units in [("b", cfg.initial.get("b", 1.2), "m"), ("c", cfg.initial.get("c", 0.3), "m"),
-                             ("v", cfg.V, "m/s"), ("rho", 1.2, "kg/m**3"), ("x_spar", geo.x_spar, None),
-                             ("l_ht", geo.l_ht, "m"), ("S_ht", geo.S_ht, "m**2"), ("S_vt", geo.S_vt, "m**2"),
-                             ("g", 9.80665, "m/s**2")]:
+    for name, val, units in [
+        ("b", cfg.initial.get("b", 1.2), "m"),
+        ("c", cfg.initial.get("c", 0.3), "m"),
+        ("v", cfg.V, "m/s"),
+        ("rho", 1.2, "kg/m**3"),
+        ("x_spar", geo.x_spar, None),
+        ("l_ht", geo.l_ht, "m"),
+        ("S_ht", geo.S_ht, "m**2"),
+        ("S_vt", geo.S_vt, "m**2"),
+        ("g", 9.80665, "m/s**2"),
+    ]:
         m.set_input_defaults(name, val, units=units)
 
 

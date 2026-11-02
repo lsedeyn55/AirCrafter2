@@ -16,8 +16,14 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from ..plotting.style import PALETTE, TEXT_WIDTH_IN, figure, save
 
-COLOURS = {"wing": PALETTE[0], "tails": PALETTE[2], "cargo bay": PALETTE[3], "tail boom": "#4d4d4d",
-           "nacelles": PALETTE[4], "propulsion": PALETTE[5]}
+COLOURS = {
+    "wing": PALETTE[0],
+    "tails": PALETTE[2],
+    "cargo bay": PALETTE[3],
+    "tail boom": "#4d4d4d",
+    "nacelles": PALETTE[4],
+    "propulsion": PALETTE[5],
+}
 ORDER = ["cargo bay", "tail boom", "tails", "nacelles", "wing", "propulsion"]
 LIGHT = np.array([-0.4, -0.5, 0.75])
 LIGHT = LIGHT / np.linalg.norm(LIGHT)
@@ -31,7 +37,7 @@ def read_stl(path):
         v = [ln.split()[1:4] for ln in data.decode().splitlines() if ln.strip().startswith("vertex")]
         return np.asarray(v, float).reshape(-1, 3, 3)
     n = int(np.frombuffer(data[80:84], "<u4")[0])
-    rec = np.frombuffer(data[84:84 + 50 * n], dtype=np.dtype([("n", "<f4", 3), ("v", "<f4", (3, 3)), ("a", "<u2")]))
+    rec = np.frombuffer(data[84 : 84 + 50 * n], dtype=np.dtype([("n", "<f4", 3), ("v", "<f4", (3, 3)), ("a", "<u2")]))
     return rec["v"].astype(float)
 
 
@@ -49,9 +55,11 @@ def _shade(tris, colour, light=LIGHT):
 
 def _view_axes(view):
     """(horizontal axis index, vertical axis index, depth axis index, depth sign) for 2D projections."""
-    return {"top": (1, 0, 2, 1.0),     # y across, x (down, inverted by the caller), seen from +z
-            "side": (0, 2, 1, -1.0),   # x across, z up, seen from -y (port side)
-            "front": (1, 2, 0, -1.0)}[view]  # y across, z up, seen from -x (ahead)
+    return {
+        "top": (1, 0, 2, 1.0),  # y across, x (down, inverted by the caller), seen from +z
+        "side": (0, 2, 1, -1.0),  # x across, z up, seen from -y (port side)
+        "front": (1, 2, 0, -1.0),
+    }[view]  # y across, z up, seen from -x (ahead)
 
 
 def draw_projection(ax, meshes, view, alpha=1.0, flat=None):
@@ -79,16 +87,26 @@ def _markers_2d(ax, geom, view):
     pts = {"top": lambda x: (0.0, x), "side": lambda x: (x, z), "front": lambda x: (0.0, z)}[view]
     if view == "front":
         return
-    ax.plot(*pts(st["x_cg_m"]), "o", ms=5, color=PALETTE[1], mec="white", mew=0.6,
-            label=f"CG (SM = {st['static_margin']:.2f})", zorder=5)
+    ax.plot(
+        *pts(st["x_cg_m"]),
+        "o",
+        ms=5,
+        color=PALETTE[1],
+        mec="white",
+        mew=0.6,
+        label=f"CG (SM = {st['static_margin']:.2f})",
+        zorder=5,
+    )
     ax.plot(*pts(st["x_np_m"]), "^", ms=5, color="k", mec="white", mew=0.6, label="neutral point", zorder=5)
 
 
 def three_view(geom, meshes, path, title=None):
-    fig, axs = figure(1.0, 0.95, nrows=2, ncols=2,
-                      gridspec_kw=dict(height_ratios=[1.6, 1.0], hspace=0.35, wspace=0.25))
-    for ax, view, lab in [(axs[0, 0], "top", ("y (m)", "x (m)")), (axs[0, 1], "front", ("y (m)", "z (m)")),
-                          (axs[1, 0], "side", ("x (m)", "z (m)"))]:
+    fig, axs = figure(1.0, 0.95, nrows=2, ncols=2, gridspec_kw=dict(height_ratios=[1.6, 1.0], hspace=0.35, wspace=0.25))
+    for ax, view, lab in [
+        (axs[0, 0], "top", ("y (m)", "x (m)")),
+        (axs[0, 1], "front", ("y (m)", "z (m)")),
+        (axs[1, 0], "side", ("x (m)", "z (m)")),
+    ]:
         lo, hi = draw_projection(ax, meshes, view)
         _markers_2d(ax, geom, view)
         pad = 0.04 * (hi - lo).max()
@@ -111,12 +129,14 @@ def three_view(geom, meshes, path, title=None):
 def _caption(geom):
     P, W, pv = geom["propulsion"], geom["wing"], geom["provenance"]
     lay = "1 nose tractor" if P["n_motors"] == 1 else f"2 wing tractors at y = ±{P['y_m_m']:.3f} m"
-    return (f"{pv.get('case_id') or ''}\n{lay}, APC {P['prop']} ({P['D_prop_m'] / 0.0254:.0f} in), "
-            f"{pv['n_cells']:.0f}S\n3-lap time {pv['ThreeLapTime_s']:.2f} s, "
-            f"m = {geom['stations']['masses_kg']['m_total']:.2f} kg\n"
-            f"b = {W['span_m']:.3f} m, c = {W['chord_m']:.3f} m, t/c = {W['airfoil']['tc_max']:.3f}\n\n"
-            "Illustrative (not from the result): vertical\nplacement, blade and nacelle shape, spinner,\nmotor mount"
-            + (", fairings." if geom.get("mockup_options", {}).get("fairings") else "."))
+    return (
+        f"{pv.get('case_id') or ''}\n{lay}, APC {P['prop']} ({P['D_prop_m'] / 0.0254:.0f} in), "
+        f"{pv['n_cells']:.0f}S\n3-lap time {pv['ThreeLapTime_s']:.2f} s, "
+        f"m = {geom['stations']['masses_kg']['m_total']:.2f} kg\n"
+        f"b = {W['span_m']:.3f} m, c = {W['chord_m']:.3f} m, t/c = {W['airfoil']['tc_max']:.3f}\n\n"
+        "Illustrative (not from the result): vertical\nplacement, blade and nacelle shape, spinner,\nmotor mount"
+        + (", fairings." if geom.get("mockup_options", {}).get("fairings") else ".")
+    )
 
 
 def draw_iso(ax, meshes, geom=None, elev=22.0, azim=-128.0, limits=None, zoom=1.35):
@@ -143,8 +163,19 @@ def draw_iso(ax, meshes, geom=None, elev=22.0, azim=-128.0, limits=None, zoom=1.
         top = z1 - 0.15 * (z1 - z0)
         for x, mk, col, lab in ((st["x_cg_m"], "o", PALETTE[1], "CG"), (st["x_np_m"], "^", "k", "NP")):
             ax.plot([x, x], [0, 0], [z, top], color=col, lw=0.6, ls=":", zorder=10)
-            ax.scatter([x], [0], [top], marker=mk, s=16, color=col, edgecolors="white", linewidths=0.5,
-                       depthshade=False, zorder=11, label=f"{lab} (pin above its station)")
+            ax.scatter(
+                [x],
+                [0],
+                [top],
+                marker=mk,
+                s=16,
+                color=col,
+                edgecolors="white",
+                linewidths=0.5,
+                depthshade=False,
+                zorder=11,
+                label=f"{lab} (pin above its station)",
+            )
     ax.set_axis_off()
     return limits
 

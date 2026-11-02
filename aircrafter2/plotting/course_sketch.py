@@ -44,16 +44,22 @@ def _draw(ax, legs, title, takeoff_on=False, start_offset_ft=0.0):
     colour = {"head": "#c0392b", "tail": "#2471a3", "none": "#7f8c8d", None: "#555555"}
     if takeoff_on and legs and legs[0].kind == "straight":  # runway along the first straight, from brake release
         L = min(legs[0].length_ft + start_offset_ft, 300.0)
-        ax.add_patch(Rectangle((-start_offset_ft, -12.0), L, 24.0, color="#d5d8dc",
-                               zorder=0))
+        ax.add_patch(Rectangle((-start_offset_ft, -12.0), L, 24.0, color="#d5d8dc", zorder=0))
         ax.annotate("runway", (-start_offset_ft + 5.0, 18.0), fontsize=7, color="0.4")
     for kind, xs, ys, i, wind in segs:
-        ax.plot(xs, ys, color=colour[wind], lw=2.0 if kind == "straight" else 1.4,
-                ls="-" if kind == "straight" else "--")
+        ax.plot(
+            xs, ys, color=colour[wind], lw=2.0 if kind == "straight" else 1.4, ls="-" if kind == "straight" else "--"
+        )
         k = len(xs) // 2
         xm, ym = (xs.mean(), ys.mean()) if kind == "straight" else (xs[k], ys[k])
-        ax.annotate(str(i), (xm, ym), fontsize=8, ha="center", va="center",
-                    bbox=dict(boxstyle="circle,pad=0.2", fc="white", ec="0.5", lw=0.6))
+        ax.annotate(
+            str(i),
+            (xm, ym),
+            fontsize=8,
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="circle,pad=0.2", fc="white", ec="0.5", lw=0.6),
+        )
     ax.plot([0.0, 0.0], [-40.0, 40.0], color="k", lw=2.5)
     ax.annotate("start", (0.0, -58.0), fontsize=8, ha="center")
     xs = np.concatenate([s[1] for s in segs])
@@ -62,13 +68,18 @@ def _draw(ax, legs, title, takeoff_on=False, start_offset_ft=0.0):
     if head_hdgs:  # wind blows opposite to the head-wind heading
         h = head_hdgs[0] + np.pi
         x0, y0 = xs.min() + 0.08 * span, ys.max() + 0.12 * span
-        ax.annotate("", (x0 + 0.15 * span * np.cos(h) + 0.15 * span, y0 + 0.15 * span * np.sin(h)),
-                    (x0 + 0.15 * span, y0), arrowprops=dict(arrowstyle="->", lw=1.5))
+        ax.annotate(
+            "",
+            (x0 + 0.15 * span * np.cos(h) + 0.15 * span, y0 + 0.15 * span * np.sin(h)),
+            (x0 + 0.15 * span, y0),
+            arrowprops=dict(arrowstyle="->", lw=1.5),
+        )
         ax.annotate("wind", (x0 + 0.15 * span, y0 + 0.04 * span), fontsize=8, ha="center")
     else:
         ax.annotate("no along-track wind", (xs.min(), ys.max() + 0.12 * span), fontsize=8)
-    ax.set_title(f"{title}: {lap_length_ft(legs):.0f} ft of straights, {total_turning_deg(legs):g}° of turning",
-                 fontsize=9)
+    ax.set_title(
+        f"{title}: {lap_length_ft(legs):.0f} ft of straights, {total_turning_deg(legs):g}° of turning", fontsize=9
+    )
     ax.set_aspect("equal")
     ax.set_xlim(xs.min() - 0.1 * span, xs.max() + 0.1 * span)
     ax.set_ylim(ys.min() - 0.1 * span, ys.max() + 0.25 * span)
@@ -89,10 +100,12 @@ def course_sketch(other, lap1=None, takeoff_on=False, start_offset_ft=0.0):
     for ax, (title, legs) in zip(axes[0], laps):
         first = title in ("lap 1", "every lap")
         _draw(ax, legs, title, takeoff_on and first, start_offset_ft if first else 0.0)
-    handles = [Line2D([], [], color="#c0392b", lw=2, label="head-wind straight"),
-               Line2D([], [], color="#2471a3", lw=2, label="tail-wind straight"),
-               Line2D([], [], color="#7f8c8d", lw=2, label="crosswind straight"),
-               Line2D([], [], color="#555555", lw=1.4, ls="--", label=f"turn (schematic radius {R_SCHEMATIC_FT:.0f} ft)")]
+    handles = [
+        Line2D([], [], color="#c0392b", lw=2, label="head-wind straight"),
+        Line2D([], [], color="#2471a3", lw=2, label="tail-wind straight"),
+        Line2D([], [], color="#7f8c8d", lw=2, label="crosswind straight"),
+        Line2D([], [], color="#555555", lw=1.4, ls="--", label=f"turn (schematic radius {R_SCHEMATIC_FT:.0f} ft)"),
+    ]
     fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=7, frameon=False)
     fig.tight_layout(rect=(0, 0.12, 1, 1))
     return fig

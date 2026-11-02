@@ -72,11 +72,11 @@ def m3_term(laps, banner_in, span_ft):
 @register("dbf2026")
 class DBF2026(ScoringPlugin):
     """Flight score M1 + M2 + M3 of the 2025-26 rules, from the multipoint problem's M2 and M3 points."""
+
     sense = "max"
     ref = 5.0
     multipoint = True
-    inputs = {"n_p": None, "n_c": None, "laps_M2": None, "E_M2": "W*h", "laps_M3": None, "L_banner": "inch",
-              "b": "m"}
+    inputs = {"n_p": None, "n_c": None, "laps_M2": None, "E_M2": "W*h", "laps_M3": None, "L_banner": "inch", "b": "m"}
 
     def __init__(self, NI_max=2800.0, B_max=1500.0, w2=1.0, w3=1.0, m1=1.0, cap_delta=0.005, **rules):
         k = dict(RULES)
@@ -92,9 +92,19 @@ class DBF2026(ScoringPlugin):
         d = 0.0 if hard else o["cap_delta"]
         m2 = 1.0 + cap(r2, d)
         m3 = 2.0 + cap(r3, d)
-        return dict(M1=o["m1"] + 0.0 * m2, M2=m2, M3=m3, net_income=ni, m3_term=t3, RAC=rac(x["b"] / FT),
-                    EF=x["E_M2"] / 100.0, flight_score=o["m1"] + m2 + m3, score=o["m1"] + o["w2"] * m2 + o["w3"] * m3,
-                    r_M2=r2, r_M3=r3)
+        return dict(
+            M1=o["m1"] + 0.0 * m2,
+            M2=m2,
+            M3=m3,
+            net_income=ni,
+            m3_term=t3,
+            RAC=rac(x["b"] / FT),
+            EF=x["E_M2"] / 100.0,
+            flight_score=o["m1"] + m2 + m3,
+            score=o["m1"] + o["w2"] * m2 + o["w3"] * m3,
+            r_M2=r2,
+            r_M3=r3,
+        )
 
     def score(self, x):
         return self.parts(x)["score"]
@@ -117,6 +127,7 @@ class DBF2026(ScoringPlugin):
 
 class DBF2026Score(om.ExplicitComponent):
     """score (the objective, with the bookend weights), plus M1, M2, M3, flight_score, net_income, m3_term, RAC, EF."""
+
     OUT = ["score", "M1", "M2", "M3", "flight_score", "net_income", "m3_term", "RAC", "EF", "r_M2", "r_M3"]
 
     def initialize(self):

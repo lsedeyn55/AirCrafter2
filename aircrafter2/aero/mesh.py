@@ -12,8 +12,12 @@ class RectWingMesh(om.ExplicitComponent):
     def initialize(self):
         self.options.declare("num_x", default=3, types=int, desc="chordwise nodes")
         self.options.declare("num_y", default=11, types=int, desc="spanwise nodes on the half wing")
-        self.options.declare("spacing", default="cosine", values=["cosine", "uniform"],
-                             desc="spanwise spacing; cosine clusters panels at the tip")
+        self.options.declare(
+            "spacing",
+            default="cosine",
+            values=["cosine", "uniform"],
+            desc="spanwise spacing; cosine clusters panels at the tip",
+        )
 
     def setup(self):
         nx, ny = self.options["num_x"], self.options["num_y"]
@@ -32,10 +36,12 @@ class RectWingMesh(om.ExplicitComponent):
 
         size = nx * ny * 3
         idx = np.arange(size).reshape(nx, ny, 3)
-        self.declare_partials("mesh", "b", rows=idx[:, :, 1].ravel(), cols=np.zeros(nx * ny, int),
-                              val=np.tile(self._eta, nx))
-        self.declare_partials("mesh", "c", rows=idx[:, :, 0].ravel(), cols=np.zeros(nx * ny, int),
-                              val=np.repeat(self._xi, ny))
+        self.declare_partials(
+            "mesh", "b", rows=idx[:, :, 1].ravel(), cols=np.zeros(nx * ny, int), val=np.tile(self._eta, nx)
+        )
+        self.declare_partials(
+            "mesh", "c", rows=idx[:, :, 0].ravel(), cols=np.zeros(nx * ny, int), val=np.repeat(self._xi, ny)
+        )
 
     def compute(self, inputs, outputs):
         nx, ny = self.options["num_x"], self.options["num_y"]

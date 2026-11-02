@@ -5,8 +5,10 @@ anything back into the framework. OpenVSP is optional: see the README section "O
 locally)". Everything except `build` (which needs OpenVSP) works without it.
 """
 
-INSTALL_HINT = ("OpenVSP is not available in this environment. It is optional; see the README section "
-                "'OpenVSP (optional, installed locally)' to install it into the project venv.")
+INSTALL_HINT = (
+    "OpenVSP is not available in this environment. It is optional; see the README section "
+    "'OpenVSP (optional, installed locally)' to install it into the project venv."
+)
 
 
 def have_openvsp():

@@ -93,8 +93,7 @@ class TubeSparSizing(AnalyticComponent):
             ins["theta_tip_max"] = (0.035, "rad")
         if self.options["use_min_gauge"]:
             ins["t_tube_min"] = (5e-4, "m")
-        outs = {name: (1e-4, "m") for name in
-                ["t_sigma", "t_delta", "t_tau", "t_T", "t_div", "t_tube_req", "t_tube"]}
+        outs = {name: (1e-4, "m") for name in ["t_sigma", "t_delta", "t_tau", "t_T", "t_div", "t_tube_req", "t_tube"]}
         if self.options["include_twist"]:
             outs["t_theta"] = (1e-4, "m")
         if self.options["use_min_gauge"]:
@@ -125,10 +124,17 @@ class TubeSparSizing(AnalyticComponent):
         P, dPdb, dPdy = deflection_poly(b, x["y1"], opt["deflection_mode"])
         n, W, ratio = x["n"], x["W"], x["delta_tip_ratio"]
         t_del = n * W * P / (384.0 * E * ratio * b**2 * pi * r**3)
-        g_del = D({
-            "n": t_del / n, "W": t_del / W, "E_spar": -t_del / E, "delta_tip_ratio": -t_del / ratio,
-            "_rs": -3.0 * t_del / r, "b": t_del * (dPdb / P - 2.0 / b), "y1": t_del * dPdy / P,
-        })
+        g_del = D(
+            {
+                "n": t_del / n,
+                "W": t_del / W,
+                "E_spar": -t_del / E,
+                "delta_tip_ratio": -t_del / ratio,
+                "_rs": -3.0 * t_del / r,
+                "b": t_del * (dPdb / P - 2.0 / b),
+                "y1": t_del * dPdy / P,
+            }
+        )
 
         # Eq. 112: shear (3/2 peak factor as printed; PLAN G11)
         k = 3.0 / (4.0 * tau * pi * r)
@@ -147,10 +153,17 @@ class TubeSparSizing(AnalyticComponent):
         A0 = b**2 * c**2 * x["CL_alpha"] / (4.0 * gfac * pi * r**3 * G)
         arm = x["x_spar"] - 0.25
         raw = A0 * x["q_div"] * arm
-        g_raw = D({
-            "b": 2.0 * raw / b, "c_mean": 2.0 * raw / c, "CL_alpha": A0 * x["q_div"] * arm / x["CL_alpha"],
-            "_rs": -3.0 * raw / r, "G_spar": -raw / G, "q_div": A0 * arm, "x_spar": A0 * x["q_div"],
-        })
+        g_raw = D(
+            {
+                "b": 2.0 * raw / b,
+                "c_mean": 2.0 * raw / c,
+                "CL_alpha": A0 * x["q_div"] * arm / x["CL_alpha"],
+                "_rs": -3.0 * raw / r,
+                "G_spar": -raw / G,
+                "q_div": A0 * arm,
+                "x_spar": A0 * x["q_div"],
+            }
+        )
         t_div, dsp = softplus(raw, opt["softplus_scale"], mode)
         g_div = dsp * g_raw
 
@@ -160,8 +173,9 @@ class TubeSparSizing(AnalyticComponent):
             th = x["theta_tip_max"]
             k = b / (4.0 * gfac * pi * r**3 * G * th)
             t_th = x["T_fl"] * k
-            g_th = D({"T_fl": k, "b": t_th / b, "_rs": -3.0 * t_th / r, "G_spar": -t_th / G,
-                      "theta_tip_max": -t_th / th})
+            g_th = D(
+                {"T_fl": k, "b": t_th / b, "_rs": -3.0 * t_th / r, "G_spar": -t_th / G, "theta_tip_max": -t_th / th}
+            )
             tors.append(t_th)
             g_tors_list.append(g_th)
             values["t_theta"], grads["t_theta"] = t_th, g_th
@@ -182,10 +196,8 @@ class TubeSparSizing(AnalyticComponent):
         else:
             t_tube, g_tube = t_req, g_req
 
-        values.update(t_sigma=t_sig, t_delta=t_del, t_tau=t_tau, t_T=t_T, t_div=t_div,
-                      t_tube_req=t_req, t_tube=t_tube)
-        grads.update(t_sigma=g_sig, t_delta=g_del, t_tau=g_tau, t_T=g_T, t_div=g_div,
-                     t_tube_req=g_req, t_tube=g_tube)
+        values.update(t_sigma=t_sig, t_delta=t_del, t_tau=t_tau, t_T=t_T, t_div=t_div, t_tube_req=t_req, t_tube=t_tube)
+        grads.update(t_sigma=g_sig, t_delta=g_del, t_tau=g_tau, t_T=g_T, t_div=g_div, t_tube_req=g_req, t_tube=g_tube)
 
         # chain rule: "_rs" holds d/d r_s; map it onto (r_tube, c_root, c_mean)
         for name, g in grads.items():
@@ -234,14 +246,32 @@ class RibSizing(AnalyticComponent):
         sig, tau = x["sigma_balsa_allow"], x["tau_balsa_allow"]
 
         a = 600.0 * n * W * f**2 / (391.0 * tau * tc * c)  # Eq. 100
-        ga = D({"n": a / n, "W": a / W, "c_rib_frac": 2.0 * a / f, "tau_balsa_allow": -a / tau,
-                "tc": -a / tc, "c_root": -a / c})
+        ga = D(
+            {
+                "n": a / n,
+                "W": a / W,
+                "c_rib_frac": 2.0 * a / f,
+                "tau_balsa_allow": -a / tau,
+                "tc": -a / tc,
+                "c_root": -a / c,
+            }
+        )
         s = 2400.0 * n * W * f**3 / (1173.0 * sig * tc**2 * c)  # Eq. 103
-        gs = D({"n": s / n, "W": s / W, "c_rib_frac": 3.0 * s / f, "sigma_balsa_allow": -s / sig,
-                "tc": -2.0 * s / tc, "c_root": -s / c})
+        gs = D(
+            {
+                "n": s / n,
+                "W": s / W,
+                "c_rib_frac": 3.0 * s / f,
+                "sigma_balsa_allow": -s / sig,
+                "tc": -2.0 * s / tc,
+                "c_root": -s / c,
+            }
+        )
         nt, w = ks_max([a, s], self.options["rho_ks"], self.options["max_mode"])  # Eq. 104
-        return ({"nt_rib_tau": a, "nt_rib_sigma": s, "nt_rib": nt},
-                {"nt_rib_tau": ga, "nt_rib_sigma": gs, "nt_rib": combine(w, [ga, gs])})
+        return (
+            {"nt_rib_tau": a, "nt_rib_sigma": s, "nt_rib": nt},
+            {"nt_rib_tau": ga, "nt_rib_sigma": gs, "nt_rib": combine(w, [ga, gs])},
+        )
 
 
 class TailBoomSizing(AnalyticComponent):
@@ -294,8 +324,9 @@ class TailBoomSizing(AnalyticComponent):
 
         k = l**2 / (2.0 * E * pi * r**3 * th)
         t_th = Q * k  # Eq. 121
-        g_th = D({"Q_tb": k, "l_tb": 2.0 * t_th / l, "E_tb": -t_th / E, "r_tb": -3.0 * t_th / r,
-                  "theta_tb_max": -t_th / th})
+        g_th = D(
+            {"Q_tb": k, "l_tb": 2.0 * t_th / l, "E_tb": -t_th / E, "r_tb": -3.0 * t_th / r, "theta_tb_max": -t_th / th}
+        )
 
         k = 3.0 / (4.0 * tau * pi * r)
         t_t = Q * k  # Eq. 122

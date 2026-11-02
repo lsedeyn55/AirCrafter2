@@ -26,16 +26,35 @@ from .materials import Allowables
 from .section import SectionCoeffs, TubeFitMargin, TubeRadius
 from .sizing import RibSizing, TailBoomSizing, TubeSparSizing
 
-MASS_OUTPUTS = ["m_tube", "m_rib", "m_le", "m_te", "m_film", "m_wing", "m_ht", "m_vt", "m_tb", "m_cb",
-                "m_fus", "m_gear", "m_empty", "m_total", "m_stat"]
+MASS_OUTPUTS = [
+    "m_tube",
+    "m_rib",
+    "m_le",
+    "m_te",
+    "m_film",
+    "m_wing",
+    "m_ht",
+    "m_vt",
+    "m_tb",
+    "m_cb",
+    "m_fus",
+    "m_gear",
+    "m_empty",
+    "m_total",
+    "m_stat",
+]
 
 
 class GarciaGamboaMass(om.Group):
     def initialize(self):
         self.options.declare("config", default=None, types=(MassOptions, type(None)))
-        self.options.declare("external_sizing", default=False, types=bool,
-                             desc="the loads see an external sizing mass m (no closure m = m_total): a mission point "
-                             "that flies an airframe sized at another point (problems/multipoint.py)")
+        self.options.declare(
+            "external_sizing",
+            default=False,
+            types=bool,
+            desc="the loads see an external sizing mass m (no closure m = m_total): a mission point "
+            "that flies an airframe sized at another point (problems/multipoint.py)",
+        )
 
     def setup(self):
         opts = self.options["config"] or MassOptions()
@@ -47,20 +66,34 @@ class GarciaGamboaMass(om.Group):
         if opts.r_tube_mode == "derived":
             self.add_subsystem("tube_radius", TubeRadius(), promotes=["*"])
         self.add_subsystem("section", SectionCoeffs(), promotes=["*"])
-        self.add_subsystem("wing_loads", WingLoads(n_motor_pairs=opts.n_motor_pairs,
-                                                   motor_inertia_relief=opts.motor_inertia_relief,
-                                                   nacelle_torsion=opts.nacelle_torsion), promotes=["*"])
+        self.add_subsystem(
+            "wing_loads",
+            WingLoads(
+                n_motor_pairs=opts.n_motor_pairs,
+                motor_inertia_relief=opts.motor_inertia_relief,
+                nacelle_torsion=opts.nacelle_torsion,
+            ),
+            promotes=["*"],
+        )
         self.add_subsystem("critical_loads", CriticalLoads(**smooth), promotes=["*"])
-        self.add_subsystem("spar_sizing", TubeSparSizing(
-            **smooth, softplus_scale=opts.softplus_scale, deflection_mode=opts.deflection_mode,
-            torsion_stiffness_mode=opts.torsion_stiffness_mode, include_twist=opts.include_twist,
-            use_min_gauge=opts.use_min_gauge, sizing_radius_mode=opts.sizing_radius_mode), promotes=["*"])
+        self.add_subsystem(
+            "spar_sizing",
+            TubeSparSizing(
+                **smooth,
+                softplus_scale=opts.softplus_scale,
+                deflection_mode=opts.deflection_mode,
+                torsion_stiffness_mode=opts.torsion_stiffness_mode,
+                include_twist=opts.include_twist,
+                use_min_gauge=opts.use_min_gauge,
+                sizing_radius_mode=opts.sizing_radius_mode,
+            ),
+            promotes=["*"],
+        )
         self.add_subsystem("rib_sizing", RibSizing(**smooth), promotes=["*"])
         self.add_subsystem("wing_mass", WingMass(n_panels=opts.n_panels), promotes=["*"])
         self.add_subsystem("tail_mass", TailMass(tail_mass_model=opts.tail_mass_model), promotes=["*"])
         self.add_subsystem("boom_loads", TailBoomLoads(load_mode=opts.tail_boom_load_mode), promotes=["*"])
-        self.add_subsystem("boom_sizing", TailBoomSizing(**smooth, use_min_gauge=opts.tb_min_gauge),
-                           promotes=["*"])
+        self.add_subsystem("boom_sizing", TailBoomSizing(**smooth, use_min_gauge=opts.tb_min_gauge), promotes=["*"])
         self.add_subsystem("fuselage_mass", FuselageMass(), promotes=["*"])
         self.add_subsystem("gear_mass", GearMass(), promotes=["*"])
         self.add_subsystem("mass_sum", MassSum(), promotes=["*"])
@@ -90,9 +123,12 @@ class GarciaGamboaMass(om.Group):
         # Initial guess of the closure from the statistical model (Eq. 124-126), first solve only.
         if not self._guessed and not self.options["external_sizing"]:
             m_pay = inputs["statistical.m_pay"]  # computed payloads (stores) may not be transferred yet: floor it
-            outputs["m_total"] = statistical_mass(inputs["statistical.b"], inputs["statistical.c_mean"],
-                                                  m_pay if np.real(m_pay).min() > 0.0 else 0.5 + 0.0 * m_pay,
-                                                  self._opts.statistical_model)
+            outputs["m_total"] = statistical_mass(
+                inputs["statistical.b"],
+                inputs["statistical.c_mean"],
+                m_pay if np.real(m_pay).min() > 0.0 else 0.5 + 0.0 * m_pay,
+                self._opts.statistical_model,
+            )
             self._guessed = True
 
 

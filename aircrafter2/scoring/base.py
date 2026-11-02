@@ -37,6 +37,7 @@ def register(name):
         cls.name = name
         _REGISTRY[name] = cls
         return cls
+
     return deco
 
 
@@ -90,8 +91,7 @@ class ScoreComponent(om.ExplicitComponent):
 
 def add_scoring(model, plugin, objective=True):
     """Add the plug-in's score component (promoted) and set the objective and constraints."""
-    model.add_subsystem("scoring", plugin.component(), promotes_inputs=list(plugin.inputs),
-                        promotes_outputs=["score"])
+    model.add_subsystem("scoring", plugin.component(), promotes_inputs=list(plugin.inputs), promotes_outputs=["score"])
     if objective:
         model.add_objective("score", ref=plugin.ref if plugin.sense == "min" else -plugin.ref)
     for name, kw in plugin.constraints():

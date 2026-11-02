@@ -69,19 +69,39 @@ class WingMass(AnalyticComponent):
 
         ring = pi * (2.0 * r * t - t**2)
         m_tube = ring * b * rs  # Eq. 30
-        g_tube = D({"r_tube": 2.0 * pi * t * b * rs, "t_tube": 2.0 * pi * (r - t) * b * rs,
-                    "b": ring * rs, "rho_spar": ring * b})
+        g_tube = D(
+            {
+                "r_tube": 2.0 * pi * t * b * rs,
+                "t_tube": 2.0 * pi * (r - t) * b * rs,
+                "b": ring * rs,
+                "rho_spar": ring * b,
+            }
+        )
 
         nt, Kr = x["nt_rib"], x["K_A_rib"]
         m_rib = nt * Kr * tc * c**2 * rb  # Eq. 26
-        g_rib = D({"nt_rib": Kr * tc * c**2 * rb, "K_A_rib": nt * tc * c**2 * rb, "tc": nt * Kr * c**2 * rb,
-                   "c_mean": 2.0 * nt * Kr * tc * c * rb, "rho_balsa": nt * Kr * tc * c**2})
+        g_rib = D(
+            {
+                "nt_rib": Kr * tc * c**2 * rb,
+                "K_A_rib": nt * tc * c**2 * rb,
+                "tc": nt * Kr * c**2 * rb,
+                "c_mean": 2.0 * nt * Kr * tc * c * rb,
+                "rho_balsa": nt * Kr * tc * c**2,
+            }
+        )
 
         def stringer(kname):  # Eqs. 27, 31
             K = x[kname]
             m = K * tc * c**2 * b * rb
-            g = D({kname: tc * c**2 * b * rb, "tc": K * c**2 * b * rb, "c_mean": 2.0 * K * tc * c * b * rb,
-                   "b": K * tc * c**2 * rb, "rho_balsa": K * tc * c**2 * b})
+            g = D(
+                {
+                    kname: tc * c**2 * b * rb,
+                    "tc": K * c**2 * b * rb,
+                    "c_mean": 2.0 * K * tc * c * b * rb,
+                    "b": K * tc * c**2 * rb,
+                    "rho_balsa": K * tc * c**2 * b,
+                }
+            )
             return m, g
 
         m_le, g_le = stringer("K_A_le")
@@ -100,15 +120,35 @@ class WingMass(AnalyticComponent):
         dF = (npan - 1) * f ** (npan - 2) if npan > 1 else 0.0 * f
         fb, kw = x["f_build"], x["k_wing"]
         m_wing = kw * F * bare * (1.0 + wr) * fb  # Eq. 32 (x k_wing x f_build)
-        g_wing = (kw * F * (1.0 + wr) * fb) * g_bare + D({"f_wing": kw * dF * bare * (1.0 + wr) * fb,
-                                                          "winglet_ratio": kw * F * bare * fb,
-                                                          "k_wing": F * bare * (1.0 + wr) * fb,
-                                                          "f_build": kw * F * bare * (1.0 + wr)})
+        g_wing = (kw * F * (1.0 + wr) * fb) * g_bare + D(
+            {
+                "f_wing": kw * dF * bare * (1.0 + wr) * fb,
+                "winglet_ratio": kw * F * bare * fb,
+                "k_wing": F * bare * (1.0 + wr) * fb,
+                "f_build": kw * F * bare * (1.0 + wr),
+            }
+        )
 
-        return ({"m_tube": m_tube, "m_rib": m_rib, "m_le": m_le, "m_te": m_te, "m_film": m_film,
-                 "m_wing_bare": bare, "m_wing": m_wing},
-                {"m_tube": g_tube, "m_rib": g_rib, "m_le": g_le, "m_te": g_te, "m_film": g_film,
-                 "m_wing_bare": g_bare, "m_wing": g_wing})
+        return (
+            {
+                "m_tube": m_tube,
+                "m_rib": m_rib,
+                "m_le": m_le,
+                "m_te": m_te,
+                "m_film": m_film,
+                "m_wing_bare": bare,
+                "m_wing": m_wing,
+            },
+            {
+                "m_tube": g_tube,
+                "m_rib": g_rib,
+                "m_le": g_le,
+                "m_te": g_te,
+                "m_film": g_film,
+                "m_wing_bare": g_bare,
+                "m_wing": g_wing,
+            },
+        )
 
 
 class TailMass(AnalyticComponent):
@@ -127,8 +167,14 @@ class TailMass(AnalyticComponent):
     def io(self):
         if self.options["tail_mass_model"] == "areal":
             # S_wing is kept (unused) so the group's interface is the same in both modes (it is promoted by name)
-            ins = {"S_wing": (0.9, "m**2"), "S_ht": (0.1, "m**2"), "S_vt": (0.08, "m**2"),
-                   "a_ht": (1.0, "kg/m**2"), "a_vt": (1.0, "kg/m**2"), "f_build": (1.0, None)}
+            ins = {
+                "S_wing": (0.9, "m**2"),
+                "S_ht": (0.1, "m**2"),
+                "S_vt": (0.08, "m**2"),
+                "a_ht": (1.0, "kg/m**2"),
+                "a_vt": (1.0, "kg/m**2"),
+                "f_build": (1.0, None),
+            }
         else:
             ins = {
                 "m_wing": (0.7, "kg"),
@@ -154,8 +200,9 @@ class TailMass(AnalyticComponent):
             f, Ss = x[f"f_{surf}"], x[f"S_{surf}"]
             m = f * Ss / S * mw
             values[f"m_{surf}"] = m
-            grads[f"m_{surf}"] = D({f"f_{surf}": Ss / S * mw, f"S_{surf}": f / S * mw,
-                                    "S_wing": -m / S, "m_wing": f * Ss / S})
+            grads[f"m_{surf}"] = D(
+                {f"f_{surf}": Ss / S * mw, f"S_{surf}": f / S * mw, "S_wing": -m / S, "m_wing": f * Ss / S}
+            )
         return values, grads
 
 
@@ -183,13 +230,19 @@ class FuselageMass(AnalyticComponent):
         r, t, l, rho, f, fb = x["r_tb"], x["t_tb"], x["l_tb"], x["rho_tb"], x["f_tb"], x["f_build"]
         ring = np.pi * (2.0 * r * t - t**2)
         m_tb = f * ring * l * rho * fb
-        g_tb = D({"r_tb": f * 2.0 * np.pi * t * l * rho * fb, "t_tb": f * 2.0 * np.pi * (r - t) * l * rho * fb,
-                  "l_tb": f * ring * rho * fb, "rho_tb": f * ring * l * fb, "f_tb": ring * l * rho * fb,
-                  "f_build": f * ring * l * rho})
+        g_tb = D(
+            {
+                "r_tb": f * 2.0 * np.pi * t * l * rho * fb,
+                "t_tb": f * 2.0 * np.pi * (r - t) * l * rho * fb,
+                "l_tb": f * ring * rho * fb,
+                "rho_tb": f * ring * l * fb,
+                "f_tb": ring * l * rho * fb,
+                "f_build": f * ring * l * rho,
+            }
+        )
         m_cb = x["f_cb"] * x["S_cb"] * fb
         g_cb = D({"f_cb": x["S_cb"] * fb, "S_cb": x["f_cb"] * fb, "f_build": x["f_cb"] * x["S_cb"]})
-        return ({"m_tb": m_tb, "m_cb": m_cb, "m_fus": m_tb + m_cb},
-                {"m_tb": g_tb, "m_cb": g_cb, "m_fus": g_tb + g_cb})
+        return ({"m_tb": m_tb, "m_cb": m_cb, "m_fus": m_tb + m_cb}, {"m_tb": g_tb, "m_cb": g_cb, "m_fus": g_tb + g_cb})
 
 
 class GearMass(AnalyticComponent):
@@ -200,8 +253,10 @@ class GearMass(AnalyticComponent):
 
     def evaluate(self, x):
         fb = x["f_build"]
-        return ({"m_gear": x["f_gear"] * x["m"] * fb},
-                {"m_gear": D({"f_gear": x["m"] * fb, "m": x["f_gear"] * fb, "f_build": x["f_gear"] * x["m"]})})
+        return (
+            {"m_gear": x["f_gear"] * x["m"] * fb},
+            {"m_gear": D({"f_gear": x["m"] * fb, "m": x["f_gear"] * fb, "f_build": x["f_gear"] * x["m"]})},
+        )
 
 
 class MassSum(AnalyticComponent):
@@ -222,5 +277,7 @@ class MassSum(AnalyticComponent):
     def evaluate(self, x):
         m_empty = sum(x[p] for p in self.PARTS)
         g_empty = D({p: 1.0 for p in self.PARTS})
-        return ({"m_empty": m_empty, "m_total": m_empty + x["m_pay"]},
-                {"m_empty": g_empty, "m_total": g_empty + D({"m_pay": 1.0})})
+        return (
+            {"m_empty": m_empty, "m_total": m_empty + x["m_pay"]},
+            {"m_empty": g_empty, "m_total": g_empty + D({"m_pay": 1.0})},
+        )

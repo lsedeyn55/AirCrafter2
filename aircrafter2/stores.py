@@ -54,6 +54,7 @@ BOTTLES = _ruleset_bottles()
 class StoreConfig(BaseModel):
     """The store set of a design (shared by its mission points) and the drag/mass data. Every value is in the ruleset
     (configs/rulesets/dbf_2024_25.yaml, multipoint.stores), with its citation; there are no code defaults."""
+
     model_config = ConfigDict(extra="forbid")
     n_ext: int = Field(ge=2, description="external tanks = pylons")
     bottle: Bottle
@@ -107,13 +108,26 @@ class Stores(om.ExplicitComponent):
         self.options.declare("x1", default=True)
 
     def setup(self):
-        for name, val, units in [("v", 20.0, "m/s"), ("rho", 1.18, "kg/m**3"), ("mu", 1.8e-5, "Pa*s"),
-                                 ("S", 0.5, "m**2"), ("c", 0.3, "m"), ("store_drag_factor", 1.0, None)]:
+        for name, val, units in [
+            ("v", 20.0, "m/s"),
+            ("rho", 1.18, "kg/m**3"),
+            ("mu", 1.8e-5, "Pa*s"),
+            ("S", 0.5, "m**2"),
+            ("c", 0.3, "m"),
+            ("store_drag_factor", 1.0, None),
+        ]:
             self.add_input(name, val, units=units)
         if self.options["fuel"]:
             self.add_input("fuel_mass", 3.0, units="kg", desc="fill of all tanks (M2 design variable)")
-        for name, units in [("m_pay", "kg"), ("x_pay", "m"), ("CD_stores", None), ("CD_tanks", None),
-                            ("CD_pylons", None), ("CD_x1", None), ("fuel_capacity", "kg")]:
+        for name, units in [
+            ("m_pay", "kg"),
+            ("x_pay", "m"),
+            ("CD_stores", None),
+            ("CD_tanks", None),
+            ("CD_pylons", None),
+            ("CD_x1", None),
+            ("fuel_capacity", "kg"),
+        ]:
             self.add_output(name, 0.1, units=units)
         self.declare_partials("*", "*", method="cs")
 
@@ -164,8 +178,14 @@ class Stores(om.ExplicitComponent):
             f = c.x1_body_length / c.x1_body_diameter
             ff_b = 1.0 + 60.0 / f**3 + f / 400.0
             swet_b = np.pi * c.x1_body_diameter * c.x1_body_length
-            cd_x = c.Q_x1 * (cf_turbulent(re_per_m * c.x1_wing_chord) * ff_w * swet_w
-                             + cf_turbulent(re_per_m * c.x1_body_length) * ff_b * swet_b) / S
+            cd_x = (
+                c.Q_x1
+                * (
+                    cf_turbulent(re_per_m * c.x1_wing_chord) * ff_w * swet_w
+                    + cf_turbulent(re_per_m * c.x1_body_length) * ff_b * swet_b
+                )
+                / S
+            )
         k = x["store_drag_factor"]
         outputs["CD_tanks"] = k * cd_t
         outputs["CD_pylons"] = k * cd_p

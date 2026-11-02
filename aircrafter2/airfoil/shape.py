@@ -36,8 +36,9 @@ class AirfoilShape(om.ExplicitComponent):
     """Reduced shape DVs -> Kulfan parameters. Linear, so partials are constant."""
 
     def initialize(self):
-        self.options.declare("seed", types=dict, desc="Kulfan dict: upper_weights, lower_weights, "
-                             "leading_edge_weight, TE_thickness")
+        self.options.declare(
+            "seed", types=dict, desc="Kulfan dict: upper_weights, lower_weights, leading_edge_weight, TE_thickness"
+        )
         self.options.declare("n_modes", default=0, types=int)
 
     def setup(self):
@@ -100,8 +101,13 @@ class AirfoilGeometry(om.ExplicitComponent):
         self.declare_partials("*", "*", method="cs")
 
     def compute(self, inputs, outputs):
-        g = cst.section_geometry(inputs["upper_weights"], inputs["lower_weights"], inputs["le_weight"][0],
-                                 inputs["te_thickness"][0], inputs["x_spar"][0])
+        g = cst.section_geometry(
+            inputs["upper_weights"],
+            inputs["lower_weights"],
+            inputs["le_weight"][0],
+            inputs["te_thickness"][0],
+            inputs["x_spar"][0],
+        )
         for k, v in g.items():
             outputs[k] = v
 
@@ -114,8 +120,9 @@ class AirfoilGroup(om.Group):
         self.options.declare("n_modes", default=0, types=int)
 
     def setup(self):
-        self.add_subsystem("shape", AirfoilShape(seed=self.options["seed"], n_modes=self.options["n_modes"]),
-                           promotes=["*"])
+        self.add_subsystem(
+            "shape", AirfoilShape(seed=self.options["seed"], n_modes=self.options["n_modes"]), promotes=["*"]
+        )
         self.add_subsystem("geometry", AirfoilGeometry(), promotes=["*"])
 
 

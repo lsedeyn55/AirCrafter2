@@ -39,8 +39,12 @@ class WingLoads(AnalyticComponent):
     """
 
     def initialize(self):
-        self.options.declare("n_motor_pairs", default=0, values=[0, 1],
-                             desc="symmetric pairs of wing-mounted units (one unit per semi-span per pair)")
+        self.options.declare(
+            "n_motor_pairs",
+            default=0,
+            values=[0, 1],
+            desc="symmetric pairs of wing-mounted units (one unit per semi-span per pair)",
+        )
         self.options.declare("motor_inertia_relief", default=False, types=bool)
         self.options.declare("nacelle_torsion", default=True, types=bool)
 
@@ -59,11 +63,20 @@ class WingLoads(AnalyticComponent):
         }
         if self.options["n_motor_pairs"]:
             ins.update({"m_motor_unit": (0.25, "kg"), "y_m": (0.25, "m"), "x_motor": (-0.14, "m")})
-        outs = {name: (1.0, u) for name, u in [
-            ("W", "N"), ("q", "Pa"), ("q_div", "Pa"),
-            ("Q_fl", "N"), ("M_fl", "N*m"), ("T_fl", "N*m"),
-            ("Q_gd", "N"), ("M_gd", "N*m"), ("T_gd", "N*m"),
-        ]}
+        outs = {
+            name: (1.0, u)
+            for name, u in [
+                ("W", "N"),
+                ("q", "Pa"),
+                ("q_div", "Pa"),
+                ("Q_fl", "N"),
+                ("M_fl", "N*m"),
+                ("T_fl", "N*m"),
+                ("Q_gd", "N"),
+                ("M_gd", "N*m"),
+                ("T_gd", "N*m"),
+            ]
+        }
         return ins, outs
 
     def evaluate(self, x):
@@ -80,11 +93,13 @@ class WingLoads(AnalyticComponent):
 
         aCm, daCm = smooth_abs(x["Cm"], _EPS_CM)
         T_fl = 0.5 * q * aCm * c**2 * b  # Eq. 46, y = 0
-        gT_fl = (0.5 * aCm * c**2 * b) * gq + D({
-            "Cm": 0.5 * q * c**2 * b * daCm,
-            "c_mean": q * aCm * c * b,
-            "b": 0.5 * q * aCm * c**2,
-        })
+        gT_fl = (0.5 * aCm * c**2 * b) * gq + D(
+            {
+                "Cm": 0.5 * q * c**2 * b * daCm,
+                "c_mean": q * aCm * c * b,
+                "b": 0.5 * q * aCm * c**2,
+            }
+        )
 
         arm, darm = smooth_abs(0.25 - x["x_gd"], _EPS_X)
         T_gd = 0.5 * W * arm * c  # Eq. 50
@@ -123,8 +138,9 @@ class WingLoads(AnalyticComponent):
             values["Q_fl"] = values["Q_fl"] - n * g * mu
             grads["Q_fl"] = grads["Q_fl"] + D({"n": -g * mu, "g": -n * mu, "m_motor_unit": -n * g})
             values["M_fl"] = values["M_fl"] - n * g * mu * ym
-            grads["M_fl"] = grads["M_fl"] + D({"n": -g * mu * ym, "g": -n * mu * ym, "m_motor_unit": -n * g * ym,
-                                               "y_m": -n * g * mu})
+            grads["M_fl"] = grads["M_fl"] + D(
+                {"n": -g * mu * ym, "g": -n * mu * ym, "m_motor_unit": -n * g * ym, "y_m": -n * g * mu}
+            )
             # ground test: weight g m_u at y_m, tip reaction W/2 at b/2 (Eqs. 48, 49)
             values["Q_gd"] = values["Q_gd"] - g * mu
             grads["Q_gd"] = grads["Q_gd"] + D({"g": -mu, "m_motor_unit": -g})
@@ -134,13 +150,23 @@ class WingLoads(AnalyticComponent):
             arm = 0.25 * c - xm  # unit ahead of the quarter-chord axis: > 0
             garm = D({"c_mean": 0.25, "x_motor": -1.0})
             values["T_fl"] = T_fl + n * g * mu * arm  # Eq. 46 + nacelle (both nose-down)
-            grads["T_fl"] = gT_fl + D({"n": g * mu * arm, "g": n * mu * arm, "m_motor_unit": n * g * arm}) \
-                + (n * g * mu) * garm
+            grads["T_fl"] = (
+                gT_fl + D({"n": g * mu * arm, "g": n * mu * arm, "m_motor_unit": n * g * arm}) + (n * g * mu) * garm
+            )
             # Eq. 50: signed (nose-up +) tip-reaction torque plus the unit's nose-down torque, then |.|
             sgd = 0.5 * W * c * (0.25 - x["x_gd"]) - g * mu * arm
-            gsgd = (0.5 * c * (0.25 - x["x_gd"])) * gW + D({"c_mean": 0.5 * W * (0.25 - x["x_gd"]),
-                                                            "x_gd": -0.5 * W * c, "g": -mu * arm,
-                                                            "m_motor_unit": -g * arm}) - (g * mu) * garm
+            gsgd = (
+                (0.5 * c * (0.25 - x["x_gd"])) * gW
+                + D(
+                    {
+                        "c_mean": 0.5 * W * (0.25 - x["x_gd"]),
+                        "x_gd": -0.5 * W * c,
+                        "g": -mu * arm,
+                        "m_motor_unit": -g * arm,
+                    }
+                )
+                - (g * mu) * garm
+            )
             T_gd, dT = smooth_abs(sgd, _EPS_T)
             values["T_gd"] = T_gd
             grads["T_gd"] = dT * gsgd
@@ -157,9 +183,17 @@ class CriticalLoads(AnalyticComponent):
         self.options.declare("rho_ks", default=100.0)
 
     def io(self):
-        ins = {name: (1.0, u) for name, u in [
-            ("Q_fl", "N"), ("Q_gd", "N"), ("M_fl", "N*m"), ("M_gd", "N*m"), ("T_fl", "N*m"), ("T_gd", "N*m"),
-        ]}
+        ins = {
+            name: (1.0, u)
+            for name, u in [
+                ("Q_fl", "N"),
+                ("Q_gd", "N"),
+                ("M_fl", "N*m"),
+                ("M_gd", "N*m"),
+                ("T_fl", "N*m"),
+                ("T_gd", "N*m"),
+            ]
+        }
         outs = {"Qz": (1.0, "N"), "Mx": (1.0, "N*m"), "My": (1.0, "N*m")}
         return ins, outs
 
@@ -212,30 +246,36 @@ class TailBoomLoads(AnalyticComponent):
         aCm, daCm = smooth_abs(x["Cm"], _EPS_CM)
 
         M = q * aCm * b * c**2 * ltb / lht  # Eq. 56 (both modes)
-        gM = D({
-            "q": aCm * b * c**2 * ltb / lht,
-            "Cm": q * daCm * b * c**2 * ltb / lht,
-            "b": q * aCm * c**2 * ltb / lht,
-            "c_mean": 2.0 * q * aCm * b * c * ltb / lht,
-            "l_tb": q * aCm * b * c**2 / lht,
-            "l_ht": -M / lht,
-        })
+        gM = D(
+            {
+                "q": aCm * b * c**2 * ltb / lht,
+                "Cm": q * daCm * b * c**2 * ltb / lht,
+                "b": q * aCm * c**2 * ltb / lht,
+                "c_mean": 2.0 * q * aCm * b * c * ltb / lht,
+                "l_tb": q * aCm * b * c**2 / lht,
+                "l_ht": -M / lht,
+            }
+        )
         if self.options["load_mode"] == "paper":
             Q = q * aCm * c**3 / lht  # Eq. 55 with Eq. 5 as printed
-            gQ = D({
-                "q": aCm * c**3 / lht,
-                "Cm": q * daCm * c**3 / lht,
-                "c_mean": 3.0 * q * aCm * c**2 / lht,
-                "l_ht": -Q / lht,
-            })
+            gQ = D(
+                {
+                    "q": aCm * c**3 / lht,
+                    "Cm": q * daCm * c**3 / lht,
+                    "c_mean": 3.0 * q * aCm * c**2 / lht,
+                    "l_ht": -Q / lht,
+                }
+            )
             return {"Q_tb": Q, "M_tb": M}, {"Q_tb": gQ, "M_tb": gM}
 
         Q = q * aCm * b * c**2 / lht  # Eq. 54
-        gQ = D({
-            "q": aCm * b * c**2 / lht,
-            "Cm": q * daCm * b * c**2 / lht,
-            "b": q * aCm * c**2 / lht,
-            "c_mean": 2.0 * q * aCm * b * c / lht,
-            "l_ht": -Q / lht,
-        })
+        gQ = D(
+            {
+                "q": aCm * b * c**2 / lht,
+                "Cm": q * daCm * b * c**2 / lht,
+                "b": q * aCm * c**2 / lht,
+                "c_mean": 2.0 * q * aCm * b * c / lht,
+                "l_ht": -Q / lht,
+            }
+        )
         return {"Q_tb": Q, "M_tb": Q * ltb}, {"Q_tb": gQ, "M_tb": ltb * gQ + D({"l_tb": Q})}

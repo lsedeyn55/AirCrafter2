@@ -101,7 +101,7 @@ class NeuralFoilStripDrag(om.ExplicitComponent):
         def kulfan_blocks(dk):  # (n, 18) -> per input
             out, j = {}, 0
             for name, size in KULFAN_INPUTS:
-                out[name] = dk[:, j:j + size]
+                out[name] = dk[:, j : j + size]
                 j += size
             return out
 

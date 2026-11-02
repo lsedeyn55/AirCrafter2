@@ -20,23 +20,42 @@ import numpy as np
 import openmdao.api as om
 
 MASS_STATIONS = [  # (mass input, station input)
-    ("m_wing", "x_wing"), ("m_tail", "x_tail"), ("m_tb", "x_tb"), ("m_cb", "x_cb"), ("m_pay", "x_pay"),
-    ("m_motor_group", "x_motor"), ("m_batt", "x_batt"), ("m_avionics", "x_avionics"), ("m_gear", "x_gear"),
+    ("m_wing", "x_wing"),
+    ("m_tail", "x_tail"),
+    ("m_tb", "x_tb"),
+    ("m_cb", "x_cb"),
+    ("m_pay", "x_pay"),
+    ("m_motor_group", "x_motor"),
+    ("m_batt", "x_batt"),
+    ("m_avionics", "x_avionics"),
+    ("m_gear", "x_gear"),
 ]
 
 
 class StaticStability(om.ExplicitComponent):
     def setup(self):
         for name, val, units in [
-            ("c", 0.25, "m"), ("S", 0.375, "m**2"), ("AR", 6.0, None), ("a_w", 4.5, "1/rad"),
-            ("S_ht", 0.06, "m**2"), ("AR_ht", 4.0, None), ("l_ht", 0.8, "m"), ("eta_h", 0.9, None),
+            ("c", 0.25, "m"),
+            ("S", 0.375, "m**2"),
+            ("AR", 6.0, None),
+            ("a_w", 4.5, "1/rad"),
+            ("S_ht", 0.06, "m**2"),
+            ("AR_ht", 4.0, None),
+            ("l_ht", 0.8, "m"),
+            ("eta_h", 0.9, None),
         ]:
             self.add_input(name, val, units=units)
         for m_name, x_name in MASS_STATIONS:
             self.add_input(m_name, 0.1, units="kg")
             self.add_input(x_name, 0.1, units="m")
-        for name, units in [("x_np", "m"), ("x_cg", "m"), ("SM", None), ("V_h", None), ("a_h", "1/rad"),
-                            ("downwash_grad", None)]:
+        for name, units in [
+            ("x_np", "m"),
+            ("x_cg", "m"),
+            ("SM", None),
+            ("V_h", None),
+            ("a_h", "1/rad"),
+            ("downwash_grad", None),
+        ]:
             self.add_output(name, 0.1, units=units)
         self.declare_partials("*", "*", method="cs")
 
@@ -88,6 +107,13 @@ def oei_check(prob, cfg):
     Cn_req = N / (q * S * b)
     Cn_dr = st.eta_v * V_v * a_v * st.rudder_tau
     d_req = np.degrees(Cn_req / Cn_dr)
-    return {"N_yaw_Nm": N, "V_check_mps": V, "Cn_req": Cn_req, "Cn_per_rad_rudder": Cn_dr,
-            "rudder_req_deg": d_req, "rudder_max_deg": st.rudder_max_deg,
-            "rudder_margin_deg": st.rudder_max_deg - d_req, "ok": bool(d_req <= st.rudder_max_deg)}
+    return {
+        "N_yaw_Nm": N,
+        "V_check_mps": V,
+        "Cn_req": Cn_req,
+        "Cn_per_rad_rudder": Cn_dr,
+        "rudder_req_deg": d_req,
+        "rudder_max_deg": st.rudder_max_deg,
+        "rudder_margin_deg": st.rudder_max_deg - d_req,
+        "ok": bool(d_req <= st.rudder_max_deg),
+    }

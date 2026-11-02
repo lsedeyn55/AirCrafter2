@@ -39,6 +39,7 @@ OZ_FT2 = 0.028349523125 / 0.09290304  # kg/m^2 per oz/ft^2
 class Store2026Config(BaseModel):
     """Payload, banner and fuselage-sizing data. Every value is in configs/placeholders.yaml (universal) or the ruleset
     (configs/rulesets/dbf_2025_26.yaml), with its citation; there are no code defaults."""
+
     model_config = ConfigDict(extra="forbid")
     m_duck: float = Field(description="kg per passenger")
     m_puck: float = Field(description="kg per cargo")
@@ -48,7 +49,10 @@ class Store2026Config(BaseModel):
     car_pitch: float = Field(description="m of cargo bay per cargo (two bays side by side)")
     w_cb: float = Field(description="m, payload fuselage width")
     h_cb: float = Field(description="m, payload fuselage height")
-    rho_ks_bay: float = Field(50.0, description="KS sharpness of the bay-length max (log space, dimensionless: at most 1.4 % over the larger bay at a tie)")
+    rho_ks_bay: float = Field(
+        50.0,
+        description="KS sharpness of the bay-length max (log space, dimensionless: at most 1.4 % over the larger bay at a tie)",
+    )
     x_pax_frac: float = Field(description="passenger CG station / chord from the wing LE")
     x_car_frac: float = Field(description="cargo CG station / chord")
     banner_ar: float = Field(description="banner length / height (rule limit 5)")
@@ -60,17 +64,22 @@ class Store2026Config(BaseModel):
     x_banner_frac: float = Field(description="banner (stowed and mechanism) station / chord")
     # the rigid payload fuselage (docs/RESULTS_2026_PLAN.md, Final fixes D2): shifts written as differences from
     # Humpback's layout, so each is exactly 0.0 there
-    x_cb_frac_ref: float = Field(description="Humpback's box centre / chord: the reference of the payload and motor "
-                                             "stations")
+    x_cb_frac_ref: float = Field(
+        description="Humpback's box centre / chord: the reference of the payload and motor stations"
+    )
     c_ref: float = Field(description="m, Humpback's chord (the reference of the box station x_cb_ref)")
     n_p_ref: float = Field(description="passengers of Humpback's fuselage (its length l_cb_ref)")
     n_c_ref: float = Field(description="cargo of Humpback's fuselage")
-    d_batt: float = Field(description="m, motor-to-pack-centre clearance: half the motor length + half the pack "
-                                      "length (batt_fwd_margin)")
+    d_batt: float = Field(
+        description="m, motor-to-pack-centre clearance: half the motor length + half the pack length (batt_fwd_margin)"
+    )
     tail_clear: float = Field(description="m, clearance from the box's aft end to the HT leading edge (tail_margin)")
-    fuselage_counts: Optional[list[float]] = Field(None, description="(n_p, n_c) the fuselage is sized for, if not the "
-                                                   "flown counts: the as-built fuselage of a validation flight with a "
-                                                   "smaller load ([HB] Table 42 flew 36/12 in the 42/14 fuselage)")
+    fuselage_counts: Optional[list[float]] = Field(
+        None,
+        description="(n_p, n_c) the fuselage is sized for, if not the "
+        "flown counts: the as-built fuselage of a validation flight with a "
+        "smaller load ([HB] Table 42 flew 36/12 in the 42/14 fuselage)",
+    )
 
 
 class Stores2026(om.ExplicitComponent):
@@ -80,17 +89,32 @@ class Stores2026(om.ExplicitComponent):
         self.options.declare("config", types=Store2026Config)
         self.options.declare("payload", default=False, desc="ducks and pucks on board (M2)")
         self.options.declare("banner", default=False, desc="banner on board (M3): input L_banner")
-        self.options.declare("x_cb_frac0", default=0.416, desc="default of the input x_cb_frac (the config's, so it "
-                                                                 "matches the stations' in a stand-alone model)")
+        self.options.declare(
+            "x_cb_frac0",
+            default=0.416,
+            desc="default of the input x_cb_frac (the config's, so it matches the stations' in a stand-alone model)",
+        )
 
     def setup(self):
-        for name, val, units in [("n_p", 42.0, None), ("n_c", 14.0, None), ("S", 0.5, "m**2"), ("c", 0.3, "m"),
-                                 ("banner_drag_factor", 1.0, None), ("x_cb_frac", self.options["x_cb_frac0"], None)]:
+        for name, val, units in [
+            ("n_p", 42.0, None),
+            ("n_c", 14.0, None),
+            ("S", 0.5, "m**2"),
+            ("c", 0.3, "m"),
+            ("banner_drag_factor", 1.0, None),
+            ("x_cb_frac", self.options["x_cb_frac0"], None),
+        ]:
             self.add_input(name, val, units=units)
         if self.options["banner"]:
             self.add_input("L_banner", 197.0, units="inch")
-        for name, units in [("m_pay", "kg"), ("x_pay", "m"), ("CD_stores", None), ("CD_banner", None),
-                            ("dCD_stowed", None), ("m_banner", "kg")]:
+        for name, units in [
+            ("m_pay", "kg"),
+            ("x_pay", "m"),
+            ("CD_stores", None),
+            ("CD_banner", None),
+            ("dCD_stowed", None),
+            ("m_banner", "kg"),
+        ]:
             self.add_output(name, 0.1, units=units)
         self.declare_partials("*", "*", method="cs")
 
@@ -178,9 +202,15 @@ class Packaging2026(om.ExplicitComponent):
 
     def setup(self):
         # defaults as the other components of the point (stations, StaticStability): no ambiguity in a stand-alone model
-        for name, val, units in [("c", 0.25, "m"), ("x_cb_frac", self.options["x_cb_frac0"], None), ("l_cb", 1.0, "m"),
-                                 ("x_batt", 0.1, "m"), ("l_ht", 0.8, "m"), ("S_ht", 0.06, "m**2"),
-                                 ("AR_ht", 4.0, None)]:
+        for name, val, units in [
+            ("c", 0.25, "m"),
+            ("x_cb_frac", self.options["x_cb_frac0"], None),
+            ("l_cb", 1.0, "m"),
+            ("x_batt", 0.1, "m"),
+            ("l_ht", 0.8, "m"),
+            ("S_ht", 0.06, "m**2"),
+            ("AR_ht", 4.0, None),
+        ]:
             self.add_input(name, val, units=units)
         for name in ("x_motor", "batt_fwd_margin", "batt_aft_margin", "tail_margin", "x_cb_aft"):
             self.add_output(name, 0.0, units="m")

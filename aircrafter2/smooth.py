@@ -85,10 +85,12 @@ def softplus(x, scale, mode="ks"):
     zr = np.real(z)
     big = zr > 0.0
     # stable: z + log1p(exp(-z)) for z > 0, log1p(exp(z)) otherwise
-    f = scale * np.where(big, z + np.log1p(np.exp(-np.where(big, z, 0.0))),
-                         np.log1p(np.exp(np.where(big, 0.0, z))))
-    sig = np.where(big, 1.0 / (1.0 + np.exp(-np.where(big, z, 0.0))),
-                   np.exp(np.where(big, 0.0, z)) / (1.0 + np.exp(np.where(big, 0.0, z))))
+    f = scale * np.where(big, z + np.log1p(np.exp(-np.where(big, z, 0.0))), np.log1p(np.exp(np.where(big, 0.0, z))))
+    sig = np.where(
+        big,
+        1.0 / (1.0 + np.exp(-np.where(big, z, 0.0))),
+        np.exp(np.where(big, 0.0, z)) / (1.0 + np.exp(np.where(big, 0.0, z))),
+    )
     return f, sig
 
 

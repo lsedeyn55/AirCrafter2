@@ -57,8 +57,9 @@ def expand_dotted(data):
         node = out
         for k in parts[:-1]:
             node = node.setdefault(k, {})
-        node[parts[-1]] = _merge(node[parts[-1]], val) if isinstance(val, dict) and isinstance(
-            node.get(parts[-1]), dict) else val
+        node[parts[-1]] = (
+            _merge(node[parts[-1]], val) if isinstance(val, dict) and isinstance(node.get(parts[-1]), dict) else val
+        )
     return out
 
 

@@ -1,12 +1,12 @@
 """Wing-aero problem: aero-only rectangular wing at fixed lift.
 
-    minimise   CD                       (= drag, since q and S are fixed)
-    w.r.t.     b, c, alpha, tc_scale, camber_scale (and bump modes, if any)
-    subject to L = W                    (fixed lift)
-               b c = S                  (fixed wing area, i.e. fixed wing loading)
-               tc_max >= tc_min         (room for the spar; PLACEHOLDER, aero_mass couples mass)
-               CL_max / CL >= 1.2^2     (cruise at >= 1.2 V_stall, as in the lap modeller)
-               cl_margin_sec >= 0       (no stalled strip)
+minimise   CD                       (= drag, since q and S are fixed)
+w.r.t.     b, c, alpha, tc_scale, camber_scale (and bump modes, if any)
+subject to L = W                    (fixed lift)
+           b c = S                  (fixed wing area, i.e. fixed wing loading)
+           tc_max >= tc_min         (room for the spar; PLACEHOLDER, aero_mass couples mass)
+           CL_max / CL >= 1.2^2     (cruise at >= 1.2 V_stall, as in the lap modeller)
+           cl_margin_sec >= 0       (no stalled strip)
 """
 
 from typing import Literal
@@ -56,12 +56,21 @@ def build_wing_aero_problem(cfg: WingAeroProblemConfig, driver=True):
     seed = load_seed(cfg.airfoil.seed)
     m.add_subsystem("airfoil", AirfoilGroup(seed=seed, n_modes=cfg.airfoil.n_modes), promotes=["*"])
     a = cfg.aero
-    m.add_subsystem("wing", WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
-                                     max_mode=a.max_mode, rho_ks=a.rho_ks), promotes=["*"])
-    m.add_subsystem("lift_con", om.ExecComp("lift_residual = L / W - 1.0", L={"units": "N"}, W={"units": "N"}),
-                    promotes=["*"])
-    m.add_subsystem("area_con", om.ExecComp("area = b * c", area={"units": "m**2"}, b={"units": "m"},
-                                            c={"units": "m"}), promotes=["*"])
+    m.add_subsystem(
+        "wing",
+        WingAero(
+            num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(), max_mode=a.max_mode, rho_ks=a.rho_ks
+        ),
+        promotes=["*"],
+    )
+    m.add_subsystem(
+        "lift_con", om.ExecComp("lift_residual = L / W - 1.0", L={"units": "N"}, W={"units": "N"}), promotes=["*"]
+    )
+    m.add_subsystem(
+        "area_con",
+        om.ExecComp("area = b * c", area={"units": "m**2"}, b={"units": "m"}, c={"units": "m"}),
+        promotes=["*"],
+    )
     m.set_input_defaults("b", cfg.initial.get("b", 1.2), units="m")
     m.set_input_defaults("c", cfg.initial.get("c", 0.3), units="m")
 

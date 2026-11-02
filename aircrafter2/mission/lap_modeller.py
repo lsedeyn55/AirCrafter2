@@ -207,9 +207,7 @@ def _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n, g=G, v_broad_start=No
     v_broad = np.arange(start, 1.1 * V, 0.1)
     v_broad = np.append(v_broad, 1.1 * V)
 
-    bank_stall = np.degrees(
-        np.arccos(np.clip(W / (0.5 * rho * v_broad**2 * Clmax * S), -1.0, 1.0))
-    )
+    bank_stall = np.degrees(np.arccos(np.clip(W / (0.5 * rho * v_broad**2 * Clmax * S), -1.0, 1.0)))
     bank_load = np.degrees(np.arccos(np.clip(1.0 / n, -1.0, 1.0)))
 
     if bank_load <= bank_stall[0]:
@@ -285,21 +283,33 @@ def _lap_performance(Vstall, accel_tables, decel_tables, turn_tables, matlab_com
 
     lap1 = 0.0
     v = Vstall
-    v, t = straight(v, straight500); lap1 += t                # Lap1 Leg2 - 500ft
-    v, t = turn(v, np.pi); lap1 += t                           # Lap1 Leg3 - 180deg
-    v, t = turn(v, 2 * np.pi); lap1 += t                       # Lap1 Leg4 - 360deg
+    v, t = straight(v, straight500)
+    lap1 += t  # Lap1 Leg2 - 500ft
+    v, t = turn(v, np.pi)
+    lap1 += t  # Lap1 Leg3 - 180deg
+    v, t = turn(v, 2 * np.pi)
+    lap1 += t  # Lap1 Leg4 - 360deg
     v_after_360 = v
-    v, t = straight(v, 2 * straight500); lap1 += t             # Lap1 Leg5 - 1000ft
-    v, t = turn(v, np.pi); lap1 += t                           # Lap1 Leg6 - 180deg
-    v, t = straight(v, straight500); lap1 += t                 # Lap1 Leg7 - 500ft
+    v, t = straight(v, 2 * straight500)
+    lap1 += t  # Lap1 Leg5 - 1000ft
+    v, t = turn(v, np.pi)
+    lap1 += t  # Lap1 Leg6 - 180deg
+    v, t = straight(v, straight500)
+    lap1 += t  # Lap1 Leg7 - 500ft
 
     other = 0.0
-    v, t = straight(v, straight500); other += t                # Lap2+ Leg1 - 500ft
-    v, t = turn(v, np.pi); other += t                          # Lap2+ Leg2 - 180deg
-    v, t = turn(v, 2 * np.pi); other += t                      # Lap2+ Leg3 - 360deg
-    v, t = straight(v, 2 * straight500); other += t            # Lap2+ Leg4 - 1000ft
-    v, t = turn(v, np.pi); other += t                          # Lap2+ Leg5 - 180deg
-    v, t = straight(v, straight500); other += t                # Lap2+ Leg6 - 500ft
+    v, t = straight(v, straight500)
+    other += t  # Lap2+ Leg1 - 500ft
+    v, t = turn(v, np.pi)
+    other += t  # Lap2+ Leg2 - 180deg
+    v, t = turn(v, 2 * np.pi)
+    other += t  # Lap2+ Leg3 - 360deg
+    v, t = straight(v, 2 * straight500)
+    other += t  # Lap2+ Leg4 - 1000ft
+    v, t = turn(v, np.pi)
+    other += t  # Lap2+ Leg5 - 180deg
+    v, t = straight(v, straight500)
+    other += t  # Lap2+ Leg6 - 500ft
 
     return lap1, other, v_after_360
 
@@ -371,8 +381,9 @@ def performance_modeller(assumptions, design, matlab_compat=False):
 
     accel_tables = _build_accel_table(Vstall, V, Preq, W, m, rho, S, Cd0, k)
     v_time_decel, t_time_decel = _build_decel_table(Vstall, V, Preq, W, m, rho, S, Cd0, k, Clmax)
-    turn_tables = _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n,
-                                         v_broad_start=Vstall_exact if matlab_compat else None)
+    turn_tables = _build_turn_rate_table(
+        Vstall, V, W, rho, Clmax, S, n, v_broad_start=Vstall_exact if matlab_compat else None
+    )
 
     lap1, other, v_after_360 = _lap_performance(
         Vstall, accel_tables, (v_time_decel, t_time_decel), turn_tables, matlab_compat
@@ -438,11 +449,20 @@ class AirCrafterPerformance(om.ExplicitComponent):
         self.add_output("turn_speed_margin", val=0.0, units="m/s")
 
         self.declare_partials(
-            of=["Tstatic", "Preq", "Vstall", "Lap1time", "otherLapTime",
-                "ThreeLapTime", "stall_margin", "turn_speed_margin"],
-            wrt=["m", "b", "AR", "V", "altitude", "takeoff_distance",
-                 "mission_time", "battery_fraction"],
-            method="fd", step=1e-4, form="forward",
+            of=[
+                "Tstatic",
+                "Preq",
+                "Vstall",
+                "Lap1time",
+                "otherLapTime",
+                "ThreeLapTime",
+                "stall_margin",
+                "turn_speed_margin",
+            ],
+            wrt=["m", "b", "AR", "V", "altitude", "takeoff_distance", "mission_time", "battery_fraction"],
+            method="fd",
+            step=1e-4,
+            form="forward",
         )
         # lapCount is a step function -- report it, but don't ask the driver
         # to differentiate it (partials left at the zero default).

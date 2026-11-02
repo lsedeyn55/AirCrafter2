@@ -60,8 +60,14 @@ class _Builder:
         return pid
 
     def place(self, gid, x=0.0, y=0.0, z=0.0, rx=0.0, ry=0.0, rz=0.0):
-        for n, val in [("X_Rel_Location", x), ("Y_Rel_Location", y), ("Z_Rel_Location", z),
-                       ("X_Rel_Rotation", rx), ("Y_Rel_Rotation", ry), ("Z_Rel_Rotation", rz)]:
+        for n, val in [
+            ("X_Rel_Location", x),
+            ("Y_Rel_Location", y),
+            ("Z_Rel_Location", z),
+            ("X_Rel_Rotation", rx),
+            ("Y_Rel_Rotation", ry),
+            ("Z_Rel_Rotation", rz),
+        ]:
             self.setp(gid, n, "XForm", val)
 
     def add(self, typ, name, component, marker=False):
@@ -81,8 +87,14 @@ class _Builder:
         x1 = vsp.GetXSec(surf, 1)
         half = span_total / 2.0 if mirrored else span_total
         vsp.SetDriverGroup(gid, 1, vsp.SPAN_WSECT_DRIVER, vsp.ROOTC_WSECT_DRIVER, vsp.TIPC_WSECT_DRIVER)
-        for n, val in [("Span", half), ("Root_Chord", chord), ("Tip_Chord", chord), ("Sweep", 0.0),
-                       ("Dihedral", 0.0), ("Twist", 0.0)]:
+        for n, val in [
+            ("Span", half),
+            ("Root_Chord", chord),
+            ("Tip_Chord", chord),
+            ("Sweep", 0.0),
+            ("Dihedral", 0.0),
+            ("Twist", 0.0),
+        ]:
             self.setx(x1, n, val)
         for i in (0, 1):
             if airfoil_dat is not None:
@@ -161,8 +173,9 @@ def build(geom, out_dir, name=None, incidence=None):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     name = name or geom["provenance"].get("case_id") or "aircrafter2"
-    W, HT, VT, TB, CB, P = (geom[k] for k in ("wing", "horizontal_tail", "vertical_tail", "tail_boom", "cargo_bay",
-                                              "propulsion"))
+    W, HT, VT, TB, CB, P = (
+        geom[k] for k in ("wing", "horizontal_tail", "vertical_tail", "tail_boom", "cargo_bay", "propulsion")
+    )
     opts = geom.get("mockup_options", {})
     vsp.VSPRenew()
     vsp.ClearVSPModel()
@@ -231,7 +244,7 @@ def build(geom, out_dir, name=None, incidence=None):
         xy = np.array(W["airfoil"]["coordinates_selig"])
         xs = W["x_spar_frac"]
         n = len(xy) // 2
-        yu = np.interp(xs, xy[:n + 1, 0][::-1], xy[:n + 1, 1][::-1])
+        yu = np.interp(xs, xy[: n + 1, 0][::-1], xy[: n + 1, 1][::-1])
         yl = np.interp(xs, xy[n:, 0], xy[n:, 1])
         spar = B.body("SparTube_marker", None, b, "circle", 2.0 * W["r_tube_m"], marker=True)
         B.place(spar, x=W["x_spar_m"], y=-b / 2.0, z=0.5 * (yu + yl) * c, rz=90.0)
@@ -262,16 +275,19 @@ def build(geom, out_dir, name=None, incidence=None):
     def bbox(g):
         return {k: vsp.GetParmVal(g, k, "BBox") for k in ("X_Min", "X_Len", "Y_Len", "Z_Len")}
 
-    checks = {"cargo bay width": (bbox(cb)["Y_Len"], CB["width_m"]),
-              "cargo bay height": (bbox(cb)["Z_Len"], CB["height_m"]),
-              "cargo bay front x": (bbox(cb)["X_Min"], CB["x_centre_m"] - CB["length_m"] / 2.0),
-              "boom diameter": (bbox(tb)["Y_Len"], 2.0 * TB["radius_m"]),
-              "boom length": (bbox(tb)["X_Len"], TB["length_m"])}
+    checks = {
+        "cargo bay width": (bbox(cb)["Y_Len"], CB["width_m"]),
+        "cargo bay height": (bbox(cb)["Z_Len"], CB["height_m"]),
+        "cargo bay front x": (bbox(cb)["X_Min"], CB["x_centre_m"] - CB["length_m"] / 2.0),
+        "boom diameter": (bbox(tb)["Y_Len"], 2.0 * TB["radius_m"]),
+        "boom length": (bbox(tb)["X_Len"], TB["length_m"]),
+    }
     for gid in B.components.get("nacelles", []):
         checks[f"{vsp.GetGeomName(gid)} diameter"] = (bbox(gid)["Y_Len"], P["d_nac_m"])
         checks[f"{vsp.GetGeomName(gid)} length"] = (bbox(gid)["X_Len"], P["l_nac_m"])
-    rb["bbox_checks"] = {k: {"vsp": a, "framework": e, "rel_diff": (a - e) / e if e else a - e}
-                         for k, (a, e) in checks.items()}
+    rb["bbox_checks"] = {
+        k: {"vsp": a, "framework": e, "rel_diff": (a - e) / e if e else a - e} for k, (a, e) in checks.items()
+    }
     bad = {k: c for k, c in rb["bbox_checks"].items() if abs(c["rel_diff"]) > 0.01}
     if bad:
         raise RuntimeError(f"OpenVSP read-back differs from geometry.json by > 1 %: {bad}")
@@ -291,8 +307,7 @@ def build(geom, out_dir, name=None, incidence=None):
             vsp.SetParmVal(pid, vsp.LEN_M)
     vsp.Update()
 
-    files = {"vsp3": out / f"{name}.vsp3", "step": out / f"{name}.stp", "stl": out / f"{name}.stl",
-             "airfoil_dat": dat}
+    files = {"vsp3": out / f"{name}.vsp3", "step": out / f"{name}.stp", "stl": out / f"{name}.stl", "airfoil_dat": dat}
     vsp.SetVSP3FileName(str(files["vsp3"]))
     vsp.WriteVSPFile(str(files["vsp3"]), vsp.SET_ALL)
     vsp.ExportFile(str(files["step"]), export_set, vsp.EXPORT_STEP)

@@ -45,12 +45,12 @@ def _cst_shape_difference(vsp, geom):
     pts = np.array([(p.x(), p.y()) for p in vsp.GetAirfoilCoordinates(w, 0.0)])
     vsp.DeleteGeom(w)
     i = int(np.argmin(pts[:, 0]))  # split at the leading edge; order the halves by increasing x
-    a, b = pts[:i + 1], pts[i:]
+    a, b = pts[: i + 1], pts[i:]
     a, b = a[np.argsort(a[:, 0])], b[np.argsort(b[:, 0])]
     up, lo = (a, b) if a[:, 1].mean() > b[:, 1].mean() else (b, a)
     xy = np.array(geom["wing"]["airfoil"]["coordinates_selig"])
     n = len(xy) // 2
-    xu, yu = xy[:n + 1, 0][::-1], xy[:n + 1, 1][::-1]
+    xu, yu = xy[: n + 1, 0][::-1], xy[: n + 1, 1][::-1]
     xl, yl = xy[n:, 0], xy[n:, 1]
     x = np.linspace(0.0, 1.0, 1001)
     du = np.interp(x, up[:, 0], up[:, 1]) - np.interp(x, xu, yu)
@@ -67,8 +67,9 @@ def vsp_check(geom, vsp3_path, md_path=None):
     vsp.VSPRenew()
     vsp.ReadVSPFile(str(vsp3_path))
     G = _geoms(vsp)
-    W, HT, VT, TB, CB, P = (geom[k] for k in ("wing", "horizontal_tail", "vertical_tail", "tail_boom",
-                                              "cargo_bay", "propulsion"))
+    W, HT, VT, TB, CB, P = (
+        geom[k] for k in ("wing", "horizontal_tail", "vertical_tail", "tail_boom", "cargo_bay", "propulsion")
+    )
 
     def gp(gid, n, grp):
         return vsp.GetParmVal(gid, n, grp)
@@ -95,8 +96,12 @@ def vsp_check(geom, vsp3_path, md_path=None):
     row("HT area (m²)", gp(ht, "TotalArea", "WingGeom"), HT["area_m2"])
     row("VT area (m²)", gp(vt, "TotalArea", "WingGeom"), VT["area_m2"])
     ht_c = vsp.GetParmVal(vsp.GetXSecParm(vsp.GetXSec(vsp.GetXSecSurf(ht, 0), 1), "Root_Chord"))
-    row("tail arm l_ht (m)", gp(ht, "X_Rel_Location", "XForm") + 0.25 * ht_c - 0.25 * chord_w, HT["tail_arm_m"],
-        "HT c/4 minus wing c/4, from read-back positions")
+    row(
+        "tail arm l_ht (m)",
+        gp(ht, "X_Rel_Location", "XForm") + 0.25 * ht_c - 0.25 * chord_w,
+        HT["tail_arm_m"],
+        "HT c/4 minus wing c/4, from read-back positions",
+    )
     b = bb(cb)
     row("cargo bay length (m)", b["X_Len"], CB["length_m"])
     row("cargo bay width (m)", b["Y_Len"], CB["width_m"])
@@ -114,10 +119,18 @@ def vsp_check(geom, vsp3_path, md_path=None):
         D = gp(props[0], "Diameter", "Design")
         y = min(abs(gp(p, "Y_Rel_Location", "XForm")) for p in props)
         half_w = b["Y_Len"] / 2.0
-        row("fuselage clearance margin (m)", y - D / 2 - half_w - P["c_clear_m"], P["fus_clear_margin_m"],
-            "y_m − D/2 − (bay half-width from its bounding box) − c_clear")
-        row("tip clearance margin (m)", gp(wing, "TotalSpan", "WingGeom") / 2 - (y + D / 2), P["tip_clear_margin_m"],
-            "b/2 − (y_m + D/2)")
+        row(
+            "fuselage clearance margin (m)",
+            y - D / 2 - half_w - P["c_clear_m"],
+            P["fus_clear_margin_m"],
+            "y_m − D/2 − (bay half-width from its bounding box) − c_clear",
+        )
+        row(
+            "tip clearance margin (m)",
+            gp(wing, "TotalSpan", "WingGeom") / 2 - (y + D / 2),
+            P["tip_clear_margin_m"],
+            "b/2 − (y_m + D/2)",
+        )
         for n in nacs:
             row(f"{vsp.GetGeomName(n)} diameter (m)", bb(n)["Y_Len"], P["d_nac_m"])
             row(f"{vsp.GetGeomName(n)} length (m)", bb(n)["X_Len"], P["l_nac_m"])
@@ -126,28 +139,44 @@ def vsp_check(geom, vsp3_path, md_path=None):
     mesh = vsp.ComputeCompGeom(vsp.SET_FIRST_USER, False, 0)
     rid = vsp.FindLatestResultsID("Comp_Geom")
     wet, theo = {}, {}
-    for n, w_, t_ in zip(vsp.GetStringResults(rid, "Comp_Name"), vsp.GetDoubleResults(rid, "Wet_Area"),
-                         vsp.GetDoubleResults(rid, "Theo_Area")):
+    for n, w_, t_ in zip(
+        vsp.GetStringResults(rid, "Comp_Name"),
+        vsp.GetDoubleResults(rid, "Wet_Area"),
+        vsp.GetDoubleResults(rid, "Theo_Area"),
+    ):
         wet[n] = wet.get(n, 0.0) + w_
         theo[n] = theo.get(n, 0.0) + t_
     if mesh:
         vsp.DeleteGeom(mesh)
-    fw = {"Wing": W["area_m2"] * (1.977 + 0.52 * W["airfoil"]["tc_max"]),
-          "HorizontalTail": HT["area_m2"] * (1.977 + 0.52 * HT["tc"]),
-          "VerticalTail": VT["area_m2"] * (1.977 + 0.52 * VT["tc"]),
-          "CargoBay": 2 * (CB["length_m"] * CB["width_m"] + CB["length_m"] * CB["height_m"]
-                           + CB["width_m"] * CB["height_m"]),
-          "TailBoom": 2 * np.pi * TB["radius_m"] * TB["length_m"]}
+    fw = {
+        "Wing": W["area_m2"] * (1.977 + 0.52 * W["airfoil"]["tc_max"]),
+        "HorizontalTail": HT["area_m2"] * (1.977 + 0.52 * HT["tc"]),
+        "VerticalTail": VT["area_m2"] * (1.977 + 0.52 * VT["tc"]),
+        "CargoBay": 2
+        * (CB["length_m"] * CB["width_m"] + CB["length_m"] * CB["height_m"] + CB["width_m"] * CB["height_m"]),
+        "TailBoom": 2 * np.pi * TB["radius_m"] * TB["length_m"],
+    }
     for n in nacs:
         fw[vsp.GetGeomName(n)] = np.pi * P["d_nac_m"] * P["l_nac_m"]
     wet_rows = []
     for n, f in fw.items():
-        wet_rows.append((n, theo.get(n, float("nan")), wet.get(n, float("nan")), f,
-                         (theo.get(n, np.nan) - f) / f * 100, (wet.get(n, np.nan) - f) / f * 100))
+        wet_rows.append(
+            (
+                n,
+                theo.get(n, float("nan")),
+                wet.get(n, float("nan")),
+                f,
+                (theo.get(n, np.nan) - f) / f * 100,
+                (wet.get(n, np.nan) - f) / f * 100,
+            )
+        )
     cst_d, cst_x = _cst_shape_difference(vsp, geom)
 
-    flagged = [r for r in rows if abs(r[3]) > 100 * FLAG] + \
-              [(f"{r[0]} area (CompGeom theoretical vs framework)", r[1], r[3], r[4], "") for r in wet_rows if abs(r[4]) > 100 * FLAG]
+    flagged = [r for r in rows if abs(r[3]) > 100 * FLAG] + [
+        (f"{r[0]} area (CompGeom theoretical vs framework)", r[1], r[3], r[4], "")
+        for r in wet_rows
+        if abs(r[4]) > 100 * FLAG
+    ]
     if md_path:
         _write_md(md_path, geom, rows, wet_rows, flagged, (cst_d, cst_x), vsp3_path)
     return {"rows": rows, "wetted": wet_rows, "flagged": flagged, "cst_max_dy": cst_d}
@@ -155,39 +184,49 @@ def vsp_check(geom, vsp3_path, md_path=None):
 
 def _write_md(path, geom, rows, wet_rows, flagged, cst, vsp3_path):
     pv = geom["provenance"]
-    L = [f"# OpenVSP consistency check: {pv.get('case_id') or Path(vsp3_path).stem}\n",
-         f"Model `{Path(vsp3_path).name}`, reloaded from disk with OpenVSP and compared with `geometry.json`",
-         f"(git {str(pv.get('git_hash'))[:10]}{' dirty' if pv.get('git_dirty') else ''}). Generated by "
-         "`aircrafter2.vsp.check`. The framework is not changed to match.\n",
-         "## Parameters\n", "| Quantity | OpenVSP | framework | difference | note |", "|---|---:|---:|---:|---|"]
+    L = [
+        f"# OpenVSP consistency check: {pv.get('case_id') or Path(vsp3_path).stem}\n",
+        f"Model `{Path(vsp3_path).name}`, reloaded from disk with OpenVSP and compared with `geometry.json`",
+        f"(git {str(pv.get('git_hash'))[:10]}{' dirty' if pv.get('git_dirty') else ''}). Generated by "
+        "`aircrafter2.vsp.check`. The framework is not changed to match.\n",
+        "## Parameters\n",
+        "| Quantity | OpenVSP | framework | difference | note |",
+        "|---|---:|---:|---:|---|",
+    ]
     L += [f"| {q} | {a:.6g} | {e:.6g} | {d:+.3f} % | {n} |" for q, a, e, d, n in rows]
-    L += ["", "## Wetted areas (m²)\n",
-          "CompGeom on the export set (the markers are excluded). *Theoretical* is each component's own closed "
-          "surface; *wetted* trims the parts inside other components. The framework values are its own "
-          "approximations (`aero/parasite.py`):",
-          "- wing and tails: Raymer's S (1.977 + 0.52 t/c);",
-          "- cargo bay: 2(lw + lh + wh);",
-          "- boom: 2π r l, the side only;",
-          "- nacelles: π d l.\n",
-          "| Component | CompGeom theoretical | CompGeom wetted | framework | theo. vs fw | wetted vs fw |",
-          "|---|---:|---:|---:|---:|---:|"]
+    L += [
+        "",
+        "## Wetted areas (m²)\n",
+        "CompGeom on the export set (the markers are excluded). *Theoretical* is each component's own closed "
+        "surface; *wetted* trims the parts inside other components. The framework values are its own "
+        "approximations (`aero/parasite.py`):",
+        "- wing and tails: Raymer's S (1.977 + 0.52 t/c);",
+        "- cargo bay: 2(lw + lh + wh);",
+        "- boom: 2π r l, the side only;",
+        "- nacelles: π d l.\n",
+        "| Component | CompGeom theoretical | CompGeom wetted | framework | theo. vs fw | wetted vs fw |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
     L += [f"| {n} | {t:.5f} | {w:.5f} | {f:.5f} | {dt:+.1f} % | {dw:+.1f} % |" for n, t, w, f, dt, dw in wet_rows]
-    L += ["", "Why these differ:",
-          "- **Wing and tails:** Raymer's 1.977 + 0.52 t/c approximates a thin airfoil's perimeter. The theoretical "
-          "area also includes the tip caps. The wing's *wetted* area loses the strip inside the cargo bay and under "
-          "the nacelles.",
-          "- **Cargo bay:** the mock-up's box has illustrative rounded corners (radius 12% of min(w, h)), which take "
-          "area off the sharp-cornered 2(lw + lh + wh). Its wetted area also loses the wing and boom footprints.",
-          "- **Boom:** the theoretical area adds the two flat end caps (2πr²). The wetted area loses the length "
-          "inside the cargo bay.",
-          "- **Nacelles:** the illustrative streamlined pod (OpenVSP POD) has less area than the cylinder π d l "
-          "that `parasite.py` uses.",
-          "",
-          f"**Airfoil types:** OpenVSP's CST airfoil type, built from the same upper and lower weights, differs from "
-          f"the exported Kulfan coordinates by up to {cst[0]:.4f} c (at x/c = {cst[1]:.3f}). OpenVSP's CST has no "
-          "Kulfan leading-edge term and no TE thickness, so the model uses a file airfoil instead.", ""]
+    L += [
+        "",
+        "Why these differ:",
+        "- **Wing and tails:** Raymer's 1.977 + 0.52 t/c approximates a thin airfoil's perimeter. The theoretical "
+        "area also includes the tip caps. The wing's *wetted* area loses the strip inside the cargo bay and under "
+        "the nacelles.",
+        "- **Cargo bay:** the mock-up's box has illustrative rounded corners (radius 12% of min(w, h)), which take "
+        "area off the sharp-cornered 2(lw + lh + wh). Its wetted area also loses the wing and boom footprints.",
+        "- **Boom:** the theoretical area adds the two flat end caps (2πr²). The wetted area loses the length "
+        "inside the cargo bay.",
+        "- **Nacelles:** the illustrative streamlined pod (OpenVSP POD) has less area than the cylinder π d l "
+        "that `parasite.py` uses.",
+        "",
+        f"**Airfoil types:** OpenVSP's CST airfoil type, built from the same upper and lower weights, differs from "
+        f"the exported Kulfan coordinates by up to {cst[0]:.4f} c (at x/c = {cst[1]:.3f}). OpenVSP's CST has no "
+        "Kulfan leading-edge term and no TE thickness, so the model uses a file airfoil instead.",
+        "",
+    ]
     L += ["## Over 5 %\n"]
-    L += ([f"- {q}: OpenVSP {a:.5g} vs framework {e:.5g} ({d:+.1f} %)" for q, a, e, d, _ in flagged]
-          or ["- none"])
+    L += [f"- {q}: OpenVSP {a:.5g} vs framework {e:.5g} ({d:+.1f} %)" for q, a, e, d, _ in flagged] or ["- none"]
     Path(path).write_text("\n".join(L) + "\n")
     return path

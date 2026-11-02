@@ -30,8 +30,10 @@ class LoadFactor(AnalyticComponent):
         self.options.declare("rho_ks", default=100.0)
 
     def io(self):
-        return ({"L_turn": (100.0, "N"), "W": (49.0, "N"), "n_struct": (5.0, None)},
-                {"n_aero": (2.0, None), "n": (2.0, None)})
+        return (
+            {"L_turn": (100.0, "N"), "W": (49.0, "N"), "n_struct": (5.0, None)},
+            {"n_aero": (2.0, None), "n": (2.0, None)},
+        )
 
     def evaluate(self, x):
         L, W, ns = x["L_turn"], x["W"], x["n_struct"]
@@ -60,5 +62,7 @@ class OvalLapTime(AnalyticComponent):
         gt = (2.0 * np.pi / V) * gR + D({"straight_length": 2.0 / V, "V": -t / V})
         omega = V / R
         gw = D({"V": 1.0 / R}) + (-V / R**2) * gR
-        return ({"turn_radius": R, "turn_rate": omega, "lap_time": t},
-                {"turn_radius": gR, "turn_rate": gw, "lap_time": gt})
+        return (
+            {"turn_radius": R, "turn_rate": omega, "lap_time": t},
+            {"turn_radius": gR, "turn_rate": gw, "lap_time": gt},
+        )

@@ -23,18 +23,34 @@ BLOCKS = [  # (id, label, kind)
     ("score", "Scoring\nplug-in", "function"),
 ]
 DATA = [  # (from, to, label)  upper triangle: feed-forward; lower: feedback
-    ("opt", "geo", "b, c, l_ht, S_ht, S_vt, stations"), ("opt", "af", "t/c, camber"), ("opt", "prop", "capacity"),
-    ("mda", "aero", "α, V"), ("mda", "mass", "m"),
-    ("geo", "aero", "mesh, S, tails"), ("geo", "mass", "b, c, l_tb, S_cb, y_m"), ("geo", "stab", "V_h, stations"),
-    ("af", "aero", "Kulfan"), ("af", "mass", "t/c, A/c², P/c"),
-    ("prop", "aero", "T(V)"), ("prop", "geo", "D_prop (twin)"), ("prop", "mass", "m_sys, m_unit (twin)"),
+    ("opt", "geo", "b, c, l_ht, S_ht, S_vt, stations"),
+    ("opt", "af", "t/c, camber"),
+    ("opt", "prop", "capacity"),
+    ("mda", "aero", "α, V"),
+    ("mda", "mass", "m"),
+    ("geo", "aero", "mesh, S, tails"),
+    ("geo", "mass", "b, c, l_tb, S_cb, y_m"),
+    ("geo", "stab", "V_h, stations"),
+    ("af", "aero", "Kulfan"),
+    ("af", "mass", "t/c, A/c², P/c"),
+    ("prop", "aero", "T(V)"),
+    ("prop", "geo", "D_prop (twin)"),
+    ("prop", "mass", "m_sys, m_unit (twin)"),
     ("prop", "lap", "T(v), P(v), E"),
-    ("aero", "mass", "C_m, C_Lα"), ("aero", "stab", "a_w"), ("aero", "lap", "polar, C_L,max"),
-    ("mass", "aero", "W"), ("mass", "stab", "masses"), ("mass", "lap", "m"),
+    ("aero", "mass", "C_m, C_Lα"),
+    ("aero", "stab", "a_w"),
+    ("aero", "lap", "polar, C_L,max"),
+    ("mass", "aero", "W"),
+    ("mass", "stab", "masses"),
+    ("mass", "lap", "m"),
     ("lap", "score", "lap times, laps"),
-    ("score", "opt", "f"), ("stab", "opt", "SM"), ("lap", "opt", "stall, turn, thrust, energy margins"),
-    ("mass", "opt", "tube t/r, r_tube"), ("geo", "opt", "V_h, V_v, prop clearances (twin)"),
-    ("aero", "opt", "section c_l margin"), ("prop", "opt", "rpm, v-fit margins"),
+    ("score", "opt", "f"),
+    ("stab", "opt", "SM"),
+    ("lap", "opt", "stall, turn, thrust, energy margins"),
+    ("mass", "opt", "tube t/r, r_tube"),
+    ("geo", "opt", "V_h, V_v, prop clearances (twin)"),
+    ("aero", "opt", "section c_l margin"),
+    ("prop", "opt", "rpm, v-fit margins"),
 ]
 
 
@@ -65,13 +81,29 @@ def draw_pdf(path):
     fig, ax = figure(1.0, 1.0)
     colours = {"optimizer": PALETTE[2], "mda": PALETTE[3], "function": PALETTE[0]}
     for i, (_, label, kind) in enumerate(BLOCKS):
-        ax.add_patch(FancyBboxPatch((i - 0.45, -i - 0.35), 0.9, 0.7, boxstyle="round,pad=0.02",
-                                    fc=colours[kind], alpha=0.25, ec=colours[kind]))
+        ax.add_patch(
+            FancyBboxPatch(
+                (i - 0.45, -i - 0.35),
+                0.9,
+                0.7,
+                boxstyle="round,pad=0.02",
+                fc=colours[kind],
+                alpha=0.25,
+                ec=colours[kind],
+            )
+        )
         ax.text(i, -i, label, ha="center", va="center", fontsize=5)
     for a, b, label in DATA:
         i, j = idx[a], idx[b]
-        ax.text(j, -i, textwrap.fill(label, 12), ha="center", va="center", fontsize=4.2,
-                bbox=dict(boxstyle="square,pad=0.15", fc="#f2f2f2", ec="#999999", lw=0.4))
+        ax.text(
+            j,
+            -i,
+            textwrap.fill(label, 12),
+            ha="center",
+            va="center",
+            fontsize=4.2,
+            bbox=dict(boxstyle="square,pad=0.15", fc="#f2f2f2", ec="#999999", lw=0.4),
+        )
     for i in range(n):
         ax.plot([i, i], [0.5, -n + 0.5], color="#dddddd", lw=0.4, zorder=0)
         ax.plot([-0.5, n - 0.5], [-i, -i], color="#dddddd", lw=0.4, zorder=0)

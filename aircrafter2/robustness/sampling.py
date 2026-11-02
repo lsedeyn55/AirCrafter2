@@ -55,8 +55,13 @@ def _init(cfg, dv, outputs):
     except Exception:  # the nominal point itself does not converge: every sample is MDA non-convergence (an
         _W.update(prob=None, outputs=outputs)  # initializer that raises makes the pool respawn workers forever)
         return
-    _W.update(prob=prob, outputs=outputs, nominal=prob.model._outputs.asarray(copy=True),
-              inputs={k: _value(prob, k) for k in dv}, names=names)
+    _W.update(
+        prob=prob,
+        outputs=outputs,
+        nominal=prob.model._outputs.asarray(copy=True),
+        inputs={k: _value(prob, k) for k in dv},
+        names=names,
+    )
 
 
 def _restore_nominal():
@@ -113,8 +118,14 @@ def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
                 invalid.append(i)
         elif how == "nominal":
             retried.append(i)
-    return dict(values=values, failed=sorted(failed), lap_invalid=sorted(invalid), retried=sorted(retried), wall=wall,
-                workers=workers)
+    return dict(
+        values=values,
+        failed=sorted(failed),
+        lap_invalid=sorted(invalid),
+        retried=sorted(retried),
+        wall=wall,
+        workers=workers,
+    )
 
 
 def violation_probabilities(values, outputs, constraints, rtol=1e-6):

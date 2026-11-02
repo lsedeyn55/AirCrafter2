@@ -32,26 +32,43 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..stores import LB, StoreConfig
 from ..stores2026 import Store2026Config
-from .full_mdo import (DV_REF, DV_UNITS, FullMDOConfig, apply_full_values, build_full_model, full_constraints,
-                       full_config_from_dict, kv_is_dv)
+from .full_mdo import (
+    DV_REF,
+    DV_UNITS,
+    FullMDOConfig,
+    apply_full_values,
+    build_full_model,
+    full_constraints,
+    full_config_from_dict,
+    kv_is_dv,
+)
 from .wing_aero import Bounds
 
 POINTS = ("M2", "M3")
-STORE_FLAGS = {"M2": dict(tanks=True, fuel=True, pylons=True, x1=True),     # Rules p. 11
-               "M3": dict(tanks=True, fuel=False, pylons=True, x1=True),    # p. 11: tanks may be empty
-               "M1": dict(tanks=False, fuel=False, pylons=False, x1=False)}  # p. 10-11: no payload, no pylons
+STORE_FLAGS = {
+    "M2": dict(tanks=True, fuel=True, pylons=True, x1=True),  # Rules p. 11
+    "M3": dict(tanks=True, fuel=False, pylons=True, x1=True),  # p. 11: tanks may be empty
+    "M1": dict(tanks=False, fuel=False, pylons=False, x1=False),
+}  # p. 10-11: no payload, no pylons
 # 2025-26 (2026-DBF-Rules.pdf): M2 carries the passengers and cargo, M3 the banner, M1 nothing (p. 10, p. 19-20); the
 # restraints and the payload fuselage are on board at every point (stores2026.py)
-STORE_FLAGS_2026 = {"M2": dict(payload=True, banner=False), "M3": dict(payload=False, banner=True),
-                    "M1": dict(payload=False, banner=False)}
+STORE_FLAGS_2026 = {
+    "M2": dict(payload=True, banner=False),
+    "M3": dict(payload=False, banner=True),
+    "M1": dict(payload=False, banner=False),
+}
 EXTRA_UNITS = {"fuel_mass": "kg", "n_p": None, "n_c": None, "L_banner": "inch"}
 # the 2025-26 extra design variables and the points that read them (the payload counts size the fuselage: all points)
 EXTRA_POINTS_2026 = {"n_p": ("M1", "M2", "M3"), "n_c": ("M1", "M2", "M3"), "L_banner": ("M3",)}
 PER_POINT_UNITS = {"capacity": "A*h", "x_batt": "m", "throttle": None}
 EXTRA_REF = {"n_p": 10.0, "n_c": 10.0, "L_banner": 100.0}  # optimiser scaling of the 2025-26 extras (O(1))
 # structural sizing inputs of an externally sized point, from the sizing point: mass, speed, wing Cm and CL_alpha
-SIZING_LINKS = [("m_total", "m_sizing"), ("v", "v_sizing"), ("cruise.Cm_wing", "Cm_sizing"),
-                ("cruise.CL_alpha", "CL_alpha_sizing")]
+SIZING_LINKS = [
+    ("m_total", "m_sizing"),
+    ("v", "v_sizing"),
+    ("cruise.Cm_wing", "Cm_sizing"),
+    ("cruise.CL_alpha", "CL_alpha_sizing"),
+]
 # the flight-safety constraints that fail the M1 check (m1_check); the model-validity limits are only reported
 M1_SAFETY = frozenset({"stall_margin", "SM", "thrust_margin_static", "wall_ratio", "r_tube", "turn_speed_margin"})
 # 2025-26 (kind dbf2026, decision 2026-11-02, OPEN_QUESTIONS Q9/Q62): SM fails the M1 check only below SM_min; above
@@ -68,43 +85,58 @@ class PointConfig(BaseModel):
 class RulesConfig(BaseModel):
     """Rule limits and the battery / ESC data that turn them into constraints. The values are in the ruleset
     (configs/rulesets/<ruleset>.yaml, multipoint.rules), with their citations; there are no code defaults."""
+
     model_config = ConfigDict(extra="forbid")
     togw_max_lb: float = Field(description="TOGW limit (lb)")
-    energy_total_max_Wh: float = Field(description="propulsion total stored energy (Wh); also the per-pack limit "
-                                                   "for packs that share the total")
+    energy_total_max_Wh: float = Field(
+        description="propulsion total stored energy (Wh); also the per-pack limit for packs that share the total"
+    )
     fuse_max_A: float = Field(description="arming fuse rating (A)")
     c_rating: float = Field(description="pack C rating: fuse <= capacity x C")
     laps_m2_min: Optional[float] = Field(description="M2 laps required in the window (None: no requirement)")
     span_max_ft: float = Field(description="maximum wingspan (ft): the upper bound of b")
-    pax_per_cargo_min: Optional[float] = Field(None, description="2025-26: passengers per cargo the aircraft must "
-                                               "carry (n_p >= this x n_c); None for other rulesets")
-    fuselage_span_ratio_max: Optional[float] = Field(None, description="2025-26: payload fuselage length / span "
-                                                     "upper limit (an engineering cap, PLACEHOLDER); None = no cap")
+    pax_per_cargo_min: Optional[float] = Field(
+        None,
+        description="2025-26: passengers per cargo the aircraft must "
+        "carry (n_p >= this x n_c); None for other rulesets",
+    )
+    fuselage_span_ratio_max: Optional[float] = Field(
+        None,
+        description="2025-26: payload fuselage length / span "
+        "upper limit (an engineering cap, PLACEHOLDER); None = no cap",
+    )
 
 
 class MultipointSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     points: dict[Literal["M2", "M3"], PointConfig]
-    per_point: list[str] = Field(["capacity", "x_batt", "throttle"],
-                                 description="design variables duplicated per point (suffix _M2 / _M3)")
+    per_point: list[str] = Field(
+        ["capacity", "x_batt", "throttle"], description="design variables duplicated per point (suffix _M2 / _M3)"
+    )
     per_point_bounds: dict[str, Bounds] = Field({}, description="bounds of per-point DVs not in design_variables")
     per_point_initial: dict[str, float] = Field({}, description="start values by suffixed name, e.g. throttle_M3")
-    kind: Literal["dbf2025", "dbf2026"] = Field("dbf2025", description="the ruleset's problem: its store set, extra "
-                                                "design variables and scoring plug-in")
-    fuel: Bounds = Field(Bounds(lower=0.0, upper=1e9), description="kg; the upper bound is capped at the tanks' "
-                                                                   "capacity")
+    kind: Literal["dbf2025", "dbf2026"] = Field(
+        "dbf2025", description="the ruleset's problem: its store set, extra design variables and scoring plug-in"
+    )
+    fuel: Bounds = Field(
+        Bounds(lower=0.0, upper=1e9), description="kg; the upper bound is capped at the tanks' capacity"
+    )
     fuel_initial: float = 3.0
     stores: Optional[StoreConfig] = Field(None, description="dbf2025: the ruleset's multipoint.stores")
     stores2026: Optional[Store2026Config] = Field(None, description="dbf2026: payload, banner and payload fuselage")
     payload: dict[str, Bounds] = Field({}, description="dbf2026: bounds of n_p, n_c and L_banner (inch)")
     payload_initial: dict[str, float] = Field({}, description="dbf2026: start values of n_p, n_c, L_banner")
-    scoring: dict = Field({}, description="the plug-in's options (dbf2025: R2, R3, bonus, x1_weight_lb, w2, w3; "
-                                          "dbf2026: NI_max, B_max, w2, w3)")
+    scoring: dict = Field(
+        {},
+        description="the plug-in's options (dbf2025: R2, R3, bonus, x1_weight_lb, w2, w3; "
+        "dbf2026: NI_max, B_max, w2, w3)",
+    )
     rules: RulesConfig = Field(description="the ruleset's multipoint.rules")
 
 
 class MultipointConfig(BaseModel):
     """A base FullMDOConfig (airframe, powertrain, analysis settings) plus the multipoint block."""
+
     model_config = ConfigDict(extra="forbid")
     base: FullMDOConfig
     mp: MultipointSettings
@@ -202,9 +234,11 @@ def multipoint_constraints(mcfg):
     for p in POINTS:
         for name, kw in full_constraints(mcfg.point_config(p)):
             cons.append((f"points.{p}.{name}", kw))
-        cons += [(f"rules_{p}.energy_margin_Wh", dict(lower=0.0, ref=10.0)),
-                 (f"rules_{p}.fuse_margin", dict(lower=0.0, ref=10.0)),
-                 (f"rules_{p}.fuse_margin_C", dict(lower=0.0, ref=10.0))]
+        cons += [
+            (f"rules_{p}.energy_margin_Wh", dict(lower=0.0, ref=10.0)),
+            (f"rules_{p}.fuse_margin", dict(lower=0.0, ref=10.0)),
+            (f"rules_{p}.fuse_margin_C", dict(lower=0.0, ref=10.0)),
+        ]
     cons.append(("rules.togw_margin", dict(lower=0.0, ref=1.0)))
     if mcfg.mp.rules.laps_m2_min is not None:
         cons.append(("points.M2.laps_frac", dict(lower=mcfg.mp.rules.laps_m2_min)))
@@ -213,8 +247,11 @@ def multipoint_constraints(mcfg):
     if mcfg.mp.rules.fuselage_span_ratio_max is not None:
         cons.append(("rules.fuselage_margin", dict(lower=0.0, ref=0.1)))
     if mcfg.mp.kind == "dbf2026":  # the rigid payload fuselage (stores2026.Packaging2026): battery inside, tail behind
-        cons += [(f"points.{p}.{n}", dict(lower=0.0, ref=0.1)) for p in POINTS
-                 for n in ("batt_fwd_margin", "batt_aft_margin")]
+        cons += [
+            (f"points.{p}.{n}", dict(lower=0.0, ref=0.1))
+            for p in POINTS
+            for n in ("batt_fwd_margin", "batt_aft_margin")
+        ]
         cons.append(("points.M2.tail_margin", dict(lower=0.0, ref=0.1)))  # shared geometry: the same at M3
     return cons
 
@@ -228,12 +265,18 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
     shared = list(mcfg.shared_dvs)
     per = mcfg.mp.per_point
     extra = list(mcfg.extra_dvs())
-    points = m.add_subsystem("points", om.ParallelGroup(),
-                             promotes_inputs=shared + [f"{k}_{p}" for p in POINTS for k in per] + extra)
+    points = m.add_subsystem(
+        "points", om.ParallelGroup(), promotes_inputs=shared + [f"{k}_{p}" for p in POINTS for k in per] + extra
+    )
     for p in POINTS:
         g = om.Group()
-        build_full_model(g, mcfg.point_config(p), mda_retry=mda_retry, sizing="own" if p == "M2" else "external",
-                         stores=mcfg.store_set(p))
+        build_full_model(
+            g,
+            mcfg.point_config(p),
+            mda_retry=mda_retry,
+            sizing="own" if p == "M2" else "external",
+            stores=mcfg.store_set(p),
+        )
         promo = shared + [(k, f"{k}_{p}") for k in per] + mcfg.extra_points(p)
         points.add_subsystem(p, g, promotes_inputs=promo)
     for src, dst in SIZING_LINKS:  # M3 flies the airframe sized at M2 (same structural loads)
@@ -244,15 +287,23 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
 
     if mcfg.mp.kind == "dbf2026":
         plugin = DBF2026(**mcfg.mp.scoring)
-        m.add_subsystem("scoring", DBF2026Score(plugin=plugin), promotes_inputs=["n_p", "n_c", "L_banner", "b"],
-                        promotes_outputs=DBF2026Score.OUT)
+        m.add_subsystem(
+            "scoring",
+            DBF2026Score(plugin=plugin),
+            promotes_inputs=["n_p", "n_c", "L_banner", "b"],
+            promotes_outputs=DBF2026Score.OUT,
+        )
         m.connect("points.M2.laps_frac", "scoring.laps_M2")
         m.connect("points.M2.E_nom_total", "scoring.E_M2")
         m.connect("points.M3.laps_frac", "scoring.laps_M3")
     else:
         plugin = DBF2025(**mcfg.mp.scoring)
-        m.add_subsystem("scoring", DBF2025Score(plugin=plugin), promotes_inputs=["fuel_mass"],
-                        promotes_outputs=["score", "M1", "M2", "M3", "flight_score", "n_pre"])
+        m.add_subsystem(
+            "scoring",
+            DBF2025Score(plugin=plugin),
+            promotes_inputs=["fuel_mass"],
+            promotes_outputs=["score", "M1", "M2", "M3", "flight_score", "n_pre"],
+        )
         m.connect("points.M2.ThreeLapTime", "scoring.t3_M2")
         m.connect("points.M3.laps_frac", "scoring.laps_M3")
 
@@ -266,21 +317,37 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
         promo += ["n_p", "n_c"]
     if r.fuselage_span_ratio_max is not None:  # 2025-26: payload fuselage no longer than a multiple of the span
         eqs.append("fuselage_margin = ratio_fus * b - l_cb")
-        kw.update(ratio_fus={"val": r.fuselage_span_ratio_max}, b={"units": "m"}, l_cb={"units": "m"},
-                  fuselage_margin={"units": "m"})
+        kw.update(
+            ratio_fus={"val": r.fuselage_span_ratio_max},
+            b={"units": "m"},
+            l_cb={"units": "m"},
+            fuselage_margin={"units": "m"},
+        )
         promo += ["b"]
     m.add_subsystem("rules", om.ExecComp(eqs, **kw), promotes_inputs=promo)
     if r.fuselage_span_ratio_max is not None:
         m.connect("points.M2.l_cb", "rules.l_cb")
     m.connect("points.M2.m_total", "rules.m_total")
     for p in POINTS:
-        m.add_subsystem(f"rules_{p}", om.ExecComp(
-            ["energy_margin_Wh = e_max - E_nom_total", "fuse_margin = fuse_max - I_pack_static",
-             "fuse_margin_C = c_rating * capacity - I_pack_static"],
-            energy_margin_Wh={"units": "W*h"}, e_max={"units": "W*h", "val": r.energy_total_max_Wh},
-            E_nom_total={"units": "W*h"}, fuse_margin={"units": "A"}, fuse_max={"units": "A", "val": r.fuse_max_A},
-            I_pack_static={"units": "A"}, fuse_margin_C={"units": "A"}, c_rating={"units": "1/h", "val": r.c_rating},
-            capacity={"units": "A*h"}))
+        m.add_subsystem(
+            f"rules_{p}",
+            om.ExecComp(
+                [
+                    "energy_margin_Wh = e_max - E_nom_total",
+                    "fuse_margin = fuse_max - I_pack_static",
+                    "fuse_margin_C = c_rating * capacity - I_pack_static",
+                ],
+                energy_margin_Wh={"units": "W*h"},
+                e_max={"units": "W*h", "val": r.energy_total_max_Wh},
+                E_nom_total={"units": "W*h"},
+                fuse_margin={"units": "A"},
+                fuse_max={"units": "A", "val": r.fuse_max_A},
+                I_pack_static={"units": "A"},
+                fuse_margin_C={"units": "A"},
+                c_rating={"units": "1/h", "val": r.c_rating},
+                capacity={"units": "A*h"},
+            ),
+        )
         m.connect(f"points.{p}.E_nom_total", f"rules_{p}.E_nom_total")
         m.connect(f"points.{p}.I_pack_static", f"rules_{p}.I_pack_static")
         if "capacity" in per:
@@ -315,8 +382,13 @@ def add_dvs(m, mcfg, only=None):
         extra = name in EXTRA_UNITS
         k = name if name in mcfg.shared_dvs or extra else name.rsplit("_", 1)[0]
         upper = min(bd.upper, mcfg.mp.rules.span_max_ft * 0.3048) if name == "b" else bd.upper
-        m.add_design_var(name, lower=bd.lower, upper=upper, units=EXTRA_UNITS[name] if extra else DV_UNITS.get(k),
-                         ref=EXTRA_REF.get(name, DV_REF.get(k)))
+        m.add_design_var(
+            name,
+            lower=bd.lower,
+            upper=upper,
+            units=EXTRA_UNITS[name] if extra else DV_UNITS.get(k),
+            ref=EXTRA_REF.get(name, DV_REF.get(k)),
+        )
 
 
 def add_multipoint_driver(prob, mcfg, optimizer="SLSQP", only=None):
@@ -411,9 +483,12 @@ def m1_check(mcfg, prob):
         return dict(passed=False, error=f"MDA non-convergence: {str(exc)[:200]}")
     v = lambda k: float(np.ravel(q.get_val(k))[0])  # noqa: E731
     cons = {n: v(n) for n, _ in full_constraints(cfg)}
-    viol = [n for n, kw in full_constraints(cfg)
-            if (kw.get("lower") is not None and cons[n] < kw["lower"] - 1e-6)
-            or (kw.get("upper") is not None and cons[n] > kw["upper"] + 1e-6)]
+    viol = [
+        n
+        for n, kw in full_constraints(cfg)
+        if (kw.get("lower") is not None and cons[n] < kw["lower"] - 1e-6)
+        or (kw.get("upper") is not None and cons[n] > kw["upper"] + 1e-6)
+    ]
     # pass = the rule (3 laps in the window) and the flight-safety constraints; model-validity limits (v_fit_margin:
     # the light M1 aircraft can outrun the T(v) fit at M3's throttle) and the others are reported, not failed on
     sm_kw = dict(full_constraints(cfg)).get("SM", {})
@@ -422,14 +497,34 @@ def m1_check(mcfg, prob):
     if sm_high and mcfg.mp.kind in M1_SM_ONE_SIDED:
         safety.discard("SM")  # above SM_max: reported, not failed (below SM_min still fails)
     ok = v("laps_frac") >= 3.0 and not safety
-    return dict(passed=bool(ok), laps_frac=v("laps_frac"), ThreeLapTime=v("ThreeLapTime"), m_total=v("m_total"),
-                violated=viol, SM_high=bool(sm_high), constraints=cons)
+    return dict(
+        passed=bool(ok),
+        laps_frac=v("laps_frac"),
+        ThreeLapTime=v("ThreeLapTime"),
+        m_total=v("m_total"),
+        violated=viol,
+        SM_high=bool(sm_high),
+        constraints=cons,
+    )
 
 
 def kv_settings_report(mcfg):
     return dict(kv_dv=kv_is_dv(mcfg.base), bounds=mcfg.base.design_variables.get("Kv"))
 
 
-__all__ = ["MultipointConfig", "load_multipoint_config", "build_multipoint_problem", "build_multipoint_model",
-           "add_multipoint_driver", "apply_multipoint_values", "multipoint_constraints", "m1_check",
-           "design_values", "initial_values", "run_warm", "POINTS", "STORE_FLAGS", "STORE_FLAGS_2026"]
+__all__ = [
+    "MultipointConfig",
+    "load_multipoint_config",
+    "build_multipoint_problem",
+    "build_multipoint_model",
+    "add_multipoint_driver",
+    "apply_multipoint_values",
+    "multipoint_constraints",
+    "m1_check",
+    "design_values",
+    "initial_values",
+    "run_warm",
+    "POINTS",
+    "STORE_FLAGS",
+    "STORE_FLAGS_2026",
+]

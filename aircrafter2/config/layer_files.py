@@ -75,8 +75,9 @@ def read_rows(path):
             m = ITEM_RE.match(line)
             if m:
                 units, status, q, source = split_comment(m.group("comment"))
-                spreads.append(dict(yaml.safe_load(m.group("value")), comment_units=units, status=status, Q=q,
-                                    note=source, line=i))
+                spreads.append(
+                    dict(yaml.safe_load(m.group("value")), comment_units=units, status=status, Q=q, note=source, line=i)
+                )
             elif line and not line.startswith((" ", "#")):
                 in_unc = False
             if in_unc:
@@ -86,8 +87,18 @@ def read_rows(path):
         m = LINE_RE.match(line)
         if m:
             units, status, q, source = split_comment(m.group("comment"))
-            rows.append(dict(area=area, parameter=m.group("key"), value=parse_value(m.group("value")), units=units,
-                             status=status, Q=q, source=source, line=i))
+            rows.append(
+                dict(
+                    area=area,
+                    parameter=m.group("key"),
+                    value=parse_value(m.group("value")),
+                    units=units,
+                    status=status,
+                    Q=q,
+                    source=source,
+                    line=i,
+                )
+            )
     return rows, spreads
 
 
@@ -134,8 +145,12 @@ def save_rows(path, rows, spreads=None):
         old = next((s for s in cur_spreads if s["line"] == row["line"]), None)
         if old is None or old["name"] != row["name"]:
             raise ValueError(f"{path.name}: spread {row.get('name')!r} is not at line {row['line']} (file changed?)")
-        fields_same = all((old.get(k) == row.get(k)) or (old.get(k) is None and row.get(k) in (None, "")) or (
-            isinstance(row.get(k), float) and row.get(k) != row.get(k) and old.get(k) is None) for k in SPREAD_FIELDS)
+        fields_same = all(
+            (old.get(k) == row.get(k))
+            or (old.get(k) is None and row.get(k) in (None, ""))
+            or (isinstance(row.get(k), float) and row.get(k) != row.get(k) and old.get(k) is None)
+            for k in SPREAD_FIELDS
+        )
         meta_same = all(old[k] == row[k] for k in ("comment_units", "status", "Q", "note"))
         if fields_same and meta_same:
             continue
@@ -164,8 +179,8 @@ def save_config_value(path, line, key, value):
     m = re.search(rf"(^|[\s{{,]){re.escape(key)}:(\s*)(\[[^\]]*\]|[^,}}]*?)(\s*)(?=[,}}]|$)", body)
     if m is None:
         raise ValueError(f"{path.name}:{line}: no '{key}:' to edit")
-    head = body[:m.start(3)] + new
-    tail = body[m.end(3):]
+    head = body[: m.start(3)] + new
+    tail = body[m.end(3) :]
     stripped = (head + tail).rstrip()
     if hash_:
         out = stripped.ljust(len(body)) if len(stripped) < len(body) else stripped + "  "
@@ -193,12 +208,15 @@ def rows_to_layer(rows, spreads=None):
     """Layer data (as load_layer gives it) from rows: the UI's unsaved edits applied to a run."""
     data = expand_dotted({r["parameter"]: r["value"] for r in rows})
     if spreads is not None:
-        data["uncertainty"] = [{k: s[k] for k in SPREAD_FIELDS if s.get(k) is not None and s.get(k) == s.get(k)
-                                and s.get(k) != ""} for s in spreads]
+        data["uncertainty"] = [
+            {k: s[k] for k in SPREAD_FIELDS if s.get(k) is not None and s.get(k) == s.get(k) and s.get(k) != ""}
+            for s in spreads
+        ]
     return data
 
 
 # --- where a config overrides a layer value ---------------------------------------------------------------------
+
 
 def _chain(path):
     """The config files of path's extends: chain, the config itself first."""
@@ -305,33 +323,71 @@ def layer_files_of(config_path):
 # --- editor frames (the UI's st.data_editor tables; the values are shown and edited as text) ----------------------
 
 ROW_COLS = ["area", "parameter", "units", "value", "status", "Q", "source", "overridden by", "line"]
-SPREAD_COLS = ["name", "dist", "nominal", "spread", "relative", "units", "kv_mode", "source", "status", "Q", "note",
-               "overridden by", "line"]
+SPREAD_COLS = [
+    "name",
+    "dist",
+    "nominal",
+    "spread",
+    "relative",
+    "units",
+    "kv_mode",
+    "source",
+    "status",
+    "Q",
+    "note",
+    "overridden by",
+    "line",
+]
 
 
 def rows_to_frame(rows, overridden=None):
     import pandas as pd
 
-    return pd.DataFrame([dict(r, value=fmt_value(r["value"]), **{"overridden by": (overridden or {}).get(
-        r["parameter"], "")}) for r in rows], columns=ROW_COLS)
+    return pd.DataFrame(
+        [
+            dict(r, value=fmt_value(r["value"]), **{"overridden by": (overridden or {}).get(r["parameter"], "")})
+            for r in rows
+        ],
+        columns=ROW_COLS,
+    )
 
 
 def frame_to_rows(df):
     out = []
     for r in df.to_dict("records"):
-        out.append(dict(area=r["area"], parameter=r["parameter"], value=parse_value(str(r["value"])),
-                        units=r["units"] or "", status=r["status"] or "", Q=r["Q"] or "", source=r["source"] or "",
-                        line=int(r["line"])))
+        out.append(
+            dict(
+                area=r["area"],
+                parameter=r["parameter"],
+                value=parse_value(str(r["value"])),
+                units=r["units"] or "",
+                status=r["status"] or "",
+                Q=r["Q"] or "",
+                source=r["source"] or "",
+                line=int(r["line"]),
+            )
+        )
     return out
 
 
 def spreads_to_frame(spreads, overridden=None):
     import pandas as pd
 
-    return pd.DataFrame([dict({k: s.get(k) for k in SPREAD_FIELDS}, status=s["status"], Q=s["Q"], note=s["note"],
-                              line=s["line"], units=s.get("units") or s["comment_units"],
-                              **{"overridden by": (overridden or {}).get(s["name"], "")}) for s in spreads],
-                        columns=SPREAD_COLS)
+    return pd.DataFrame(
+        [
+            dict(
+                {k: s.get(k) for k in SPREAD_FIELDS},
+                status=s["status"],
+                Q=s["Q"],
+                note=s["note"],
+                line=s["line"],
+                units=s.get("units") or s["comment_units"],
+                **{"overridden by": (overridden or {}).get(s["name"], "")},
+            )
+            for s in spreads
+        ],
+        columns=SPREAD_COLS,
+    )
 
 
 def frame_to_spreads(df, original):
@@ -340,11 +396,21 @@ def frame_to_spreads(df, original):
     out = []
     for r in df.to_dict("records"):
         o = by_line[int(r["line"])]
-        row = {k: (None if (isinstance(r.get(k), float) and r.get(k) != r.get(k)) or r.get(k) == "" else r.get(k))
-               for k in SPREAD_FIELDS}
+        row = {
+            k: (None if (isinstance(r.get(k), float) and r.get(k) != r.get(k)) or r.get(k) == "" else r.get(k))
+            for k in SPREAD_FIELDS
+        }
         row["units"] = o.get("units")  # the mapping's own units key (unchanged by the editor)
         if row.get("relative") is not None:
             row["relative"] = bool(row["relative"])
-        out.append(dict(row, comment_units=o["comment_units"], status=r["status"] or "", Q=r["Q"] or "",
-                        note=r["note"] or "", line=o["line"]))
+        out.append(
+            dict(
+                row,
+                comment_units=o["comment_units"],
+                status=r["status"] or "",
+                Q=r["Q"] or "",
+                note=r["note"] or "",
+                line=o["line"],
+            )
+        )
     return out

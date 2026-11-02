@@ -44,8 +44,9 @@ class OvalLapProblemConfig(BaseModel):
     weight: float = Field(49.0, gt=0, description="N, PLACEHOLDER fixed weight (aero_mass couples the G&G mass model)")
     straight_length: float = Field(1000 * FT, description="m; 1000 ft, the long leg in performance_modeller.m")
     n_struct: float = Field(5.0, description="structural load factor limit, assumptions_file.m")
-    turn_clmax_ratio_min: float = Field(1.21, description="PLACEHOLDER: turn at <= C_L,max / 1.21 "
-                                        "(1.1 speed margin to stall in the turn)")
+    turn_clmax_ratio_min: float = Field(
+        1.21, description="PLACEHOLDER: turn at <= C_L,max / 1.21 (1.1 speed margin to stall in the turn)"
+    )
     clmax_ratio_min: float = Field(1.44, description="(1.2)^2 cruise margin, as in the lap modeller")
     tc_min: float = 0.10
     power_available: float | None = Field(None, description="W; optional turn power limit (PLACEHOLDER)")
@@ -61,8 +62,14 @@ class OvalLapProblemConfig(BaseModel):
     optimizer: Literal["SLSQP"] = "SLSQP"
     tol: float = 1e-8
     maxiter: int = 100
-    initial: dict[str, float] = {"b": 1.2, "c": 0.3, "alpha_cruise": 6.0, "alpha_turn": 10.0,
-                                 "tc_scale": 1.0, "camber_scale": 1.0}
+    initial: dict[str, float] = {
+        "b": 1.2,
+        "c": 0.3,
+        "alpha_cruise": 6.0,
+        "alpha_turn": 10.0,
+        "tc_scale": 1.0,
+        "camber_scale": 1.0,
+    }
 
 
 SHARED = ["b", "c", "v", "rho", "mu", "upper_weights", "lower_weights", "le_weight", "te_thickness"]
@@ -72,29 +79,55 @@ def build_oval_lap_problem(cfg: OvalLapProblemConfig, driver=True):
     prob = om.Problem(reports=False)
     m = prob.model
     a = cfg.aero
-    m.add_subsystem("airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes),
-                    promotes=["*"])
+    m.add_subsystem(
+        "airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes), promotes=["*"]
+    )
     for point in ("cruise", "turn"):
-        m.add_subsystem(point, WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
-                                        max_mode=a.max_mode, rho_ks=a.rho_ks),
-                        promotes_inputs=SHARED + [("alpha", f"alpha_{point}")])
+        m.add_subsystem(
+            point,
+            WingAero(
+                num_x=a.num_x,
+                num_y=a.num_y,
+                spacing=a.spacing,
+                nf=a.nf_settings(),
+                max_mode=a.max_mode,
+                rho_ks=a.rho_ks,
+            ),
+            promotes_inputs=SHARED + [("alpha", f"alpha_{point}")],
+        )
 
-    m.add_subsystem("lift_con", om.ExecComp("lift_residual = L / W - 1.0", L={"units": "N"}, W={"units": "N"}),
-                    promotes_inputs=["W"], promotes_outputs=["lift_residual"])
+    m.add_subsystem(
+        "lift_con",
+        om.ExecComp("lift_residual = L / W - 1.0", L={"units": "N"}, W={"units": "N"}),
+        promotes_inputs=["W"],
+        promotes_outputs=["lift_residual"],
+    )
     m.connect("cruise.L", "lift_con.L")
-    m.add_subsystem("load", LoadFactor(max_mode=a.max_mode, rho_ks=a.rho_ks), promotes_inputs=["W", "n_struct"],
-                    promotes_outputs=["n", "n_aero"])
+    m.add_subsystem(
+        "load",
+        LoadFactor(max_mode=a.max_mode, rho_ks=a.rho_ks),
+        promotes_inputs=["W", "n_struct"],
+        promotes_outputs=["n", "n_aero"],
+    )
     m.connect("turn.L", "load.L_turn")
-    m.add_subsystem("lap", OvalLapTime(), promotes_inputs=["n", "straight_length", "g"],
-                    promotes_outputs=["lap_time", "turn_radius", "turn_rate"])
+    m.add_subsystem(
+        "lap",
+        OvalLapTime(),
+        promotes_inputs=["n", "straight_length", "g"],
+        promotes_outputs=["lap_time", "turn_radius", "turn_rate"],
+    )
     m.connect("v", "lap.V")
-    m.add_subsystem("power", om.ExecComp("P_turn = D * V / eta", P_turn={"units": "W"}, D={"units": "N"},
-                                         V={"units": "m/s"}), promotes_inputs=["eta"],
-                    promotes_outputs=["P_turn"])
+    m.add_subsystem(
+        "power",
+        om.ExecComp("P_turn = D * V / eta", P_turn={"units": "W"}, D={"units": "N"}, V={"units": "m/s"}),
+        promotes_inputs=["eta"],
+        promotes_outputs=["P_turn"],
+    )
     m.connect("turn.D", "power.D")
     m.connect("v", "power.V")
-    m.add_subsystem("area", om.ExecComp("S = b * c", S={"units": "m**2"}, b={"units": "m"}, c={"units": "m"}),
-                    promotes=["*"])
+    m.add_subsystem(
+        "area", om.ExecComp("S = b * c", S={"units": "m**2"}, b={"units": "m"}, c={"units": "m"}), promotes=["*"]
+    )
 
     m.set_input_defaults("b", cfg.initial.get("b", 1.2), units="m")
     m.set_input_defaults("c", cfg.initial.get("c", 0.3), units="m")

@@ -36,11 +36,23 @@ class ParasiteDrag(om.ExplicitComponent):
 
     def setup(self):
         for name, val, units in [
-            ("v", 20.0, "m/s"), ("rho", 1.18, "kg/m**3"), ("mu", 1.8e-5, "Pa*s"), ("S", 0.375, "m**2"),
-            ("S_ht", 0.06, "m**2"), ("S_vt", 0.03, "m**2"), ("AR_ht", 4.0, None), ("AR_vt", 2.0, None),
-            ("tc_tail", 0.09, None), ("xt_tail", 0.3, None), ("Q_tail", 1.0, None),
-            ("l_cb", 0.4, "m"), ("w_cb", 0.12, "m"), ("h_cb", 0.12, "m"), ("l_tb", 0.65, "m"),
-            ("r_tb", 0.008, "m"), ("Q_fus", 1.0, None),
+            ("v", 20.0, "m/s"),
+            ("rho", 1.18, "kg/m**3"),
+            ("mu", 1.8e-5, "Pa*s"),
+            ("S", 0.375, "m**2"),
+            ("S_ht", 0.06, "m**2"),
+            ("S_vt", 0.03, "m**2"),
+            ("AR_ht", 4.0, None),
+            ("AR_vt", 2.0, None),
+            ("tc_tail", 0.09, None),
+            ("xt_tail", 0.3, None),
+            ("Q_tail", 1.0, None),
+            ("l_cb", 0.4, "m"),
+            ("w_cb", 0.12, "m"),
+            ("h_cb", 0.12, "m"),
+            ("l_tb", 0.65, "m"),
+            ("r_tb", 0.008, "m"),
+            ("Q_fus", 1.0, None),
         ]:
             self.add_input(name, val, units=units)
         if self.options["n_nacelles"]:
@@ -82,8 +94,9 @@ class ParasiteDrag(om.ExplicitComponent):
             ln, dn = x["l_nac"], x["d_nac"]
             fn = ln / dn
             FF = (1 + 60 / fn**3 + fn / 400) if self.options["nacelle_ff"] == "body" else (1 + 0.35 / fn)
-            outputs["CD_nac"] = self.options["n_nacelles"] * cf_turbulent(q_over_mu * ln) * FF * x["Q_nac"] \
-                * np.pi * dn * ln / x["S"]
+            outputs["CD_nac"] = (
+                self.options["n_nacelles"] * cf_turbulent(q_over_mu * ln) * FF * x["Q_nac"] * np.pi * dn * ln / x["S"]
+            )
         else:
             outputs["CD_nac"] = 0.0
         outputs["CD_extra"] = outputs["CD_tail"] + outputs["CD_fus"] + outputs["CD_nac"]

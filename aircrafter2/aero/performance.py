@@ -41,7 +41,7 @@ class CriticalSectionCLmax(om.ExplicitComponent):
         Clf = np.where(np.real(Cl) > floor, Cl, floor)
         active = np.real(Cl) > floor
         r = inputs["Clmax_sec"] / Clf
-        f, grads = ks_min([r[i:i + 1] for i in range(r.size)], self.options["rho_ks"], self.options["max_mode"])
+        f, grads = ks_min([r[i : i + 1] for i in range(r.size)], self.options["rho_ks"], self.options["max_mode"])
         return Clf, active, r, f[0], np.array([g[0] for g in grads])
 
     def compute(self, inputs, outputs):

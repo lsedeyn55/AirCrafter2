@@ -54,25 +54,40 @@ class WingAero(om.Group):
         n = ny - 1
         surf = oas_surface(nx, ny, self.options["spacing"])
 
-        self.add_subsystem("mesh", RectWingMesh(num_x=nx, num_y=ny, spacing=self.options["spacing"]),
-                           promotes_inputs=["b", "c"])
-        self.add_subsystem("vlm", AeroPoint(surfaces=[surf]),
-                           promotes_inputs=["v", "alpha", "beta", "Mach_number", "re", "rho", "cg"])
+        self.add_subsystem(
+            "mesh", RectWingMesh(num_x=nx, num_y=ny, spacing=self.options["spacing"]), promotes_inputs=["b", "c"]
+        )
+        self.add_subsystem(
+            "vlm", AeroPoint(surfaces=[surf]), promotes_inputs=["v", "alpha", "beta", "Mach_number", "re", "rho", "cg"]
+        )
         self.connect("mesh.mesh", ["vlm.wing.def_mesh", "vlm.aero_states.wing_def_mesh"])
 
-        self.add_subsystem("strips", NeuralFoilStripDrag(n_strips=n, settings=self.options["nf"]),
-                           promotes_inputs=["upper_weights", "lower_weights", "le_weight", "te_thickness",
-                                            "v", "rho", "mu"],
-                           promotes_outputs=["CDp", "Re_sec", "alpha_sec", "Cd_sec", "Cm_sec", "Clmax_sec",
-                                             "cl_margin_sec", "nf_confidence_min", "n_stalled"])
+        self.add_subsystem(
+            "strips",
+            NeuralFoilStripDrag(n_strips=n, settings=self.options["nf"]),
+            promotes_inputs=["upper_weights", "lower_weights", "le_weight", "te_thickness", "v", "rho", "mu"],
+            promotes_outputs=[
+                "CDp",
+                "Re_sec",
+                "alpha_sec",
+                "Cd_sec",
+                "Cm_sec",
+                "Clmax_sec",
+                "cl_margin_sec",
+                "nf_confidence_min",
+                "n_stalled",
+            ],
+        )
         self.connect("vlm.wing_perf.Cl", "strips.Cl")
         self.connect("vlm.wing.chords", "strips.chords")
         self.connect("vlm.wing.widths", "strips.widths")
         self.connect("vlm.wing.S_ref", "strips.S_ref")
 
-        self.add_subsystem("clmax", CriticalSectionCLmax(n_strips=n, max_mode=self.options["max_mode"],
-                                                         rho_ks=self.options["rho_ks"]),
-                           promotes_outputs=["CL_max", "CL_max_over_CL"])
+        self.add_subsystem(
+            "clmax",
+            CriticalSectionCLmax(n_strips=n, max_mode=self.options["max_mode"], rho_ks=self.options["rho_ks"]),
+            promotes_outputs=["CL_max", "CL_max_over_CL"],
+        )
         self.connect("vlm.wing_perf.CL", "clmax.CL")
         self.connect("vlm.wing_perf.Cl", "clmax.Cl")
         self.connect("Clmax_sec", "clmax.Clmax_sec")
@@ -86,8 +101,9 @@ class WingAero(om.Group):
         self.add_subsystem("cla", LiftCurveSlope(), promotes_inputs=["alpha"], promotes_outputs=["CL_alpha"])
         self.connect("vlm.wing_perf.CL", "cla.CL")
 
-        self.add_subsystem("perf", WingPerformance(), promotes_inputs=["v", "rho"],
-                           promotes_outputs=["CD", "q", "L", "D", "L_over_D"])
+        self.add_subsystem(
+            "perf", WingPerformance(), promotes_inputs=["v", "rho"], promotes_outputs=["CD", "q", "L", "D", "L_over_D"]
+        )
         self.connect("vlm.wing_perf.CL", "perf.CL")
         self.connect("vlm.wing_perf.CDi", "perf.CDi")
         self.connect("CDp", "perf.CDp")

@@ -67,8 +67,16 @@ def parse_apc_file(path):
             continue
         rows.append([rpm] + vals)
     a = np.array(rows)
-    return APCData(name=name, diameter=d_in * INCH, pitch=p_in * INCH, rpm=a[:, 0], J=a[:, 2], Ct=a[:, 4],
-                   Cp=a[:, 5], mach_tip=a[:, 13])
+    return APCData(
+        name=name,
+        diameter=d_in * INCH,
+        pitch=p_in * INCH,
+        rpm=a[:, 0],
+        J=a[:, 2],
+        Ct=a[:, 4],
+        Cp=a[:, 5],
+        mach_tip=a[:, 13],
+    )
 
 
 def _basis(J, r, dj, dr):
@@ -106,16 +114,28 @@ def fit_prop(data: APCData, dj=4, dr=2, ct_floor=0.0):
     a_cp, *_ = np.linalg.lstsq(A, data.Cp[keep], rcond=None)
     rms = lambda a, y: float(np.sqrt(np.mean((A @ a - y) ** 2)))  # noqa: E731
     return PropSurrogate(
-        name=data.name, diameter=data.diameter, pitch=data.pitch, a_ct=a_ct, a_cp=a_cp, dj=dj, dr=dr,
-        J_max=float(data.J[keep].max()), rpm_min=float(data.rpm.min()), rpm_max_data=float(data.rpm.max()),
-        rpm_limit=150000.0 / (data.diameter / INCH), rms_ct=rms(a_ct, data.Ct[keep]),
-        rms_cp=rms(a_cp, data.Cp[keep]))
+        name=data.name,
+        diameter=data.diameter,
+        pitch=data.pitch,
+        a_ct=a_ct,
+        a_cp=a_cp,
+        dj=dj,
+        dr=dr,
+        J_max=float(data.J[keep].max()),
+        rpm_min=float(data.rpm.min()),
+        rpm_max_data=float(data.rpm.max()),
+        rpm_limit=150000.0 / (data.diameter / INCH),
+        rms_ct=rms(a_ct, data.Ct[keep]),
+        rms_cp=rms(a_cp, data.Cp[keep]),
+    )
 
 
 def load_prop(name, folder=None):
     folder = Path(folder).expanduser() if folder else DEFAULT_DIR
     path = folder / f"PER3_{name}.dat"
     if not path.is_file():
-        raise FileNotFoundError(f"APC data file not found: {path}. Point propulsion.apc_dir (config) or the "
-                                f"{APC_DIR_ENV} environment variable at the folder holding the PER3_*.dat files.")
+        raise FileNotFoundError(
+            f"APC data file not found: {path}. Point propulsion.apc_dir (config) or the "
+            f"{APC_DIR_ENV} environment variable at the folder holding the PER3_*.dat files."
+        )
     return fit_prop(parse_apc_file(path))

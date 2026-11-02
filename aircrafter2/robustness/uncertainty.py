@@ -41,8 +41,10 @@ class UncertainParam(BaseModel):
     units: Optional[str] = None
     source: str = "PLACEHOLDER"
     kv_mode: Literal["both", "fixed", "dv"] = Field(
-        "both", description="motor mode the parameter applies to: 'fixed' (Kv fixed: Kv, Rm), 'dv' (Kv a design "
-        "variable: Kv_factor, Rm_ref), or both")
+        "both",
+        description="motor mode the parameter applies to: 'fixed' (Kv fixed: Kv, Rm), 'dv' (Kv a design "
+        "variable: Kv_factor, Rm_ref), or both",
+    )
 
 
 def for_kv_mode(params, kv_dv):
@@ -52,37 +54,59 @@ def for_kv_mode(params, kv_dv):
 
 class RobustConfig(BaseModel):
     """The optional ``robust:`` block of FullMDOConfig. Off by default: the deterministic problem is unchanged."""
+
     model_config = ConfigDict(extra="forbid")
     enabled: bool = False
-    uncertainty_config: Optional[str] = Field(None, description="YAML with a 'parameters' list, relative to the "
-                                              "config file (merged into 'parameters' by load_full_config)")
+    uncertainty_config: Optional[str] = Field(
+        None,
+        description="YAML with a 'parameters' list, relative to the "
+        "config file (merged into 'parameters' by load_full_config)",
+    )
     parameters: list[UncertainParam] = []
-    active: Optional[list[str]] = Field(None, description="parameters propagated by the quadrature (from the "
-                                        "screening); the others are held at their means. None = all")
+    active: Optional[list[str]] = Field(
+        None,
+        description="parameters propagated by the quadrature (from the "
+        "screening); the others are held at their means. None = all",
+    )
     quadrature: Literal["udr", "smolyak", "sobol"] = Field(
-        "udr", description="udr: univariate dimension reduction (Rahman & Xu 2004), Gauss rules per dimension; "
-        "smolyak: sparse grid (cross terms); sobol: fixed scrambled Sobol' sample (verification only)")
+        "udr",
+        description="udr: univariate dimension reduction (Rahman & Xu 2004), Gauss rules per dimension; "
+        "smolyak: sparse grid (cross terms); sobol: fixed scrambled Sobol' sample (verification only)",
+    )
     points: int = Field(3, ge=1, description="Gauss points per dimension (udr)")
     smolyak_level: int = Field(2, ge=1)
     sobol_n: int = Field(1024, ge=2)
     sobol_seed: int = 0
     objective: Literal["mean_plus_k_sigma", "mean_sigma_cap"] = Field(
-        "mean_plus_k_sigma", description="minimise mu + k sigma (maximise mu - k sigma for 'max' plug-ins), or "
-        "optimise mu subject to sigma <= sigma_cap (epsilon-constraint, for the Pareto study)")
+        "mean_plus_k_sigma",
+        description="minimise mu + k sigma (maximise mu - k sigma for 'max' plug-ins), or "
+        "optimise mu subject to sigma <= sigma_cap (epsilon-constraint, for the Pareto study)",
+    )
     k: float = Field(1.0, ge=0)
     sigma_cap: Optional[float] = Field(None, gt=0, description="score sigma cap for objective = mean_sigma_cap")
-    beta: float = Field(2.0, ge=0, description="mu - beta sigma >= lower, mu + beta sigma <= upper; 2 ~ 97.7 % "
-                        "one-sided if the constraint is normally distributed")
-    robust_constraints: list[str] = Field(DEFAULT_ROBUST, description="constraints by moment matching; the "
-                                          "others stay deterministic at the reference node")
+    beta: float = Field(
+        2.0,
+        ge=0,
+        description="mu - beta sigma >= lower, mu + beta sigma <= upper; 2 ~ 97.7 % "
+        "one-sided if the constraint is normally distributed",
+    )
+    robust_constraints: list[str] = Field(
+        DEFAULT_ROBUST,
+        description="constraints by moment matching; the others stay deterministic at the reference node",
+    )
     optimizer: Literal["slsqp", "ipopt"] = Field(
-        "slsqp", description="slsqp: ScipyOptimizeDriver (as the deterministic problem); ipopt: pyOptSparse IPOPT, "
-        "which backs off from an MDA failure (AnalysisError -> fail flag) instead of stopping")
+        "slsqp",
+        description="slsqp: ScipyOptimizeDriver (as the deterministic problem); ipopt: pyOptSparse IPOPT, "
+        "which backs off from an MDA failure (AnalysisError -> fail flag) instead of stopping",
+    )
     sigma_eps: float = Field(1e-6, gt=0, description="sigma = sqrt(var + eps^2), eps = sigma_eps * constraint ref")
     screening_threshold: float = Field(0.9, gt=0, le=1)
     max_dim: int = Field(5, ge=1)
-    dv_tolerances: dict = Field({}, description="HOOK, not implemented: manufacturing tolerances on design "
-                                "variables (e.g. b, c, tc_scale perturbed as x + delta at the nodes)")
+    dv_tolerances: dict = Field(
+        {},
+        description="HOOK, not implemented: manufacturing tolerances on design "
+        "variables (e.g. b, c, tc_scale perturbed as x + delta at the nodes)",
+    )
 
 
 def load_uncertainty(path, kv_dv=None):
@@ -97,6 +121,7 @@ def load_uncertainty(path, kv_dv=None):
 @dataclass
 class Dist:
     """An uncertain parameter resolved to absolute numbers: x = mean + scale * xi."""
+
     name: str
     kind: str
     mean: float
@@ -177,5 +202,6 @@ def screen(prob, dists, of, threshold=0.9, max_dim=5):
     prob.run_model()
     contrib = first_order_contributions(prob, dists, of)
     selected, coverage, reached = select_parameters(contrib, threshold, max_dim)
-    return dict(contrib=contrib, selected=selected, coverage=coverage, reached=reached,
-                values={q: _value(prob, q) for q in of})
+    return dict(
+        contrib=contrib, selected=selected, coverage=coverage, reached=reached, values={q: _value(prob, q) for q in of}
+    )

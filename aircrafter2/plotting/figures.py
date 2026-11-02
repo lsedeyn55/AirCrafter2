@@ -40,7 +40,9 @@ def planform(p, path, underlay=None):
         underlay(ax)
     ax.add_patch(Rectangle((-b / 2, 0), b, c, fc=PALETTE[0], alpha=0.25, ec=PALETTE[0], label="wing"))
     x_tail = 0.25 * c + l_ht - 0.25 * ch
-    ax.add_patch(Rectangle((-bh / 2, x_tail), bh, ch, fc=PALETTE[2], alpha=0.25, ec=PALETTE[2], label="horizontal tail"))
+    ax.add_patch(
+        Rectangle((-bh / 2, x_tail), bh, ch, fc=PALETTE[2], alpha=0.25, ec=PALETTE[2], label="horizontal tail")
+    )
     x0 = 0.25 * c + v(p, "boom_offset")
     ax.plot([0, 0], [x0, 0.25 * c + l_ht], color="k", lw=2, label="tail boom")
     x_cb = v(p, "stations.x_cb")
@@ -51,8 +53,13 @@ def planform(p, path, underlay=None):
     ys = [-v(p, "y_m"), v(p, "y_m")] if _has(p, "y_m") else [0.0]
     for i, y in enumerate(ys):
         ax.plot(y, xm, "s", color=PALETTE[5], label=f"motor{'s' if len(ys) > 1 else ''}" if i == 0 else None)
-        ax.plot([y - Dp / 2, y + Dp / 2], [xm - 0.01, xm - 0.01], color=PALETTE[5], lw=1.5,
-                label=f"prop disc (D = {Dp * 39.37:.0f} in)" if i == 0 else None)
+        ax.plot(
+            [y - Dp / 2, y + Dp / 2],
+            [xm - 0.01, xm - 0.01],
+            color=PALETTE[5],
+            lw=1.5,
+            label=f"prop disc (D = {Dp * 39.37:.0f} in)" if i == 0 else None,
+        )
     ax.set_aspect("equal")
     ax.invert_yaxis()
     ax.set_xlabel("y (m)")
@@ -69,8 +76,9 @@ def airfoil(p, path, seed=None):
     xy = cst.coordinates(up, lo, le, te, 151)
     fig, ax = figure(1.0, 0.32)
     if seed is not None:
-        s = cst.coordinates(seed["upper_weights"], seed["lower_weights"], seed["leading_edge_weight"],
-                            seed["TE_thickness"], 151)
+        s = cst.coordinates(
+            seed["upper_weights"], seed["lower_weights"], seed["leading_edge_weight"], seed["TE_thickness"], 151
+        )
         ax.plot(s[:, 0], s[:, 1], "--", color=PALETTE[5], lw=1, label="seed")
     ax.plot(xy[:, 0], xy[:, 1], color=PALETTE[0], label=f"optimum (t/c = {v(p, 'tc_max'):.3f})")
     xs = v(p, "x_spar")
@@ -135,9 +143,16 @@ def mass_breakdown(p, path):
     fig, (a1, a2) = figure(1.0, 0.42, ncols=2, gridspec_kw=dict(width_ratios=[1, 1.6], wspace=0.85))
     vals = np.array(list(groups.values()))
     cols = (PALETTE * 2)[: len(vals)]
-    a1.pie(vals, colors=cols, startangle=90, counterclock=False, wedgeprops=dict(linewidth=0.5, edgecolor="white"),
-           autopct=lambda pct: f"{pct:.0f} %" if pct >= 5 else "", pctdistance=0.72,
-           textprops=dict(fontsize=6, color="white"))
+    a1.pie(
+        vals,
+        colors=cols,
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(linewidth=0.5, edgecolor="white"),
+        autopct=lambda pct: f"{pct:.0f} %" if pct >= 5 else "",
+        pctdistance=0.72,
+        textprops=dict(fontsize=6, color="white"),
+    )
     a1.set_title(f"total {vals.sum():.2f} kg (empty {vals.sum() - v(p, 'm_pay'):.2f} kg)")
     a2.barh(list(groups), vals, color=cols)
     for i, val in enumerate(vals):
@@ -231,9 +246,13 @@ def design_space(p, x1, x2, n, out, path, x1_range=None, x2_range=None):
 def make_all(p, out_dir, seed=None, case_file=None, sens=None, dvs=(), design_space_args=None):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    files = [planform(p, out / "planform.pdf"), airfoil(p, out / "airfoil.pdf", seed),
-             spanwise_lift(p, out / "spanwise_lift.pdf"), drag_breakdown(p, out / "drag_breakdown.pdf"),
-             mass_breakdown(p, out / "mass_breakdown.pdf")]
+    files = [
+        planform(p, out / "planform.pdf"),
+        airfoil(p, out / "airfoil.pdf", seed),
+        spanwise_lift(p, out / "spanwise_lift.pdf"),
+        drag_breakdown(p, out / "drag_breakdown.pdf"),
+        mass_breakdown(p, out / "mass_breakdown.pdf"),
+    ]
     if case_file is not None:
         files.append(convergence(case_file, out / "convergence.pdf"))
     if sens:

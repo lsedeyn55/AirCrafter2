@@ -53,8 +53,9 @@ def nf_eval(P, alpha, Re, s: NFSettings):
     if P.ndim == 1:
         P = np.tile(P[:, None], (1, N))
     kp = dict(upper_weights=P[0:8], lower_weights=P[8:16], leading_edge_weight=P[16], TE_thickness=P[17])
-    r = nf.get_aero_from_kulfan_parameters(kp, alpha, np.broadcast_to(Re, (N,)), n_crit=s.n_crit,
-                                           model_size=s.model_size)
+    r = nf.get_aero_from_kulfan_parameters(
+        kp, alpha, np.broadcast_to(Re, (N,)), n_crit=s.n_crit, model_size=s.model_size
+    )
     return {k: np.asarray(r[k], float) for k in ("CL", "CD", "CM", "analysis_confidence")}
 
 
@@ -118,8 +119,17 @@ def solve_sections(P, Cl_target, Re, s: NFSettings):
             break
 
     f = nf_eval(P, alpha, Re, s)
-    return dict(alpha=alpha, Cl=f["CL"], Cd=f["CD"], Cm=f["CM"], conf=f["analysis_confidence"],
-                Clmax=Clmax, alpha_peak=a_pk, clamped=clamped, peak_in_grid=interior)
+    return dict(
+        alpha=alpha,
+        Cl=f["CL"],
+        Cd=f["CD"],
+        Cm=f["CM"],
+        conf=f["analysis_confidence"],
+        Clmax=Clmax,
+        alpha_peak=a_pk,
+        clamped=clamped,
+        peak_in_grid=interior,
+    )
 
 
 def _central(P, alpha, Re, s, directions):

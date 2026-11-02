@@ -100,8 +100,7 @@ class _CaseProblem:
             self.prob = build_mass_problem(cfg)
         else:
             prob = om.Problem(reports=False)
-            prob.model.add_subsystem("mass", GarciaGamboaMass(config=cfg.options, external_sizing=True),
-                                     promotes=["*"])
+            prob.model.add_subsystem("mass", GarciaGamboaMass(config=cfg.options, external_sizing=True), promotes=["*"])
             prob.setup()
             active = set(active_inputs(cfg.options))
             set_mass_inputs(prob, {k: v for k, v in cfg.inputs.items() if k in active})
@@ -119,7 +118,10 @@ class _CaseProblem:
 
 def _bounds(factors, bounds):
     bounds = bounds or {}
-    return ([bounds.get(f, FACTOR_BOUNDS[f])[0] for f in factors], [bounds.get(f, FACTOR_BOUNDS[f])[1] for f in factors])
+    return (
+        [bounds.get(f, FACTOR_BOUNDS[f])[0] for f in factors],
+        [bounds.get(f, FACTOR_BOUNDS[f])[1] for f in factors],
+    )
 
 
 def fit_correction_factors(cases, factors, x0=None, bounds=None):
@@ -183,7 +185,7 @@ def leave_one_out(cases, factors, x0=None, bounds=None, fixed=None):
     cases = [_as_case(c, i) for i, c in enumerate(cases)]
     out = {}
     for i, held in enumerate(cases):
-        rest = cases[:i] + cases[i + 1:]
+        rest = cases[:i] + cases[i + 1 :]
         names, held_at = factors(rest) if callable(factors) else (factors, {})
         if held_at:  # the held factors apply to the fold's fit too, not only to the prediction (else the fit
             # would use whatever the case configs carry, e.g. factors calibrated with the left-out case in the data)
@@ -194,8 +196,14 @@ def leave_one_out(cases, factors, x0=None, bounds=None, fixed=None):
         _, pred = predict(held, use)
         real_tot = structure_total(held.targets)
         pred_tot = sum(v for k, v in pred.items() if all(p in STRUCTURE for p in k.split("+")))
-        out[held.name] = dict(factors=fit.factors, held_at=held_at, objective=fit.objective, success=fit.success,
-                              errors={k: pred[k] / v - 1.0 for k, v in held.targets.items()},
-                              structure_real=real_tot, structure_pred=pred_tot,
-                              structure_error=pred_tot / real_tot - 1.0)
+        out[held.name] = dict(
+            factors=fit.factors,
+            held_at=held_at,
+            objective=fit.objective,
+            success=fit.success,
+            errors={k: pred[k] / v - 1.0 for k, v in held.targets.items()},
+            structure_real=real_tot,
+            structure_pred=pred_tot,
+            structure_error=pred_tot / real_tot - 1.0,
+        )
     return out

@@ -45,14 +45,27 @@ class Leg(BaseModel):
 
 class TakeoffConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    in_mission_time: bool = Field(False, description="add the ground roll (rest to lift-off) to lap 1's time and "
-                                  "energy; rules p. 11-12: time starts at throttle advance. False: the original model")
-    k_lof: float = Field(1.1, gt=1.0, description="lift-off at k_lof V_stall (performance_modeller.m l. 405: 'full "
-                         "power until 1.1 Vstall')")
-    CL_ground: float = Field(0.15, ge=0.0, description="ground-roll lift coefficient, PLACEHOLDER "
-                             "(docs/TAKEOFF_COURSE_PLAN.md; OPEN_QUESTIONS)")
-    start_offset_ft: float = Field(0.0, ge=0.0, description="brake release behind the start line: lengthens lap 1's "
-                                   "first straight (take-off on only); PLACEHOLDER")
+    in_mission_time: bool = Field(
+        False,
+        description="add the ground roll (rest to lift-off) to lap 1's time and "
+        "energy; rules p. 11-12: time starts at throttle advance. False: the original model",
+    )
+    k_lof: float = Field(
+        1.1,
+        gt=1.0,
+        description="lift-off at k_lof V_stall (performance_modeller.m l. 405: 'full power until 1.1 Vstall')",
+    )
+    CL_ground: float = Field(
+        0.15,
+        ge=0.0,
+        description="ground-roll lift coefficient, PLACEHOLDER (docs/TAKEOFF_COURSE_PLAN.md; OPEN_QUESTIONS)",
+    )
+    start_offset_ft: float = Field(
+        0.0,
+        ge=0.0,
+        description="brake release behind the start line: lengthens lap 1's "
+        "first straight (take-off on only); PLACEHOLDER",
+    )
 
 
 class CourseConfig(BaseModel):
@@ -61,11 +74,18 @@ class CourseConfig(BaseModel):
     legs: Optional[list[Leg]] = Field(None, description="one lap from the start line, in order (overrides the preset)")
     lap1_legs: Optional[list[Leg]] = Field(None, description="a different first lap (default: the same legs)")
     pilot_reaction_time_s: float = Field(3.0, ge=0.0, description="s per lap (performance_modeller.m)")
-    turn_drift: bool = Field(False, description="carry each turn's wind drift (wind x turn time) to the next straight "
-                             "(docs/RESULTS_2026_PLAN.md §4.7). False: the original model (turns ignore the wind)")
-    lap1_cluster: float = Field(2.0, ge=1.0, description="grid exponent of lap 1's first straight (nodes at "
-                                "s_i = L (i/N)^p, clustered at its slow start; OPEN_QUESTIONS Q45). 1 = the uniform "
-                                "grid of every result before 2026-10-27")
+    turn_drift: bool = Field(
+        False,
+        description="carry each turn's wind drift (wind x turn time) to the next straight "
+        "(docs/RESULTS_2026_PLAN.md §4.7). False: the original model (turns ignore the wind)",
+    )
+    lap1_cluster: float = Field(
+        2.0,
+        ge=1.0,
+        description="grid exponent of lap 1's first straight (nodes at "
+        "s_i = L (i/N)^p, clustered at its slow start; OPEN_QUESTIONS Q45). 1 = the uniform "
+        "grid of every result before 2026-10-27",
+    )
     takeoff: TakeoffConfig = TakeoffConfig()
 
     @model_validator(mode="after")
@@ -110,11 +130,15 @@ class CourseConfig(BaseModel):
     def summary(self):
         """The course actually flown, for a run's outputs (results.json)."""
         lap1, other = self.resolve()
-        return dict(preset=self.preset if self.legs is None else None,
-                    legs=[leg.model_dump(exclude_none=True) for leg in other],
-                    lap1_legs=None if lap1 == other else [leg.model_dump(exclude_none=True) for leg in lap1],
-                    lap_length_ft=lap_length_ft(other), pilot_reaction_time_s=self.pilot_reaction_time_s,
-                    takeoff=self.takeoff.model_dump(), turn_drift=self.turn_drift)
+        return dict(
+            preset=self.preset if self.legs is None else None,
+            legs=[leg.model_dump(exclude_none=True) for leg in other],
+            lap1_legs=None if lap1 == other else [leg.model_dump(exclude_none=True) for leg in lap1],
+            lap_length_ft=lap_length_ft(other),
+            pilot_reaction_time_s=self.pilot_reaction_time_s,
+            takeoff=self.takeoff.model_dump(),
+            turn_drift=self.turn_drift,
+        )
 
 
 def preset_path(name):
@@ -185,8 +209,10 @@ def _check_lap(legs, label):
     head = sum(leg.length_ft for leg in straights if leg.wind == "head")
     tail = sum(leg.length_ft for leg in straights if leg.wind == "tail")
     if abs(head - tail) > LENGTH_TOL_FT:
-        warns.append(f"{label}: head-wind distance {head:g} ft and tail-wind distance {tail:g} ft differ (the lap "
-                     "would not end at the start line)")
+        warns.append(
+            f"{label}: head-wind distance {head:g} ft and tail-wind distance {tail:g} ft differ (the lap "
+            "would not end at the start line)"
+        )
     return errors, warns
 
 
@@ -198,15 +224,21 @@ def check_course(lap1, other, takeoff_on=False):
         errors += e1
         warns += w1
     if takeoff_on and lap1 and not (lap1[0].kind == "straight" and lap1[0].wind == "head"):
-        errors.append("take-off in the mission time needs lap 1 to start with a head-wind straight (the ground roll "
-                      "is into the wind)")
+        errors.append(
+            "take-off in the mission time needs lap 1 to start with a head-wind straight (the ground roll "
+            "is into the wind)"
+        )
     return errors, warns
 
 
 def lap_legs(legs):
     """Legs in the lap model's format: ("s", length_ft, wind_sign) and ("t", angle_deg, None)."""
-    return [("s", float(leg.length_ft), WIND_SIGN[leg.wind]) if leg.kind == "straight"
-            else ("t", float(leg.angle_deg), None) for leg in legs]
+    return [
+        ("s", float(leg.length_ft), WIND_SIGN[leg.wind])
+        if leg.kind == "straight"
+        else ("t", float(leg.angle_deg), None)
+        for leg in legs
+    ]
 
 
 def lap_length_ft(legs):
@@ -219,18 +251,26 @@ def total_turning_deg(legs):
 
 def rows_from_legs(legs):
     """Leg-table rows (the UI's editor): order, kind, length_ft (straights), angle_deg (turns), wind (straights)."""
-    return [dict(order=i, kind=leg.kind, length_ft=leg.length_ft if leg.kind == "straight" else None,
-                 angle_deg=leg.angle_deg if leg.kind == "turn" else None,
-                 wind=leg.wind if leg.kind == "straight" else None) for i, leg in enumerate(legs, start=1)]
+    return [
+        dict(
+            order=i,
+            kind=leg.kind,
+            length_ft=leg.length_ft if leg.kind == "straight" else None,
+            angle_deg=leg.angle_deg if leg.kind == "turn" else None,
+            wind=leg.wind if leg.kind == "straight" else None,
+        )
+        for i, leg in enumerate(legs, start=1)
+    ]
 
 
 def legs_from_rows(rows, label="lap"):
     """(legs, errors) from leg-table rows, sorted by their order column (ties keep the table order); rows without a
     kind are skipped. A missing length or angle is an error, as is a row that does not make a Leg."""
+
     def num(x):
         try:
             x = float(x)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         return None if x != x else x  # NaN (an empty cell) -> None
 
@@ -247,12 +287,16 @@ def legs_from_rows(rows, label="lap"):
             continue
         size = num(r.get("length_ft" if kind == "straight" else "angle_deg"))
         if size is None:
-            errors.append(f"{label} leg {n} ({kind}): give its {'length (ft)' if kind == 'straight' else 'angle (deg)'}")
+            errors.append(
+                f"{label} leg {n} ({kind}): give its {'length (ft)' if kind == 'straight' else 'angle (deg)'}"
+            )
             continue
         wind = r.get("wind") if kind == "straight" else "none"
         wind = wind if wind in WIND_SIGN else "none"
         try:
-            legs.append(Leg(kind=kind, **({"length_ft": size, "wind": wind} if kind == "straight" else {"angle_deg": size})))
+            legs.append(
+                Leg(kind=kind, **({"length_ft": size, "wind": wind} if kind == "straight" else {"angle_deg": size}))
+            )
         except ValueError as exc:
             errors.append(f"{label} leg {n}: {exc}")
     return legs, errors

@@ -45,6 +45,7 @@ def m3_verbatim(laps_pre, bonus, x1_lb, best):
 @register("dbf2025")
 class DBF2025(ScoringPlugin):
     """Flight score M1 + M2 + M3 of the 2024-25 rules, from the multipoint problem's M2 and M3 points."""
+
     sense = "max"
     ref = 5.0
     multipoint = True  # reads two mission points: problems/multipoint.py only (not offered for single-point runs)
@@ -58,8 +59,14 @@ class DBF2025(ScoringPlugin):
         n_pre = softplus(x["laps_M3"] - 1.0, LAPS_SCALE)[0]
         m2 = 1.0 + (x["fuel_mass"] / LB / x["t3_M2"]) / o["R2"]
         m3 = 2.0 + (n_pre + o["bonus"] / o["x1_weight_lb"]) / o["R3"]
-        return dict(M1=o["m1"] + 0.0 * m2, M2=m2, M3=m3, n_pre=n_pre,
-                    flight_score=o["m1"] + m2 + m3, score=o["m1"] + o["w2"] * m2 + o["w3"] * m3)
+        return dict(
+            M1=o["m1"] + 0.0 * m2,
+            M2=m2,
+            M3=m3,
+            n_pre=n_pre,
+            flight_score=o["m1"] + m2 + m3,
+            score=o["m1"] + o["w2"] * m2 + o["w3"] * m3,
+        )
 
     def score(self, x):
         return self.parts(x)["score"]

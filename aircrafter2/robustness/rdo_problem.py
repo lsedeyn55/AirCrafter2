@@ -94,8 +94,8 @@ class RetryNewton(om.NewtonSolver):
         super().__init__(**kwargs)
         self.robust = robust
         self.reference = None  # the reference node's RetryNewton (set by build_robust_problem)
-        self.good = None       # last converged output vector of this MDA
-        self.good_in = None    # its input vector (stored in both modes; read by the continuation only)
+        self.good = None  # last converged output vector of this MDA
+        self.good_in = None  # its input vector (stored in both modes; read by the continuation only)
         self.cold = None
         self.log = []
         self.n_solve = 0
@@ -252,8 +252,11 @@ def _template_dists(cfg):
     from ..problems.full_mdo import kv_is_dv
 
     act = cfg.robust.active
-    return [Dist(p.name, p.dist, 1.0, 0.1) for p in for_kv_mode(cfg.robust.parameters, kv_is_dv(cfg))
-            if act is None or p.name in act]
+    return [
+        Dist(p.name, p.dist, 1.0, 0.1)
+        for p in for_kv_mode(cfg.robust.parameters, kv_is_dv(cfg))
+        if act is None or p.name in act
+    ]
 
 
 def build_robust_problem(cfg, driver=True):
@@ -261,15 +264,23 @@ def build_robust_problem(cfg, driver=True):
 
     Returns the set-up problem; ``prob.rdo`` holds dict(rule, dists, active, values, solvers, quantities).
     """
-    from ..problems.full_mdo import (DV_REF, DV_UNITS, add_full_driver, apply_full_values, build_full_model,
-                                     check_kv_robust, full_constraints)
+    from ..problems.full_mdo import (
+        DV_REF,
+        DV_UNITS,
+        add_full_driver,
+        apply_full_values,
+        build_full_model,
+        check_kv_robust,
+        full_constraints,
+    )
     from ..scoring import get_plugin
 
     rob = cfg.robust
     check_kv_robust(cfg)  # again: the UI edits a validated config
     if rob.dv_tolerances:
-        raise NotImplementedError("robust.dv_tolerances (manufacturing tolerances on design variables) is a hook "
-                                  "for later; leave it empty")
+        raise NotImplementedError(
+            "robust.dv_tolerances (manufacturing tolerances on design variables) is a hook for later; leave it empty"
+        )
     if driver and rob.objective == "mean_sigma_cap" and rob.sigma_cap is None:
         raise ValueError("robust.objective = mean_sigma_cap needs robust.sigma_cap")
     del add_full_driver  # the robust driver is set up below; the deterministic one is untouched
@@ -288,8 +299,7 @@ def build_robust_problem(cfg, driver=True):
     for j in range(N):
         g = om.Group()
         build_full_model(g, cfg, mda_retry=True)
-        g.add_subsystem("scoring", plugin.component(), promotes_inputs=list(plugin.inputs),
-                        promotes_outputs=["score"])
+        g.add_subsystem("scoring", plugin.component(), promotes_inputs=list(plugin.inputs), promotes_outputs=["score"])
         nodes.add_subsystem(f"n{j}", g, promotes_inputs=dvs)
     for name in dvs:  # start: cfg.initial, else the reference motor's Kv, else the middle of the bounds
         bd = cfg.design_variables[name]
@@ -300,8 +310,17 @@ def build_robust_problem(cfg, driver=True):
     quantities = {"score": rob.sigma_eps * plugin.ref}
     quantities.update({key_of(n): rob.sigma_eps * ref_of[n] for n in robust_names})
     sign = 1.0 if plugin.sense == "min" else -1.0
-    m.add_subsystem("stats", RobustStats(rule=make_rule(rob, _template_dists(cfg)), quantities=quantities,
-                                         objective="score", k=rob.k, sign=sign, beta=rob.beta))
+    m.add_subsystem(
+        "stats",
+        RobustStats(
+            rule=make_rule(rob, _template_dists(cfg)),
+            quantities=quantities,
+            objective="score",
+            k=rob.k,
+            sign=sign,
+            beta=rob.beta,
+        ),
+    )
     for j in range(N):
         m.connect(f"nodes.n{j}.score", f"stats.score_n{j}")
         for n in robust_names:
@@ -310,9 +329,15 @@ def build_robust_problem(cfg, driver=True):
     if driver:
         if rob.optimizer == "ipopt":
             prob.driver = om.pyOptSparseDriver(optimizer="IPOPT", print_results=False)
-            prob.driver.opt_settings.update({"tol": cfg.tol, "max_iter": cfg.maxiter, "print_level": 3,
-                                             "hessian_approximation": "limited-memory",
-                                             "nlp_scaling_method": "gradient-based"})
+            prob.driver.opt_settings.update(
+                {
+                    "tol": cfg.tol,
+                    "max_iter": cfg.maxiter,
+                    "print_level": 3,
+                    "hessian_approximation": "limited-memory",
+                    "nlp_scaling_method": "gradient-based",
+                }
+            )
         else:
             prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
         for name, bd in cfg.design_variables.items():
@@ -335,8 +360,9 @@ def build_robust_problem(cfg, driver=True):
     solvers = [getattr(nodes, f"n{j}").mda.nonlinear_solver for j in range(N)]
     for s in solvers[1:]:
         s.reference = solvers[0]
-    prob.rdo = dict(rule=rule, dists=dists, active=act, values=values, solvers=solvers,
-                    quantities=["score"] + robust_names, N=N)
+    prob.rdo = dict(
+        rule=rule, dists=dists, active=act, values=values, solvers=solvers, quantities=["score"] + robust_names, N=N
+    )
     return prob
 
 
@@ -366,8 +392,15 @@ def node_report(prob):
     rows = []
     for j, s in enumerate(prob.rdo["solvers"]):
         fails = [e for e in s.log if not e[2]]
-        rows.append(dict(node=j, solves=s.n_solve, attempts=len(s.log), failed_attempts=len(fails),
-                         recovered=len({e[0] for e in fails} & {e[0] for e in s.log if e[2]})))
+        rows.append(
+            dict(
+                node=j,
+                solves=s.n_solve,
+                attempts=len(s.log),
+                failed_attempts=len(fails),
+                recovered=len({e[0] for e in fails} & {e[0] for e in s.log if e[2]}),
+            )
+        )
     return rows
 
 

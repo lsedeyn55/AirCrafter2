@@ -49,13 +49,15 @@ class SectionCoeffs(AnalyticComponent):
         # relative to the aerofoil area at the mean chord, A = (A/c^2) c^2.
         hole = np.pi * r**2 / (A * c**2)
         rib = 1.0 - le - te - hole
-        g_rib = D({
-            "le_ratio": -1.0,
-            "te_ratio": -1.0,
-            "r_tube": -2.0 * np.pi * r / (A * c**2),
-            "A_c2": hole / A,
-            "c_mean": 2.0 * hole / c,
-        })
+        g_rib = D(
+            {
+                "le_ratio": -1.0,
+                "te_ratio": -1.0,
+                "r_tube": -2.0 * np.pi * r / (A * c**2),
+                "A_c2": hole / A,
+                "c_mean": 2.0 * hole / c,
+            }
+        )
 
         values = {
             "K_A": K_A,
@@ -120,6 +122,7 @@ class TubeFitMargin(AnalyticComponent):
     def evaluate(self, x):
         t, c, k, clr, r = x["t_at_spar"], x["c_root"], x["k_fill"], x["clearance"], x["r_tube"]
         m = 0.5 * k * t * c - clr - r
-        g = D({"t_at_spar": 0.5 * k * c, "c_root": 0.5 * k * t, "k_fill": 0.5 * t * c,
-               "clearance": -1.0, "r_tube": -1.0})
+        g = D(
+            {"t_at_spar": 0.5 * k * c, "c_root": 0.5 * k * t, "k_fill": 0.5 * t * c, "clearance": -1.0, "r_tube": -1.0}
+        )
         return {"tube_fit_margin": m}, {"tube_fit_margin": g}

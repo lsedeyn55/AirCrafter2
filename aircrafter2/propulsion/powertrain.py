@@ -75,10 +75,18 @@ class Powertrain(om.ExplicitComponent):
         self.options.declare("deg", default=3, types=int)
         self.options.declare("newton_iters", default=40, types=int)
         self.options.declare("n_motors", default=1, types=int, desc="identical propulsion units (1 or 2)")
-        self.options.declare("battery_topology", default="per_motor", values=BATTERY_TOPOLOGIES,
-                             desc="one pack per unit, or one pack shared by every ESC")
-        self.options.declare("fit_range", default="fixed", values=["fixed", "throttle"],
-                             desc="T(v) fit nodes in [0, v_top], or in [0, v_fit_max(throttle)] (part throttle)")
+        self.options.declare(
+            "battery_topology",
+            default="per_motor",
+            values=BATTERY_TOPOLOGIES,
+            desc="one pack per unit, or one pack shared by every ESC",
+        )
+        self.options.declare(
+            "fit_range",
+            default="fixed",
+            values=["fixed", "throttle"],
+            desc="T(v) fit nodes in [0, v_top], or in [0, v_fit_max(throttle)] (part throttle)",
+        )
         self.options.declare("f_fit", default=0.8, desc="v_fit_max = f_fit J_max n0 D (fit_range = throttle)")
 
     def setup(self):
@@ -98,11 +106,21 @@ class Powertrain(om.ExplicitComponent):
         d = self.options["deg"] + 1
 
         for name, val, units in [
-            ("throttle", 1.0, None), ("rho", 1.18, "kg/m**3"),
-            ("n_cells", 4.0, None), ("V_cell", 3.7, "V"), ("R_cell", 0.005, "ohm"),
-            ("capacity", 3.0, "A*h"), ("usable_fraction", 0.8, None), ("e_spec", 150.0, "W*h/kg"),
-            ("Kv", 900.0, "rpm/V"), ("Rm", 0.05, "ohm"), ("I0", 1.0, "A"),
-            ("m_motor", 0.15, "kg"), ("m_esc", 0.06, "kg"), ("m_prop", 0.03, "kg"), ("m_avionics", 0.25, "kg"),
+            ("throttle", 1.0, None),
+            ("rho", 1.18, "kg/m**3"),
+            ("n_cells", 4.0, None),
+            ("V_cell", 3.7, "V"),
+            ("R_cell", 0.005, "ohm"),
+            ("capacity", 3.0, "A*h"),
+            ("usable_fraction", 0.8, None),
+            ("e_spec", 150.0, "W*h/kg"),
+            ("Kv", 900.0, "rpm/V"),
+            ("Rm", 0.05, "ohm"),
+            ("I0", 1.0, "A"),
+            ("m_motor", 0.15, "kg"),
+            ("m_esc", 0.06, "kg"),
+            ("m_prop", 0.03, "kg"),
+            ("m_avionics", 0.25, "kg"),
             ("m_nacelle", 0.0, "kg"),
         ]:
             self.add_input(name, val, units=units)
@@ -130,8 +148,19 @@ class Powertrain(om.ExplicitComponent):
         self.add_output("fit_residual_T", 0.0, units="N", desc="max |fit - node| (report)")
         self.add_output("v_fit_max", self.options["v_top"], units="m/s", desc="top of the T(v) fit range")
         elec = ["throttle", "rho", "n_cells", "V_cell", "R_cell", "Kv", "Rm", "I0"]
-        for out in ["T_coeffs", "P_coeffs", "RPM_coeffs", "T_static", "T_static_unit", "I_static", "I_pack_static",
-                    "rpm_max", "T_nodes", "P_nodes", "eta_prop_nodes"]:
+        for out in [
+            "T_coeffs",
+            "P_coeffs",
+            "RPM_coeffs",
+            "T_static",
+            "T_static_unit",
+            "I_static",
+            "I_pack_static",
+            "rpm_max",
+            "T_nodes",
+            "P_nodes",
+            "eta_prop_nodes",
+        ]:
             self.declare_partials(out, elec, method="cs")
         if self.options["fit_range"] == "throttle":
             self.declare_partials("v_fit_max", elec, method="cs")
@@ -216,8 +245,11 @@ class Powertrain(om.ExplicitComponent):
         outputs["I_static"] = x["throttle"] * r["I_motor"][0]
         outputs["I_pack_static"] = self._units_per_pack * x["throttle"] * r["I_motor"][0]
         outputs["D_prop"] = self._prop.diameter
-        outputs["rpm_max"] = np.max(np.real(r["omega"])) / RPM2RADS if not np.iscomplexobj(r["omega"]) else \
-            r["omega"][np.argmax(np.real(r["omega"]))] / RPM2RADS
+        outputs["rpm_max"] = (
+            np.max(np.real(r["omega"])) / RPM2RADS
+            if not np.iscomplexobj(r["omega"])
+            else r["omega"][np.argmax(np.real(r["omega"]))] / RPM2RADS
+        )
         outputs["rpm_limit"] = self._prop.rpm_limit
         E_nom = self._n_packs * x["n_cells"] * x["V_cell"] * x["capacity"] * 3600.0  # all packs, J
         outputs["E_nom_total"] = E_nom / 3600.0

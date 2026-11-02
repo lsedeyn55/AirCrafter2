@@ -19,25 +19,50 @@ from pathlib import Path
 import numpy as np
 import openmdao.api as om
 
-from .problems.full_mdo import (FullMDOConfig, build_full_problem, check_fixed_limits, full_constraints, kv_is_dv,
-                                 load_full_config)
+from .problems.full_mdo import (
+    FullMDOConfig,
+    build_full_problem,
+    check_fixed_limits,
+    full_constraints,
+    kv_is_dv,
+    load_full_config,
+)
 
 SUMMARY_KEYS = [
-    ("score", "-", "objective (scoring plug-in)"), ("ThreeLapTime", "s", "3-lap time"),
-    ("laps_frac", "-", "laps in the mission window"), ("b", "m", "span"), ("c", "m", "chord"),
-    ("tc_max", "-", "t/c"), ("camber_scale", "-", "camber scale"), ("capacity", "Ah", "battery capacity per pack"),
-    ("l_ht", "m", "tail arm"), ("S_ht", "m²", "HT area"), ("S_vt", "m²", "VT area"),
-    ("x_batt", "m", "battery station"), ("x_cb_frac", "-", "cargo station / c"), ("v", "m/s", "cruise speed"),
-    ("m_total", "kg", "total mass"), ("m_empty", "kg", "empty mass"), ("cruise.L_over_D", "-", "cruise L/D"),
-    ("T_static", "N", "static thrust (all motors)"), ("E_nom_total", "W*h", "nominal battery energy (all packs)"),
+    ("score", "-", "objective (scoring plug-in)"),
+    ("ThreeLapTime", "s", "3-lap time"),
+    ("laps_frac", "-", "laps in the mission window"),
+    ("b", "m", "span"),
+    ("c", "m", "chord"),
+    ("tc_max", "-", "t/c"),
+    ("camber_scale", "-", "camber scale"),
+    ("capacity", "Ah", "battery capacity per pack"),
+    ("l_ht", "m", "tail arm"),
+    ("S_ht", "m²", "HT area"),
+    ("S_vt", "m²", "VT area"),
+    ("x_batt", "m", "battery station"),
+    ("x_cb_frac", "-", "cargo station / c"),
+    ("v", "m/s", "cruise speed"),
+    ("m_total", "kg", "total mass"),
+    ("m_empty", "kg", "empty mass"),
+    ("cruise.L_over_D", "-", "cruise L/D"),
+    ("T_static", "N", "static thrust (all motors)"),
+    ("E_nom_total", "W*h", "nominal battery energy (all packs)"),
     ("thrust_margin_static", "N", "take-off thrust margin"),
-    ("energy_margin", "J", "3-lap energy margin (after reserve)"), ("stall_margin", "m/s", "V - 1.2 V_stall"),
-    ("SM", "-", "static margin"), ("V_h", "-", "HT volume coeff."), ("V_v", "-", "VT volume coeff."),
-    ("wall_ratio", "-", "spar t/r"), ("r_tube", "m", "spar radius"), ("I_margin", "A", "current margin"),
+    ("energy_margin", "J", "3-lap energy margin (after reserve)"),
+    ("stall_margin", "m/s", "V - 1.2 V_stall"),
+    ("SM", "-", "static margin"),
+    ("V_h", "-", "HT volume coeff."),
+    ("V_v", "-", "VT volume coeff."),
+    ("wall_ratio", "-", "spar t/r"),
+    ("r_tube", "m", "spar radius"),
+    ("I_margin", "A", "current margin"),
     ("rpm_margin", "rpm", "RPM margin at top speed"),
     # take-off in the mission time (course.takeoff.in_mission_time; all zero when it is off)
-    ("t_takeoff", "s", "take-off ground roll time"), ("s_ground_roll", "m", "ground roll distance"),
-    ("V_lof", "m/s", "lift-off speed"), ("E_takeoff", "J", "ground roll battery energy"),
+    ("t_takeoff", "s", "take-off ground roll time"),
+    ("s_ground_roll", "m", "ground roll distance"),
+    ("V_lof", "m/s", "lift-off speed"),
+    ("E_takeoff", "J", "ground roll battery energy"),
     ("takeoff_accel_margin", "m/s²", "smallest ground-roll acceleration"),
     ("takeoff_straight_margin", "m", "first straight - ground roll"),
 ]
@@ -73,12 +98,17 @@ def leg_lines(rows):
     """Markdown table of a leg breakdown."""
     if not rows:
         return []
-    out = ["\n## Leg breakdown\n", "| lap | leg | kind | size | wind | v entry (m/s) | v exit (m/s) | time (s) | "
-           "energy (kJ) |", "|---:|---:|---|---:|---|---:|---:|---:|---:|"]
+    out = [
+        "\n## Leg breakdown\n",
+        "| lap | leg | kind | size | wind | v entry (m/s) | v exit (m/s) | time (s) | energy (kJ) |",
+        "|---:|---:|---|---:|---|---:|---:|---:|---:|",
+    ]
     for r in rows:
         unit = "deg" if r["kind"] == "turn" else "ft"
-        out.append(f"| {'1' if r['lap'] == 1 else '2+'} | {r['leg']} | {r['kind']} | {r['size']:.0f} {unit} | "
-                   f"{r['wind']} | {r['v_entry']:.2f} | {r['v_exit']:.2f} | {r['time']:.2f} | {r['energy'] / 1e3:.2f} |")
+        out.append(
+            f"| {'1' if r['lap'] == 1 else '2+'} | {r['leg']} | {r['kind']} | {r['size']:.0f} {unit} | "
+            f"{r['wind']} | {r['v_entry']:.2f} | {r['v_exit']:.2f} | {r['time']:.2f} | {r['energy'] / 1e3:.2f} |"
+        )
     return out
 
 
@@ -105,15 +135,29 @@ def motor_report(prob, cfg, tol=1e-4):
     """
     v = lambda k: _val(prob, k)  # noqa: E731
     pr = cfg.propulsion
-    out = dict(kv_dv=kv_is_dv(cfg), Kv=v("Kv"), Rm=v("Rm"), I0=v("I0"), I_static=v("I_static"), I_max=pr.I_max,
-               I_margin=v("I_margin"), rpm_margin=v("rpm_margin"), Kv_ref=pr.Kv, Rm_ref=pr.Rm, I0_ref=pr.I0)
+    out = dict(
+        kv_dv=kv_is_dv(cfg),
+        Kv=v("Kv"),
+        Rm=v("Rm"),
+        I0=v("I0"),
+        I_static=v("I_static"),
+        I_max=pr.I_max,
+        I_margin=v("I_margin"),
+        rpm_margin=v("rpm_margin"),
+        Kv_ref=pr.Kv,
+        Rm_ref=pr.Rm,
+        I0_ref=pr.I0,
+    )
     if not out["kv_dv"]:
         out["set_by"] = "fixed (not a design variable)"
         return out
     bd = cfg.design_variables["Kv"]
     span = bd.upper - bd.lower
-    why = [f"{side} bound ({b:g} rpm/V)" for side, b in (("lower", bd.lower), ("upper", bd.upper))
-           if abs(out["Kv"] - b) <= tol * span]
+    why = [
+        f"{side} bound ({b:g} rpm/V)"
+        for side, b in (("lower", bd.lower), ("upper", bd.upper))
+        if abs(out["Kv"] - b) <= tol * span
+    ]
     refs = dict(full_constraints(cfg))
     for name in ("I_margin", "I_pack_margin", "rpm_margin"):
         if name in refs and abs(v(name)) / (refs[name].get("ref") or 1.0) < tol:
@@ -141,8 +185,18 @@ def constraint_values(prob, cons):
             slack = np.minimum(slack, hi - vals)
         if eq is not None:
             slack = np.minimum(slack, -np.abs(vals - eq))
-        out.append(dict(name=name, lower=lo, upper=hi, equals=eq, ref=kw.get("ref"), units=kw.get("units"),
-                        value=float(vals[int(np.argmin(slack))]), values=vals.tolist()))
+        out.append(
+            dict(
+                name=name,
+                lower=lo,
+                upper=hi,
+                equals=eq,
+                ref=kw.get("ref"),
+                units=kw.get("units"),
+                value=float(vals[int(np.argmin(slack))]),
+                values=vals.tolist(),
+            )
+        )
     return out
 
 
@@ -213,14 +267,25 @@ def _run_robust(cfg, optimise, progress):
     else:
         rp.run_model()
         success, its = True, 0
-    robust = dict(N=rp.rdo["N"], rule=rp.rdo["rule"].name, active=[d.name for d in rp.rdo["active"]],
-                  k=cfg.robust.k, beta=cfg.robust.beta, objective=cfg.robust.objective,
-                  sigma_cap=cfg.robust.sigma_cap, time_s=time.perf_counter() - t, error=error,
-                  stats={q: {k: v for k, v in d.items()} for q, d in robust_summary(rp).items()},
-                  nodes=node_report(rp))
+    robust = dict(
+        N=rp.rdo["N"],
+        rule=rp.rdo["rule"].name,
+        active=[d.name for d in rp.rdo["active"]],
+        k=cfg.robust.k,
+        beta=cfg.robust.beta,
+        objective=cfg.robust.objective,
+        sigma_cap=cfg.robust.sigma_cap,
+        time_s=time.perf_counter() - t,
+        error=error,
+        stats={q: {k: v for k, v in d.items()} for q, d in robust_summary(rp).items()},
+        nodes=node_report(rp),
+    )
     if optimise and not error:
-        robust["objective_value"] = float(np.ravel(rp.get_val("stats.score_robust" if cfg.robust.objective ==
-                                                            "mean_plus_k_sigma" else "stats.score_mu"))[0])
+        robust["objective_value"] = float(
+            np.ravel(
+                rp.get_val("stats.score_robust" if cfg.robust.objective == "mean_plus_k_sigma" else "stats.score_mu")
+            )[0]
+        )
     from .robustness.rdo_problem import robust_constraints
     from .scoring import get_plugin
 
@@ -233,8 +298,17 @@ def _run_robust(cfg, optimise, progress):
     return prob, success, its, robust, cons
 
 
-def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=True, design_space=False,
-               record=True, n2=True, progress=None):
+def run_design(
+    config,
+    optimise=True,
+    out_dir=None,
+    figures=True,
+    sensitivities=True,
+    design_space=False,
+    record=True,
+    n2=True,
+    progress=None,
+):
     cfg = config if isinstance(config, FullMDOConfig) else load_full_config(config)
     out = Path(out_dir) if out_dir else None
     if out:
@@ -243,8 +317,23 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
         if progress:
             progress("solving (robust)")
         prob, success, its, robust, cons = _run_robust(cfg, optimise, progress)
-        return _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, None, n2,
-                       progress, optimise, robust, cons)
+        return _finish(
+            prob,
+            cfg,
+            config,
+            success,
+            its,
+            out,
+            figures,
+            sensitivities,
+            design_space,
+            None,
+            n2,
+            progress,
+            optimise,
+            robust,
+            cons,
+        )
     prob = build_full_problem(cfg, driver=optimise)
     case_file = None
     if optimise and record and out:
@@ -263,12 +352,28 @@ def run_design(config, optimise=True, out_dir=None, figures=True, sensitivities=
     else:
         prob.run_model()
         success, its = True, 0
-    return _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, case_file, n2,
-                   progress, optimise)
+    return _finish(
+        prob, cfg, config, success, its, out, figures, sensitivities, design_space, case_file, n2, progress, optimise
+    )
 
 
-def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design_space, case_file, n2, progress,
-            optimise, robust=None, cons=None):
+def _finish(
+    prob,
+    cfg,
+    config,
+    success,
+    its,
+    out,
+    figures,
+    sensitivities,
+    design_space,
+    case_file,
+    n2,
+    progress,
+    optimise,
+    robust=None,
+    cons=None,
+):
     if cons is None:  # deterministic: add_full_driver's list (the plug-in's constraints, then full_constraints)
         from .scoring import get_plugin
 
@@ -303,17 +408,33 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
         sens = sens_fn(prob, "score", dvs + sensitivity_assumptions(cfg, extra))
         values["sensitivities"] = sens
     (out / "results.json").write_text(json.dumps(values, indent=2, default=float))
-    (out / "constraints.json").write_text(json.dumps(dict(disabled=switched_off(cfg), tol=cfg.tol, robust=robust
-                                                          is not None, constraints=cons), indent=2, default=float))
+    (out / "constraints.json").write_text(
+        json.dumps(
+            dict(disabled=switched_off(cfg), tol=cfg.tol, robust=robust is not None, constraints=cons),
+            indent=2,
+            default=float,
+        )
+    )
     from .geometry.export import export_geometry, write_geometry
 
-    geo = export_geometry(prob, cfg, config_path=None if isinstance(config, FullMDOConfig) else config,
-                          optimised=optimise, success=success, case_id=out.name)
+    geo = export_geometry(
+        prob,
+        cfg,
+        config_path=None if isinstance(config, FullMDOConfig) else config,
+        optimised=optimise,
+        success=success,
+        case_id=out.name,
+    )
     result.files.append(write_geometry(geo, out / "geometry.json"))
-    lines = [f"# AirCrafter 2.0 result\n", f"Config: scoring = `{cfg.scoring.plugin}`, prop = "
-             f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
-             f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "
-             f"iterations = {its}.\n", "| Quantity | Value | Unit |", "|---|---:|---|"]
+    lines = [
+        f"# AirCrafter 2.0 result\n",
+        f"Config: scoring = `{cfg.scoring.plugin}`, prop = "
+        f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
+        f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "
+        f"iterations = {its}.\n",
+        "| Quantity | Value | Unit |",
+        "|---|---:|---|",
+    ]
     off = switched_off(cfg)
     if off:  # the UI's Constraints tab switched constraints off: say so first
         lines.insert(1, f"**Constraints switched off for this run: {', '.join(f'`{n}`' for n in off)}.**\n")
@@ -325,9 +446,11 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
     lines += [f"| {desc} (`{k}`) | {v:.5g} | {unit} |" for k, unit, desc, v in summary_table(prob)]
     lines += _motor_lines(values["motor"])
     co = values["course"]
-    lines += [f"\nCourse: {co['preset'] or 'custom'} ({co['lap_length_ft']:.0f} ft of straights per lap), pilot reaction "
-              f"time {co['pilot_reaction_time_s']:g} s, take-off in the mission time: "
-              f"{'on' if co['takeoff']['in_mission_time'] else 'off'}."]
+    lines += [
+        f"\nCourse: {co['preset'] or 'custom'} ({co['lap_length_ft']:.0f} ft of straights per lap), pilot reaction "
+        f"time {co['pilot_reaction_time_s']:g} s, take-off in the mission time: "
+        f"{'on' if co['takeoff']['in_mission_time'] else 'off'}."
+    ]
     lines += leg_lines(values.get("legs"))
     (out / "summary.md").write_text("\n".join(lines) + "\n")
     result.files += [out / "results.json", out / "constraints.json", out / "summary.md"]
@@ -348,35 +471,63 @@ def _finish(prob, cfg, config, success, its, out, figures, sensitivities, design
                 x0, bd = _val(prob, name), cfg.design_variables[name]
                 rng[name] = (max(bd.lower, 0.8 * x0), min(bd.upper, 1.2 * x0))
             ds = dict(x1="b", x2="c", n=7, out="score", x1_range=rng["b"], x2_range=rng["c"])
-        result.files += F.make_all(prob, out / "figures", seed=load_seed(cfg.airfoil.seed), case_file=case_file,
-                                   sens=sens, dvs=dvs, design_space_args=ds)
+        result.files += F.make_all(
+            prob,
+            out / "figures",
+            seed=load_seed(cfg.airfoil.seed),
+            case_file=case_file,
+            sens=sens,
+            dvs=dvs,
+            design_space_args=ds,
+        )
         result.files += [xdsm.write_tex(out / "xdsm.tex"), xdsm.draw_pdf(out / "xdsm.pdf")]
     return result
 
 
 def _motor_lines(mr):
-    head = ("Motor Kv (design variable; the reference motor rewound, docs/modules/propulsion.md)" if mr["kv_dv"]
-            else "Motor (fixed)")
-    L = [f"\n**{head}.** Kv = {mr['Kv']:.1f} rpm/V, set by: {mr['set_by']}.\n", "| Quantity | Value | Unit |",
-         "|---|---:|---|", f"| Kv | {mr['Kv']:.5g} | rpm/V |", f"| Rm | {mr['Rm']:.5g} | ohm |",
-         f"| I0 | {mr['I0']:.5g} | A |", f"| static current per motor `I_static` | {mr['I_static']:.4g} | A |",
-         f"| current limit `I_max` | {mr['I_max']:.4g} | A |", f"| `rpm_margin` | {mr['rpm_margin']:.4g} | rpm |"]
+    head = (
+        "Motor Kv (design variable; the reference motor rewound, docs/modules/propulsion.md)"
+        if mr["kv_dv"]
+        else "Motor (fixed)"
+    )
+    L = [
+        f"\n**{head}.** Kv = {mr['Kv']:.1f} rpm/V, set by: {mr['set_by']}.\n",
+        "| Quantity | Value | Unit |",
+        "|---|---:|---|",
+        f"| Kv | {mr['Kv']:.5g} | rpm/V |",
+        f"| Rm | {mr['Rm']:.5g} | ohm |",
+        f"| I0 | {mr['I0']:.5g} | A |",
+        f"| static current per motor `I_static` | {mr['I_static']:.4g} | A |",
+        f"| current limit `I_max` | {mr['I_max']:.4g} | A |",
+        f"| `rpm_margin` | {mr['rpm_margin']:.4g} | rpm |",
+    ]
     if mr["kv_dv"]:
-        L.append(f"| reference motor (Kv, Rm, I0) | {mr['Kv_ref']:g}, {mr['Rm_ref']:g}, {mr['I0_ref']:g} | rpm/V, ohm, A |")
+        L.append(
+            f"| reference motor (Kv, Rm, I0) | {mr['Kv_ref']:g}, {mr['Rm_ref']:g}, {mr['I0_ref']:g} | rpm/V, ohm, A |"
+        )
     return L
 
 
 def _robust_lines(robust):
-    L = [f"Robust statistics: {robust['rule']} over {', '.join(robust['active'])} ({robust['N']} nodes), "
-         f"objective {robust['objective']} (k = {robust['k']:g}"
-         + (f", sigma cap {robust['sigma_cap']:g}" if robust['sigma_cap'] else "")
-         + f"), beta = {robust['beta']:g}; {robust['time_s']:.0f} s."
-         + (f" **{robust['error']}**" if robust.get("error") else "") + "\n",
-         "| Quantity | mu | sigma | mu - beta sigma | mu + beta sigma |", "|---|---:|---:|---:|---:|"]
-    L += [f"| `{q}` | {d['mu']:.5g} | {d['sigma']:.4g} | {d['lo']:.5g} | {d['hi']:.5g} |"
-          for q, d in robust["stats"].items()]
+    L = [
+        f"Robust statistics: {robust['rule']} over {', '.join(robust['active'])} ({robust['N']} nodes), "
+        f"objective {robust['objective']} (k = {robust['k']:g}"
+        + (f", sigma cap {robust['sigma_cap']:g}" if robust["sigma_cap"] else "")
+        + f"), beta = {robust['beta']:g}; {robust['time_s']:.0f} s."
+        + (f" **{robust['error']}**" if robust.get("error") else "")
+        + "\n",
+        "| Quantity | mu | sigma | mu - beta sigma | mu + beta sigma |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    L += [
+        f"| `{q}` | {d['mu']:.5g} | {d['sigma']:.4g} | {d['lo']:.5g} | {d['hi']:.5g} |"
+        for q, d in robust["stats"].items()
+    ]
     fails = sum(n["failed_attempts"] for n in robust["nodes"])
-    L.append(f"\nNode MDAs: {fails} failed attempt(s) over {sum(n['attempts'] for n in robust['nodes'])}, all "
-             "recovered by a warm-start fallback.\n" if fails else "\nNode MDAs: every solve converged at the first "
-             "attempt.\n")
+    L.append(
+        f"\nNode MDAs: {fails} failed attempt(s) over {sum(n['attempts'] for n in robust['nodes'])}, all "
+        "recovered by a warm-start fallback.\n"
+        if fails
+        else "\nNode MDAs: every solve converged at the first attempt.\n"
+    )
     return L

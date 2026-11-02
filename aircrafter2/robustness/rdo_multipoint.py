@@ -20,8 +20,14 @@ weighed at the field (rules p. 10) and the store masses are fixed.
 import numpy as np
 import openmdao.api as om
 
-from ..problems.multipoint import (POINTS, add_dvs, apply_multipoint_values, build_multipoint_model,
-                                   multipoint_constraints, set_dv_defaults)
+from ..problems.multipoint import (
+    POINTS,
+    add_dvs,
+    apply_multipoint_values,
+    build_multipoint_model,
+    multipoint_constraints,
+    set_dv_defaults,
+)
 from .quadrature import make_rule
 from .stats import RobustStats, key_of
 from .uncertainty import Dist, for_kv_mode, resolve
@@ -59,8 +65,12 @@ def first_order_contributions_mp(prob, dists, of, prefix=""):
     """{quantity: {param: (dq/dp sigma)^2}}, dq/dp summed over both points' inputs of the parameter."""
     wrt = [w for d in dists for w in param_inputs(d.name, prefix)]
     J = prob.compute_totals(of=list(of), wrt=wrt, return_format="dict")
-    return {q: {d.name: (sum(float(np.ravel(J[q][w])[0]) for w in param_inputs(d.name, prefix)) * d.std) ** 2
-                for d in dists} for q in of}
+    return {
+        q: {
+            d.name: (sum(float(np.ravel(J[q][w])[0]) for w in param_inputs(d.name, prefix)) * d.std) ** 2 for d in dists
+        }
+        for q in of
+    }
 
 
 def robust_names(mcfg, extra=()):
@@ -101,8 +111,10 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
     ref_of = {n: kw.get("ref") or 1.0 for n, kw in cons}
     quantities = {"flight_score": rob.sigma_eps * 5.0}
     quantities.update({key_of(n): rob.sigma_eps * ref_of[n] for n in rnames})
-    m.add_subsystem("stats", RobustStats(rule=template, quantities=quantities, objective="flight_score", k=rob.k,
-                                         sign=-1.0, beta=rob.beta))
+    m.add_subsystem(
+        "stats",
+        RobustStats(rule=template, quantities=quantities, objective="flight_score", k=rob.k, sign=-1.0, beta=rob.beta),
+    )
     for j in range(N):
         m.connect(f"nodes.n{j}.flight_score", f"stats.flight_score_n{j}")
         for n in rnames:
@@ -143,8 +155,9 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
     for p in POINTS:
         for s in solvers[p][1:]:
             s.reference = solvers[p][0]
-    prob.rdo = dict(rule=rule, dists=dists, active=act, values=values, solvers=solvers,
-                    quantities=["flight_score"] + rnames, N=N)
+    prob.rdo = dict(
+        rule=rule, dists=dists, active=act, values=values, solvers=solvers, quantities=["flight_score"] + rnames, N=N
+    )
     return prob
 
 
