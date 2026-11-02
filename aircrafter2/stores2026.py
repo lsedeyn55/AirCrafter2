@@ -1,26 +1,9 @@
-"""Payload, banner and payload-sized fuselage of the 2025-26 ruleset (Banner Towing Bush Plane): mass, CG station,
-drag and the cargo box of one mission point (problems/multipoint.py). docs/RESULTS_2026_PLAN.md §4.2-4.3.
+"""Payload, banner and payload-sized fuselage of the 2025-26 ruleset (Banner Towing Bush Plane).
 
-Rules (2026-DBF-Rules.pdf, printed page "N of 34"): M2 carries passengers (2.3 in rubber ducks, 0.6-0.7 oz) and cargo
-(hockey pucks, 6 oz) in a single passenger compartment and separate cargo bay(s), capable of >= 3 passengers per
-declared cargo, >= 3 passengers and >= 1 cargo (p. 10-11); the restraints stay in the aircraft (p. 10-11). M3 tows a
-banner (length >= 10 in, length / height <= 5), stowed externally for take-off and deployed on the downwind leg
-after the first upwind turn (p. 12, p. 20). M1 flies with no payload (p. 19).
-
-Model (per mission point; flags: `payload` = ducks and pucks on board (M2), `banner` = the banner on board (M3)):
-    fuselage  (PayloadFuselage, ahead of the planform and the MDA) the cargo box is the constant-section payload
-              fuselage (calibration convention), sized by the payload
-              at Humpback's packing [HB] §4.2, §5.1: l_pax = pax_pitch n_p (rows of 3 abreast), l_car = car_pitch n_c
-              (two bays of 7 side by side below the passengers), l_cb = KSmax(l_pax, l_car), w_cb, h_cb held at
-              Humpback's maximum width and height. n_p and n_c are the design's capacity (shared by every point).
-    mass      restraints n_p m_seat + n_c m_slot at every point; M2 adds n_p m_duck + n_c m_puck; M3 adds the banner
-              m_b = rho_A L H + m_ballast + m_mech, H = L / AR_banner
-    CG        x_pay = sum m_i x_i / m_pay, stations as chord fractions from the wing LE ([HB] Table 36 / chord)
-    drag      deployed banner on its own area: CD_banner = f_b C_D,b L H / S (M3; f_b the banner-drag factor, an
-              uncertain parameter); stowed banner Delta C_D0 (CD_stowed). The M3 point's steady (cruise) state is the
-              tow, so CD_stores = CD_banner; the lap model flies lap 1's legs before deployment with
-              dCD_stowed = CD_stowed - CD_banner added (mission/smooth_lap.py, banner_stowed_legs).
-All arithmetic is complex-step safe (method="cs" partials).
+Gives the mass, CG station, drag and cargo box of one mission point. PayloadFuselage runs ahead of the planform,
+Stores2026 inside the MDA, and Packaging2026 after it (problems/full_mdo.py). Their outputs feed the mass, stability and
+lap models. Sources: [R26] (2026-DBF-Rules.pdf), [HB] (Project Humpback report). Why: docs/DECISIONS.md#r26-payload,
+docs/DECISIONS.md#r26-banner, docs/DECISIONS.md#ff-d2. Details: docs/modules/stores.md.
 """
 
 import numpy as np
@@ -51,7 +34,7 @@ class Store2026Config(BaseModel):
     h_cb: float = Field(description="m, payload fuselage height")
     rho_ks_bay: float = Field(
         50.0,
-        description="KS sharpness of the bay-length max (log space, dimensionless: at most 1.4 % over the larger bay at a tie)",
+        description="KS sharpness of the bay-length max (log space, dimensionless: at most 1.4 % over the larger bay at a tie)",  # noqa: E501
     )
     x_pax_frac: float = Field(description="passenger CG station / chord from the wing LE")
     x_car_frac: float = Field(description="cargo CG station / chord")
@@ -62,8 +45,8 @@ class Store2026Config(BaseModel):
     cd_banner: float = Field(description="banner C_D on its own area L x H")
     dcd_stowed: float = Field(description="stowed banner Delta C_D0 on the wing area")
     x_banner_frac: float = Field(description="banner (stowed and mechanism) station / chord")
-    # the rigid payload fuselage (docs/RESULTS_2026_PLAN.md, Final fixes D2): shifts written as differences from
-    # Humpback's layout, so each is exactly 0.0 there
+    # the rigid payload fuselage (docs/DECISIONS.md#ff-d2): shifts written as differences from Humpback's layout, so each
+    # is exactly 0.0 there
     x_cb_frac_ref: float = Field(
         description="Humpback's box centre / chord: the reference of the payload and motor stations"
     )
@@ -83,7 +66,41 @@ class Store2026Config(BaseModel):
 
 
 class Stores2026(om.ExplicitComponent):
-    """Payload and banner mass, CG station and drag, and the payload fuselage, at one mission point."""
+    """Payload and banner mass, CG station and drag at one mission point. All arithmetic is complex-step safe, so
+    partials are complex step.
+
+        mass   restraints n_p m_seat + n_c m_slot at every point; M2 adds n_p m_duck + n_c m_puck; M3 adds the banner,
+               m_b = rho_A L H + m_ballast + m_mech, H = L / AR_banner
+        CG     x_pay = sum m_i x_i / m_pay, stations as chord fractions from the wing leading edge ([HB] Table 36 /
+        chord)
+        drag   deployed banner on its own area, CD_banner = f_b C_D,b L H / S; stowed banner Delta C_D0
+
+    Options
+    -------
+    config : Store2026Config
+    payload : bool
+        Ducks and pucks on board (M2).
+    banner : bool
+        Banner on board (M3), with the input L_banner.
+    x_cb_frac0 : float
+        Default of the input x_cb_frac (the config's, so it matches the stations' in a stand-alone model).
+
+    Inputs
+    ------
+    n_p, n_c, S [m**2], c [m], banner_drag_factor, x_cb_frac, L_banner [inch] (banner on)
+
+    Outputs
+    -------
+    m_pay [kg], x_pay [m], CD_stores, CD_banner, dCD_stowed, m_banner [kg]
+
+    Symbols
+    -------
+    n_p, n_c : passengers and cargo, the design's capacity (shared by every point)
+    L, H : banner length and height [m]
+    m_b, cd_b : banner mass [kg] and drag
+    dcd : dCD_stowed = CD_stowed - CD_banner, added on lap 1's legs before deployment (mission/smooth_lap.py)
+    dx : shift of the box from Humpback's layout, chord fraction; 0.0 at Humpback
+    """
 
     def initialize(self):
         self.options.declare("config", types=Store2026Config)
@@ -148,14 +165,42 @@ class Stores2026(om.ExplicitComponent):
 
 
 def fuselage_length(c, n_p, n_c):
-    """(l_pax, l_car, l_cb) of the payload fuselage for counts n_p, n_c (arrays): l_cb = KSmax(l_pax, l_car)."""
+    """Lengths of the payload fuselage for the given counts: l_cb = KSmax(l_pax, l_car).
+
+    Parameters
+    ----------
+    c : Store2026Config
+    n_p, n_c : array
+        Passenger and cargo counts.
+
+    Returns
+    -------
+    (array, array, array)
+        l_pax, l_car, l_cb [m].
+    """
     l_pax, l_car = c.pax_pitch * n_p, c.car_pitch * n_c
     return l_pax, l_car, ks_max([l_pax, l_car], c.rho_ks_bay)[0]
 
 
 class PayloadFuselage(om.ExplicitComponent):
-    """The payload fuselage (cargo box) sized by the payload counts, ahead of the planform and the MDA (it depends on
-    the design variables n_p, n_c only): l_cb = KSmax(pax_pitch n_p, car_pitch n_c), w_cb and h_cb held."""
+    """The payload fuselage (cargo box), sized by the payload counts: l_cb = KSmax(pax_pitch n_p, car_pitch n_c), w_cb
+    and h_cb held.
+
+    It runs ahead of the planform and the MDA, since it depends on the design variables n_p, n_c only. Partials are
+    complex step, through the KS (Kreisselmeier-Steinhauser) maximum.
+
+    Options
+    -------
+    config : Store2026Config
+
+    Inputs
+    ------
+    n_p, n_c
+
+    Outputs
+    -------
+    l_cb, w_cb, h_cb, l_pax, l_car [m]
+    """
 
     def initialize(self):
         self.options.declare("config", types=Store2026Config)
@@ -183,16 +228,33 @@ class PayloadFuselage(om.ExplicitComponent):
 
 
 class Packaging2026(om.ExplicitComponent):
-    """The rigid payload fuselage's packaging (docs/RESULTS_2026_PLAN.md, Final fixes D2), after the MDA: the motor
-    group at the box front at Humpback's nose length, and the margins that keep the battery inside the fuselage and the
-    tail behind it. Every shift is a difference from Humpback's layout (x_cb_frac_ref, c_ref, l_cb_ref at n_p_ref,
-    n_c_ref), so it is exactly 0.0 there.
+    """The rigid payload fuselage's packaging, after the MDA (docs/DECISIONS.md#ff-d2).
+
+    The motor group sits at the box front at Humpback's nose length, and the margins keep the battery inside the
+    fuselage and the tail behind it. Every shift is a difference from Humpback's layout (x_cb_frac_ref, c_ref, l_cb_ref
+    at n_p_ref, n_c_ref), so it's exactly 0.0 there. Partials are complex step: short expressions.
 
         x_motor         = x_motor_ref + (x_cb - x_cb_ref) - (l_cb - l_cb_ref) / 2,  x_cb = x_cb_frac c
         batt_fwd_margin = x_batt - (x_motor + d_batt)                    >= 0
         batt_aft_margin = (x_cb + l_cb / 2) - x_batt                     >= 0
         tail_margin     = (x_tail - 0.25 c_ht) - (x_cb + l_cb / 2) - tail_clear >= 0,
                           x_tail = 0.25 c + l_ht (the HT quarter chord), c_ht = sqrt(S_ht / AR_ht)
+
+    Options
+    -------
+    config : Store2026Config
+    x_motor_ref : float
+        m, Humpback's motor station (stability.x_motor).
+    x_cb_frac0 : float
+        Default of x_cb_frac (as Stores2026).
+
+    Inputs
+    ------
+    c, l_cb, x_batt, l_ht [m], x_cb_frac, S_ht [m**2], AR_ht
+
+    Outputs
+    -------
+    x_motor, batt_fwd_margin, batt_aft_margin, tail_margin, x_cb_aft [m]
     """
 
     def initialize(self):

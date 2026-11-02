@@ -1,10 +1,10 @@
 """geometry.json: a complete, plain-JSON geometry export of a solved full-model problem.
 
-Read by the OpenVSP mock-up builder (aircrafter2.vsp), which never touches OpenMDAO, so any saved run can be
-rebuilt in 3D. Coordinates are the framework's own: origin at the wing root leading edge, x aft, y to starboard,
-z up, metres. Values come from prob.get_val or the config; the only derived quantities are the tail span/chord,
-computed exactly as in plotting.figures.planform (HT) and aero.parasite (both tails): chord = sqrt(S / AR),
-span = sqrt(S AR). Anything the framework does not define is in `mockup_assumptions`, with its source.
+Read by the OpenVSP mock-up builder (aircrafter2.vsp), which never touches OpenMDAO, so any saved run can be rebuilt in
+3D. Coordinates are the framework's own: origin at the wing root leading edge, x aft, y to starboard, z up, metres.
+Values come from prob.get_val or the config; the only derived quantities are the tail span and chord, computed exactly
+as in plotting.figures.planform (HT) and aero.parasite (both tails): chord = sqrt(S / AR), span = sqrt(S AR). Anything
+the framework doesn't define is in `mockup_assumptions`, with its source. See docs/modules/vsp.md.
 """
 
 import json
@@ -35,14 +35,27 @@ MASSES = [
 
 
 def _v(prob, name, units=None):
+    """One scalar output, in the given units."""
     return float(np.ravel(prob.get_val(name, units=units) if units else prob.get_val(name))[0])
 
 
 def _arr(prob, name):
+    """One array output as a list of floats."""
     return [float(x) for x in np.ravel(prob.get_val(name))]
 
 
 def git_state(root=ROOT):
+    """The commit of a checkout.
+
+    Parameters
+    ----------
+    root : path
+
+    Returns
+    -------
+    dict
+        git_hash and git_dirty, both None if git isn't available.
+    """
     try:
         h = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True)
         d = subprocess.run(
@@ -58,10 +71,24 @@ def git_state(root=ROOT):
 
 
 def export_geometry(prob, cfg, config_path=None, optimised=None, success=None, case_id=None):
-    """Dict of everything needed to rebuild the solved design in 3D (see module docstring)."""
+    """Everything needed to rebuild the solved design in 3D.
+
+    Parameters
+    ----------
+    prob : om.Problem
+        A run problem.
+    cfg : FullMDOConfig
+    config_path, optimised, success, case_id
+        Provenance fields.
+
+    Returns
+    -------
+    dict
+        The geometry.json content, in metres, kilograms and degrees.
+    """
     from ..stability import oei_check
 
-    pr, st = cfg.propulsion, cfg.stability
+    pr, st = cfg.propulsion, cfg.stability  # noqa: F841
     v = lambda k, u=None: _v(prob, k, u)  # noqa: E731
     up, lo = _arr(prob, "upper_weights"), _arr(prob, "lower_weights")
     le, te = v("le_weight"), v("te_thickness")
@@ -184,6 +211,19 @@ def export_geometry(prob, cfg, config_path=None, optimised=None, success=None, c
 
 
 def write_geometry(g, path):
+    """Write geometry.json.
+
+    Parameters
+    ----------
+    g : dict
+        From export_geometry.
+    path : path
+
+    Returns
+    -------
+    Path
+        The file written.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(g, indent=1))
@@ -191,6 +231,17 @@ def write_geometry(g, path):
 
 
 def load_geometry(path):
+    """Read geometry.json.
+
+    Parameters
+    ----------
+    path : path
+        The file, or a run folder holding it.
+
+    Returns
+    -------
+    dict
+    """
     path = Path(path)
     if path.is_dir():
         path = path / "geometry.json"

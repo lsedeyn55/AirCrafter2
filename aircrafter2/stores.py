@@ -1,23 +1,9 @@
-"""External stores of the 2024-25 ruleset (X-1 Supersonic Flight Program): fuel tanks on pylons, the X-1 test vehicle,
-an optional internal tank. Each gives mass, station and drag at one mission point (problems/multipoint.py).
+"""External stores of the 2024-25 ruleset (X-1 Supersonic Flight Program): tanks on pylons, the X-1 test vehicle, an
+optional internal tank.
 
-Rules (Rules_2025.pdf): tanks are commercial beverage bottles (>= 16 fl oz, all external tanks the same bottle for all
-missions), at least two external tanks in M2 and M3 (empty allowed in M3), on removable pylons, the declared pylon set
-fitted for every M2 and M3 attempt (p. 8-10); at most one internal tank, any bottle (p. 8); the X-1 (<= 0.55 lb) under
-the fuselage between the external tanks in M2 and M3 (p. 8-9, p. 11). M1 flies with no payload and no pylons (p. 10-11).
-
-Model (per mission point; flags say which stores are on board):
-    mass   m_pay = n_ext m_bottle + m_internal_bottle + m_fuel + m_pylons + m_X1 + m_X1_structure
-    CG     x_pay = sum m_i x_i / m_pay, stations as chord fractions from the wing LE (Woombah Table 34 / c)
-    drag   CD_stores = f_drag [ n_ext Q_tank C_D,bottle A_bottle                   (pressure drag, frontal area)
-                              + n_pyl Q_pyl C_f(Re_l) FF_wing S_wet,pyl            (Raymer component build-up)
-                              + Q_X1 (C_f FF S_wet)_X1 wing + body ] / S
-C_D,bottle = 0.523 per bottle, frontal area, bottom first: Woombah CFD, validated there against Hoerner's 0.82 for a
-long cylinder (2025 USYD DBF Design Report, p. 43). Woombah's FlightStream build-up gives a far smaller bottle term
-(Table 26, p. 28: CD0 0.00045 on the wing area for both bottles, about 1/20 of the CFD value); the CFD value is used.
-Raymer, Aircraft Design: A Conceptual Approach, Ch. 12 (as aero/parasite.py) for the pylons and the X-1.
-f_drag (store drag factor) is an uncertain parameter in RDO; interference factors are PLACEHOLDERS (OPEN_QUESTIONS).
-All arithmetic is complex-step safe (method="cs" partials).
+Each gives mass, CG station and drag at one mission point. Part of the MDA in problems/full_mdo.py: it feeds m_pay and
+x_pay to the mass and stability models, and CD_stores to the drag (docs/DECISIONS.md#r25-multipoint).
+Sources: Rules_2025.pdf; Woombah (2025 USYD DBF Design Report); Raymer Ch. 12. Details: docs/modules/stores.md.
 """
 
 from typing import Optional
@@ -33,6 +19,8 @@ INCH = 0.0254
 
 
 class Bottle(BaseModel):
+    """A commercial bottle used as a tank: volume [L], diameter [m] and empty mass [kg]."""
+
     model_config = ConfigDict(extra="forbid")
     volume_L: float = Field(description="L")
     diameter: float = Field(description="m")
@@ -40,6 +28,7 @@ class Bottle(BaseModel):
 
 
 def _ruleset_bottles(name="dbf_2024_25"):
+    """The candidate bottles of a ruleset file, or {} if the file doesn't exist."""
     from .config.loader import CONFIGS_DIR, load_layer
 
     path = CONFIGS_DIR / "rulesets" / f"{name}.yaml"
@@ -83,7 +72,19 @@ class StoreConfig(BaseModel):
 
     @classmethod
     def from_ruleset(cls, name="dbf_2024_25", **over):
-        """The ruleset's store set (configs/rulesets/<name>.yaml), with field overrides."""
+        """The ruleset's store set (configs/rulesets/<name>.yaml), with field overrides.
+
+        Parameters
+        ----------
+        name : str
+            Ruleset file name.
+        **over
+            Fields to override.
+
+        Returns
+        -------
+        StoreConfig
+        """
         from .config.loader import CONFIGS_DIR, load_layer
 
         data = dict(load_layer(CONFIGS_DIR / "rulesets" / f"{name}.yaml")["multipoint"]["stores"])
@@ -98,7 +99,36 @@ class StoreConfig(BaseModel):
 
 
 class Stores(om.ExplicitComponent):
-    """Store mass, CG station and drag at one mission point."""
+    """Store mass, CG station and drag at one mission point. All arithmetic is complex-step safe, so partials are
+    complex step.
+
+    Options
+    -------
+    config : StoreConfig
+    tanks : bool
+        External tanks (and the internal one, if any) on board.
+    fuel : bool
+        Tanks filled (M2), with the input fuel_mass.
+    pylons, x1 : bool
+        Pylons and the X-1 on board.
+
+    Inputs
+    ------
+    v [m/s], rho [kg/m**3], mu [Pa*s], S [m**2], c [m], store_drag_factor, fuel_mass [kg] (fuel on)
+
+    Outputs
+    -------
+    m_pay [kg], x_pay [m], CD_stores, CD_tanks, CD_pylons, CD_x1, fuel_capacity [kg]
+
+    Symbols
+    -------
+    chord, S : wing chord [m] and area [m**2]
+    re_per_m : rho v / mu, Reynolds number per metre [1/m]
+    cd_t, cd_p, cd_x : drag of the tanks, pylons and X-1, before the factor k
+    tc, ff, swet : t/c, form factor and wetted area of a lifting surface (as aero/parasite.py)
+    f, ff_b, swet_b : fineness, form factor and wetted area of the X-1 body
+    k : store drag factor f_drag, an uncertain parameter in the robust problem
+    """
 
     def initialize(self):
         self.options.declare("config", types=StoreConfig)

@@ -1,28 +1,7 @@
-"""Smooth replacements for max/min/clip in the gradient path.
+"""Smooth replacements for max, min and clip in the gradient path, used throughout the physics components.
 
-All functions are complex-step safe: branching only looks at real parts, and
-the arithmetic is done with numpy ufuncs that accept complex input.
-
-ks_max
-    Kreisselmeier-Steinhauser aggregation applied in log space, for strictly
-    positive quantities (thicknesses, loads, masses):
-
-        f = exp( KS_rho( ln x_1, ..., ln x_n ) )
-
-    This makes rho dimensionless and the result scale-invariant. The
-    over-estimate relative to the true max is bounded by a factor
-    n**(1/rho); for rho = 100 and n = 2 that is 0.7 %. Values <= TINY are
-    floored to TINY and get zero derivative.
-
-    mode="hard" returns the exact max (for reporting and verification),
-    with the derivative of the selected argument.
-
-softplus
-    s * ln(1 + exp(x / s)): a smooth max(x, 0) with a dimensional
-    transition width s. mode="hard" gives max(x, 0).
-
-smooth_abs
-    sqrt(x^2 + eps^2).
+All functions are complex-step safe: branching only looks at real parts, and the arithmetic is done with numpy ufuncs
+that accept complex input. The KS function is the Kreisselmeier-Steinhauser aggregation.
 """
 
 import numpy as np
@@ -31,6 +10,7 @@ TINY = 1e-30
 
 
 def _floor_positive(x):
+    """(x floored at TINY, the mask of values above it)."""
     x = np.asarray(x)
     return np.where(np.real(x) > TINY, x, TINY), np.real(x) > TINY
 
@@ -38,7 +18,27 @@ def _floor_positive(x):
 def ks_max(xs, rho=100.0, mode="ks"):
     """Smooth (or hard) element-wise maximum of positive arrays.
 
-    Returns (f, [df/dx_i for each x_i]).
+    Kreisselmeier-Steinhauser aggregation in log space, for strictly positive quantities (thicknesses, loads, masses):
+
+        f = exp( KS_rho( ln x_1, ..., ln x_n ) )
+
+    This makes rho dimensionless and the result scale-invariant. The over-estimate relative to the true max is bounded
+    by a factor n**(1/rho); for rho = 100 and n = 2 that's 0.7 %. Values <= TINY are floored to TINY and get zero
+    derivative.
+
+    Parameters
+    ----------
+    xs : list of array
+        The values.
+    rho : float
+        Sharpness.
+    mode : str
+        "ks", or "hard" for the exact max (reporting and verification), with the derivative of the selected argument.
+
+    Returns
+    -------
+    (array, list of array)
+        f, and df/dx_i for each x_i. Raises ValueError for an unknown mode.
     """
     if len(xs) == 1:
         x = np.asarray(xs[0])
@@ -67,7 +67,20 @@ def ks_max(xs, rho=100.0, mode="ks"):
 
 
 def ks_min(xs, rho=100.0, mode="ks"):
-    """Smooth minimum of positive arrays: 1 / ks_max(1/x)."""
+    """Smooth minimum of positive arrays: 1 / ks_max(1/x).
+
+    Parameters
+    ----------
+    xs : list of array
+    rho : float
+    mode : str
+        As in ks_max.
+
+    Returns
+    -------
+    (array, list of array)
+        f, and df/dx_i for each x_i.
+    """
     inv = [1.0 / np.asarray(x) for x in xs]
     g, dg = ks_max(inv, rho, mode)
     f = 1.0 / g
@@ -76,7 +89,21 @@ def ks_min(xs, rho=100.0, mode="ks"):
 
 
 def softplus(x, scale, mode="ks"):
-    """Smooth max(x, 0). Returns (f, df/dx)."""
+    """Smooth max(x, 0): s * ln(1 + exp(x / s)), with a dimensional transition width s.
+
+    Parameters
+    ----------
+    x : array
+    scale : float
+        Transition width s, in the units of x.
+    mode : str
+        "hard" gives max(x, 0).
+
+    Returns
+    -------
+    (array, array)
+        f and df/dx.
+    """
     x = np.asarray(x)
     if mode == "hard":
         pos = np.real(x) > 0.0
@@ -95,7 +122,19 @@ def softplus(x, scale, mode="ks"):
 
 
 def smooth_abs(x, eps):
-    """sqrt(x^2 + eps^2). Returns (f, df/dx)."""
+    """Smooth absolute value, sqrt(x^2 + eps^2).
+
+    Parameters
+    ----------
+    x : array
+    eps : float
+        Smoothing width, in the units of x.
+
+    Returns
+    -------
+    (array, array)
+        f and df/dx.
+    """
     x = np.asarray(x)
     f = np.sqrt(x * x + eps * eps)
     return f, x / f
