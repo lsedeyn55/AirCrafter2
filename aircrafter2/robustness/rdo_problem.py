@@ -4,6 +4,7 @@ Builds N copies of problems/full_mdo.py, one per node of a quadrature rule, shar
 to RobustStats. Fixed nodes make the objective a deterministic, smooth function of the design, and the totals come
 through each node's coupled derivatives. Also holds RetryNewton and QuietDirectSolver, the MDA's fallback solvers, which
 problems/full_mdo.py and problems/multipoint.py use too. Formulation and failure handling: docs/modules/robustness.md.
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

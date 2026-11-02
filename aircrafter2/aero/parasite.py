@@ -3,6 +3,7 @@
 Uses Raymer, Aircraft Design: A Conceptual Approach, Ch. 12. Takes the geometry and flight condition inside the MDA, and
 gives CD_extra, which the aero points add to the wing's own drag. The wing's profile drag comes from the NeuralFoil
 strips, not from here. Details and formulas: docs/modules/aero.md, "Parasite drag".
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

@@ -3,6 +3,7 @@
 The last step of an aero point (aero/wing.py), after the vortex-lattice method (VLM) and the NeuralFoil strips. Its
 outputs feed the MDA balances, the mass model (C_m, C_L,alpha) and the polar. Critical-section C_L,max is a classical
 method; see docs/modules/aero.md, "Wing".
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

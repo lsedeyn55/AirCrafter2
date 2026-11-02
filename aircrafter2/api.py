@@ -1,5 +1,4 @@
 """High-level API used by the CLI and the Streamlit UI: run a single-point design and write its outputs.
-
     from aircrafter2.api import run_design
     result = run_design("configs/full_mdo.yaml", optimise=True, out_dir="outputs/demo")
 
@@ -8,6 +7,7 @@ writes summary.md, results.json, constraints.json (the driver's constraints: bou
 rebuild data), cases.sql (driver history), n2.html, xdsm.tex, xdsm.pdf and figures/*.pdf. With robust:, the summary adds
 the robust statistics and the per-node MDA report, and the geometry, N2 and figures describe the robust design analysed
 at the config's nominal parameter values.
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import json

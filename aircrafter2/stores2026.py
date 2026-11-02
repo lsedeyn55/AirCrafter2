@@ -4,6 +4,7 @@ Gives the mass, CG station, drag and cargo box of one mission point. PayloadFuse
 Stores2026 inside the MDA, and Packaging2026 after it (problems/full_mdo.py). Their outputs feed the mass, stability and
 lap models. Sources: [R26] (2026-DBF-Rules.pdf), [HB] (Project Humpback report). Why: docs/DECISIONS.md#r26-payload,
 docs/DECISIONS.md#r26-banner, docs/DECISIONS.md#ff-d2. Details: docs/modules/stores.md.
+Abbreviations: MDA = multidisciplinary analysis, CG = centre of gravity.
 """
 
 import numpy as np

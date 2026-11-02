@@ -4,6 +4,7 @@ Takes the masses, stations, tail geometry and the wing's lift slope a_w after th
 Stick-fixed, wing + tail, fuselage contribution neglected, e.g. Nelson, Flight Stability and Automatic Control, Ch. 2;
 Raymer, Ch. 16. An AVL replacement later only has to provide x_np (and could add lateral-directional derivatives).
 Details: docs/modules/stability.md.
+Abbreviations: MDA = multidisciplinary analysis, CG = centre of gravity.
 """
 
 import numpy as np

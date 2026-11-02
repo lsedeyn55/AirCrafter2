@@ -6,6 +6,7 @@
     stalled strip
 
 Uses airfoil/ and aero/; aero_mass couples the mass. Report: docs/problems/ and docs/modules/problems.md.
+Abbreviations: VLM = vortex-lattice method.
 """
 
 from typing import Literal

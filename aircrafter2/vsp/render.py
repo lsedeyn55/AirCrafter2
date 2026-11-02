@@ -4,6 +4,7 @@ OpenVSP 3.55.0 can only screenshot through its FLTK GUI (ScreenGrab needs VSP_US
 render headlessly. The builder exports one STL per component, and this module draws them with matplotlib: orthographic
 three-views as depth-sorted 2D projections (the top view uses the same axes as plotting.figures.planform: y across, x
 down) and an orthographic isometric. Meshes are rasterised inside the PDF; text and axes stay vector.
+Abbreviations: CG = centre of gravity.
 """
 
 from pathlib import Path

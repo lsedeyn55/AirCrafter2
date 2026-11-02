@@ -6,6 +6,7 @@
 
 Fed by geometry and airfoil; feeds the MDA balances, the mass model and the polar. Details: docs/modules/aero.md,
 "Wing".
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

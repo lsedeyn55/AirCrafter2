@@ -4,6 +4,7 @@ Each node is problems/multipoint.py's model, with the uncertain parameters at th
 mission points (the same aircraft). As rdo_problem.py: fixed nodes, the UDR (univariate dimension reduction) rule by
 default, RetryNewton at every point's MDA. Inputs the model computes (m_pay: the stores) are excluded: the fuel is
 weighed at the field (rules p. 10), and the store masses are fixed. Details: docs/modules/robustness.md.
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

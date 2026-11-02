@@ -2,6 +2,7 @@
 
 Every function takes the problem (already run), draws one figure and saves it as vector PDF. make_all writes the
 standard set into a folder.
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 from pathlib import Path

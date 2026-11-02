@@ -4,6 +4,7 @@ Frame: the framework's own (origin at the wing root leading edge, x aft, y to st
 models carry no length unit, so the model is built in metres and the STEP/IGES export unit is set to metres
 (STEPSettings:LenUnit = LEN_M, saved in the .vsp3). Every key parameter is read back after it's set (`readback` in the
 result). What comes from the result and what's illustrative: docs/modules/vsp.md and `mockup_assumptions`.
+Abbreviations: CG = centre of gravity.
 """
 
 import time

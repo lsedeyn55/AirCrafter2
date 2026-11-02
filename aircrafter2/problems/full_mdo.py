@@ -6,6 +6,7 @@ T = D and the mass, the polar, the lap model, stability and the limits. The powe
 (docs/DECISIONS.md#plan-b). problems/multipoint.py and robustness/ build on it. The objective is a scoring plug-in
 (scoring/; placeholder default three_lap_time). Design variables, data flow and details: docs/modules/problems.md,
 "full_mdo".
+Abbreviations: MDF = multidisciplinary feasible, CG = centre of gravity, ESC = electronic speed controller.
 """
 
 from typing import Literal, Optional

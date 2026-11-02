@@ -5,6 +5,7 @@ top sit the flight score (scoring/dbf2025.py or dbf2026.py) and the rule limits.
 2025-26. To evaluate a 2025-26 design, use build_multipoint_problem(mcfg, driver=False, mda_retry=True), then run_warm.
 Why: docs/DECISIONS.md#r25-multipoint, docs/DECISIONS.md#ff-d5. Details: docs/modules/problems.md, "multipoint";
 docs/modules/scoring.md.
+Abbreviations: MDA = multidisciplinary analysis, ESC = electronic speed controller.
 """
 
 from typing import Literal, Optional

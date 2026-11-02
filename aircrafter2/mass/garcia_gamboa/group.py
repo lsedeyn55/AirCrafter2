@@ -6,6 +6,7 @@
 
 Inputs come from geometry, airfoil, aero and the config; m_total feeds the MDA's lift balance (problems/full_mdo.py).
 Details: docs/modules/mass.md.
+Abbreviations: MDA = multidisciplinary analysis, MDF = multidisciplinary feasible.
 """
 
 import numpy as np

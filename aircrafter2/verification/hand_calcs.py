@@ -2,6 +2,7 @@
 
 Lifting-line theory, a Trefftz-plane induced drag and a textbook wing drag estimate. Called by verification/ and tests/;
 results in docs/verification/aero.md.
+Abbreviations: VLM = vortex-lattice method.
 """
 
 import numpy as np

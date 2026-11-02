@@ -4,6 +4,7 @@ optional internal tank.
 Each gives mass, CG station and drag at one mission point. Part of the MDA in problems/full_mdo.py: it feeds m_pay and
 x_pay to the mass and stability models, and CD_stores to the drag (docs/DECISIONS.md#r25-multipoint).
 Sources: Rules_2025.pdf; Woombah (2025 USYD DBF Design Report); Raymer Ch. 12. Details: docs/modules/stores.md.
+Abbreviations: MDA = multidisciplinary analysis, CG = centre of gravity.
 """
 
 from typing import Optional

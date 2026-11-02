@@ -5,6 +5,7 @@ share of the samples, warm-starting each from the previous converged state. Call
 it goes through problems.multipoint.run_warm (docs/DECISIONS.md#ff-d5). Details: docs/modules/robustness.md.
 
 Memory: one problem is ~0.4-2 GB, so keep `workers` small (5 on a 14 GB machine).
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import os

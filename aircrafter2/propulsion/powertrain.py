@@ -5,6 +5,7 @@ at a fixed throttle. In the full model it runs before the MDA (problems/full_mdo
 feed the MDA and the lap model, so the powertrain sets the power (docs/DECISIONS.md#plan-b).
 Sources: M. Drela, "First-Order DC Electric Motor Model", MIT 16.50 notes, 2007; APC PER3 data (apc.py).
 Details: docs/modules/propulsion.md, "Powertrain".
+Abbreviations: MDA = multidisciplinary analysis, ESC = electronic speed controller.
 """
 
 import numpy as np

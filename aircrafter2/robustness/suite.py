@@ -3,6 +3,7 @@
 sensitivities uses compute_totals; worst_cases perturbs one input at a time; monte_carlo samples the uncertain inputs.
 They take a run problem from api.py or a study, and return plain dicts. Robustness inside the optimiser is in
 rdo_problem.py. Details: docs/modules/robustness.md, "Post-optimality checks".
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

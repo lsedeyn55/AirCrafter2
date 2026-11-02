@@ -3,6 +3,7 @@
 Start with:  aircrafter2 ui      (or: streamlit run aircrafter2/ui/app.py)
 Read top to bottom on every interaction: the sidebar, the layer tabs (placeholders and ruleset), the Constraints tab,
 the design inputs, then Run. The tabs are described in the README, "Placeholders and rulesets".
+Abbreviations: RDO = robust design optimisation.
 """
 
 import json

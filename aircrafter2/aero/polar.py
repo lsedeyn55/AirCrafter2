@@ -3,6 +3,7 @@
 ThreePointPolar fits CD(CL) through the cruise, mid and near-C_L,max points of the full model, and feeds the lap model.
 With CD1 = 0 it reduces to the AirCrafter form CD = CD0 + k CL^2 (Kallarackel 2025, Eqs. 3.5-3.6).
 Why three points: docs/modules/aero.md, "Polar".
+Abbreviations: VLM = vortex-lattice method.
 """
 
 import numpy as np

@@ -3,6 +3,7 @@
 All wing loads are evaluated at the wing root (y = 0), where they peak and where the paper sizes the structure. c_mean
 is the mean geometric chord (Sec. 3.2). Takes the mass from the closure and C_m and the speed from aero; feeds the
 sizing. See docs/modules/mass.md.
+Abbreviations: KS = Kreisselmeier-Steinhauser smooth maximum.
 """
 
 from ...analytic import AnalyticComponent, D, combine

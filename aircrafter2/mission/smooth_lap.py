@@ -7,6 +7,7 @@ fractional lap count and the stall, turn-speed and take-off thrust margins, whic
 Same physics as lap_modeller.performance_modeller (Kallarackel 2025, Ch. 3; performance_modeller.m), without tables or
 while loops, so gradients are exact (docs/DECISIONS.md#plan-d2). In the full model the powertrain sets the power
 (docs/DECISIONS.md#plan-b). Details: docs/modules/mission.md, "Smooth twin".
+Abbreviations: MDA = multidisciplinary analysis.
 """
 
 import numpy as np

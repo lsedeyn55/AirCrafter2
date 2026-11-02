@@ -29,6 +29,26 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 | **ICAO Doc 7488/3** | Manual of the ICAO Standard Atmosphere, 1993. Used in `atmosphere.py`. |
 | **Spar Sizer 3.1** | The team's earlier spar spreadsheet. Notes in `docs/PLAN.md` §10. |
 
+## Abbreviations
+
+| Short | Meaning |
+|---|---|
+| **CG** | centre of gravity |
+| **DV** | design variable |
+| **ESC** | electronic speed controller |
+| **G&G** | Garcia & Gamboa 2022 |
+| **KS** | Kreisselmeier-Steinhauser, the smooth maximum in `smooth.py` |
+| **MDA** | multidisciplinary analysis |
+| **MDF** | multidisciplinary feasible |
+| **NI** | net income ([R26] score) |
+| **OAS** | OpenAeroStruct |
+| **OEI** | one engine inoperative |
+| **RAC** | rated airplane cost ([R26] score) |
+| **RDO** | robust design optimisation |
+| **TOGW** | take-off gross weight |
+| **UDR** | univariate dimension reduction |
+| **VLM** | vortex-lattice method |
+
 ## Architecture decisions (`docs/PLAN.md`)
 
 <a id="plan-d1"></a>
