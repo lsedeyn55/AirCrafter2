@@ -25,6 +25,7 @@ dependencies = [
 test = ["pytest==9.1.1", "sympy==1.14.0"]
 ui = ["streamlit==1.64.0"]
 docs = ["pyxdsm==2.3.2"]
+dev = ["ruff==0.17.3"]
 
 [project.scripts]
 aircrafter2 = "aircrafter2.cli:main"
@@ -35,3 +36,13 @@ include = ["aircrafter2*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+exclude = ["tests", "studies", "verification", "examples", "configs", "archive", "reference", "third_party", "outputs", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+# E741: `I` (current) and `l` (length) are equation symbols, kept to match the equations
+ignore = ["E741"]
+per-file-ignores = {"__init__.py" = ["F401"]}

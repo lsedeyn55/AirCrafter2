@@ -19,7 +19,9 @@ NaN flags are replaced by continuous margins (`stall_margin`, `turn_speed_margin
 NaN when a turn is entered below the deceleration table (M7). The port matches `performance_modeller.m`, run in
 MATLAB R2026a, to ~1e-8 (`docs/problems/lap_mdo.md`, `verification/matlab/run_reference.m`).
 
-## Smooth twin (`smooth_lap.py`, decision D2)
+## Smooth twin (`smooth_lap.py`)
+
+A smooth version of the lap model, so that gradients are exact ([DECISIONS plan-d2](../DECISIONS.md#plan-d2)).
 
 The same physics without tables or loops, with exact complex-step partials:
 - **Straights:** RK4 in distance.
@@ -32,7 +34,62 @@ There are two power modes:
 | `power_mode` | Thrust | Speed | Energy |
 |---|---|---|---|
 | `aircrafter` | P = D(V)V/η, T = P/v | held at V (smooth min) | P · t |
-| `propulsion` (decision B) | T(v) from the powertrain | no cap; settles where T = D | ∫ P_batt(v) dt per leg |
+| `propulsion` ([plan-b](../DECISIONS.md#plan-b)) | T(v) from the powertrain | no cap; settles where T = D | ∫ P_batt(v) dt per leg |
+
+### How each part of the lap is modelled
+
+**Same physics as the reference port.** `SmoothLapModel` follows `lap_modeller.performance_modeller` (Kallarackel 2025,
+Ch. 3, and `performance_modeller.m`), reformulated so that gradients are exact. All arithmetic is complex-step safe, and
+the component uses `method="cs"` partials, which are exact.
+
+**Drag polar.** C_D = CD0 + CD1 C_L + k C_L². With CD1 = 0 this is Eqs. 3.5–3.7 (static assumptions). The coupled model
+supplies a three-point fit (`aero/polar.py`).
+
+**Power, `aircrafter` mode.** Constant electrical power P = D(V) V / η (Eq. 3.4), thrust T = P / v, speed held at V.
+
+**Power, `propulsion` mode** (used by `full_mdo`):
+- Thrust T(v) and battery power P(v) come from the powertrain, as cubic fits in v (`propulsion/powertrain.py`), at a
+  fixed throttle.
+- There's no speed cap, so the aircraft accelerates on the straights towards the speed where T = D.
+- The input V is that equilibrium cruise speed, solved in the MDA. It's used for the stall margin and the reaction-time
+  energy only.
+- Battery energy is integrated along every leg, and `laps_frac` uses the usable battery energy.
+- `thrust_margin_static` = T(0) − Tstatic, for the take-off ground roll.
+
+**Straights.** dv/ds = a(v) / v and dt/ds = 1 / v, with a(v) = (T − D) / m, integrated in distance with fixed-step RK4 (no
+lookup tables, no while loops). The MATLAB tables stop accelerating at V, because the pilot holds the target speed. Here,
+in `aircrafter` mode, the acceleration is a smooth min(a(v), (V − v) / `tau_hold`), so v relaxes onto V and stays there. A
+plain multiplicative cap leaks: thrust exceeds drag at V, because P includes 1/η.
+
+**Turns.** Duration = angle / ω(v_entry), with ω = g √(n² − 1) / v and n = KSmin(q S CL_max / W, n_struct) (Eqs. 3.10–3.12:
+stall-limited turn rate, capped at the structural limit). During the turn the speed follows dv/dt = min(a_turn(v), 0) with
+drag at C_L = CL_max, as in the MATLAB deceleration tables (a smooth min), integrated in time with RK4.
+
+**Wind** ([plan: r26-wind](../DECISIONS.md#r26-wind)). A steady wind of speed `wind` from direction `wind_dir` (degrees
+from the course axis; 0 = along it, the original model). It's valid while wind < V_stall: lap 1 starts at V_stall into the
+wind, and a non-physical lap raises `AnalysisError`.
+- **On a straight,** the along-track component a = wind cos(wind_dir) is a head- or tailwind by the leg's direction
+  (`course.py`: head +1, tail −1, none 0), and the crosswind c = wind sin(wind_dir) is crabbed out: ground speed
+  = v √(1 − (c/v)²) − sign · a, with energy and power on airspeed. At wind_dir = 0 this is v − sign · wind, bit for bit.
+- **Legs without a direction.** Legs given as `("s", length_ft)` alternate head, tail, head, ...
+- **Turns** are flown at constant airspeed in the air-mass frame. With `turn_drift` on (`course.turn_drift`; off by
+  default, the original model), the drift wind × t_turn is carried to the next straight. Its along-track part shortens
+  that straight (drift in its direction of flight) or lengthens it, and its cross-track part d is recovered on it, so the
+  flown length is √((L − δ)² + d²).
+- **The take-off ground roll** sees the along-runway component only.
+
+**Banner (2025-26 M3).** The point's drag polar is the towing state. Lap 1's legs in `banner_stowed_legs` (before the first
+downwind leg) are flown with CD0 + `dCD_stowed` (stowed instead of deployed banner), the ground roll included.
+
+**Lap 1.** It starts at V_stall, with legs from the course (default Table 3.5). Take-off time isn't added, as in the MATLAB,
+unless `takeoff=True` (next section). With it on, the ground roll is integrated in airspeed, with no event to detect, and
+the acceleration floor keeps poor designs finite. `takeoff_accel_margin` is the smallest unfloored acceleration over the
+roll. The rest of the first straight (its length + `start_offset_ft` − ground roll, kept positive smoothly;
+`takeoff_straight_margin` = length − roll) is flown in the air from V_LOF.
+
+**Lap count.** A continuous surrogate: `laps_frac` = KSmin(laps limited by time, laps limited by energy), where
+laps(t) = 1 + (t − (lap1 + t_r)) / (lap_other + t_r) mirrors the MATLAB counting loop. The integer `lapCount` is for
+reporting only.
 
 **Finding L1:** `aircrafter` mode rewards cruise drag. More drag means more power on every leg, which the
 optimiser exploited. That's why the full model uses `propulsion` mode.
