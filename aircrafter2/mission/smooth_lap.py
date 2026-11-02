@@ -68,8 +68,8 @@ class SmoothLapModel(om.ExplicitComponent):
     """Lap times, energy, lap count and margins of one mission point.
 
     Each leg is integrated with fixed-step RK4: straights in distance, turns in time, the ground roll in airspeed. The
-    equations are in docs/modules/mission.md. Partials are complex step (method="cs"), exact because all the arithmetic is
-    complex-step safe, and the model is too branched to differentiate by hand.
+    equations are in docs/modules/mission.md. Partials are complex step (method="cs"): exact, because all the arithmetic
+    is complex-step safe, and the model is too branched to differentiate by hand.
 
     Options
     -------
@@ -123,7 +123,8 @@ class SmoothLapModel(om.ExplicitComponent):
         lapCount (integer) is reported only.
     stall_margin, turn_speed_margin [m/s], thrust_margin_static [N]
         V - 1.2 V_stall, speed after the 360 deg turn - V_stall, T(0) - Tstatic (propulsion mode only).
-    t_takeoff [s], s_ground_roll [m], V_lof [m/s], E_takeoff [J], takeoff_accel_margin [m/s**2], takeoff_straight_margin [m]
+    t_takeoff [s], s_ground_roll [m], V_lof [m/s], E_takeoff [J], takeoff_accel_margin [m/s**2],
+    takeoff_straight_margin [m]
         Ground roll results; always declared, zero when take-off is off.
 
     Symbols
@@ -152,6 +153,7 @@ class SmoothLapModel(om.ExplicitComponent):
     """
 
     def initialize(self):
+        """Declare the options listed in the class docstring."""
         self.options.declare("n_steps_straight", default=40, types=int)
         self.options.declare("n_steps_turn", default=20, types=int)
         self.options.declare(
@@ -194,6 +196,7 @@ class SmoothLapModel(om.ExplicitComponent):
         self.options.declare("rem_floor_width", default=0.5, desc="m, width of that floor")
 
     def setup(self):
+        """Declare inputs, outputs and partials. Raises ValueError if the course or mode can't fly a take-off."""
         opts = self.options
         self._lap1, self._other = normalise_legs(opts["lap1"]), normalise_legs(opts["lap_other"])
         if opts["takeoff"]:
@@ -263,7 +266,7 @@ class SmoothLapModel(om.ExplicitComponent):
 
         Parameters
         ----------
-        x : dict
+        inputs : dict
             Input name -> value, as in the class docstring. Complex values are allowed (complex step).
         record : list, optional
             Appends one row per leg (leg_breakdown). None in the gradient path.
@@ -279,11 +282,13 @@ class SmoothLapModel(om.ExplicitComponent):
         CD0, CD1, k, CLmax, g = inputs["CD0"], inputs["CD1"], inputs["k"], inputs["CL_max"], inputs["g"]
 
         def cd(cl):
+            """Drag coefficient at lift coefficient cl (the towing state, if there is a banner)."""
             return CD0 + CD1 * cl + k * cl**2
 
         W = m * g
 
         def qS(v):
+            """Dynamic pressure x wing area at airspeed v [N]."""
             return 0.5 * rho * v**2 * S
 
         Vstall = np.sqrt(W / (0.5 * rho * CLmax * S))
@@ -294,9 +299,11 @@ class SmoothLapModel(om.ExplicitComponent):
             thrust_coeffs, power_coeffs = inputs["T_coeffs"], inputs["P_coeffs"]
 
             def thrust(v):
+                """Thrust at airspeed v, from the powertrain fit [N]."""
                 return inputs["thrust_factor"] * sum(thrust_coeffs[i] * v**i for i in range(len(thrust_coeffs)))
 
             def p_batt(v):
+                """Battery power at airspeed v, from the powertrain fit [W]."""
                 return sum(power_coeffs[i] * v**i for i in range(len(power_coeffs)))
 
             P = p_batt(V)  # battery power at the equilibrium cruise speed
@@ -305,9 +312,11 @@ class SmoothLapModel(om.ExplicitComponent):
             P = D_cruise * V / inputs["eta"]
 
             def thrust(v):
+                """Thrust at airspeed v under constant power [N]."""
                 return P / v
 
             def p_batt(v):
+                """Constant power, with the shape of v [W]."""
                 return P + 0.0 * v
 
         # --- wind and banner ---
@@ -316,33 +325,40 @@ class SmoothLapModel(om.ExplicitComponent):
         stowed = set(opts["banner_stowed_legs"])
 
         def cd_stowed(cl):
+            """Drag coefficient with the banner stowed."""
             return CD0 + inputs["dCD_stowed"] + CD1 * cl + k * cl**2
 
         # --- accelerations and turn rate ---
-        def a_level(v, polar=cd):  # straight, level: CL = W / qS
+        def a_level(v, polar=cd):
+            """Acceleration in straight, level flight, where CL = W / qS [m/s^2]. polar: the CD(CL) to use."""
             return (thrust(v) - qS(v) * polar(W / qS(v))) / m
 
         def a_capped(v, polar=cd):
+            """Acceleration on a straight, with the pilot's speed hold in aircrafter mode [m/s^2]."""
             a = a_level(v, polar)
             if propulsion:  # fixed throttle: no speed hold, T = D sets the top speed
                 return a
-            # smooth min(a_level, (V - v) / tau): the pilot holds V
+            # smooth min(a_level, (V - v) / tau_hold): the pilot holds V
             return a - softplus(a - (V - v) / opts["tau_hold"], opts["a_smooth"])[0]
 
-        def a_turn(v, polar=cd):  # drag at CL_max (MATLAB deceleration tables), only the decelerating part
+        def a_turn(v, polar=cd):
+            """Turn deceleration: drag at CL_max, as in the MATLAB deceleration tables; negative part only [m/s^2]."""
             a = (thrust(v) - qS(v) * polar(CLmax)) / m
             return -softplus(-a, opts["a_smooth"])[0]
 
         def omega(v):
+            """Turn rate at airspeed v: stall-limited, capped at n_struct (Eqs. 3.10-3.12) [rad/s]."""
             n_stall = qS(v) * CLmax / W
             n, _ = ks_min([n_stall, inputs["n_struct"]], opts["rho_ks"])
             n = 1.0 + softplus(n - 1.0, 0.01)[0]
             return g * np.sqrt(n**2 - 1.0) / v
 
         def log(lap_no, kind, size, wind, v0, v1, t, e, banner="", drift=0.0):
+            """Append one leg to the breakdown when recording; does nothing in the gradient path."""
             if record is not None:
 
                 def to_float(z):
+                    """Real part of z as a float."""
                     return float(np.ravel(np.real(z))[0])
 
                 record.append(
@@ -362,7 +378,11 @@ class SmoothLapModel(om.ExplicitComponent):
 
         # --- the legs ---
         def straight(v, dist, wind_sign, cluster=1.0, polar=cd):
-            # s is ground distance; ground speed = airspeed (crabbed) - wind_sign * along-track wind (+1 = headwind leg)
+            """Fly a straight of ground length dist [m] from airspeed v, with RK4 in distance.
+
+            s is ground distance. Ground speed = airspeed (crabbed) - wind_sign * along-track wind (+1 = headwind leg).
+            Returns (exit speed [m/s], time [s], battery energy [J]).
+            """
             N = opts["n_steps_straight"]
             h = dist / N
             t = 0.0 * v
@@ -371,13 +391,16 @@ class SmoothLapModel(om.ExplicitComponent):
             if wind_sign == 0.0:  # a leg across the course axis: no along-track wind
 
                 def ground_speed(vv):
+                    """Ground speed on this leg at airspeed vv [m/s]."""
                     return vv - w
             else:
 
                 def ground_speed(vv):
+                    """Ground speed on this leg at airspeed vv, crabbing out the crosswind [m/s]."""
                     return vv * np.sqrt(1.0 - (cross / vv) ** 2) - w
 
             def rates(vv):
+                """d(v, t, E)/ds at airspeed vv."""
                 return (a_capped(vv, polar) / ground_speed(vv), 1.0 / ground_speed(vv), p_batt(vv) / ground_speed(vv))
 
             for i in range(N):  # RK4 in distance
@@ -393,12 +416,14 @@ class SmoothLapModel(om.ExplicitComponent):
             return v, t, e
 
         def turn(v, angle_deg, polar=cd):
+            """Fly a turn of angle_deg with RK4 in time. Returns (exit speed [m/s], time [s], battery energy [J])."""
             t_turn = np.radians(angle_deg) / omega(v)
             N = opts["n_steps_turn"]
             h = t_turn / N
             e = 0.0 * v
 
             def rates(vv):
+                """d(v, E)/dt at airspeed vv."""
                 return a_turn(vv, polar), p_batt(vv)
 
             for _ in range(N):
@@ -416,9 +441,11 @@ class SmoothLapModel(om.ExplicitComponent):
             cd_ground = cd_stowed if 0 in stowed else cd
 
             def a_raw(vv):
+                """Unfloored ground-roll acceleration at airspeed vv [m/s^2]."""
                 return (thrust(vv) - qS(vv) * cd_ground(CLg) - inputs["mu_roll"] * (W - qS(vv) * CLg)) / m
 
             def rates(vv):
+                """d(t, s, E)/dv at airspeed vv, with the acceleration floored smoothly."""
                 a = opts["a_floor"] + softplus(a_raw(vv) - opts["a_floor"], opts["a_floor_width"])[0]
                 return 1.0 / a, (vv - w) / a, p_batt(vv) / a
 
@@ -436,6 +463,10 @@ class SmoothLapModel(om.ExplicitComponent):
             return t, s, e, a_nodes[i_min]
 
         def lap(v, legs, lap_no, roll=None):
+            """Fly the legs from speed v. roll: the ground roll's (t, s, E) on lap 1, or None.
+
+            Returns (exit speed [m/s], lap time [s], lap energy [J], speed after the first 360 deg turn or None).
+            """
             total, energy, v_after_360 = 0.0 * v, 0.0 * v, None
             dx = dy = 0.0 * v  # wind drift of the turns since the last straight (course axis: +x = into the wind)
             for i, (kind, size, sign) in enumerate(legs):
@@ -590,10 +621,10 @@ class SmoothLapModel(om.ExplicitComponent):
         Returns
         -------
         list of dict
-            One row per leg of lap 1 (with the ground roll as its own row when take-off is on) and of a lap 2+. Keys: lap, leg,
-            kind, size (ft or deg; a straight's flown ground length), wind, v_entry, v_exit [m/s], time [s], energy [J], banner
-            (stowed, deployed, or empty without a banner), drift_ft (the turn drift that lengthened (+) or shortened (-) a
-            straight).
+            One row per leg of lap 1 (with the ground roll as its own row when take-off is on) and of a lap 2+.
+            Keys: lap, leg, kind, size (ft or deg; a straight's flown ground length), wind, v_entry, v_exit [m/s],
+            time [s], energy [J], banner (stowed, deployed, or empty without a banner), drift_ft (the turn drift that
+            lengthened (+) or shortened (-) a straight).
         """
         rows = []
         self._model({k: self._inputs[k] for k in self._inputs}, record=rows)
