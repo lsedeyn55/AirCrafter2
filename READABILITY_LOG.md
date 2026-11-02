@@ -1,9 +1,9 @@
 # Readability pass log
 
 ## Status
-- **Current checkpoint:** 0, full suite running.
-- **Last completed module:** `mission/smooth_lap.py`.
-- **Next step:** checkpoint 1, physics disciplines.
+- **Current checkpoint:** 2 (problems, robustness, scoring, config, API, CLI).
+- **Last completed module:** checkpoint 1 complete.
+- **Next step:** checkpoint 2 docstrings, then renames and lambdas.
 
 ## Baseline
 - **Base:** branch `placeholder-fixes-2026` at `e958559`, clean. New branch `readability` at `../AirCrafter2-readability` (neither name existed, so no `-2`).
@@ -63,12 +63,28 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 - **Commits:** ruff config and decisions page; frozen statements (`# fmt: off`); format; lint; pilot docstrings; pilot renames and lambdas; pilot nested docstrings.
 - **Format:** line length 120 touches 1,493 of 12,444 lines (12 %), below the 30 % limit, so 125 isn't needed (it would save only 200 added lines).
 - **Quick check:** identical after lint, and identical after the pilot's renames and lambdas.
+- **Full suite:** 533 passed, 1 skipped, same as the base (12 min 49 s).
+- **Self-review:** AST checks pass; scan and history words only on anchored lines; the Symbols block and moved-notes table are in place.
+
+### Checkpoint 1
+- **Commits:** one per group: mission, aero and airfoil, mass, propulsion/geometry/stability, stores and core helpers, comment fixes, then physics renames and lambdas.
+- **Proof by type:** every docstring commit: AST with docstrings stripped identical to the commit before. Rename and lambda commit: analysis points and derivatives bit for bit identical (`qc_cp1`), `test_constraints_view` 103 passed, anchors all match, links all resolve.
+- **Full suite:** 533 passed, 1 skipped, same as the base.
+- **Self-review:** the helper flags scan and history words in new text. It flagged only anchored lines and the path `archive/legacy`. A wrap tool mangled one equation line in `masses.py` (Eq. 27 joined to the note above); found in review, fixed, and the tool now leaves aligned equation blocks alone. I scanned the rest for the same fault and found none.
 
 ## Renames
 | File | Function | Old -> new |
 |---|---|---|
 | `mission/smooth_lap.py` | `SmoothLapModel._model` | `o`->`opts`, `x`->`inputs`, `tc`->`thrust_coeffs`, `pc`->`power_coeffs`, `th`->`wind_dir_rad`, `st`->`is_stowed`, `ban`->`banner_state`, `gs`->`ground_speed`, `cdg`->`cd_ground`, `cdf`->`polar`, `f`->`rates`, `r`->`to_float`, `to`->`takeoff_out`, `tr`->`t_react` |
 | `mission/smooth_lap.py` | `SmoothLapModel.setup` | `o`->`opts` |
+| `mission/course.py` | `legs_from_rows` | `o`->`order_value` |
+| `aero/parasite.py` | `ParasiteDrag.compute` | `x`->`vals` |
+| `stability/static.py` | `StaticStability.compute` | `x`->`vals` |
+| `propulsion/powertrain.py` | `Powertrain.compute` | `x`->`vals`, `r`->`node_results`, `nu`->`n_units`, `tc`->`t_coeffs` |
+| `propulsion/powertrain.py` | `Powertrain.solve_nodes` | `p`->`prop` |
+| `stores.py` | `Stores.compute` | `o`->`opts`, `x`->`vals`, `c`->`cfg` |
+| `stores2026.py` | `Stores2026.compute` | `o`->`opts`, `x`->`vals`, `c`->`cfg` |
+| `stores2026.py` | `PayloadFuselage.compute`, `Packaging2026.compute` | `c`->`cfg` |
 
 ## Moved notes: old docstring paragraph -> new location
 ### `mission/smooth_lap.py` (module docstring, 52 lines)
@@ -85,6 +101,37 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 | `power_mode` | `mission.md` "Power, propulsion mode"; class Options |
 | Complex-step safe | class docstring; `mission.md` opening of the section |
 
+### `mission/lap_modeller.py` (61 lines)
+| Old paragraph | New location |
+|---|---|
+| Port of Kallarackel Ch. 3, MATLAB files, steps 1-6 | `mission.md` "Reference port" |
+| Margins instead of a NaN flag | module docstring; `mission.md` "Deliberate deviations" |
+| Banner block left out | `mission.md` "Deliberate deviations" |
+| Lap 1 Leg 1 not added, `Tstatic` unused, the switch | `mission.md` "Reproduced as they are" |
+| `lapCount` is a step function | `mission.md`; the `AirCrafterPerformance` docstring |
+
+### Others in checkpoint 1
+| Module | Old notes | New location |
+|---|---|---|
+| `mission/course.py` | leg forms, presets, validation, take-off switch | module docstring; `mission.md` "Course"; `check_course` docstring |
+| `mission/oval.py` | load factor, floor, turn radius | `mission.md` "Oval"; component docstrings |
+| `aero/parasite.py` | Raymer build-up, tails, fuselage, nacelles | `aero.md` "Parasite drag"; `ParasiteDrag` docstring |
+| `aero/polar.py` | three points, why not two | `aero.md` "Polar" |
+| `aero/profile_drag.py` | strip equations | `NeuralFoilStripDrag` docstring |
+| `airfoil/neuralfoil_section.py` | solve, implicit function, clamp, source | `aero.md` "NeuralFoil sections"; `solve_sections`, `section_sensitivities` docstrings |
+| `airfoil/shape.py` | shape equations, TE input, no full CST | `AirfoilShape` docstring; `aero.md` |
+| `propulsion/powertrain.py` (41 lines) | battery, ESC, motor, prop, topologies | `propulsion.md` (already there: "Powertrain", "Battery topology") |
+| `propulsion/powertrain.py` | fit range, outputs | `propulsion.md` "Fit range", "Outputs for the lap model"; the anchored `rpm_max` phrase in the class docstring |
+| `propulsion/apc.py` | file format, surrogate, folder | `propulsion.md` "Propeller data"; `parse_apc_file`, `PropSurrogate` docstrings |
+| `propulsion/motor_scaling.py` | rewind laws | `MotorRewind` docstring; `propulsion.md` |
+| `geometry/planform.py` | boom, volumes | `geometry.md`; `TailGeometry` docstring |
+| `stability/static.py` | neutral point | `StaticStability` docstring; `stability.md` |
+| `stores.py` (20 lines) | rules, model, bottle drag | new `stores.md` |
+| `stores2026.py` (23 lines) | rules, model | new `stores.md`; `Stores2026` docstring |
+| `smooth.py` (25 lines) | each function | that function's docstring |
+| `analytic.py` | how to subclass | module docstring (shortened) |
+| `geometry/export.py`, `atmosphere.py` | kept | shortened in place |
+
 ## Decisions
 1. **Coverage counts nested functions.** That's the only count that matches the survey's 694. Options: nested excluded (658). Undo: read the figures as such. Nested helpers get one-line docstrings so the public target of 0 holds under this count.
 2. **`evaluate(self, x)` keeps `x`.** It's a method signature defined by `AnalyticComponent` and overridden everywhere, and the base class documents it. `SmoothLapModel._model(self, x, ...)` is private and called positionally, so it became `inputs`, as the prompt's example says.
@@ -92,6 +139,9 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 4. **Only assigned lambdas (E731) become named functions.** Lambdas passed inline (sort keys, `applies=`, `progress=`) stay, since they aren't what the `noqa` silences and turning them into defs would mean moving code.
 5. **`F541` accepted** on `api.py`'s `f"# AirCrafter 2.0 result\n"`: the string's value is the same, and it's ruff's safe fix. It's the one literal whose source text changed outside docstrings.
 6. **Ruff format also touched two docstrings' indentation** (`cli.py`, `problems/wing_aero.py`), so the format commit's AST is identical with docstrings stripped, and differs in those two docstrings' whitespace only. Neither is read at run time.
+8. **Framework hooks don't need a docstring** (`initialize`, `setup`, `compute`, `compute_partials`, `io`, `evaluate`, ...), as the prompt's rule says, unless they do something non-obvious, so the public target of 0 excludes them. The coverage line reports them separately. Options: a one-liner on each, which would only say "declare the options". Undo: remove the exclusion in the coverage script and write them.
+9. **Public count** follows the survey's: no leading underscore, so dunders are private. That gives its total.
+10. **`x` -> `vals` in `compute` methods** where `inputs` is already taken, since `compute`'s `inputs` is the OpenMDAO vector and `x` the plain dict of it. `c` -> `cfg` in the stores, where `c` otherwise reads as the chord. Physics symbols in `evaluate` methods (`na`, `gR`, `ne`, `dne`, `s`) stayed and got a Symbols block, under the prompt's "if unsure, keep and explain".
 7. **`# fmt: off` on six statements** (`smooth_lap` x2, `full_mdo` x3, `garcia_gamboa/group.py`), found by a trial format against the anchor list. Other anchored lines kept their matched text; a few changed around it (for example a closing bracket).
 
 ## Skipped or reverted changes
@@ -99,6 +149,10 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 
 ## For me to look at
 - **Dead code:** `mission/smooth_lap._sigmoid` isn't called anywhere in the repository.
+- **`geometry/export.py`, `export_geometry`:** `st` is assigned and never used. Deleting it is ruff's unsafe fix and outside "may change", so it has `# noqa: F841`.
+- **`mass/garcia_gamboa/masses.BUILD_NOTE`:** a module-level string used only as a note that docstrings point to. It's a public name, so it stays, and it still cites `docs/RDO_REDUCED_PLAN.md`. Worth turning into a comment.
+- **Strings left alone that would read better reworded** (frozen literals with history labels): `config/aero.py` `n_modes` "(D3)"; `problems/full_mdo.py` `n_motors` and `prop` "(discrete, D4; ...)" and `nacelle_ff` "(PLAN 6h T6)"; `propulsion/powertrain.py` `prop` "(discrete choice, D4)"; `mission/course.py` `lap1_cluster` "before 2026-10-27", `CL_ground` "docs/TAKEOFF_COURSE_PLAN.md", `turn_drift` "§4.7"; `constraints_view.py` notes "(D2)", "(report only, D8)".
+- **`aero/performance.CriticalSectionCLmax`:** its docstring says the textbook reference is "to be added in docs/modules/aero.md". It still isn't there.
 
 ## Skipped or reverted changes
 (none yet)
