@@ -1,10 +1,12 @@
-"""2025-26 results (Project Humpback's ruleset): multipoint optimisation, payload rounding, bookends, enumeration, RDO,
-common evaluation (docs/studies/results_2026/results_2026.md). Each run writes outputs/results_2026/runs/<tag>.json.
+"""2025-26 results (Project Humpback's ruleset): multipoint optimisation (with the bookend weights), payload rounding and
+a minimal robust optimisation. Each run writes outputs/results_2026/runs/<tag>.json. Not here yet (the final-run
+session, docs/RESULTS_2026_PLAN.md §8): the enumeration, multistart, Monte Carlo, the common evaluation and the pages.
 
     .venv/bin/python studies/results_2026.py optimise --tag mp_8S_19x12E_19x12E [--cells 8] [--m2 19x12E] [--m3 19x12E]
                                                        [--w2 1 --w3 1] [--NI 2800 --B 1500] [--start TAG]
                                                        [--old-constraints] [--takeoff-off] [--fix n_p=42 n_c=14]
-    .venv/bin/python studies/results_2026.py integer --case C      # payload counts rounded, re-optimised (§4.2)
+    .venv/bin/python studies/results_2026.py integer --case C [--maxiter N]  # payload counts rounded, re-optimised
+    .venv/bin/python studies/results_2026.py rdo --tag T --case C [--maxiter N]  # robust optimisation from run C (§7)
 
 Bookends: the same multipoint problem with the objective reduced to one mission's score (dbf2026 weights w2, w3).
 The model and its decisions: docs/RESULTS_2026_PLAN.md.
@@ -35,11 +37,20 @@ POINT_OUT = ["m_total", "m_empty", "m_pay", "m_wing", "m_ht", "m_vt", "m_fus", "
              "ThreeLapTime", "Lap1time", "otherLapTime", "laps_frac", "I_static", "I_pack_static", "rpm_margin",
              "I_margin", "SM", "V_h", "V_v", "CD0", "CD_stores", "energy_margin", "E_nom_total",
              "thrust_margin_static", "v_fit_margin", "stall_margin", "cruise.L_over_D", "Rm", "I0", "l_cb",
-             "t_takeoff", "s_ground_roll", "x_cg", "x_np"]
+             "t_takeoff", "s_ground_roll", "x_cg", "x_np", "cruise.nf_confidence_min"]
 SCORE_OUT = ["score", "M1", "M2", "M3", "flight_score", "net_income", "m3_term", "RAC", "EF"]
 # the old constraint set (the sensitivity of decision 3): AirCrafter 1.0's rpm convention and the Q9 bands
-OLD_CONSTRAINTS = {"propulsion.rpm_fraction": 0.85, "stability.SM_max": 0.20, "stability.V_h_max": 0.65,
+# SM_max: the old 0.20 shifted into the model frame by the same +0.20 c as SM_min (Q9, Q62; 0.20 itself sits below the
+# 2025-26 SM_min 0.25, so the old set could never be feasible). SM_min stays 0.25.
+OLD_CONSTRAINTS = {"propulsion.rpm_fraction": 0.85, "stability.SM_max": 0.40, "stability.V_h_max": 0.65,
                    "stability.V_v_max": 0.06}
+
+
+def initial_values(mcfg):
+    """problems.multipoint.initial_values (moved there; kept here for this module's callers)."""
+    from aircrafter2.problems.multipoint import initial_values as _iv
+
+    return _iv(mcfg)
 
 
 def v(p, k):
@@ -140,6 +151,14 @@ def floored_score(p, mcfg):
     return {k: float(np.real(val)) for k, val in plug.floored(x).items()}
 
 
+def kv_set_by(active_constraints, active_bounds):
+    """What sets Kv: the active rpm, current or fuse limits (rules.fuse_margin*, not rules.fuselage_margin), or its
+    bound; else interior."""
+    kv_set = [c for c in active_constraints if "rpm_margin" in c or "I_margin" in c or c.startswith("rules.fuse_margin")]
+    kv_set += [b for b in active_bounds if b.startswith("Kv")]
+    return ", ".join(kv_set) if kv_set else "interior"
+
+
 def summarise(p, mcfg):
     from aircrafter2.problems.multipoint import design_values, m1_check
 
@@ -153,27 +172,8 @@ def summarise(p, mcfg):
     out["floored"] = floored_score(p, mcfg)
     out["active_constraints"], out["active_bounds"] = active(p, mcfg)
     out["violated"] = violated(p, mcfg)
-    kv_set = [c for c in out["active_constraints"] if "rpm_margin" in c or "I_margin" in c or "fuse" in c]
-    kv_set += [b for b in out["active_bounds"] if b.startswith("Kv")]
-    out["kv_set_by"] = ", ".join(kv_set) if kv_set else "interior"
+    out["kv_set_by"] = kv_set_by(out["active_constraints"], out["active_bounds"])
     out["M1_check"] = m1_check(mcfg, p)
-    return out
-
-
-def initial_values(mcfg):
-    """{design variable: start value} of a multipoint config, as set_dv_defaults and apply_multipoint_values set them."""
-    from aircrafter2.problems.multipoint import POINTS
-
-    base = mcfg.base
-    out = {}
-    for name in mcfg.shared_dvs:
-        bd = base.design_variables[name]
-        out[name] = base.initial.get(name, base.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper))
-    for pt in POINTS:
-        for name, bd in mcfg.point_dvs(pt).items():
-            k = name[: -len(pt) - 1]
-            out[name] = mcfg.mp.per_point_initial.get(name, base.initial.get(k, 0.5 * (bd.lower + bd.upper)))
-    out.update(mcfg.extra_initial())
     return out
 
 
@@ -193,7 +193,7 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
              old_constraints=False, takeoff=True):
     from openmdao.core.analysis_error import AnalysisError
 
-    from aircrafter2.problems.multipoint import build_multipoint_problem
+    from aircrafter2.problems.multipoint import build_multipoint_problem, run_warm
 
     mcfg = config(cells, m2, m3, scoring, cfg, fixed, old_constraints, takeoff)
     if maxiter:
@@ -204,10 +204,8 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
     t = time.perf_counter()
     err = None
     if warm:  # converge at the config's (unfixed) start first, so the driver's first evaluation is warm
-        for k, x in initial_values(config(cells, m2, m3, scoring, cfg, None, old_constraints, takeoff)).items():
-            p.set_val(k, x)
         try:
-            p.run_model()
+            run_warm(p, config(cells, m2, m3, scoring, cfg, None, old_constraints, takeoff), {}, run=False)
         except AnalysisError as exc:
             err = f"warm-path pre-run: MDA non-convergence: {str(exc)[:200]}"
     if start:
@@ -247,7 +245,7 @@ def rounding_check(d, cands, tol=1e-9):
     §4.2, 2026-11-02)."""
     from openmdao.core.analysis_error import AnalysisError
 
-    from aircrafter2.problems.multipoint import build_multipoint_problem
+    from aircrafter2.problems.multipoint import build_multipoint_problem, run_warm
 
     args = (d["cells"], d["props"]["M2"], d["props"]["M3"], d["scoring"], CFG, None, d.get("old_constraints", False),
             d.get("takeoff", True))
@@ -255,9 +253,7 @@ def rounding_check(d, cands, tol=1e-9):
     p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
     out = {}
     try:
-        p.run_model()  # converge at the config's start, then jump (warm)
-        for k, x in d["dv"].items():
-            p.set_val(k, x)
+        run_warm(p, mcfg, d["dv"], run=False)  # converge at the config's start, then jump (warm)
         for npx, nc in cands:
             p.set_val("n_p", float(npx))
             p.set_val("n_c", float(nc))
@@ -296,9 +292,59 @@ def integer(case, maxiter=None):
     return outs
 
 
+def rdo(tag, case, maxiter=None):
+    """One robust optimisation (configs/dbf2026_multipoint_rdo.yaml, docs/RESULTS_2026_PLAN.md §7) from the design of
+    run `case`, at its cells, props, scoring and fixed counts. The warm path: converge the robust problem at the
+    config's (unfixed) start, set the case's design, then run the driver. Minimal: the final-run session extends it."""
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.problems.multipoint import design_values, run_warm
+    from aircrafter2.robustness.rdo_multipoint import build_robust_multipoint, node_report_mp, robust_summary_mp
+
+    run = load(case)
+    args = (run["cells"], run["props"]["M2"], run["props"]["M3"], run["scoring"], RDO_CFG)
+    rest = (run.get("old_constraints", False), run.get("takeoff", True))
+    mcfg = config(*args, run.get("fixed"), *rest)
+    if maxiter:
+        mcfg.base.maxiter = maxiter
+    p = build_robust_multipoint(mcfg, driver=True)
+    p.driver.options["disp"] = False
+    t = time.perf_counter()
+    err, ok, its = None, False, 0
+    try:
+        try:
+            run_warm(p, config(*args, None, *rest), run["dv"], run=False)
+        except AnalysisError as exc:
+            raise AnalysisError(f"warm-path pre-run: {exc}") from exc
+        res = p.run_driver()
+        ok, its = bool(res.success), int(res.iter_count)
+    except AnalysisError as exc:
+        its = int(p.driver.iter_count)
+        kind = "wind limit (lap_invalid)" if "non-physical lap" in str(exc) else "MDA non-convergence"
+        err = f"{kind}: {str(exc)[:200]}"
+    wall = time.perf_counter() - t
+    try:
+        summary = robust_summary_mp(p)
+    except Exception:  # noqa: BLE001 - after a failure the stats may be unset
+        summary = None
+    fallbacks = [dict(point=pt, node=j, continuation=len({e[0] for e in s.log if e[1].startswith("continuation")}),
+                      failed_attempts=len([e for e in s.log if not e[2]]))
+                 for pt, ss in p.rdo["solvers"].items() for j, s in enumerate(ss)]
+    out = dict(tag=tag, case=case, ok=ok, its=its, error=err, time=wall, N=p.rdo["N"],
+               active=[d.name for d in p.rdo["active"]], dv=design_values(p, mcfg), summary=summary,
+               nodes=node_report_mp(p), fallbacks=fallbacks, warm_path=True, props=run["props"], cells=run["cells"],
+               fixed=run.get("fixed"), maxiter=mcfg.base.maxiter, k=mcfg.base.robust.k, beta=mcfg.base.robust.beta,
+               git=git_hash(), threads=os.environ.get("OMP_NUM_THREADS"), config=str(RDO_CFG.relative_to(ROOT)))
+    dump(tag, out)
+    fs = (summary or {}).get("flight_score", {})
+    print(f"{tag}: ok={ok} its={its} {wall:.0f}s mu={fs.get('mu', float('nan')):.4f} "
+          f"sigma={fs.get('sigma', float('nan')):.4f} {err or ''}", flush=True)
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("part", choices=["optimise", "integer"])
+    ap.add_argument("part", choices=["optimise", "integer", "rdo"])
     ap.add_argument("--tag")
     ap.add_argument("--case")
     ap.add_argument("--cells", type=float)
@@ -320,4 +366,6 @@ if __name__ == "__main__":
         optimise(a.tag, a.cells, a.m2, a.m3, sc or None, a.start, maxiter=a.maxiter, fixed=fixed,
                  old_constraints=a.old_constraints, takeoff=not a.takeoff_off)
     elif a.part == "integer":
-        integer(a.case)
+        integer(a.case, maxiter=a.maxiter)
+    elif a.part == "rdo":
+        rdo(a.tag, a.case, maxiter=a.maxiter)

@@ -346,6 +346,37 @@ def build_multipoint_problem(mcfg, driver=True, mda_retry=False):
     return prob
 
 
+def initial_values(mcfg):
+    """{design variable: start value} of a multipoint config, as set_dv_defaults and apply_multipoint_values set them."""
+    base = mcfg.base
+    out = {}
+    for name in mcfg.shared_dvs:
+        bd = base.design_variables[name]
+        out[name] = base.initial.get(name, base.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper))
+    for pt in POINTS:
+        for name, bd in mcfg.point_dvs(pt).items():
+            k = name[: -len(pt) - 1]
+            out[name] = mcfg.mp.per_point_initial.get(name, base.initial.get(k, 0.5 * (bd.lower + bd.upper)))
+    out.update(mcfg.extra_initial())
+    return out
+
+
+def run_warm(prob, mcfg_start, dv, run=True):
+    """The warm path to a design (docs/MDA_ROBUSTNESS_PLAN.md): converge at mcfg_start's (unfixed) start design, which
+    converges cold, then set the design variables dv and (run=True) run the model from that converged state.
+
+    prob is a multipoint problem (build_multipoint_problem) or the robust one (build_robust_multipoint): both promote
+    the design variables at the top level. A cold run_model at a low-speed 2025-26 banner design can diverge; this
+    path cannot be worse. Raises the AnalysisError of the start run (run=False) or of either run."""
+    for k, x in initial_values(mcfg_start).items():
+        prob.set_val(k, x)
+    prob.run_model()
+    for k, x in dv.items():
+        prob.set_val(k, x)
+    if run:
+        prob.run_model()
+
+
 def design_values(prob, mcfg):
     """{design variable: value} of a multipoint problem (shared, per point, the ruleset's extras)."""
     return {k: float(np.ravel(prob.get_val(k))[0]) for k in mcfg.all_dvs()}
@@ -357,8 +388,9 @@ def m1_check(mcfg, prob):
     from openmdao.core.analysis_error import AnalysisError
 
     cfg = mcfg.point_config("M1")
+    robust = cfg.mda_robust  # RetryNewton robust mode + QuietDirectSolver (docs/MDA_ROBUSTNESS_PLAN.md)
     q = om.Problem(reports=False)
-    build_full_model(q.model, cfg, sizing="external", stores=mcfg.store_set("M1"))
+    build_full_model(q.model, cfg, sizing="external", stores=mcfg.store_set("M1"), mda_retry=robust)
     q.setup()
     apply_full_values(q, cfg, stores=True)
     for name in list(mcfg.shared_dvs) + mcfg.extra_points("M1"):
@@ -367,9 +399,10 @@ def m1_check(mcfg, prob):
         q.set_val(k, prob.get_val(f"{k}_M3"))
     for src, dst in SIZING_LINKS:
         q.set_val(dst, prob.get_val(f"points.M2.{src}"))
+    errors = (AnalysisError, RuntimeError) if robust else AnalysisError  # robust: a singular Jacobian too
     try:
         q.run_model()
-    except AnalysisError as exc:
+    except errors as exc:
         return dict(passed=False, error=f"MDA non-convergence: {str(exc)[:200]}")
     v = lambda k: float(np.ravel(q.get_val(k))[0])  # noqa: E731
     cons = {n: v(n) for n, _ in full_constraints(cfg)}
@@ -394,4 +427,4 @@ def kv_settings_report(mcfg):
 
 __all__ = ["MultipointConfig", "load_multipoint_config", "build_multipoint_problem", "build_multipoint_model",
            "add_multipoint_driver", "apply_multipoint_values", "multipoint_constraints", "m1_check",
-           "design_values", "POINTS", "STORE_FLAGS", "STORE_FLAGS_2026"]
+           "design_values", "initial_values", "run_warm", "POINTS", "STORE_FLAGS", "STORE_FLAGS_2026"]

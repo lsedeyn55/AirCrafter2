@@ -6,6 +6,10 @@ retried once from the nominal converged state; if it fails again it is recorded 
 NaN), never as a constraint violation: MDA non-convergence, or (``lap_invalid``) the aircraft's wind limit (a headwind
 near V_stall: it cannot make progress into the wind and would not fly, mission/smooth_lap.py).
 
+With ``mda_robust`` (a MultipointConfig, 2025-26) the problem is built with RetryNewton's robust mode and
+initialised through problems.multipoint.run_warm (converge at the config start, then the design): a cold run at a
+low-speed banner design can diverge (docs/MDA_ROBUSTNESS_PLAN.md). Without it the code path is the original one.
+
 Memory: one problem is ~0.4-2 GB, so keep `workers` small (5 on a 14 GB machine).
 """
 
@@ -31,16 +35,23 @@ def _init(cfg, dv, outputs):
     if isinstance(cfg, FullMDOConfig):
         prob = build_full_problem(cfg, driver=False)
         names = lambda k: [k]  # noqa: E731
+        robust = False
     else:  # a MultipointConfig: each parameter at both mission points (the same aircraft)
         from ..problems.multipoint import build_multipoint_problem
         from .rdo_multipoint import param_inputs
 
-        prob = build_multipoint_problem(cfg, driver=False)
+        robust = cfg.base.mda_robust  # the 2025-26 problem: RetryNewton robust mode, warm path to the design
+        prob = build_multipoint_problem(cfg, driver=False, mda_retry=robust)
         names = param_inputs
-    for k, v in dv.items():
-        prob.set_val(k, v)
     try:
-        prob.run_model()
+        if robust:
+            from ..problems.multipoint import run_warm
+
+            run_warm(prob, cfg, dv)
+        else:
+            for k, v in dv.items():
+                prob.set_val(k, v)
+            prob.run_model()
     except Exception:  # the nominal point itself does not converge: every sample is MDA non-convergence (an
         _W.update(prob=None, outputs=outputs)  # initializer that raises makes the pool respawn workers forever)
         return
