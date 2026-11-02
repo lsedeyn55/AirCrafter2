@@ -1,55 +1,12 @@
-"""Smooth twin of the AirCrafter lap modeller (decision D2).
+"""Smooth lap model: flies a mission's laps leg by leg, with exact gradients for the optimiser.
 
-Same physics as ``lap_modeller.performance_modeller`` (Kallarackel 2025, Ch. 3, and
-performance_modeller.m), reformulated so that gradients are exact:
+Takes the drag polar (aero/polar.py), the mass (mass/) and either the powertrain's thrust and battery power
+(propulsion/powertrain.py) or AirCrafter's constant-power rule. Returns the lap times, the mission energy, the
+fractional lap count and the stall, turn-speed and take-off thrust margins, which feed the score and the constraints.
 
-* Constant electrical power P = D(V) V / eta (Eq. 3.4); thrust T = P / v.
-* Drag polar CD = CD0 + CD1 CL + k CL^2. With CD1 = 0 this is Eqs. 3.5-3.7 (static
-  assumptions); the coupled model supplies a three-point fit (aero/polar.py).
-* Straights: dv/ds = a(v) / v and dt/ds = 1 / v, a(v) = (T - D) / m, integrated in distance
-  with fixed-step RK4 (no lookup tables, no while loops). The MATLAB tables stop accelerating
-  at V (the pilot holds the target speed); here the acceleration is a smooth
-  min(a(v), (V - v) / tau_hold), so v relaxes onto V and stays there (a plain multiplicative
-  cap leaks: thrust exceeds drag at V because P includes 1/eta).
-* Wind (robustness): a steady wind of speed `wind` from direction `wind_dir` (deg from the course axis; 0 = along
-  it, the original model). Valid while wind < V_stall: lap 1 starts at V_stall into the wind; a non-physical lap
-  raises AnalysisError. On a straight the along-track component a = wind cos(wind_dir) is a head- or tailwind by the
-  leg's direction (course.py: head +1, tail -1, none 0) and the crosswind c = wind sin(wind_dir) is crabbed out:
-  ground speed = v sqrt(1 - (c/v)^2) - sign a (energy and power on airspeed). At wind_dir = 0 this is v - sign wind,
-  bit for bit. Legacy legs ("s", length_ft) without a direction alternate head, tail, head, ... as before.
-  Turns are flown at constant airspeed in the air-mass frame; with turn_drift on (course.turn_drift; off by default,
-  the original model) the drift wind x t_turn is carried to the next straight: its along-track part shortens it (drift
-  in its direction of flight) or lengthens it, and its cross-track part d is recovered on it (flown length
-  sqrt((L - delta)^2 + d^2)). The take-off ground roll sees the along-runway component only.
-* Banner (2025-26 M3): the point's drag polar is the towing state; lap 1's legs in banner_stowed_legs (before the first
-  downwind leg) are flown with CD0 + dCD_stowed (stowed instead of deployed banner), the ground roll included.
-* Turns: duration = angle / omega(v_entry), with omega = g sqrt(n^2 - 1) / v and
-  n = KSmin(q S CL_max / W, n_struct) (Eqs. 3.10-3.12: stall-limited turn rate, capped at the
-  structural limit). During the turn the speed follows dv/dt = min(a_turn(v), 0) with drag at
-  CL = CL_max, as in the MATLAB deceleration tables (smooth min), integrated in time with RK4.
-* Lap 1 starts at V_stall; legs from the course (default Table 3.5). Take-off time is not added (as in the MATLAB),
-  unless option takeoff=True (propulsion mode only; docs/TAKEOFF_COURSE_PLAN.md):
-    ground roll from rest (airspeed = headwind w) to lift-off at V_LOF = k_lof V_stall on lap 1's first straight,
-    m dv/dt = T(v) - D(v) - mu_roll (W - L(v)),  L, D at CL_ground with the polar, no ground effect,
-    integrated in airspeed (no event): dt/dv = 1/a, ds/dv = (v - w)/a, dE/dv = P_batt(v)/a, fixed-step RK4.
-    a is floored smoothly (a_floor + softplus) so poor designs stay finite; takeoff_accel_margin is the smallest
-    unfloored acceleration over the roll. The rest of the first straight (its length + start_offset_ft - ground roll,
-    kept positive smoothly; takeoff_straight_margin = length - roll) is flown in the air from V_LOF. The roll's time
-    and energy go into Lap1time and the lap-1 energy. Rotation, transition and climb are not modelled.
-* Lap count: continuous surrogate laps_frac = KSmin(laps limited by time, laps limited by energy),
-  where laps(t) = 1 + (t - (lap1 + t_r)) / (lap_other + t_r) mirrors the MATLAB counting loop.
-  lapCount (integer) is reported only.
-
-power_mode="propulsion" (decision B, used by full_mdo) replaces AirCrafter's power rule:
-* thrust T(v) and battery power P(v) come from the powertrain (cubic fits in v, propulsion/
-  powertrain.py) at a fixed throttle; there is no speed cap, so the aircraft accelerates on the
-  straights towards the speed where T = D. Input V is that equilibrium cruise speed (solved in
-  the MDA) and is used for the stall margin and the reaction-time energy only.
-* Battery energy is integrated along every leg; laps_frac uses the usable battery energy.
-* thrust_margin_static = T(0) - Tstatic (take-off ground roll).
-power_mode="aircrafter" keeps the AirCrafter 1.0 rule (P = D(V) V / eta, T = P / v, speed held at V).
-
-All arithmetic is complex-step safe; the component uses method="cs" partials (exact).
+Same physics as lap_modeller.performance_modeller (Kallarackel 2025, Ch. 3; performance_modeller.m), without tables or
+while loops, so gradients are exact (docs/DECISIONS.md#plan-d2). In the full model the powertrain sets the power
+(docs/DECISIONS.md#plan-b). Details: docs/modules/mission.md, "Smooth twin".
 """
 
 import numpy as np
@@ -72,7 +29,19 @@ TAKEOFF_OUTPUTS = [
 
 
 def normalise_legs(legs):
-    """(kind, size, wind_sign) legs; legacy (kind, size) straights alternate head, tail, head, ... (the old rule)."""
+    """Put a leg list into the (kind, size, wind_sign) form the model flies.
+
+    Parameters
+    ----------
+    legs : list of tuple
+        ("s", length_ft[, wind_sign]) for a straight, ("t", angle_deg[, ...]) for a turn. wind_sign is +1 head, -1 tail,
+        0 none. Straights without a sign alternate head, tail, head, ...
+
+    Returns
+    -------
+    list of tuple
+        (kind, size, wind_sign), with wind_sign None for a turn.
+    """
     out, n_straight = [], 0
     for leg in legs:
         kind, size = leg[0], leg[1]
@@ -86,6 +55,7 @@ def normalise_legs(legs):
 
 
 def _sigmoid(z):
+    """Logistic function of z, written so neither tail overflows. Complex-step safe. Nothing calls it."""
     zr = np.real(z)
     return np.where(
         zr >= 0,
@@ -95,6 +65,92 @@ def _sigmoid(z):
 
 
 class SmoothLapModel(om.ExplicitComponent):
+    """Lap times, energy, lap count and margins of one mission point.
+
+    Each leg is integrated with fixed-step RK4: straights in distance, turns in time, the ground roll in airspeed. The
+    equations are in docs/modules/mission.md. Partials are complex step (method="cs"), exact because all the arithmetic is
+    complex-step safe, and the model is too branched to differentiate by hand.
+
+    Options
+    -------
+    power_mode : "aircrafter" or "propulsion"
+        "aircrafter": P = D(V) V / eta, T = P / v, speed held at V. "propulsion": T(v), P(v) from the powertrain fits.
+    lap1, lap_other : list of tuple
+        Legs of lap 1 and of later laps (normalise_legs). Default: Kallarackel 2025 Table 3.5.
+    pilot_reaction_time : float
+        s per lap (performance_modeller.m).
+    takeoff : bool
+        Add the ground roll to lap 1 (propulsion mode only; docs/DECISIONS.md#tc-takeoff).
+    start_offset_ft : float
+        ft, brake release behind the start line (take-off on).
+    turn_drift : bool
+        Carry each turn's wind drift to the next straight (docs/DECISIONS.md#r26-wind).
+    banner_stowed_legs : tuple of int
+        Lap-1 leg indices flown with the banner stowed; () = no banner (docs/DECISIONS.md#r26-banner).
+    lap1_cluster : float
+        Grid exponent of lap 1's first straight; 1 = uniform (placeholder, docs/OPEN_QUESTIONS.md Q45).
+    n_steps_straight, n_steps_turn, n_steps_takeoff : int
+        RK4 steps per leg.
+    n_poly : int
+        Coefficients in the T(v) and P(v) fits.
+    tau_hold, a_smooth, rho_ks, a_floor, a_floor_width, rem_floor, rem_floor_width : float
+        Smoothing widths, in the units their `desc` gives.
+
+    Inputs
+    ------
+    m [kg], S [m**2], V [m/s], rho [kg/m**3], g [m/s**2]
+        See Symbols.
+    CD0, CD1, k, CL_max, CL_to, eta, n_struct, mu_roll : float
+        See Symbols. CL_to: lift coefficient of the Eq. 3.3 take-off.
+    takeoff_distance [m], mission_time [s], E_avail [J]
+        Eq. 3.3 distance, mission window, energy available for the lap count.
+    wind [m/s], wind_dir [deg], thrust_factor, dCD_stowed
+        Robustness inputs and the stowed-banner drag increment.
+    T_coeffs, P_coeffs : array, shape (n_poly,)
+        Propulsion mode only. T(v) = sum t_i v^i [N], P_batt(v) = sum p_i v^i [W], v in m/s.
+    k_lof, CL_ground : float
+        Take-off on only. V_LOF / V_stall, and the ground-roll lift coefficient (placeholder).
+
+    Outputs
+    -------
+    Vstall [m/s], Preq [W], Tstatic [N]
+        Stall speed, power at V, the static thrust of Eqs. 3.1-3.3.
+    Lap1time, otherLapTime, ThreeLapTime [s], energy_3laps [J]
+        Lap times, and the energy for three laps with the reaction time.
+    laps_frac : float
+        Continuous lap count, KSmin of the laps limited by time and by energy.
+    lapCount : float
+        lapCount (integer) is reported only.
+    stall_margin, turn_speed_margin [m/s], thrust_margin_static [N]
+        V - 1.2 V_stall, speed after the 360 deg turn - V_stall, T(0) - Tstatic (propulsion mode only).
+    t_takeoff [s], s_ground_roll [m], V_lof [m/s], E_takeoff [J], takeoff_accel_margin [m/s**2], takeoff_straight_margin [m]
+        Ground roll results; always declared, zero when take-off is off.
+
+    Symbols
+    -------
+    m : aircraft mass [kg]
+    S : wing area [m**2]
+    rho : air density [kg/m**3]
+    g : gravity [m/s**2]
+    W : weight, m g [N]
+    V : cruise speed: the target speed (aircrafter mode) or the T = D speed from the MDA (propulsion mode) [m/s]
+    v : airspeed along a leg [m/s]
+    qS : dynamic pressure x wing area, 0.5 rho v^2 S [N]
+    CD0, CD1, k : drag polar, CD = CD0 + CD1 CL + k CL^2 (Eqs. 3.5-3.7 with CD1 = 0)
+    CLmax : maximum lift coefficient, the turn's lift limit
+    Vstall : stall speed, sqrt(W / (0.5 rho CLmax S)) [m/s]
+    eta : propulsive efficiency (aircrafter mode), Eq. 3.4
+    P : battery power at V (propulsion mode) or D(V) V / eta (aircrafter mode) [W]
+    n_struct : structural load factor limit
+    n : turn load factor, KSmin(qS CLmax / W, n_struct)
+    omega : turn rate, g sqrt(n^2 - 1) / v, Eqs. 3.10-3.12 [rad/s]
+    along, cross : wind components along and across the course axis [m/s]
+    L : flown length of a straight [m]
+    N, h, k1..k4 : RK4 steps, step size and stages
+    mu_roll : rolling friction coefficient
+    VR : rotation speed of Eq. 3.3, 1.2 V_stall(CL_to) [m/s]
+    """
+
     def initialize(self):
         self.options.declare("n_steps_straight", default=40, types=int)
         self.options.declare("n_steps_turn", default=20, types=int)
@@ -202,9 +258,22 @@ class SmoothLapModel(om.ExplicitComponent):
             for name, _ in TAKEOFF_OUTPUTS:
                 self.declare_partials(name, "*", dependent=False)
 
-    # --- physics -------------------------------------------------------------------------
     def _model(self, x, record=None):
-        """The lap model. record: a list to append one row per leg to (leg_breakdown); None in the gradient path."""
+        """Fly lap 1 and a later lap, and return every output as a dict.
+
+        Parameters
+        ----------
+        x : dict
+            Input name -> value, as in the class docstring. Complex values are allowed (complex step).
+        record : list, optional
+            Appends one row per leg (leg_breakdown). None in the gradient path.
+
+        Returns
+        -------
+        dict
+            Output name -> value, without lapCount.
+        """
+        # --- polar and speeds ---
         o = self.options
         m, S, V, rho = x["m"], x["S"], x["V"], x["rho"]
         CD0, CD1, k, CLmax, g = x["CD0"], x["CD1"], x["k"], x["CL_max"], x["g"]
@@ -213,6 +282,8 @@ class SmoothLapModel(om.ExplicitComponent):
         qS = lambda v: 0.5 * rho * v**2 * S  # noqa: E731
 
         Vstall = np.sqrt(W / (0.5 * rho * CLmax * S))
+
+        # --- thrust and battery power as functions of airspeed ---
         propulsion = o["power_mode"] == "propulsion"
         if propulsion:
             tc, pc = x["T_coeffs"], x["P_coeffs"]
@@ -225,11 +296,13 @@ class SmoothLapModel(om.ExplicitComponent):
             thrust = lambda v: P / v  # noqa: E731
             p_batt = lambda v: P + 0.0 * v  # noqa: E731
 
+        # --- wind and banner ---
         th = x["wind_dir"] * (np.pi / 180.0)
         along, cross = x["wind"] * np.cos(th), x["wind"] * np.sin(th)
         stowed = set(o["banner_stowed_legs"])
         cd_stowed = lambda cl: CD0 + x["dCD_stowed"] + CD1 * cl + k * cl**2  # noqa: E731
 
+        # --- accelerations and turn rate ---
         def a_level(v, cdf=cd):  # straight, level: CL = W / qS
             return (thrust(v) - qS(v) * cdf(W / qS(v))) / m
 
@@ -268,6 +341,7 @@ class SmoothLapModel(om.ExplicitComponent):
                     )
                 )
 
+        # --- the legs ---
         def straight(v, dist, wind_sign, cluster=1.0, cdf=cd):
             # s is ground distance; ground speed = airspeed (crabbed) - wind_sign * along-track wind (+1 = headwind leg)
             N = o["n_steps_straight"]
@@ -275,7 +349,7 @@ class SmoothLapModel(om.ExplicitComponent):
             t = 0.0 * v
             e = 0.0 * v
             w = wind_sign * along
-            if wind_sign == 0.0:  # a leg across the course axis: no along-track wind (as before)
+            if wind_sign == 0.0:  # a leg across the course axis: no along-track wind
                 gs = lambda vv: vv - w  # noqa: E731
             else:
                 gs = lambda vv: vv * np.sqrt(1.0 - (cross / vv) ** 2) - w  # noqa: E731
@@ -371,6 +445,7 @@ class SmoothLapModel(om.ExplicitComponent):
                 energy = energy + e
             return v, total, energy, v_after_360
 
+        # --- fly lap 1 (from the ground roll, or from V_stall) and a later lap ---
         zero = 0.0 * Vstall
         to = dict(
             t_takeoff=zero,
@@ -408,6 +483,7 @@ class SmoothLapModel(om.ExplicitComponent):
         VR = 1.2 * np.sqrt(W / (0.5 * rho * S * CLto))
         Tstatic = m * VR**2 / (2.0 * x["takeoff_distance"]) + qS(VR) * cd(CLto) + x["mu_roll"] * W
 
+        # --- lap count ---
         tr = o["pilot_reaction_time"]
         laps_time = 1.0 + (x["mission_time"] - (lap1 + tr)) / (other + tr)
         e_react = P * tr  # reaction time flown at cruise power
@@ -431,6 +507,7 @@ class SmoothLapModel(om.ExplicitComponent):
         )
 
     def compute(self, inputs, outputs):
+        """Run the model. Raises AnalysisError for a lap outside the model's validity (headwind, lap times)."""
         if self.options["takeoff"]:
             # at rest into a headwind at or above the lift-off speed the aircraft is already flying: non-physical
             w = float(np.real(self._lap1[0][2] * inputs["wind"][0] * np.cos(inputs["wind_dir"][0] * np.pi / 180.0)))
@@ -447,9 +524,8 @@ class SmoothLapModel(om.ExplicitComponent):
             if not w < v_lof:
                 from openmdao.core.analysis_error import AnalysisError
 
-                # constraints_view.REGISTER matches this text line by line
-
                 # fmt: off
+                # constraints_view.REGISTER matches this text line by line
                 raise AnalysisError(f"{self.pathname}: non-physical lap (headwind {w:.2f} m/s >= lift-off speed "
                                     f"{v_lof:.2f} m/s): outside the take-off model's validity")
                 # fmt: on
@@ -466,9 +542,8 @@ class SmoothLapModel(om.ExplicitComponent):
         ):
             from openmdao.core.analysis_error import AnalysisError
 
-            # constraints_view.REGISTER matches this text line by line
-
             # fmt: off
+            # constraints_view.REGISTER matches this text line by line
             raise AnalysisError(f"{self.pathname}: non-physical lap (lap times {lap_t}, wind "
                                 f"{float(np.real(inputs['wind'][0])):.2f} m/s against V_stall "
                                 f"{float(np.real(res['Vstall'][0])):.2f} m/s): outside the lap model's validity")
@@ -479,10 +554,16 @@ class SmoothLapModel(om.ExplicitComponent):
         outputs["lapCount"] = max(1.0, np.ceil(np.real(res["laps_frac"])) - 1.0)
 
     def leg_breakdown(self):
-        """Per-leg table of the last evaluated point (post-run; not an OpenMDAO output): one row per leg of lap 1 (with
-        the ground roll as its own row when take-off is on) and of a lap 2+: lap, leg, kind, size (ft or deg; a
-        straight's flown ground length), wind, v_entry, v_exit (m/s), time (s), energy (J), banner (stowed / deployed
-        / empty without a banner), drift_ft (the turn drift that lengthened (+) or shortened (-) a straight)."""
+        """Per-leg table of the last evaluated point: post-run, not an OpenMDAO output.
+
+        Returns
+        -------
+        list of dict
+            One row per leg of lap 1 (with the ground roll as its own row when take-off is on) and of a lap 2+. Keys: lap, leg,
+            kind, size (ft or deg; a straight's flown ground length), wind, v_entry, v_exit [m/s], time [s], energy [J], banner
+            (stowed, deployed, or empty without a banner), drift_ft (the turn drift that lengthened (+) or shortened (-) a
+            straight).
+        """
         rows = []
         self._model({k: self._inputs[k] for k in self._inputs}, record=rows)
         leg = {}
