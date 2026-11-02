@@ -302,8 +302,11 @@ class FullMDA(om.Group):
         bal = om.BalanceComp()
         bal.add_balance("alpha_cruise", units="deg", eq_units="N", lhs_name="L_cruise", rhs_name="W",
                         val=cfg.initial.get("alpha_cruise", 6.0), normalize=True)
+        # constraints_view.REGISTER matches this text line by line
+        # fmt: off
         bal.add_balance("v", units="m/s", eq_units="N", lhs_name="T_cruise", rhs_name="D_cruise",
                         val=cfg.initial.get("v", 22.0), normalize=True, lower=5.0, upper=cfg.propulsion.v_top)
+        # fmt: on
         self.add_subsystem("balance", bal, promotes_inputs=["W"], promotes_outputs=["alpha_cruise", "v"])
         self.connect("cruise.L", "balance.L_cruise")
         self.connect("cruise.D", "balance.D_cruise")
@@ -330,11 +333,17 @@ class FullMDA(om.Group):
 
         if self.options["retry"]:
             from ..robustness.rdo_problem import RetryNewton
+            # constraints_view.REGISTER matches this text line by line
+            # fmt: off
             newton = RetryNewton(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
                                  iprint=-1, err_on_non_converge=True, robust=cfg.mda_robust)
+            # fmt: on
         else:
+            # constraints_view.REGISTER matches this text line by line
+            # fmt: off
             newton = om.NewtonSolver(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
                                      iprint=-1, err_on_non_converge=True)
+            # fmt: on
         newton.linesearch = om.BoundsEnforceLS()
         self.nonlinear_solver = newton
         if self.options["retry"] and cfg.mda_robust:  # a singular Jacobian fails the attempt at once

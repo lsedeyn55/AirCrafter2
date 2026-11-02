@@ -355,8 +355,12 @@ class SmoothLapModel(om.ExplicitComponent):
             if not w < v_lof:
                 from openmdao.core.analysis_error import AnalysisError
 
+                # constraints_view.REGISTER matches this text line by line
+
+                # fmt: off
                 raise AnalysisError(f"{self.pathname}: non-physical lap (headwind {w:.2f} m/s >= lift-off speed "
                                     f"{v_lof:.2f} m/s): outside the take-off model's validity")
+                # fmt: on
         res = self._model({k: inputs[k] for k in inputs})
         # a strong headwind near the lap-1 start speed (V_stall) drives the ground speed v - wind to zero and the
         # distance integration breaks down: report it as an analysis failure, never as a score
@@ -366,9 +370,13 @@ class SmoothLapModel(om.ExplicitComponent):
                 and np.all(np.isfinite(to_vals))):
             from openmdao.core.analysis_error import AnalysisError
 
+            # constraints_view.REGISTER matches this text line by line
+
+            # fmt: off
             raise AnalysisError(f"{self.pathname}: non-physical lap (lap times {lap_t}, wind "
                                 f"{float(np.real(inputs['wind'][0])):.2f} m/s against V_stall "
                                 f"{float(np.real(res['Vstall'][0])):.2f} m/s): outside the lap model's validity")
+            # fmt: on
         for k, v in res.items():
             outputs[k] = v
         # integer count for reporting, mirroring the MATLAB loop's strict inequalities
