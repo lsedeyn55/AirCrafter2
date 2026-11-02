@@ -147,6 +147,23 @@ Each node's Newton solver is a `RetryNewton`:
 - A failed solve is retried from the node's last converged state, then from the reference node's state, then from
   the cold start. Every attempt is logged (`node_report`).
 
+With the problem-config switch `mda_robust: true` (default false; on in `configs/dbf2026_multipoint.yaml`, so in its
+RDO config and `humpback_2026.yaml`; docs/MDA_ROBUSTNESS_PLAN.md), `RetryNewton` runs in its robust mode:
+- The order is current → own last converged (skipped when it equals the state the solve started from, the usual case
+  in an optimiser step) → **continuation** → reference → cold.
+- The continuation steps the MDA's input vector linearly from the last converged inputs (the reference node's, for a
+  node that has never converged) to the target in 4 steps, each solve warm-started from the previous one, the last
+  step at the target exactly; if a step fails, once more in 8 steps. The inputs include upstream outputs such as the
+  T(v) fit coefficients, so the intermediate states are smooth but not physical: only the last step is the answer.
+  Log labels: `continuation 4`, `continuation 8` (the log keeps its (solve, start, converged) tuples).
+- The MDA's linear solver is a `QuietDirectSolver`: a singular Jacobian (a diverged attempt) raises `AnalysisError` at
+  once, instead of OpenMDAO's `RuntimeError` after a dense-SVD diagnosis (about 10 min and several GB on this MDA).
+- Why: at the low-speed 2025-26 banner designs the T = D balance has a second root below stall; a Newton start far
+  from the real root steps past the drag peak and diverges.
+
+With the switch off (every 2024-25 and single-point config), the order and the code path are the original ones. A solve
+that converges at its first attempt gives the same result bit for bit in both modes.
+
 If all of those fail, the node raises `AnalysisError`:
 - **SLSQP** (the default, `ScipyOptimizeDriver`) then stops, and the run is reported as MDA non-convergence, not
   as an infeasible design.

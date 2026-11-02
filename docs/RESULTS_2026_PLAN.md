@@ -134,8 +134,12 @@ but lists C_D for six lengths. Cost Eq. 6 without EF.
   PLACEHOLDER (new Q54): 5 g per passenger seat and 10 g per puck slot ([HB] §5.3.8–5.3.9 describe EPE floor
   recesses and peeled foam; no masses given). Fixed in M1/M3 (the restraints stay in the aircraft, rules p. 10–11):
   only the ducks and pucks are removed.
-- **Final design:** round to integers (n_c down and up, n_p = max(3 n_c, round(n_p))), re-optimise the continuous
-  variables with the counts fixed, report the better.
+- **Final design:** round to integers (n_c down and up, n_p = max(3 n_c, round(n_p)), plus both counts rounded
+  down), re-optimise the continuous variables with the counts fixed, report the better. **2026-11-02:** only the
+  candidates that fit the payload fuselage and the passenger ratio at the continuous optimum (`fuselage_margin` ≥ 0,
+  `pax_margin` ≥ 0, `rounding_check` in `studies/results_2026.py`) are re-optimised: with the span at its bound the
+  fuselage length is set by the counts alone, and rounding 96.92 passengers up made both of the old rule's cases
+  infeasible for every design (docs/MDA_ROBUSTNESS_PLAN.md, status).
 - **Fuselage sized by the payload** (the cargo box = the constant-section payload fuselage, calibration convention;
   PLACEHOLDER derived from [HB], new Q55):
 
@@ -424,12 +428,13 @@ single-point configs are unchanged. This supersedes the SM lower bound of §4.5 
 Effect on Humpback as built (calibrated, validation_2026.md): F 5.086 → 5.323, M2 laps 6.96 → 8.76 (8 flown), M3 laps
 4.57 → 5.69, SM 0.389/0.421 → 0.391/0.425. Found while checking (open, for the user):
 
-- **The cold-start smoke run fails** (`studies/results_2026.py optimise`, default settings, from Humpback). SLSQP's
-  first step (Kv to its 200 lower bound, M3 throttle 0.795, S_ht 0.148 → 0.096 m²) lands where the M3 MDA has no
-  solution (NaN residuals, iteration 3). The trigger is `energy_reserve` 0.0 alone: with only SM_min, m_prop or tc_tail
-  new, the cold start converges (F 5.9634, 5.9616, 5.9635; before the fixes 5.9636). The design that run converged to also
-  fails a cold MDA (with old and new values), so `--start` from it does not help. The deterministic driver has no
-  MDA-failure back-off (only the robust IPOPT path has one).
+- **The cold-start smoke run failed. Resolved 2026-11-02** (docs/MDA_ROBUSTNESS_PLAN.md). Cause: at the low-speed
+  M3 banner designs the T = D balance has a second, sub-stall root, and Newton from a start far from the real root
+  diverges (SLSQP's first step, Kv 245 → 200 and M3 throttle 1.0 → 0.795; `energy_reserve` 0.0 only changed the path).
+  Fix, under the problem-config switch `mda_robust` (on in `dbf2026_multipoint.yaml` only): a continuation fallback
+  in the MDA's Newton solver, and a warm path for `--start` / `integer()`. The smoke now converges (`mr_smoke`: 58
+  iterations, F 6.1723); `--start` and `integer()` (96p32c, F 6.1675) converge too. Every 2024-25 and single-point
+  result is unchanged (the switch is off there; configs snapshot bit for bit).
 - **Humpback's M1 post-check (USYD factors without Humpback) now fails on SM:** 0.4676 → 0.4718 > SM_max 0.47 (the
   heavier prop at the nose). SM_max was set from the M2/M3 values only.
 - **The X-1's t/c** (`multipoint.stores.x1_wing_tc` 0.10, 2024-25 ruleset) is the same SD8020: 0.101 would apply, not

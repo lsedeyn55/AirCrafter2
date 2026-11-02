@@ -6,6 +6,71 @@ it is uncommitted. Diagnostics ran on a copy of the tree (`e3d40e8`, the same ve
 Prototype fixes were tried only in that copy. Scripts, logs and the prototype diffs are in
 `outputs/mda_robustness/` (gitignored), listed in §6.
 
+## Status (2026-11-02): F1 and F2 built and verified
+
+Approved 2026-11-02 and built on `placeholder-fixes-2026` (brief `Claude outputs/aircrafter2_mda_robustness_impl_prompt.md`).
+The text below this section is the plan as approved; this section records what was built and measured.
+
+**Commits.** `94ed195` this plan; `5b868c1` F1 + F2 + tests; `4061c67` `integer()` rounding check; `15f1dcc` the
+envelope's stall-margin column; `fe681dc` verification runs and the regenerated validation page; then the docs and the
+M1-check commit (Problem 2, decision (b)).
+
+**What was built.**
+- `FullMDOConfig.mda_robust` (bool, default false), `true` in `configs/dbf2026_multipoint.yaml`. It is inherited by
+  `dbf2026_multipoint_rdo.yaml` and by `humpback_2026.yaml` (the as-built validation config; kept on, decided with the
+  user).
+- F1, `aircrafter2/robustness/rdo_problem.py`: `RetryNewton(robust=...)`. Robust order: current → own last converged
+  (skipped when equal to the start state) → continuation (4 steps, then 8; the last step is the target exactly) →
+  reference → cold. `good_in` is stored in both modes. Switch off: the original loop, unchanged.
+- F2, `studies/results_2026.py` `optimise`: with `start` or `x0` under the switch, a pre-run at the unfixed config
+  start, then the target. The run JSON gets `warm_path` and `mda_fallbacks` (solves needing the continuation, per point).
+- Tests: `tests/test_mda_robust.py` (12 tests) with `tests/data/mda_low_speed_designs.json` (iter2, iter3, pf_before).
+
+**Deviations from the plan (each decided with the user on 2026-11-02).**
+1. **`QuietDirectSolver`** (new, under the switch only). On this machine a diverged Newton attempt at the iter3 step
+   reaches a singular Jacobian, at M2 as well as M3. OpenMDAO's `DirectSolver` then builds its diagnosis, a dense SVD of
+   the MDA Jacobian, which took 575 s and > 3 GB and got a test run OOM-killed. It also raises `RuntimeError`, which
+   `RetryNewton` doesn't catch, so no fallback ran. Under `mda_robust` the MDA's linear solver now raises
+   `AnalysisError` at once. With it, iter3 converges in 24 s at 0.54 GB.
+2. **Test 1's switch-off assertion is dropped.** Here that run ends in the slow `RuntimeError`, not `AnalysisError`
+   (on the diagnosis machine it ended in NaN after 25 iterations).
+3. **`integer()` rounding (§4.2 rule).** Verification 5 failed with the old rule. Diagnosis (per-evaluation logs,
+   `outputs/mda_robustness/impl/`): both rounded cases (97p32c, 99p33c) were infeasible for every design, because
+   `fuselage_margin` was violated from the first evaluation (−1.9 mm, −49 mm) with the span at its bound. SLSQP
+   stalled, then failed: a wild step into the lap model's "non-physical lap", and a history-dependent singular M3
+   Jacobian at evaluation 845, which doesn't reproduce in isolation. Now the candidates include both counts rounded
+   down, and only those that fit at the continuous optimum (`rounding_check`) are re-optimised. `integer()` gained a
+   `maxiter` passthrough.
+4. **Validation envelope.** Two cells that failed before now converge (below). The table gained each point's stall
+   margin, and marks cells inside 1.2 V_stall.
+
+**Verification (this machine, 3 threads unless stated).**
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Full suite | Pass: 508 = 496 + 12 new. Two existing tests needed the new field: `NEW_FIELDS` in `test_placeholders.py`, and a `constraints_view` anchor for the new `raise`. The final count is from the rerun after commit 5. |
+| 2 | `configs_snapshot.py` vs `tests/data/configs_reference.json` | Pass: 152 values, 0 differences (bit for bit). `rdo_off_snapshot.py` has no compare mode; `test_rdo` covers it in the suite. |
+| 3 | Cold smoke `mr_smoke` | Pass: 58 iterations, 292 s, F **6.1723** (M2 2.2711, M3 2.9012), the prototype exactly. Nothing violated. M1 passes (SM 0.369, laps 9.13). `mda_fallbacks`: one continuation per point (the iter3 step). |
+| 4 | Warm `--start mr_smoke` | Pass: 2 iterations, 11 s, ΔF 7e-15, no fallbacks |
+| 5 | `integer --case mr_smoke` | Pass after deviation 3. Candidates 97p32c, 96p32c, 99p33c; only **96p32c** fits (fuselage margin +21.6 mm). It converged in 15 iterations (64 s): F **6.1675** (M2 2.2642, M3 2.9033), floored 6.0839, nothing violated, M1 passes (SM 0.369), no fallbacks. That is the result. |
+| 6 | RDO setup check (`pf_rdo_setup_check_mr.json`) | Pass: 11/11 nodes at the first attempt (both points), 0 differences from the stored file apart from timing |
+| 7 | Validation page | Humpback loo/gg/cal: identical apart from the git field, now clean (`fe681dc`'s page; this closes the dirty-provenance item). Envelope: 10 of 12 cells identical; 19x12E/22x12E Kv 270 throttle 0.5 converges (stall margin +3.0 / +0.8); 19x10E/19x12E Kv 270 throttle 0.5 converges inside 1.2 V_stall (stall margin −1.6 / −1.7, marked). Both through `continuation 4`. |
+
+**Smoke optimum (`mr_smoke`).**
+- Active constraints: M2 SM (lower), M2 and M3 V_v (lower), M2 and M3 energy (lower), pax ratio, fuselage length.
+- Active bounds: b and c (upper), x_cb_frac and x_batt_M2 (lower).
+- M3 cruise 16.07 m/s at throttle 0.768.
+
+**Costs.**
+- A failing optimiser step costs about 25 s (one failed attempt + 4 short solves).
+- A `--start` run costs one extra `run_model` (about 6 s).
+- `test_mda_robust.py` adds about 2.5 min to the suite.
+
+**Open (not fixed).**
+- The singular M3 Jacobian at evaluation 845 of the old 99p33c run depends on the run's history: it came at an
+  infeasible stall, 845 evaluations in. A full replay would pin it down (about 20 min).
+- The X-1 t/c (left, as planned).
+
 ## 0. Summary
 
 - **Root cause.** At the low-speed M3 banner designs, the MDA's thrust balance T(v) = D(v) (with L = W) has **two
