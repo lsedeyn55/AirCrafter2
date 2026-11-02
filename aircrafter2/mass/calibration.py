@@ -1,25 +1,13 @@
-"""Correction-factor fitting, Garcia & Gamboa (2022) Section 4.2.1.
+"""Correction-factor fitting, Garcia & Gamboa (G&G 2022) Section 4.2.1: an offline tool, not part of the optimisation
+loop.
 
 Eq. 127 (one aircraft):     F = sum_i ( m_calc,i / m_real,i - 1 )^2
 Eq. 128 (several aircraft): F = sum_j sum_i ( m_calc,i / m_real,i - 1 )_j^2
 
-The paper minimised these with Excel's GRG solver. Here they are minimised with
-scipy's bounded least squares, re-running the mass group for every evaluation.
-Relative residuals with equal weights, as G&G. This is an offline tool for
-calibrating the mass model against USYD aircraft, not part of the optimisation loop.
-
-Usage:
-    cases = [(config_a, {"m_wing": 0.68, "m_tb": 0.175, ...}), (config_b, {...})]
-    result = fit_correction_factors(cases, ["f_wing", "f_tb"])
-    result.factors  -> {"f_wing": ..., "f_tb": ...}
-
-A case is either a (MassConfig, targets) pair, which runs the mass closure as G&G do, or a CalibrationCase:
-- ``sizing_mass`` (kg) fits the component equations at that mass with no closure (external sizing: the loads see the
-  aircraft's design mass, so the factors are isolated from the closure error and m_sys is not needed);
-- a target key is a mass output (``m_fus``) or a sum of outputs (``"m_cb+m_tb"``): a lumped real mass;
-- ``values`` are set on the problem after the config (e.g. the wing-unit mass and stations of a twin).
-
-``leave_one_out`` refits without each case in turn and predicts the case left out (docs/studies/mass_calibration_usyd.md).
+The paper minimised these with Excel's GRG solver. Here they're minimised with scipy's bounded least squares, re-running
+the mass group for every evaluation, with relative residuals and equal weights, as G&G. It calibrates the mass model
+against USYD aircraft; the factors go into a mass config. Usage and case types: docs/modules/mass.md, "Defaults and
+calibration"; results: docs/studies/mass_calibration_usyd.md.
 """
 
 from dataclasses import dataclass, field
@@ -46,6 +34,23 @@ STRUCTURE = ["m_wing", "m_ht", "m_vt", "m_cb", "m_tb", "m_fus", "m_gear"]  # Eq.
 
 @dataclass
 class CalibrationCase:
+    """One aircraft to fit.
+
+    Attributes
+    ----------
+    name : str
+    config : MassConfig
+    targets : dict
+        {output or "a+b": real mass in kg}. A key is a mass output (m_fus) or a sum of outputs ("m_cb+m_tb"): a lumped
+        real mass.
+    sizing_mass : float, optional
+        kg. Fits the component equations at that mass with no closure (external sizing: the loads see the aircraft's
+        design mass, so the factors are isolated from the closure error and m_sys isn't needed). None = the mass
+        closure.
+    values : dict
+        {promoted input: (value, units)} set after the config (e.g. the wing-unit mass and stations of a twin).
+    """
+
     name: str
     config: object  # MassConfig
     targets: dict  # {output or "a+b": real mass in kg}
@@ -55,6 +60,19 @@ class CalibrationCase:
 
 @dataclass
 class CalibrationResult:
+    """The result of a fit.
+
+    Attributes
+    ----------
+    factors : dict
+    objective : float
+        Eq. 127 or 128 value at the optimum.
+    relative_errors : list of dict
+        Per case: {component: m_calc / m_real - 1}.
+    success : bool
+    message : str
+    """
+
     factors: dict
     objective: float  # Eq. 127 / 128 value at the optimum
     relative_errors: list  # per case: {component: m_calc / m_real - 1}
@@ -63,6 +81,7 @@ class CalibrationResult:
 
 
 def _as_case(c, i):
+    """A CalibrationCase from a case or a (MassConfig, targets) pair."""
     if isinstance(c, CalibrationCase):
         return c
     cfg, real = c
@@ -87,6 +106,7 @@ class _CaseProblem:
     """The mass group of one case, set up once, re-run for each set of factors."""
 
     def __init__(self, case):
+        """Build and set up the mass group of the case."""
         import openmdao.api as om
 
         from .garcia_gamboa import GarciaGamboaMass
@@ -117,6 +137,7 @@ class _CaseProblem:
 
 
 def _bounds(factors, bounds):
+    """(lower, upper) lists for the fitted factors."""
     bounds = bounds or {}
     return (
         [bounds.get(f, FACTOR_BOUNDS[f])[0] for f in factors],
@@ -125,10 +146,23 @@ def _bounds(factors, bounds):
 
 
 def fit_correction_factors(cases, factors, x0=None, bounds=None):
-    """Fit ``factors`` (names from FACTOR_BOUNDS) to real component masses.
+    """Fit factors to real component masses. One case gives Eq. 127; several give the combined fit of Eq. 128.
 
-    ``cases``: (MassConfig, {mass output: real mass in kg}) pairs or CalibrationCase objects.
-    One case gives Eq. 127; several give the combined fit of Eq. 128.
+    Parameters
+    ----------
+    cases : list
+        (MassConfig, {mass output: real mass in kg}) pairs, or CalibrationCase objects.
+    factors : list of str
+        Names from FACTOR_BOUNDS.
+    x0 : list, optional
+        Start values. Default: the first case's inputs, else the middle of the bounds.
+    bounds : dict, optional
+        {factor: (lower, upper)} overriding FACTOR_BOUNDS.
+
+    Returns
+    -------
+    CalibrationResult
+        Raises ValueError if a factor isn't an input of a case's options.
     """
     cases = [_as_case(c, i) for i, c in enumerate(cases)]
     probs = [_CaseProblem(c) for c in cases]
@@ -143,6 +177,7 @@ def fit_correction_factors(cases, factors, x0=None, bounds=None):
     x0 = np.clip(np.asarray(x0, float), lo, hi)
 
     def errors(x):
+        """Per case, {target: m_calc / m_real - 1} at factors x."""
         out = []
         for cp in probs:
             got = cp.run(dict(zip(factors, x)))
@@ -150,6 +185,7 @@ def fit_correction_factors(cases, factors, x0=None, bounds=None):
         return out
 
     def residuals(x):
+        """All relative errors as one vector."""
         return np.concatenate([list(e.values()) for e in errors(x)])
 
     sol = least_squares(residuals, x0, bounds=(lo, hi), xtol=1e-12, ftol=1e-12, gtol=1e-12)
@@ -163,24 +199,61 @@ def fit_correction_factors(cases, factors, x0=None, bounds=None):
 
 
 def predict(case, factors):
-    """Masses of one case with the given factors: (all outputs, {target: model value})."""
+    """Masses of one case with the given factors.
+
+    Parameters
+    ----------
+    case : CalibrationCase or pair
+    factors : dict
+        {factor: value}.
+
+    Returns
+    -------
+    (dict, dict)
+        All mass outputs [kg], and {target: model value} [kg].
+    """
     cp = _CaseProblem(_as_case(case, 0))
     got = cp.run(factors)
     return got, {k: predicted(got, k) for k in cp.case.targets}
 
 
 def structure_total(targets):
-    """Sum of a case's structural targets (wing to gear) that have data; lumped keys count once."""
+    """Sum of a case's structural targets (wing to gear) that have data; lumped keys count once.
+
+    Parameters
+    ----------
+    targets : dict
+        {output or "a+b": mass in kg}.
+
+    Returns
+    -------
+    float
+        Total [kg].
+    """
     return sum(v for k, v in targets.items() if all(p in STRUCTURE for p in k.split("+")))
 
 
 def leave_one_out(cases, factors, x0=None, bounds=None, fixed=None):
-    """Refit without each case and predict it. Returns {name: dict(factors, errors, structure_error, ...)}.
+    """Refit without each case and predict it.
 
-    errors: per target, m_pred / m_real - 1 on the case left out; structure_error: the same on the sum of its
-    structural targets. ``factors``: a list, or a callable (remaining cases) -> (factor list, {factor: value}) for
-    when the remaining cases do not identify every factor (those are held at the given values). ``fixed``:
-    {factor: value} applied to every fold's prediction.
+    Parameters
+    ----------
+    cases : list
+        As in fit_correction_factors.
+    factors : list or callable
+        A list, or a callable (remaining cases) -> (factor list, {factor: value}) for when the remaining cases don't
+        identify every factor (those are held at the given values).
+    x0, bounds
+        As in fit_correction_factors; x0 may be a dict by factor.
+    fixed : dict, optional
+        {factor: value} applied to every fold's prediction.
+
+    Returns
+    -------
+    dict
+        {name: dict(factors, held_at, objective, success, errors, structure_real, structure_pred, structure_error)}.
+        errors: per target, m_pred / m_real - 1 on the case left out. structure_error: the same on the sum of its
+        structural targets.
     """
     cases = [_as_case(c, i) for i, c in enumerate(cases)]
     out = {}

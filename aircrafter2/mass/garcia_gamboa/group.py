@@ -1,17 +1,11 @@
-"""Garcia & Gamboa (2022) structure-based mass model, circular tube spar wing concept.
+"""Garcia & Gamboa (G&G 2022) structure-based mass model, circular tube spar wing concept: the assembled group.
 
-Data flow (all promoted):
-
-    Allowables -> SectionCoeffs -> WingLoads(m) -> CriticalLoads -> TubeSparSizing
-               -> RibSizing -> WingMass -> TailMass
+    Allowables -> SectionCoeffs -> WingLoads(m) -> CriticalLoads -> TubeSparSizing -> RibSizing -> WingMass -> TailMass
     TailBoomLoads -> TailBoomSizing -> FuselageMass
     MassSum(m) -> m_total  --(closure)-->  m
 
-The closure m = m_total (Eqs. 39-41, with the loads depending on W = m g) is a
-coupled cycle. It is converged by the enclosing nonlinear solver (NonlinearBlockGS +
-DirectSolver when ``standalone_solver``; the MDF solver in the full
-framework). No component iterates internally. The statistical model
-(Eq. 124) provides the initial guess for m.
+Inputs come from geometry, airfoil, aero and the config; m_total feeds the MDA's lift balance (problems/full_mdo.py).
+Details: docs/modules/mass.md.
 """
 
 import numpy as np
@@ -46,6 +40,29 @@ MASS_OUTPUTS = [
 
 
 class GarciaGamboaMass(om.Group):
+    """The mass group. All promoted.
+
+    The closure m = m_total (Eqs. 39-41, with the loads depending on W = m g) is a coupled cycle, converged by the
+    enclosing nonlinear solver: NonlinearBlockGS + DirectSolver when ``standalone_solver``, the MDF (multidisciplinary
+    feasible) solver in the full framework. No component iterates internally. The statistical model (Eq. 124) gives the
+    initial guess for m.
+
+    Options
+    -------
+    config : MassOptions or None
+    external_sizing : bool
+        The loads see an external sizing mass m, with no closure: a mission point flying an airframe sized at another
+        point.
+
+    Inputs
+    ------
+    Everything in inputs.INPUTS.
+
+    Outputs
+    -------
+    MASS_OUTPUTS [kg]: m_wing, m_ht, m_vt, m_fus, m_gear, m_empty, m_total, ...
+    """
+
     def initialize(self):
         self.options.declare("config", default=None, types=(MassOptions, type(None)))
         self.options.declare(
@@ -120,7 +137,7 @@ class GarciaGamboaMass(om.Group):
             self.linear_solver = om.DirectSolver()
 
     def guess_nonlinear(self, inputs, outputs, residuals):
-        # Initial guess of the closure from the statistical model (Eq. 124-126), first solve only.
+        """Initial guess of the closure from the statistical model (Eqs. 124-126), first solve only."""
         if not self._guessed and not self.options["external_sizing"]:
             m_pay = inputs["statistical.m_pay"]  # computed payloads (stores) may not be transferred yet: floor it
             outputs["m_total"] = statistical_mass(
@@ -133,14 +150,35 @@ class GarciaGamboaMass(om.Group):
 
 
 def set_mass_inputs(prob, values, prefix=""):
-    """Set mass-group inputs (SI values, names from INPUTS) on a set-up problem."""
+    """Set mass-group inputs on a set-up problem.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    values : dict
+        {name from INPUTS: SI value}.
+    prefix : str
+        Path to the mass group.
+    """
     for name, val in values.items():
         units = INPUTS[name][0]
         prob.set_val(prefix + name, val, units=units)
 
 
 def build_mass_problem(config: MassConfig, force_alloc_complex=False):
-    """Standalone problem: just the mass group, inputs set from ``config``."""
+    """Standalone problem: just the mass group, with inputs set from the config.
+
+    Parameters
+    ----------
+    config : MassConfig
+    force_alloc_complex : bool
+        For complex-step checks.
+
+    Returns
+    -------
+    om.Problem
+        Set up. Valid names that the chosen options don't use (e.g. k_fill with a fixed radius) are skipped.
+    """
     prob = om.Problem(reports=False)
     prob.model.add_subsystem("mass", GarciaGamboaMass(config=config.options), promotes=["*"])
     prob.setup(force_alloc_complex=force_alloc_complex)
@@ -151,5 +189,17 @@ def build_mass_problem(config: MassConfig, force_alloc_complex=False):
 
 
 def mass_breakdown(prob, prefix=""):
-    """Dict of component masses (kg) after a run."""
+    """Component masses after a run.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    prefix : str
+        Path to the mass group.
+
+    Returns
+    -------
+    dict
+        {name in MASS_OUTPUTS: mass in kg}.
+    """
     return {name: float(prob.get_val(prefix + name, units="kg")[0]) for name in MASS_OUTPUTS}

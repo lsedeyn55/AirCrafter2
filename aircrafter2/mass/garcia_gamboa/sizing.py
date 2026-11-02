@@ -1,11 +1,9 @@
-"""Structural sizing: tube spar, ribs and tail boom.
+"""Structural sizing: tube spar, ribs and tail boom (Garcia & Gamboa, G&G 2022, Sections 3.3.2, 3.3.3 and 3.4).
 
-Garcia & Gamboa (2022), Sections 3.3.2 (ribs), 3.3.3 (tube spar) and 3.4
-(tail boom). Every max() on the gradient path uses ``ks_max``, with a "hard"
-mode for reporting and verification.
-
-Formulas are written in r_tube directly: pi K_tube^2 c^2 = pi r^2 (Eq. 15),
-so the paper's chord dependence cancels.
+Takes the critical loads and the materials, and gives wall thicknesses to the mass components. Every max() on the
+gradient path uses ks_max (Kreisselmeier-Steinhauser), with a "hard" mode for reporting and verification. Formulas are
+written in r_tube directly: pi K_tube^2 c^2 = pi r^2 (Eq. 15), so the paper's chord dependence cancels.
+See docs/modules/mass.md.
 """
 
 import numpy as np
@@ -15,12 +13,22 @@ from ...smooth import ks_max, softplus
 
 
 def deflection_poly(b, y1, mode):
-    """Bracketed polynomial in Eq. 110 and its derivatives (dP/db, dP/dy1).
+    """Bracketed polynomial in Eq. 110 and its derivatives.
 
-    mode="paper": as printed in Eqs. 70, 109, 110.
-    mode="exact": exact Euler-Bernoulli double integration for I_2 = (1 - 2 y1/b)^2 I_1
-                  outboard of y1 (Eq. 108), uniform load. Same 384 b E I prefactor.
-    Both reduce to 3 b^4 at y1 = 0 (PLAN G10).
+    Both modes reduce to 3 b^4 at y1 = 0 (docs/DECISIONS.md#plan-g10).
+
+    Parameters
+    ----------
+    b, y1 : float
+        Span and first panel-break position [m].
+    mode : str
+        "paper": as printed in Eqs. 70, 109, 110. "exact": exact Euler-Bernoulli double integration for
+        I_2 = (1 - 2 y1/b)^2 I_1 outboard of y1 (Eq. 108), uniform load, with the same 384 b E I prefactor.
+
+    Returns
+    -------
+    (float, float, float)
+        P, dP/db, dP/dy1. Raises ValueError for an unknown mode.
     """
     if mode == "paper":
         P = 3 * b**4 + 24 * b**3 * y1 - 120 * b**2 * y1**2 + 224 * b * y1**3 - 112 * y1**4
@@ -43,7 +51,7 @@ class TubeSparSizing(AnalyticComponent):
     Eq. 112  t_tau   = 3 Q_z / (4 tau pi r)
     Eq. 114  t_T     = M_y / (2 pi r^2 tau)
     Eq. 116  t_theta = b M_y^fl / (16 pi r^3 G theta_max)            [optional, include_twist]
-    Eq. 117  t_div   = b^2 c^2 q_div (x_spar - 1/4) dCL/da / (16 pi r^3 G), floored at 0 (PLAN G9)
+    Eq. 117  t_div   = b^2 c^2 q_div (x_spar - 1/4) dCL/da / (16 pi r^3 G), floored at 0 (docs/DECISIONS.md#plan-g9)
     Eq. 118  t_tube  = max(t_sigma, t_delta) + t_tau + max(t_T, t_theta, t_div)
 
     sizing_radius_mode="paper" sizes with K_tube = r / c_mean (Eq. 15, with c the mean chord as
@@ -53,8 +61,26 @@ class TubeSparSizing(AnalyticComponent):
     "physical" uses r_s = r.
 
     torsion_stiffness_mode="bredt" uses GJ = 2 pi r^3 G t (Bredt-Batho, single wall) instead of
-    the paper's Eq. 115 GJ = 4 pi r^3 G t; that halves the 16 in Eqs. 116 and 117 to 8 (PLAN G12).
+    the paper's Eq. 115 GJ = 4 pi r^3 G t; that halves the 16 in Eqs. 116 and 117 to 8 (docs/DECISIONS.md#plan-g12).
     With use_min_gauge, t_tube = max(t_tube,req, t_tube_min).
+
+    Partials are analytic, chained through the effective radius.
+
+    Inputs
+    ------
+    Mx, My, T_fl [N*m], Qz [N], materials [Pa], r_tube [m], b [m], c_mean, c_root [m], n, x_spar, q_div [Pa], CL_alpha
+    [1/rad]. Full list in `io()`.
+
+    Outputs
+    -------
+    t_tube [m], wall_ratio and the individual thicknesses and margins. Full list in `io()`.
+
+    Symbols
+    -------
+    r, r_s : tube radius and effective sizing radius [m]
+    t_sigma, t_delta, t_tau, t_T, t_theta, t_div : wall thickness needed for bending, deflection, shear, torsion, twist
+    and divergence [m]
+    gfac : GJ = gfac pi r^3 G t
     """
 
     def initialize(self):
@@ -136,7 +162,8 @@ class TubeSparSizing(AnalyticComponent):
             }
         )
 
-        # Eq. 112: shear (3/2 peak factor as printed; PLAN G11)
+        # Eq. 112: shear. The 3/2 peak factor is for a solid rectangle (a thin tube peaks at 2), kept as printed: small
+        # (docs/DECISIONS.md#plan-g11)
         k = 3.0 / (4.0 * tau * pi * r)
         t_tau = x["Qz"] * k
         g_tau = D({"Qz": k, "tau_spar_allow": -t_tau / tau, "_rs": -t_tau / r})
@@ -222,6 +249,21 @@ class RibSizing(AnalyticComponent):
     Eq. 100  (n t)_tau   =  600 n W (c_rib/c)^2 / (391 tau (t/c) c)
     Eq. 103  (n t)_sigma = 2400 n W (c_rib/c)^3 / (1173 sigma (t/c)^2 c)
     Eq. 104  n t = max of the two
+
+    Partials are analytic.
+
+    Options
+    -------
+    max_mode, rho_ks
+        The smooth maximum.
+
+    Inputs
+    ------
+    n, W [N], c_rib_frac, tau_balsa_allow, sigma_balsa_allow [Pa], tc, c_root [m]
+
+    Outputs
+    -------
+    nt_rib [m]. Full list in `io()`.
     """
 
     def initialize(self):
@@ -287,6 +329,22 @@ class TailBoomSizing(AnalyticComponent):
     t_tb_gauge_margin = t_tb,req - t_tb_min is < 0 when the minimum wall governs. G&G's f_tb was
     fitted to load-based walls, so with the minimum wall active f_tb must be recalibrated on the
     same basis (docs/studies/tail_boom_calibration.md).
+
+    Partials are analytic.
+
+    Options
+    -------
+    max_mode, rho_ks
+        The smooth maximum.
+    use_min_gauge : bool
+
+    Inputs
+    ------
+    M_tb [N*m], Q_tb [N], l_tb [m], r_tb [m], materials [Pa], theta_tb_max [rad]. Full list in `io()`.
+
+    Outputs
+    -------
+    t_tb [m], t_tb_gauge_margin [m]. Full list in `io()`.
     """
 
     def initialize(self):

@@ -1,7 +1,8 @@
-"""Component masses and mass summation, Garcia & Gamboa (2022) Section 2.2.
+"""Component masses and the mass summation, Garcia & Gamboa (G&G 2022) Section 2.2.
 
-The mass equations use the wing mean geometric chord ``c_mean`` (Sec. 2.2.2,
-last paragraph).
+The last step of the mass group: takes wall thicknesses from the sizing and section coefficients, and gives m_total to
+the closure. The mass equations use the wing mean geometric chord c_mean (Sec. 2.2.2, last paragraph).
+BUILD_NOTE, below, explains f_build (docs/DECISIONS.md#rr-f-build). See docs/modules/mass.md.
 """
 
 import numpy as np
@@ -23,7 +24,7 @@ class WingMass(AnalyticComponent):
     """Circular tube spar wing mass (Sec. 2.2.5).
 
     Eq. 30  m_tube = pi (r^2 - (r - t)^2) b rho_tube
-    Eq. 26  m_rib  = (n_rib t_rib) K_A,rib (t/c) c^2 rho_rib    (Eq. 32 text says "Eq. 23": typo, PLAN G4)
+    Eq. 26  m_rib  = (n_rib t_rib) K_A,rib (t/c) c^2 rho_rib    (Eq. 32 text says "Eq. 23", a typo: plan-g4)
     Eq. 27  m_te   = K_A,te (t/c) c^2 b rho_te
     Eq. 31  m_le   = K_A,le (t/c) c^2 b rho_le
     Eq. 28  m_film = gamma_film K_P c b                          (gamma = t_film rho_film)
@@ -32,8 +33,29 @@ class WingMass(AnalyticComponent):
             aircraft whatever their n_panels (docs/studies/mass_calibration_usyd.md; default 1); f_build is the
             build-mass factor, see BUILD_NOTE)
 
-    The exponent reading of Eq. 32 is confirmed by Tables 14-15 (PLAN G5).
+    The exponent reading of Eq. 32 is confirmed by Tables 14-15 (docs/DECISIONS.md#plan-g5).
     Ribs and LE/TE stringers are balsa (Table 13).
+
+    Partials are analytic.
+
+    Options
+    -------
+    n_panels : int
+
+    Inputs
+    ------
+    r_tube, t_tube, b, c_mean [m], tc, K_A_rib, K_A_le, K_A_te, K_P, nt_rib, densities. Full list in `io()`.
+
+    Outputs
+    -------
+    m_tube, m_rib, m_le, m_te, m_film, m_wing_bare, m_wing [kg]. Full list in `io()`.
+
+    Symbols
+    -------
+    r, t : tube radius and wall [m]
+    K_A_*, K_P : section coefficients (section.py)
+    f_wing, n_panels : joint factor per panel joint and panels
+    k_wing, f_build : construction and build factors (not G&G)
     """
 
     def initialize(self):
@@ -90,7 +112,8 @@ class WingMass(AnalyticComponent):
             }
         )
 
-        def stringer(kname):  # Eqs. 27, 31
+        def stringer(kname):
+            """Leading- or trailing-edge stringer mass (Eqs. 27, 31) and its gradient."""
             K = x[kname]
             m = K * tc * c**2 * b * rb
             g = D(
@@ -152,13 +175,23 @@ class WingMass(AnalyticComponent):
 
 
 class TailMass(AnalyticComponent):
-    """tail_mass_model gg (default, G&G):
+    """Tail masses.
+
+    tail_mass_model gg (default, G&G):
         Eq. 34  m_ht = f_ht S_ht/S_wing m_wing;  Eq. 35  m_vt = f_vt S_vt/S_wing m_wing
     tail_mass_model areal (not G&G): m_ht = a_ht S_ht f_build;  m_vt = a_vt S_vt f_build  (a in kg/m^2)
 
-    The USYD tails do not scale with their wings, but their areal masses are consistent
+    The USYD tails don't scale with their wings, but their areal masses are consistent
     (docs/studies/mass_calibration_usyd.md). In gg mode f_build reaches the tails through m_wing; in areal mode it
-    multiplies them directly (BUILD_NOTE).
+    multiplies them directly (BUILD_NOTE). Partials are analytic.
+
+    Options
+    -------
+    tail_mass_model : "gg" or "areal"
+
+    Outputs
+    -------
+    m_ht, m_vt [kg]
     """
 
     def initialize(self):
@@ -207,10 +240,16 @@ class TailMass(AnalyticComponent):
 
 
 class FuselageMass(AnalyticComponent):
-    """Eq. 36  m_tb  = f_tb pi (r_tb^2 - (r_tb - t_tb)^2) l_tb rho_tb
-    Eq. 37  m_cb  = f_cb S_cb
-    Eq. 38  m_fus = m_tb + m_cb
+    """Tail boom, cargo bay and fuselage mass. Partials are analytic.
+
+    Eq. 36  m_tb  = f_tb pi (r_tb^2 - (r_tb - t_tb)^2) l_tb rho_tb
+    Eq. 37  m_cb  = f_cb S_cb  (the equation as printed: its text also mentions t_cb and rho_cb,
+    docs/DECISIONS.md#plan-g13) Eq. 38  m_fus = m_tb + m_cb
     (m_tb and m_cb times f_build, not G&G: see BUILD_NOTE)
+
+    Outputs
+    -------
+    m_tb, m_cb, m_fus [kg]
     """
 
     def io(self):
@@ -246,7 +285,10 @@ class FuselageMass(AnalyticComponent):
 
 
 class GearMass(AnalyticComponent):
-    """Eq. 39  m_gear = f_gear m   (m: total mass, the coupling variable of the closure; times f_build, not G&G)."""
+    """Eq. 39  m_gear = f_gear m   (m: total mass, the coupling variable of the closure; times f_build, not G&G).
+
+    Partials are analytic.
+    """
 
     def io(self):
         return {"m": (12.0, "kg"), "f_gear": (0.0089, None), "f_build": (1.0, None)}, {"m_gear": (0.1, "kg")}
@@ -260,12 +302,17 @@ class GearMass(AnalyticComponent):
 
 
 class MassSum(AnalyticComponent):
-    """Eq. 40  m_empty = m_wing + m_ht + m_vt + m_fus + m_gear + m_sys (+ m_ballast)
+    """Empty and total mass. Partials are analytic.
+
+    Eq. 40  m_empty = m_wing + m_ht + m_vt + m_fus + m_gear + m_sys (+ m_ballast)
     Eq. 41  m_total = m_empty + m_pay
 
-    m_ballast (default 0) is not in G&G: it is the robustness hook for "mass + X %" worst cases.
+    m_ballast (default 0) isn't in G&G: it's the robustness hook for "mass + X %" worst cases. The closure m = m_total
+    is enforced by the enclosing solver, not here.
 
-    The closure m = m_total is enforced by the enclosing solver, not here.
+    Outputs
+    -------
+    m_empty, m_total [kg]
     """
 
     PARTS = ["m_wing", "m_ht", "m_vt", "m_fus", "m_gear", "m_sys", "m_ballast"]

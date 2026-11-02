@@ -1,9 +1,8 @@
-"""Every input of the Garcia & Gamboa mass group: units, a neutral default, and a description.
+"""Every input of the Garcia & Gamboa mass group: units, a neutral default and a description.
 
-All values are SI. The defaults here only make the group runnable; the cited
-values live in ``configs/mass_garcia_gamboa_2022.yaml``. Config files are
-checked against this table, so a misspelt key is an error, not a silently
-ignored value.
+All values are SI. The defaults here only make the group runnable; the cited values live in
+configs/mass_garcia_gamboa_2022.yaml. Config files are checked against this table, so a misspelt key is an error, not a
+silently ignored value. Used by config/mass.py and garcia_gamboa/group.py. See docs/modules/mass.md.
 """
 
 INPUTS = {
@@ -88,7 +87,16 @@ INPUTS = {
 
 
 def active_inputs(opts):
-    """Names of the group inputs that exist for a given MassOptions."""
+    """Names of the group inputs that exist for a given MassOptions.
+
+    Parameters
+    ----------
+    opts : MassOptions
+
+    Returns
+    -------
+    list of str
+    """
     skip = set()
     if not opts.include_twist:
         skip.add("theta_tip_max")

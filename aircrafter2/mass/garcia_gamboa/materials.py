@@ -1,8 +1,7 @@
-"""Allowable stresses from ultimate stresses and the safety factor.
+"""Allowable stresses from ultimate stresses and the safety factor (Garcia & Gamboa 2022, Eq. 42).
 
-Garcia & Gamboa (2022), Eq. 42: SF = ultimate stress / allowable stress.
-The material tables (Tables 5, 9, 13) list ultimate values.
-Moduli (E, G) are not divided by SF.
+SF = ultimate stress / allowable stress. The material tables (Tables 5, 9, 13) list ultimate values. Moduli (E, G)
+aren't divided by SF. First step of the mass group; feeds the sizing. See docs/modules/mass.md.
 """
 
 from ...analytic import AnalyticComponent, D
@@ -11,6 +10,17 @@ ULTIMATE = ["sigma_spar", "tau_spar", "sigma_balsa", "tau_balsa", "sigma_tb", "t
 
 
 class Allowables(AnalyticComponent):
+    """{name}_allow = {name} / SF for each strength in ULTIMATE. Partials are analytic.
+
+    Inputs
+    ------
+    SF, sigma_spar, tau_spar, sigma_balsa, tau_balsa, sigma_tb, tau_tb [Pa]
+
+    Outputs
+    -------
+    The same strengths with the suffix _allow [Pa].
+    """
+
     def io(self):
         ins = {"SF": (1.5, None)}
         ins.update({name: (100e6, "Pa") for name in ULTIMATE})

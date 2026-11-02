@@ -1,11 +1,8 @@
-"""Wing cross-section geometric coefficients and the spar-tube radius.
+"""Wing cross-section geometric coefficients and the spar-tube radius (Garcia & Gamboa 2022, Section 2.2.2).
 
-Garcia & Gamboa (2022), Section 2.2.2.
-
-Input convention (see docs/PLAN.md, G2): ``A_c2`` is the aerofoil area over
-chord squared (A/c^2) and ``P_c`` the perimeter over chord (P/c). These are
-the quantities that Tables 4, 8 and 12 actually list, and that the airfoil
-module computes from coordinates. K_A follows Eq. 9 (A / ((t/c) c^2)).
+Input convention: A_c2 is the aerofoil area over chord squared (A/c^2) and P_c the perimeter over chord (P/c). These are
+what Tables 4, 8 and 12 actually list, and what the airfoil module computes from coordinates; K_A follows Eq. 9,
+A / ((t/c) c^2) (docs/DECISIONS.md#plan-g2). Feeds the sizing and the wing mass. See docs/modules/mass.md.
 """
 
 import numpy as np
@@ -14,7 +11,26 @@ from ...analytic import AnalyticComponent, D
 
 
 class SectionCoeffs(AnalyticComponent):
-    """K_A (Eq. 9), K_P (Eq. 10), K_A,le / K_A,te (Eq. 11), K_A,rib (Eqs. 11, 16), K_tube (Eq. 15)."""
+    """K_A (Eq. 9), K_P (Eq. 10), K_A,le and K_A,te (Eq. 11), K_A,rib (Eqs. 11, 16), K_tube (Eq. 15). Partials are
+    analytic.
+
+    Inputs
+    ------
+    A_c2, P_c, tc, le_ratio, te_ratio, r_tube [m], c_mean [m], c_root [m]
+
+    Outputs
+    -------
+    K_A, K_P, K_A_le, K_A_te, rib_ratio, K_A_rib, K_tube
+
+    Symbols
+    -------
+    A, P : A/c^2 and P/c
+    tc : t/c
+    le, te : A_le / A and A_te / A
+    r : spar tube outer radius [m]
+    c, cr : mean and root chord [m]
+    hole : tube area / aerofoil area at the mean chord
+    """
 
     def io(self):
         ins = {
@@ -45,8 +61,8 @@ class SectionCoeffs(AnalyticComponent):
         K_A = A / tc  # Eq. 9
         gK_A = D({"A_c2": 1.0 / tc, "tc": -A / tc**2})
 
-        # Eq. 16 (with the A_le typo corrected, PLAN G3); the tube hole is taken
-        # relative to the aerofoil area at the mean chord, A = (A/c^2) c^2.
+        # Eq. 16 as printed has a typo: its second A_rib should be A_le; corrected here (docs/DECISIONS.md#plan-g3). The
+        # tube hole is taken relative to the aerofoil area at the mean chord, A = (A/c^2) c^2.
         hole = np.pi * r**2 / (A * c**2)
         rib = 1.0 - le - te - hole
         g_rib = D(
@@ -81,13 +97,19 @@ class SectionCoeffs(AnalyticComponent):
 
 
 class TubeRadius(AnalyticComponent):
-    """Derived spar-tube radius (decision D1).
+    """Derived spar-tube radius (docs/DECISIONS.md#plan-d1): r_tube = k_fill * (t/c at the spar) * c_root / 2 -
+    clearance.
 
-    r_tube = k_fill * (t/c at the spar) * c_root / 2 - clearance
+    Tube mass falls monotonically with r until minimum gauge binds (t_sigma ~ 1/r^2, t_delta ~ 1/r^3, m_tube ~ r t), so
+    a free r_tube design variable would sit on this geometric limit at almost every optimum. Partials are analytic.
 
-    Tube mass falls monotonically with r until minimum gauge binds (t_sigma
-    ~ 1/r^2, t_delta ~ 1/r^3, m_tube ~ r t), so a free r_tube design variable
-    would sit on this geometric limit at almost every optimum.
+    Inputs
+    ------
+    t_at_spar, c_root [m], k_fill, clearance [m]
+
+    Outputs
+    -------
+    r_tube [m]
     """
 
     def io(self):
@@ -107,7 +129,16 @@ class TubeRadius(AnalyticComponent):
 
 
 class TubeFitMargin(AnalyticComponent):
-    """Constraint for r_tube_mode = design_variable: margin >= 0 means the tube fits."""
+    """Constraint for r_tube_mode = design_variable: margin >= 0 means the tube fits. Partials are analytic.
+
+    Inputs
+    ------
+    r_tube [m], t_at_spar, c_root [m], k_fill, clearance [m]
+
+    Outputs
+    -------
+    tube_fit_margin [m]
+    """
 
     def io(self):
         ins = {

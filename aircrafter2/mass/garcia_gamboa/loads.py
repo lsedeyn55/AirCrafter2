@@ -1,8 +1,8 @@
-"""Wing and tail-boom loads, Garcia & Gamboa (2022) Section 3.2.
+"""Wing and tail-boom loads, Garcia & Gamboa (G&G 2022) Section 3.2.
 
-All wing loads are evaluated at the wing root (y = 0), where they peak and
-where the paper sizes the structure. ``c_mean`` is the mean geometric chord
-(Sec. 3.2: "the parameter c refers to the wing mean geometric chord").
+All wing loads are evaluated at the wing root (y = 0), where they peak and where the paper sizes the structure. c_mean
+is the mean geometric chord (Sec. 3.2). Takes the mass from the closure and C_m and the speed from aero; feeds the
+sizing. See docs/modules/mass.md.
 """
 
 from ...analytic import AnalyticComponent, D, combine
@@ -28,7 +28,7 @@ class WingLoads(AnalyticComponent):
     design speed times ``div_speed_factor`` (the paper suggests 1.2, after Eq. 47).
 
     Wing-mounted propulsion units (twin layout; not in G&G, derivation in docs/modules/mass.md and
-    PLAN 6h). One unit of mass m_u per semi-span at (y_m, x_m), x from the LE (aft +), torsion about
+    docs/DECISIONS.md#plan-d8). One unit of mass m_u per semi-span at (y_m, x_m), x from the LE (aft +), torsion about
     the quarter chord (as G&G, Eqs. 46 and 50), with ``n_motor_pairs = 1``:
       motor_inertia_relief (default off: the published model)
         Eq. 44  Q_fl = n W / 2 - n g m_u          Eq. 48  Q_gd = W / 2 - g m_u
@@ -36,6 +36,31 @@ class WingLoads(AnalyticComponent):
       nacelle_torsion (default on; a no-op without wing units)
         Eq. 46  T_fl = q |Cm| c^2 b / 2 + n g m_u (c/4 - x_m)      (both nose-down for Cm < 0)
         Eq. 50  T_gd = | W/2 c (1/4 - x_gd) - g m_u (c/4 - x_m) |  (signed sum, then magnitude)
+
+    Partials are analytic.
+
+    Options
+    -------
+    n_motor_pairs : 0 or 1
+        Symmetric pairs of wing-mounted units.
+    motor_inertia_relief, nacelle_torsion : bool
+        The twin terms above.
+
+    Inputs
+    ------
+    m [kg], g [m/s**2], n, b [m], c_mean [m], rho [kg/m**3], V_design [m/s], Cm, div_speed_factor, x_gd. Full list in
+    `io()`.
+
+    Outputs
+    -------
+    q, q_div [Pa], Q_fl, Q_gd [N], M_fl, M_gd, T_fl, T_gd [N*m]. Full list in `io()`.
+
+    Symbols
+    -------
+    W : weight, m g [N]
+    q : dynamic pressure at the design speed [Pa]
+    Q, M, T : shear [N], bending [N*m] and torsion [N*m] at the root; suffixes fl (flight) and gd (ground test)
+    m_u, y_m, x_m : wing unit's mass [kg], span station [m] and chord station from the leading edge, aft + [m]
     """
 
     def initialize(self):
@@ -131,7 +156,7 @@ class WingLoads(AnalyticComponent):
         return values, grads
 
     def _wing_units(self, x, values, grads, W, gW, T_fl, gT_fl):
-        """Add the wing-mounted unit terms (one unit per semi-span) to the root loads in place."""
+        """Add the wing-mounted unit terms (one unit per semi-span) to the root loads, in place."""
         g, n, c, mu, ym, xm = x["g"], x["n"], x["c_mean"], x["m_motor_unit"], x["y_m"], x["x_motor"]
         if self.options["motor_inertia_relief"]:
             # flight: inertial load n g m_u at y_m opposes the lift (Eqs. 44, 45)
@@ -176,6 +201,21 @@ class CriticalLoads(AnalyticComponent):
     """Critical strength loads: max of flight and ground cases (Eqs. 51-53).
 
     Uses ks_max (log-space KS) or the hard max, per the ``max_mode`` option.
+
+    Partials are analytic.
+
+    Options
+    -------
+    max_mode : "ks" or "hard"
+    rho_ks : float
+
+    Inputs
+    ------
+    Q_fl, Q_gd, M_fl, M_gd, T_fl, T_gd : flight and ground root loads [N, N*m]
+
+    Outputs
+    -------
+    Qz [N], Mx [N*m], My [N*m] : the critical root loads
     """
 
     def initialize(self):
@@ -225,6 +265,21 @@ class TailBoomLoads(AnalyticComponent):
     load_mode="eq54" is the self-consistent version:
         Q_tb = q |Cm| b c^2 / l_ht  (Eq. 54),   M_tb = Q_tb l_tb
     It needs a recalibrated f_tb.
+
+    Partials are analytic.
+
+    Options
+    -------
+    load_mode : "paper" or "eq54"
+        See docs/DECISIONS.md#plan-g19.
+
+    Inputs
+    ------
+    q [Pa], Cm, b [m], c_mean [m], l_ht [m], l_tb [m]
+
+    Outputs
+    -------
+    Q_tb [N], M_tb [N*m]
     """
 
     def initialize(self):
