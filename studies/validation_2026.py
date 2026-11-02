@@ -257,7 +257,8 @@ def _envelope_job(job):
         p.run_model()
         row.update(converged=True, time=time.perf_counter() - t,
                    **{pt: {k: v(p, f"points.{pt}.{k}") for k in ("v", "v_fit_max", "v_fit_margin", "I_static",
-                                                                  "rpm_margin", "laps_frac")} for pt in ("M2", "M3")})
+                                                                  "rpm_margin", "laps_frac", "stall_margin")}
+                      for pt in ("M2", "M3")})
     except AnalysisError as exc:
         row.update(converged=False, error=str(exc)[:200])
     return row
