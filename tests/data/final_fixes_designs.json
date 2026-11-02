@@ -1,26 +1,26 @@
 {
  "_source": {
-  "integer_optimum": "outputs/results_2026/runs/mr_smoke_int_96p32c.json dv (mr_smoke rounded to 96p32c, git 5b868c1-dirty); regenerated with the final fixes (docs/RESULTS_2026_PLAN.md, Final fixes)"
+  "integer_optimum": "outputs/results_2026/runs/fx_smoke_int_72p24c.json dv (the cold smoke fx_smoke after the final fixes D1-D3, rounded to 72p24c; git 5a27391-dirty). Before: mr_smoke_int_96p32c (F 6.167506)"
  },
  "integer_optimum": {
   "b": 1.524,
   "c": 0.45,
-  "tc_scale": 1.0128508603425879,
-  "camber_scale": 1.5741585293920455,
-  "l_ht": 0.9257417909591991,
-  "S_ht": 0.1166777831872196,
-  "S_vt": 0.022579929089183815,
-  "x_cb_frac": 0.0,
-  "Kv": 258.2540236221871,
-  "capacity_M2": 3.378378378378378,
-  "x_batt_M2": -0.6,
-  "throttle_M2": 0.8555936231719153,
+  "tc_scale": 1.2233189563214775,
+  "camber_scale": 2.0,
+  "l_ht": 0.9447130394405554,
+  "S_ht": 0.114334718270649,
+  "S_vt": 0.022126490240567506,
+  "x_cb_frac": 0.1946762273825948,
+  "Kv": 235.42681728230184,
+  "capacity_M2": 3.2405318078826775,
+  "x_batt_M2": -0.43033221772393915,
+  "throttle_M2": 0.9237523382652699,
   "capacity_M3": 3.378378378378378,
-  "x_batt_M3": -0.33903879320130814,
-  "throttle_M3": 0.7678030820442052,
-  "n_p": 96.00000000000001,
-  "n_c": 32.0,
-  "L_banner": 249.88944899956417
+  "x_batt_M3": -0.3473493765112659,
+  "throttle_M3": 0.8390905645866326,
+  "n_p": 72.0,
+  "n_c": 24.000000000000004,
+  "L_banner": 271.5883074530622
  },
- "integer_optimum_F": 6.167506482294224
+ "integer_optimum_F": 5.953236035567042
 }

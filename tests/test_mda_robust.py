@@ -146,8 +146,8 @@ def _set(p, dv):
 
 
 def test_slsqp_step_converges_by_continuation():
-    """The smoke's failing SLSQP step (Humpback's start -> iter3): converges with the switch on, M3 v 15.4786 m/s on the
-    real root (not the sub-stall one), by a continuation.
+    """The smoke's failing SLSQP step (Humpback's start -> iter3): converges with the switch on, M3 v 15.2682 m/s on the
+    real root (not the sub-stall one), by a continuation (still so after the final fixes).
 
     Not asserted: the switch-off failure. On the development machine (3 threads) M2's diverged attempt reaches a
     singular Jacobian there, and OpenMDAO's DirectSolver then spends ~10 min and > 3 GB on its SVD diagnosis before a
@@ -158,7 +158,7 @@ def test_slsqp_step_converges_by_continuation():
         p.run_model()
         _set(p, designs()["iter3"])
         p.run_model()
-    assert _val(p, "points.M3.v") == pytest.approx(15.4786, rel=1e-5)
+    assert _val(p, "points.M3.v") == pytest.approx(15.268202, rel=1e-5)  # 15.4786 before the final fixes
     assert any(e[1].startswith("continuation") and e[2] for e in _logs(p)["M3"])
 
 
@@ -190,7 +190,7 @@ def test_warm_jump_to_low_speed_optimum():
         p.run_model()
     for log in _logs(p).values():
         assert [(e[1], e[2]) for e in log] == [("current", True), ("current", True)]
-    assert _val(p, "flight_score") == pytest.approx(5.981649, rel=1e-5)
+    assert _val(p, "flight_score") == pytest.approx(5.798297, rel=1e-5)  # 5.981649 before the final fixes
 
 
 def test_mda_robust_default_off():

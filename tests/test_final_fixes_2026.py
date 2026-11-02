@@ -281,7 +281,8 @@ def test_rigid_fuselage_cg_shift_by_hand():
 
 
 def test_2025_stations_unchanged():
-    """The 2024-25 multipoint problem has no packaging component and the same stations and score as before D2 (==)."""
+    """The 2024-25 multipoint problem has no packaging component and the same stations and score as before D2 (to the
+    last bits: == at the reference's thread count, a580942 vs 0cfb746)."""
     from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
 
     ref = json.loads((DATA / "dbf2025_stations_reference.json").read_text())
@@ -291,9 +292,9 @@ def test_2025_stations_unchanged():
                                      driver=False)
         p.run_model()
     assert not hasattr(p.model.points.M2, "packaging")
-    for k, x in ref.items():
-        if not k.startswith("_"):
-            assert _val(p, k) == x, k
+    for k, x in ref.items():  # bit for bit at the reference's thread count (checked when made, OMP_NUM_THREADS=3);
+        if not k.startswith("_"):  # another BLAS thread count reorders the VLM's sums: the last bit can move
+            assert _val(p, k) == pytest.approx(x, rel=1e-12, abs=1e-15), k
 
 
 # --- D3: the undercarriage and leakage drag areas ----------------------------------------------------------------
