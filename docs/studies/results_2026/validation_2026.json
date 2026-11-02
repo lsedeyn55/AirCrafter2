@@ -1,8 +1,8 @@
 {
- "git": "15f1dcc",
+ "git": "03c768f",
  "variants": {
   "loo": {
-   "git": "4061c67",
+   "git": "03c768f",
    "config": "configs/humpback_2026.yaml",
    "mass": "loo",
    "mass_label": "USYD factors without Humpback (out-of-sample)",
@@ -132,13 +132,14 @@
       "CD_banner": 0.2121858407160706
      },
      "M1": {
-      "passed": false,
+      "passed": true,
       "laps_frac": 9.704398559872839,
       "ThreeLapTime": 84.96376742359521,
       "m_total": 4.422018439580336,
       "violated": [
        "SM"
       ],
+      "SM_high": true,
       "constraints": {
        "stall_margin": 22.237315766378124,
        "turn_speed_margin": 14.841120260452673,
@@ -856,7 +857,7 @@
    }
   },
   "gg": {
-   "git": "4061c67",
+   "git": "03c768f",
    "config": "configs/humpback_2026.yaml",
    "mass": "gg",
    "mass_label": "G&G factors (uncalibrated)",
@@ -986,13 +987,14 @@
       "CD_banner": 0.2121858407160706
      },
      "M1": {
-      "passed": false,
+      "passed": true,
       "laps_frac": 9.801262016678402,
       "ThreeLapTime": 83.71283091533998,
       "m_total": 3.0677608611890275,
       "violated": [
        "SM"
       ],
+      "SM_high": true,
       "constraints": {
        "stall_margin": 24.395020679513106,
        "turn_speed_margin": 16.53454669110951,
@@ -1710,7 +1712,7 @@
    }
   },
   "cal": {
-   "git": "4061c67",
+   "git": "03c768f",
    "config": "configs/humpback_2026.yaml",
    "mass": "cal",
    "mass_label": "USYD factors (calibrated, in-sample)",
@@ -1845,6 +1847,7 @@
       "ThreeLapTime": 84.95327684958768,
       "m_total": 4.408753514778512,
       "violated": [],
+      "SM_high": false,
       "constraints": {
        "stall_margin": 22.256910706339397,
        "turn_speed_margin": 14.855777837413825,
