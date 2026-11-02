@@ -1,6 +1,6 @@
 """AirCrafter 2.0: a DBF-specific MDAO framework built on OpenMDAO.
 
-See docs/PLAN.md for the architecture and module interfaces.
+Where to start: README.md, "Where to start reading". Architecture and module interfaces: docs/PLAN.md.
 """
 
 import os

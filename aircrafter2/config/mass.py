@@ -1,4 +1,8 @@
-"""Schema for the mass model section of a config file."""
+"""Schema for the mass model section of a config file.
+
+Read by the problem builders and the mass group (mass/garcia_gamboa/). Each interpretation switch is explained in
+docs/modules/mass.md, "Interpretation switches", and docs/DECISIONS.md (plan-g10, plan-g12, plan-g19, plan-g23).
+"""
 
 from typing import Literal
 
@@ -51,6 +55,8 @@ class MassOptions(BaseModel):
 
 
 class MassConfig(BaseModel):
+    """The mass section: options, inputs by name (checked against mass/garcia_gamboa/inputs.py) and free-form notes."""
+
     model_config = ConfigDict(extra="forbid")
 
     options: MassOptions = MassOptions()
@@ -60,6 +66,7 @@ class MassConfig(BaseModel):
     @field_validator("inputs")
     @classmethod
     def _known_inputs(cls, v):
+        """A misspelt input is an error, not a silently ignored value."""
         from ..mass.garcia_gamboa.inputs import INPUTS
 
         unknown = sorted(set(v) - set(INPUTS))

@@ -1,15 +1,13 @@
-"""High-level API used by the CLI and the Streamlit UI.
+"""High-level API used by the CLI and the Streamlit UI: run a single-point design and write its outputs.
 
     from aircrafter2.api import run_design
     result = run_design("configs/full_mdo.yaml", optimise=True, out_dir="outputs/demo")
 
-Writes into out_dir: summary.md, results.json, constraints.json (the driver's constraints: bounds and values),
-geometry.json (3D rebuild data), cases.sql (driver history), n2.html, xdsm.tex, xdsm.pdf and figures/*.pdf.
-
-With an enabled ``robust:`` block (e.g. configs/full_mdo_rdo.yaml) the robust problem is optimised instead
-(aircrafter2.robustness.rdo_problem); the summary adds the robust statistics (mu, sigma, mu -/+ beta sigma) and the
-per-node MDA report, and the geometry, N2 and figures describe the robust design analysed at the config's nominal
-parameter values.
+Builds the problem from problems/full_mdo.py (or robustness/rdo_problem.py with an enabled robust: block), runs it, and
+writes summary.md, results.json, constraints.json (the driver's constraints: bounds and values), geometry.json (3D
+rebuild data), cases.sql (driver history), n2.html, xdsm.tex, xdsm.pdf and figures/*.pdf. With robust:, the summary adds
+the robust statistics and the per-node MDA report, and the geometry, N2 and figures describe the robust design analysed
+at the config's nominal parameter values.
 """
 
 import json
@@ -70,6 +68,20 @@ SUMMARY_KEYS = [
 
 @dataclass
 class RunResult:
+    """What a run returns.
+
+    Attributes
+    ----------
+    prob : om.Problem
+    cfg : FullMDOConfig
+    success : bool
+    iterations : int
+    values : dict
+        The results written to results.json.
+    files : list
+        The files written.
+    """
+
     prob: om.Problem
     cfg: FullMDOConfig
     success: bool
@@ -79,15 +91,38 @@ class RunResult:
 
 
 def _val(p, k):
+    """One scalar output of the problem."""
     return float(np.ravel(p.get_val(k))[0])
 
 
 def summary_table(p):
+    """The summary rows of a run problem.
+
+    Parameters
+    ----------
+    p : om.Problem
+
+    Returns
+    -------
+    list of tuple
+        (name, unit, description, value) for each of SUMMARY_KEYS.
+    """
     return [(k, unit, desc, _val(p, k)) for k, unit, desc in SUMMARY_KEYS]
 
 
 def leg_breakdown(p, path="lap"):
-    """Per-leg table of lap 1 and a lap 2+ of a run problem (SmoothLapModel.leg_breakdown), or None."""
+    """Per-leg table of lap 1 and a lap 2+ of a run problem (SmoothLapModel.leg_breakdown), or None.
+
+    Parameters
+    ----------
+    p : om.Problem
+    path : str
+        The lap model's path.
+
+    Returns
+    -------
+    list of dict or None
+    """
     try:
         return p.model._get_subsystem(path).leg_breakdown()
     except AttributeError:
@@ -95,7 +130,16 @@ def leg_breakdown(p, path="lap"):
 
 
 def leg_lines(rows):
-    """Markdown table of a leg breakdown."""
+    """Markdown table of a leg breakdown.
+
+    Parameters
+    ----------
+    rows : list of dict or None
+
+    Returns
+    -------
+    list of str
+    """
     if not rows:
         return []
     out = [
@@ -118,7 +162,18 @@ ASSUMPTIONS_KV_DV = ["m_pay", "Kv_factor", "Rm_ref", "R_cell", "e_spec", "f_tb",
 
 
 def sensitivity_assumptions(cfg, extra=()):
-    """The assumption list for `cfg`'s motor mode, without its design variables or duplicates."""
+    """The assumption list for a config's motor mode, without its design variables or duplicates.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+    extra : iterable of str
+        More names.
+
+    Returns
+    -------
+    list of str
+    """
     base = ASSUMPTIONS_KV_DV if kv_is_dv(cfg) else ASSUMPTIONS
     out = []
     for k in list(base) + list(extra):
@@ -130,8 +185,18 @@ def sensitivity_assumptions(cfg, extra=()):
 def motor_report(prob, cfg, tol=1e-4):
     """Kv, the (scaled) Rm and I0, the static current against its limit, and what set Kv.
 
-    'set by' names a Kv bound within tol (relative to the bound range) or the current / pack-current / rpm
-    constraints that are active (|margin| / ref < tol); otherwise 'interior'.
+    'set by' names a Kv bound within tol (relative to the bound range) or the current, pack-current or rpm constraints
+    that are active (|margin| / ref < tol); otherwise 'interior'.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    cfg : FullMDOConfig
+    tol : float
+
+    Returns
+    -------
+    dict
     """
     v = lambda k: _val(prob, k)  # noqa: E731
     pr = cfg.propulsion
@@ -167,13 +232,34 @@ def motor_report(prob, cfg, tol=1e-4):
 
 
 def switched_off(cfg):
-    """The constraints this run leaves out: disabled_constraints, and energy_margin without require_3lap_energy."""
+    """The constraints this run leaves out: disabled_constraints, and energy_margin without require_3lap_energy.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+
+    Returns
+    -------
+    list of str
+    """
     return list(cfg.disabled_constraints) + ([] if cfg.require_3lap_energy else ["energy_margin"])
 
 
 def constraint_values(prob, cons):
-    """[dict(name, lower, upper, equals, ref, units, value, values)] of [(name, add_constraint kwargs)] on prob.
-    value: the element nearest its bound (vector constraints, e.g. cruise.cl_margin_sec)."""
+    """The value of each constraint on a run problem.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    cons : list of (str, dict)
+        (name, add_constraint kwargs).
+
+    Returns
+    -------
+    list of dict
+        name, lower, upper, equals, ref, units, value, values. value is the element nearest its bound (vector
+        constraints, e.g. cruise.cl_margin_sec).
+    """
     out = []
     for name, kw in cons:
         vals = np.ravel(prob.get_val(name, units=kw.get("units"))).astype(float)
@@ -204,7 +290,20 @@ KV_INPUT_RANGE = (100.0, 5000.0)  # rpm/V, the range the UI accepts for any Kv e
 
 
 def validate_kv_dv(lower, upper, start, allowed=KV_INPUT_RANGE):
-    """Messages for invalid Kv design-variable settings (empty list = valid)."""
+    """Messages for invalid Kv design-variable settings.
+
+    Parameters
+    ----------
+    lower, upper, start : float
+        rpm/V.
+    allowed : (float, float)
+        The range the bounds must lie within.
+
+    Returns
+    -------
+    list of str
+        Empty if valid.
+    """
     errs = []
     if not lower < upper:
         errs.append(f"Kv lower bound ({lower:g}) must be below the upper bound ({upper:g}).")
@@ -216,12 +315,26 @@ def validate_kv_dv(lower, upper, start, allowed=KV_INPUT_RANGE):
 
 
 def reanalyse_with_motor(cfg, dv, Kv, Rm, I0, m_motor, reference=None):
-    """Re-analyse a design (no optimiser) with a real motor (Kv, Rm, I0, m_motor) instead of the continuous-Kv one.
+    """Re-analyse a design (no optimiser) with a real motor instead of the continuous-Kv one.
 
-    cfg: the config the design came from; dv: {design variable: value} (Kv, if present, is replaced by the real
-    motor). Builds the fixed-motor problem, runs the coupled analysis and returns dict(score, constraints, motor,
-    and, if `reference` ({output: value} of the original design) is given, the changes). No motor catalogue is
-    built in: the caller supplies the motor (OPEN_QUESTIONS Q7).
+    Builds the fixed-motor problem and runs the coupled analysis. No motor catalogue is built in: the caller supplies
+    the motor (placeholder, docs/OPEN_QUESTIONS.md Q7).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+        The config the design came from.
+    dv : dict
+        {design variable: value}. Kv, if present, is replaced by the real motor.
+    Kv, Rm, I0, m_motor : float
+        rpm/V, ohm, A, kg.
+    reference : dict, optional
+        {output: value} of the original design.
+
+    Returns
+    -------
+    dict
+        values, motor, limits, and change if reference is given.
     """
     c = cfg.model_copy(deep=True)
     c.design_variables.pop("Kv", None)
@@ -244,7 +357,7 @@ def reanalyse_with_motor(cfg, dv, Kv, Rm, I0, m_motor, reference=None):
 
 
 def _run_robust(cfg, optimise, progress):
-    """Robust problem: returns (deterministic problem at the robust design, success, iterations, robust values)."""
+    """Robust problem: (deterministic problem at the robust design, success, iterations, robust values, constraints)."""
     import time
 
     from openmdao.core.analysis_error import AnalysisError
@@ -309,6 +422,24 @@ def run_design(
     n2=True,
     progress=None,
 ):
+    """Optimise or analyse a config, and write its outputs.
+
+    Parameters
+    ----------
+    config : str, Path or FullMDOConfig
+    optimise : bool
+        Run the optimiser. Otherwise one analysis.
+    out_dir : str or Path, optional
+        Where to write. Without it, nothing is written.
+    figures, sensitivities, design_space, record, n2 : bool
+        What to produce. design_space sweeps +/-20 % around the optimum (slow).
+    progress : callable, optional
+        progress(message).
+
+    Returns
+    -------
+    RunResult
+    """
     cfg = config if isinstance(config, FullMDOConfig) else load_full_config(config)
     out = Path(out_dir) if out_dir else None
     if out:
@@ -374,6 +505,7 @@ def _finish(
     robust=None,
     cons=None,
 ):
+    """Collect a run's values and write its outputs."""
     if cons is None:  # deterministic: add_full_driver's list (the plug-in's constraints, then full_constraints)
         from .scoring import get_plugin
 
@@ -485,6 +617,7 @@ def _finish(
 
 
 def _motor_lines(mr):
+    """The summary's motor section, as Markdown lines."""
     head = (
         "Motor Kv (design variable; the reference motor rewound, docs/modules/propulsion.md)"
         if mr["kv_dv"]
@@ -509,6 +642,7 @@ def _motor_lines(mr):
 
 
 def _robust_lines(robust):
+    """The summary's robust statistics, as Markdown lines."""
     L = [
         f"Robust statistics: {robust['rule']} over {', '.join(robust['active'])} ({robust['N']} nodes), "
         f"objective {robust['objective']} (k = {robust['k']:g}"

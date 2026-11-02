@@ -1,4 +1,7 @@
-"""Schemas for the airfoil and aerodynamics sections of a config file."""
+"""Schemas for the airfoil and aerodynamics sections of a config file.
+
+Read by every problem builder (problems/), and passed on to airfoil/ and aero/. See docs/modules/config.md.
+"""
 
 from typing import Literal
 
@@ -8,6 +11,8 @@ from ..airfoil.neuralfoil_section import NFSettings
 
 
 class AirfoilConfig(BaseModel):
+    """The airfoil section: seed, shape modes and trailing-edge thickness."""
+
     model_config = ConfigDict(extra="forbid")
 
     seed: str = Field("naca4412", description="AeroSandbox airfoil name or path to a .dat file")
@@ -16,6 +21,11 @@ class AirfoilConfig(BaseModel):
 
 
 class AeroConfig(BaseModel):
+    """The aero section: VLM (vortex-lattice method) mesh, NeuralFoil settings and the constant drag areas.
+
+    cd_area_gear and cd_area_lp: docs/DECISIONS.md#ff-d3.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     num_x: int = Field(2, ge=2, description="chordwise VLM nodes (2 = one panel)")
@@ -50,6 +60,12 @@ class AeroConfig(BaseModel):
     )
 
     def nf_settings(self):
+        """The NeuralFoil settings as an NFSettings.
+
+        Returns
+        -------
+        NFSettings
+        """
         return NFSettings(
             model_size=self.model_size,
             n_crit=self.n_crit,

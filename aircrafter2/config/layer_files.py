@@ -1,12 +1,8 @@
 """Read, edit and save the layer files in place: configs/placeholders.yaml and configs/rulesets/<ruleset>.yaml.
 
-The files are written one value per line, as a dotted path with a trailing comment
-    propulsion.Kv: 1050.0                        # rpm/V; cited; Q7; T-Motor V3115 1050 KV [W p. 22]
-under '# --- area ---' headers, plus an 'uncertainty:' list of flow mappings (the RDO spreads). This module parses
-them into rows (the UI's editors) and writes edited rows back by replacing only the lines whose value, status or
-source changed: every other line, comment and the order stay byte-identical (no YAML round trip, no new dependency).
-
-Comment fields: '<units>; <PLACEHOLDER | cited>; <Q..>; <source or reason>' (the source may contain ';').
+Parses them into rows for the UI's editors (ui/app.py, constraints_view.py), and writes edited rows back by replacing
+only the lines whose value, status or source changed: every other line, comment and the order stay byte-identical (no
+YAML round trip, no new dependency). File format: docs/modules/config.md, "Layer files".
 """
 
 import re
@@ -23,7 +19,16 @@ STATUSES = ("PLACEHOLDER", "cited")
 
 
 def split_comment(comment):
-    """(units, status, Q, source) of a trailing comment; a comment not in that form is all source."""
+    """(units, status, Q, source) of a trailing comment; a comment not in that form is all source.
+
+    Parameters
+    ----------
+    comment : str or None
+
+    Returns
+    -------
+    (str, str, str, str)
+    """
     parts = [p.strip() for p in (comment or "").split(";")]
     if len(parts) >= 3 and parts[1] in STATUSES:
         return parts[0], parts[1], parts[2], "; ".join(parts[3:])
@@ -31,11 +36,30 @@ def split_comment(comment):
 
 
 def join_comment(units, status, q, source):
+    """The trailing comment of a line, the inverse of split_comment.
+
+    Parameters
+    ----------
+    units, status, q, source : str
+
+    Returns
+    -------
+    str
+    """
     return "; ".join([units, status, q] + ([source] if source else []))
 
 
 def fmt_value(x):
-    """A scalar as it is written in the file: floats by repr (bit-exact round trip), None as null."""
+    """A scalar as it's written in the file: floats by repr (bit-exact round trip), None as null.
+
+    Parameters
+    ----------
+    x : object
+
+    Returns
+    -------
+    str
+    """
     if x is None:
         return "null"
     if isinstance(x, bool):
@@ -49,7 +73,16 @@ def fmt_value(x):
 
 
 def parse_value(text):
-    """The file's text of a value as YAML gives it (so '7.2e+8' is a float)."""
+    """The file's text of a value as YAML gives it, so '7.2e+8' is a float.
+
+    Parameters
+    ----------
+    text : str
+
+    Returns
+    -------
+    object
+    """
     v = yaml.safe_load(text) if text.strip() else None
     if isinstance(v, str):  # YAML 1.1 reads 5.0e-4 / 7.2e+8 as floats, but '1e-3' (no dot) as a string
         try:
@@ -60,8 +93,18 @@ def parse_value(text):
 
 
 def read_rows(path):
-    """(value rows, spread rows) of a layer file. A value row: area, parameter (dotted path), value, units, status,
-    Q, source, line (1-based). A spread row: the UncertainParam fields, units, status, Q, source, line."""
+    """The rows of a layer file.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    (list of dict, list of dict)
+        Value rows: area, parameter (dotted path), value, units, status, Q, source, line (1-based). Spread rows: the
+        UncertainParam fields, units, status, Q, source, line.
+    """
     rows, spreads, area, in_unc = [], [], "", False
     for i, line in enumerate(Path(path).read_text().splitlines(), start=1):
         m = AREA_RE.match(line)
@@ -118,9 +161,24 @@ def _spread_text(row, original):
 
 
 def save_rows(path, rows, spreads=None):
-    """Write edited rows back into the file in place. Only lines whose value, status, Q or source (or a spread's
-    fields) changed are rewritten, keeping the key, its column and the comment column; everything else is untouched.
-    Returns the list of rewritten line numbers."""
+    """Write edited rows back into the file in place.
+
+    Only lines whose value, status, Q or source (or a spread's fields) changed are rewritten, keeping the key, its
+    column and the comment column; everything else is untouched.
+
+    Parameters
+    ----------
+    path : str or Path
+    rows : list of dict
+        Value rows, as read_rows gives them.
+    spreads : list of dict, optional
+        Spread rows.
+
+    Returns
+    -------
+    list of int
+        The rewritten line numbers.
+    """
     path = Path(path)
     lines = path.read_text().splitlines(keepends=True)
     cur_rows, cur_spreads = read_rows(path)
@@ -168,9 +226,18 @@ def save_rows(path, rows, spreads=None):
 
 
 def save_config_value(path, line, key, value):
-    """Set one value in a problem config in place: the value of `key` on 1-based `line` (a block line
-    'key: value  # comment' or a flow mapping '{a: 1, key: value}'), keeping the rest of the line and the comment
-    column. The file is re-parsed before writing: the key must read back as the value elsewhere unchanged."""
+    """Set one value in a problem config in place, keeping the rest of the line and the comment column.
+
+    The file is re-parsed before writing: the key must read back as the value, with everything else unchanged.
+
+    Parameters
+    ----------
+    path : str or Path
+    line : int
+        1-based line: a block line 'key: value  # comment' or a flow mapping '{a: 1, key: value}'.
+    key : str
+    value : object
+    """
     path = Path(path)
     lines = path.read_text().splitlines(keepends=True)
     text = lines[line - 1].rstrip("\n")
@@ -205,7 +272,17 @@ def _strip_key(data, key):
 
 
 def rows_to_layer(rows, spreads=None):
-    """Layer data (as load_layer gives it) from rows: the UI's unsaved edits applied to a run."""
+    """Layer data (as load_layer gives it) from rows: the UI's unsaved edits applied to a run.
+
+    Parameters
+    ----------
+    rows : list of dict
+    spreads : list of dict, optional
+
+    Returns
+    -------
+    dict
+    """
     data = expand_dotted({r["parameter"]: r["value"] for r in rows})
     if spreads is not None:
         data["uncertainty"] = [
@@ -230,6 +307,7 @@ def _chain(path):
 
 
 def _get(data, parts):
+    """True if the nested keys parts exist in data."""
     for k in parts:
         if not isinstance(data, dict) or k not in data:
             return False
@@ -255,8 +333,18 @@ def _line_of(path, parts):
 
 
 def set_in(config_path, parameter):
-    """(file, 1-based line) of the first file of config_path's extends: chain that sets the dotted parameter, or
-    None when no file of the chain sets it."""
+    """Where a dotted parameter is set in a config's extends: chain.
+
+    Parameters
+    ----------
+    config_path : str or Path
+    parameter : str
+
+    Returns
+    -------
+    (Path, int) or None
+        The first file of the chain that sets it, and the 1-based line; None if none does.
+    """
     parts = parameter.split(".")
     for f in _chain(config_path):
         raw = yaml.safe_load(f.read_text()) or {}
@@ -266,9 +354,22 @@ def set_in(config_path, parameter):
 
 
 def overridden_by(config_path, parameter, ruleset_path=None):
-    """'file:line' of the file that overrides a layer value for this config (its extends: chain, or the ruleset for a
-    placeholders value), or '' when the layer value reaches the run. mass.inputs.* is matched against the config's
-    mass: block (mass_config sits below the placeholders, so it never overrides)."""
+    """'file:line' of the file that overrides a layer value for this config.
+
+    Its extends: chain, or the ruleset for a placeholders value. mass.inputs.* is matched against the config's mass:
+    block (mass_config sits below the placeholders, so it never overrides).
+
+    Parameters
+    ----------
+    config_path : str or Path
+    parameter : str
+    ruleset_path : str or Path, optional
+
+    Returns
+    -------
+    str
+        '' when the layer value reaches the run.
+    """
     hit = set_in(config_path, parameter)
     if hit is not None:
         return f"{_rel(hit[0])}:{hit[1]}"
@@ -281,8 +382,20 @@ def overridden_by(config_path, parameter, ruleset_path=None):
 
 
 def spread_overridden_by(config_path, name):
-    """'file' that replaces a shared spread for this config: its uncertainty_config file (standalone, or an entry of
-    that name) or its robust.parameters; '' if the shared spread is used (or the config is not robust)."""
+    """The file that replaces a shared spread for this config.
+
+    Its uncertainty_config file (standalone, or an entry of that name) or its robust.parameters.
+
+    Parameters
+    ----------
+    config_path : str or Path
+    name : str
+
+    Returns
+    -------
+    str
+        '' if the shared spread is used, or the config isn't robust.
+    """
     from .loader import load_yaml as _load
 
     data = _load(config_path)
@@ -303,6 +416,7 @@ def spread_overridden_by(config_path, name):
 
 
 def _rel(p):
+    """A path relative to the repository, or just its name."""
     p = Path(p).resolve()
     try:
         return str(p.relative_to(CONFIGS_DIR.parent))
@@ -311,7 +425,17 @@ def _rel(p):
 
 
 def layer_files_of(config_path):
-    """(placeholders path, ruleset path or None) that a config names (defaults resolved)."""
+    """The layer files a config names, with defaults resolved.
+
+    Parameters
+    ----------
+    config_path : str or Path
+
+    Returns
+    -------
+    (Path or None, Path or None)
+        Placeholders path, ruleset path.
+    """
     from .loader import layer_path
 
     data = load_yaml(config_path)
@@ -341,6 +465,18 @@ SPREAD_COLS = [
 
 
 def rows_to_frame(rows, overridden=None):
+    """Value rows as the UI editor's table.
+
+    Parameters
+    ----------
+    rows : list of dict
+    overridden : dict, optional
+        {parameter: overriding file}.
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
     import pandas as pd
 
     return pd.DataFrame(
@@ -353,6 +489,16 @@ def rows_to_frame(rows, overridden=None):
 
 
 def frame_to_rows(df):
+    """Value rows from the UI editor's table.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+
+    Returns
+    -------
+    list of dict
+    """
     out = []
     for r in df.to_dict("records"):
         out.append(
@@ -371,6 +517,18 @@ def frame_to_rows(df):
 
 
 def spreads_to_frame(spreads, overridden=None):
+    """Spread rows as the UI editor's table.
+
+    Parameters
+    ----------
+    spreads : list of dict
+    overridden : dict, optional
+        {name: overriding file}.
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
     import pandas as pd
 
     return pd.DataFrame(
@@ -391,7 +549,18 @@ def spreads_to_frame(spreads, overridden=None):
 
 
 def frame_to_spreads(df, original):
-    """Spread rows from the editor frame; the comment's units field is kept from the file (original rows)."""
+    """Spread rows from the editor frame; the comment's units field is kept from the file.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    original : list of dict
+        The file's spread rows.
+
+    Returns
+    -------
+    list of dict
+    """
     by_line = {s["line"]: s for s in original}
     out = []
     for r in df.to_dict("records"):

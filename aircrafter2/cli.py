@@ -16,6 +16,18 @@ from pathlib import Path
 
 
 def main(argv=None):
+    """The aircrafter2 command.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Default: sys.argv.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
     ap = argparse.ArgumentParser(prog="aircrafter2", description="AirCrafter 2.0: DBF MDAO framework")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="optimise (or analyse) a design from a YAML config")
@@ -129,6 +141,7 @@ def main(argv=None):
 
 
 def _vsp_available():
+    """True if OpenVSP is installed; otherwise print the install hint."""
     from .vsp import INSTALL_HINT, have_openvsp
 
     if not have_openvsp():
@@ -138,6 +151,7 @@ def _vsp_available():
 
 
 def _vsp(run_dir, out, figures, incidence):
+    """Build the OpenVSP mock-up of a saved run. Returns the exit code."""
     if not _vsp_available():
         return 2
     from .vsp.pipeline import build_run

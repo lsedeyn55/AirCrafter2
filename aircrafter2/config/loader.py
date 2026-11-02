@@ -1,7 +1,8 @@
-"""YAML loading with a simple ``extends:`` mechanism.
+"""YAML loading with a simple ``extends:`` mechanism, and the placeholder and ruleset layers.
 
-A file may contain ``extends: <relative path>``. The parent is loaded first,
-and the child is deep-merged over it (dicts merge, everything else replaces).
+A file may contain ``extends: <relative path>``: the parent is loaded first, and the child is deep-merged over it (dicts
+merge, everything else replaces). The first thing every run does; the problem builders' load_*_config functions call it.
+Layers: docs/DECISIONS.md#pr-layers, README "Placeholders and rulesets". Details: docs/modules/config.md.
 """
 
 from pathlib import Path
@@ -10,6 +11,7 @@ import yaml
 
 
 def _merge(base, over):
+    """base with over deep-merged onto it: dicts merge, everything else replaces."""
     out = dict(base)
     for k, v in over.items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
@@ -20,6 +22,16 @@ def _merge(base, over):
 
 
 def load_yaml(path):
+    """A YAML file with its extends: chain resolved.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    dict
+    """
     path = Path(path)
     with open(path) as fh:
         data = yaml.safe_load(fh) or {}
@@ -29,13 +41,26 @@ def load_yaml(path):
     return data
 
 
-# --- placeholder and ruleset layers (docs/PLACEHOLDERS_RULESETS_PLAN.md, README "Placeholders and rulesets") ---
+# --- placeholder and ruleset layers (docs/DECISIONS.md#pr-layers, README "Placeholders and rulesets") ---
 CONFIGS_DIR = Path(__file__).resolve().parents[2] / "configs"
 LAYER_KEYS = ("placeholders", "ruleset")
 
 
 def layer_path(name, path):
-    """A layer file named in a config: relative to the config's folder, else to configs/."""
+    """A layer file named in a config: relative to the config's folder, else to configs/.
+
+    Parameters
+    ----------
+    name : str
+        The file named in the config.
+    path : str or Path
+        The config.
+
+    Returns
+    -------
+    Path
+        Raises FileNotFoundError if it doesn't exist.
+    """
     p = Path(name)
     if p.is_absolute():
         return p
@@ -46,9 +71,20 @@ def layer_path(name, path):
 
 
 def expand_dotted(data):
-    """Top-level dotted keys to nested dicts: {"propulsion.Kv": 1050} -> {"propulsion": {"Kv": 1050}}. The layer
-    files are written this way, one value per line. Under ``bottles.`` the middle segments are one key (the bottle
-    name, e.g. 0.5L): bottles.0.5L.diameter -> bottles: {0.5L: {diameter}}."""
+    """Top-level dotted keys to nested dicts: {"propulsion.Kv": 1050} -> {"propulsion": {"Kv": 1050}}.
+
+    The layer files are written this way, one value per line. Under ``bottles.`` the middle segments are one key (the
+    bottle name, e.g.
+    0.5L): bottles.0.5L.diameter -> bottles: {0.5L: {diameter}}.
+
+    Parameters
+    ----------
+    data : dict
+
+    Returns
+    -------
+    dict
+    """
     out = {}
     for key, val in data.items():
         parts = key.split(".") if isinstance(key, str) else [key]
@@ -64,7 +100,16 @@ def expand_dotted(data):
 
 
 def load_layer(path):
-    """A placeholders or ruleset file (dotted keys expanded)."""
+    """A placeholders or ruleset file, with dotted keys expanded.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    dict
+    """
     return expand_dotted(load_yaml(path))
 
 
@@ -74,8 +119,20 @@ def _keep(layer, fields):
 
 
 def load_layers(path, placeholders=None, ruleset=None):
-    """(placeholders data, ruleset data, config data) of a problem config: the config with extends: resolved and its
-    layer keys removed. placeholders/ruleset override the files the config names (the UI's unsaved edits)."""
+    """The three levels of a problem config: the config with extends: resolved and its layer keys removed, and its two
+    layers.
+
+    Parameters
+    ----------
+    path : str or Path
+    placeholders, ruleset : dict, optional
+        Override the files the config names (the UI's unsaved edits).
+
+    Returns
+    -------
+    (dict, dict, dict)
+        Placeholders data, ruleset data, config data.
+    """
     path = Path(path)
     data = load_yaml(path)
     ph_name = data.pop("placeholders", "placeholders.yaml")
@@ -87,12 +144,28 @@ def load_layers(path, placeholders=None, ruleset=None):
 
 
 def load_layered(path, fields=None, multipoint=False, placeholders=None, ruleset=None):
-    """A problem config merged over its layers, lowest first: placeholders.yaml, the ruleset, the config (and its
-    extends: chain). Only the layers' keys that the schema has are kept (fields: its field names; the config's own
-    keys are not filtered, so a typo still fails). A single-point load ignores the ruleset's multipoint: block.
+    """A problem config merged over its layers, lowest first: placeholders.yaml, the ruleset, the config and its
+    extends: chain.
 
-    The layers' ``uncertainty:`` lists are returned as ``uncertainty_pool`` (placeholders first, merged by name) for
-    full_config_from_dict; ``mass`` stays a plain dict, so mass_config is merged underneath it by the caller."""
+    Only the layers' keys that the schema has are kept; the config's own keys aren't filtered, so a typo still fails. A
+    single-point load ignores the ruleset's multipoint: block. The layers' uncertainty: lists are returned as
+    uncertainty_pool (placeholders first, merged by name) for full_config_from_dict; mass stays a plain dict, so
+    mass_config is merged underneath it by the caller.
+
+    Parameters
+    ----------
+    path : str or Path
+    fields : iterable of str, optional
+        The schema's field names.
+    multipoint : bool
+        Keep the multipoint: block.
+    placeholders, ruleset : dict, optional
+        As in load_layers.
+
+    Returns
+    -------
+    dict
+    """
     ph, rs, data = load_layers(path, placeholders, ruleset)
     pool = {}
     for layer in (ph, rs):
