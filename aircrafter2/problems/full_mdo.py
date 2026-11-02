@@ -1,22 +1,11 @@
-"""The full AirCrafter 2.0 MDF problem (decision B: propulsion sets the power).
+"""The full AirCrafter 2.0 problem: coupled aero, mass, propulsion, stability and the lap model (MDF, multidisciplinary
+feasible).
 
-    airfoil, geometry (planform, tails, cargo bay)
-    powertrain (APC prop + motor + battery at fixed throttle) -> T(v), P(v), T_static, masses
-    MDA  [Newton, solve_subsystems]:
-        parasite drag (tails, optional fuselage)  at v
-        cruise aero point                         at (alpha_cruise, v)
-        balance alpha_cruise:  L = W
-        balance v:             T(v) = D(v)        (v: the full-throttle level speed, also the G&G design speed)
-        G&G mass (NLBGS closure), m_sys from the powertrain
-    mid / near-C_L,max aero points -> three-point polar
-    lap model (propulsion mode): T(v) and P(v) on every leg, battery energy, laps
-    static stability: neutral point, CG, static margin
-
-DVs: b, c, tc_scale, camber_scale, battery capacity, tail arm, S_ht, S_vt, battery and cargo-bay stations, and the
-motor Kv (default; leave "Kv" out of design_variables, e.g. configs/full_mdo_fixed_kv.yaml, for a fixed motor).
-With Kv a DV the config's motor is a reference motor and a MotorRewind component scales Rm and I0 with Kv (the same
-frame rewound; propulsion/motor_scaling.py), and the static current limit becomes a constraint.
-Objective: a scoring plug-in (aircrafter2.scoring; placeholder default three_lap_time).
+Builds one mission point: airfoil and geometry, the powertrain, the MDA (multidisciplinary analysis) that closes L = W,
+T = D and the mass, the polar, the lap model, stability and the limits. The powertrain sets the power
+(docs/DECISIONS.md#plan-b). problems/multipoint.py and robustness/ build on it. The objective is a scoring plug-in
+(scoring/; placeholder default three_lap_time). Design variables, data flow and details: docs/modules/problems.md,
+"full_mdo".
 """
 
 from typing import Literal, Optional
@@ -50,6 +39,8 @@ WOOMBAH_Y_MOTOR = 9.9 / (70.9 / 2.0)
 
 
 class PropulsionInputs(BaseModel):
+    """The propulsion section of a config: layout, prop, battery, motor and limits (field descriptions below)."""
+
     model_config = ConfigDict(extra="forbid")
     n_motors: Literal[1, 2] = Field(
         1,
@@ -129,6 +120,7 @@ class PropulsionInputs(BaseModel):
 
     @model_validator(mode="after")
     def _check_layout(self):
+        """n_motors = 2 needs exactly one valid station, y_motor_m or y_motor."""
         if self.n_motors == 2:
             if (self.y_motor is None) == (self.y_motor_m is None):
                 raise ValueError(
@@ -143,10 +135,13 @@ class PropulsionInputs(BaseModel):
 
     @property
     def station_mode(self):
+        """How the wing-motor station is given: 'fraction' or 'absolute'."""
         return "fraction" if self.y_motor is not None else "absolute"
 
 
 class StabilityInputs(BaseModel):
+    """The stability section of a config: tail, stations and stability bands (field descriptions below)."""
+
     model_config = ConfigDict(extra="forbid")
     AR_ht: float = Field(4.0, description="PLACEHOLDER")
     AR_vt: float = Field(2.0, description="PLACEHOLDER")
@@ -170,12 +165,16 @@ class StabilityInputs(BaseModel):
 
 
 class ScoringConfig(BaseModel):
+    """The scoring section of a config: the plug-in's name and options."""
+
     model_config = ConfigDict(extra="forbid")
     plugin: str = Field("three_lap_time", description="registered name or 'module:Class' (aircrafter2.scoring)")
     options: dict = {}
 
 
 class FullMDOConfig(AeroMassProblemConfig):
+    """A full problem config: everything a single-point run needs, including aero_mass's fields."""
+
     propulsion: PropulsionInputs = PropulsionInputs()
     stability: StabilityInputs = StabilityInputs()
     fuselage_drag: bool = True
@@ -215,6 +214,7 @@ class FullMDOConfig(AeroMassProblemConfig):
 
     @model_validator(mode="after")
     def _check_kv_robust(self):
+        """Apply check_kv_robust at validation."""
         check_kv_robust(self)
         return self
 
@@ -224,12 +224,28 @@ KV_FIXED_ONLY = ("Kv", "Rm")  # uncertain parameters of the fixed motor
 
 
 def kv_is_dv(cfg):
-    """True when the motor Kv is a design variable (then MotorRewind scales Rm and I0)."""
+    """True when the motor Kv is a design variable (then MotorRewind scales Rm and I0).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+
+    Returns
+    -------
+    bool
+    """
     return "Kv" in cfg.design_variables
 
 
 def check_kv_robust(cfg):
-    """Robust parameters must match the motor mode; raises ValueError (never remaps names)."""
+    """Robust parameters must match the motor mode.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+
+    Raises ValueError on a mismatch; names are never remapped.
+    """
     act = set(cfg.robust.active or [])
     if kv_is_dv(cfg) and act & set(KV_FIXED_ONLY):
         raise ValueError(
@@ -245,6 +261,14 @@ def check_kv_robust(cfg):
 
 
 def default_full_dvs():
+    """The default design variables and their bounds.
+
+    Returns
+    -------
+    dict
+        {name: Bounds}: b, c, l_ht, x_batt [m], S_ht, S_vt [m**2], capacity [A*h], Kv [rpm/V], tc_scale, camber_scale,
+        x_cb_frac.
+    """
     return {
         "b": Bounds(lower=0.9, upper=1.52),
         "c": Bounds(lower=0.15, upper=0.45),
@@ -277,7 +301,23 @@ def check_fixed_limits(prob):
 
 
 class PolyAt(om.ExplicitComponent):
-    """y = sum c_i v^i."""
+    """A polynomial evaluated at speed v: y = sum c_i v^i. Used for T(v) and rpm(v). Partials are complex step: a short
+    expression.
+
+    Options
+    -------
+    n : int
+        Number of coefficients.
+
+    Inputs
+    ------
+    coeffs : array (n,)
+    v [m/s]
+
+    Outputs
+    -------
+    y
+    """
 
     def initialize(self):
         self.options.declare("n", default=4, types=int)
@@ -294,6 +334,24 @@ class PolyAt(om.ExplicitComponent):
 
 
 class FullMDA(om.Group):
+    """The MDA of one mission point: parasite drag, stores, cruise aero, the balances and the mass.
+
+    Balances: alpha_cruise such that L = W, and v such that T(v) = D(v), bounded in [5 m/s, v_top]. v is the
+    full-throttle level speed, and also the G&G (Garcia & Gamboa 2022) design speed. The solver is Newton with
+    solve_subsystems, or RetryNewton with its fallbacks.
+
+    Options
+    -------
+    cfg : FullMDOConfig
+    retry : bool
+        Newton with warm-start fallbacks (robust nodes; robustness.rdo_problem.RetryNewton).
+    sizing : "own" or "external"
+        own: the structure is sized at this point's mass and speed (closure m = m_total). external: sized at m_sizing,
+        v_sizing from another point (multipoint M3).
+    stores : tuple or None
+        (StoreConfig, dict of Stores flags), or None.
+    """
+
     def initialize(self):
         self.options.declare("cfg")
         self.options.declare(
@@ -363,7 +421,7 @@ class FullMDA(om.Group):
                 promotes_outputs=["m_pay", "x_pay", "CD_stores", "CD_tanks", "CD_pylons", "CD_x1", "fuel_capacity"],
             )
         area = cfg.aero.cd_area_gear + cfg.aero.cd_area_lp
-        if area:  # undercarriage + leakage drag areas (2025-26, [HB] Table 29): only when set, so 0 = the old graph
+        if area:  # undercarriage + leakage drag areas (2025-26, [HB] Table 29, docs/DECISIONS.md#ff-d3): only when set
             self.add_subsystem(
                 "cd_areas",
                 om.ExecComp(
@@ -471,26 +529,57 @@ class FullMDA(om.Group):
 
 
 def cd_extra_name(cfg, stores):
-    """The drag increment the wing aero points add: CD_extra alone, or CD_extra_total when stores or the constant drag
-    areas (aero.cd_area_gear, aero.cd_area_lp) add to it (FullMDA)."""
+    """The drag increment the wing aero points add.
+
+    CD_extra alone, or CD_extra_total when stores or the constant drag areas (aero.cd_area_gear, aero.cd_area_lp) add to
+    it (FullMDA).
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+    stores : tuple or None
+
+    Returns
+    -------
+    str
+    """
     area = cfg.aero.cd_area_gear + cfg.aero.cd_area_lp
     return "CD_extra_total" if stores is not None or area else "CD_extra"
 
 
 def is_2026(stores):
-    """True for the 2025-26 store set (stores2026.Store2026Config): payload, banner and the payload fuselage."""
+    """True for the 2025-26 store set (stores2026.Store2026Config): payload, banner and the payload fuselage.
+
+    Parameters
+    ----------
+    stores : tuple or None
+        (store config, flags).
+
+    Returns
+    -------
+    bool
+    """
     from ..stores2026 import Store2026Config
 
     return stores is not None and isinstance(stores[0], Store2026Config)
 
 
 def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", stores=None):
-    """The coupled analysis of one mission point.
+    """Add the coupled analysis of one mission point to a group.
 
-    sizing  "own" (default): the structure is sized at this point; "external": at the promoted inputs m_sizing and
-            v_sizing (another point's m_total and v: problems/multipoint.py)
-    stores  None (default), or (StoreConfig, Stores flags): external stores replace the payload input m_pay and
-            its station (stores.py), and add their drag to CD_extra
+    Parameters
+    ----------
+    m : om.Group
+        The group to fill. Everything is promoted to it.
+    cfg : FullMDOConfig
+    mda_retry : bool
+        Use RetryNewton in the MDA.
+    sizing : str
+        "own" (default): the structure is sized at this point. "external": at the promoted inputs m_sizing and v_sizing
+        (another point's m_total and v: problems/multipoint.py).
+    stores : tuple, optional
+        (StoreConfig, Stores flags): external stores replace the payload input m_pay and its station (stores.py), and
+        add their drag to CD_extra.
     """
     a, st = cfg.aero, cfg.stability
     m.add_subsystem(
@@ -560,7 +649,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
             "v_fit_max",
         ],
     )
-    if pr.n_motors == 2:  # wing station and prop clearances (D8)
+    if pr.n_motors == 2:  # wing station and prop clearances (docs/DECISIONS.md#plan-d8)
         m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
     m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry, sizing=sizing, stores=stores), promotes=["*"])
     cd_extra = cd_extra_name(cfg, stores)
@@ -666,7 +755,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         ),
         promotes_inputs=["c", "l_ht", "boom_offset", "l_tb", "m_ht", "m_vt", ("fcb", "x_cb_frac")],
     )
-    if is_2026(stores):  # the rigid payload fuselage: motor station and packaging margins (stores2026.py, D2)
+    if is_2026(stores):  # the rigid payload fuselage: motor station and packaging margins (docs/DECISIONS.md#ff-d2)
         from ..stores2026 import Packaging2026
 
         m.add_subsystem(
@@ -814,7 +903,17 @@ DV_REF = {"Kv": 1000.0}  # optimiser scaling (O(1) for SLSQP); DVs not listed ke
 
 
 def full_constraints(cfg: FullMDOConfig):
-    """The full problem's constraints, in order: [(promoted output, add_constraint kwargs)]."""
+    """The full problem's constraints, in order.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+
+    Returns
+    -------
+    list of (str, dict)
+        (promoted output, add_constraint kwargs).
+    """
     st = cfg.stability
     cons = [
         ("stall_margin", dict(lower=0.0, ref=1.0)),
@@ -847,7 +946,18 @@ def full_constraints(cfg: FullMDOConfig):
 
 
 def drop_disabled(cfg, cons):
-    """cons without cfg.disabled_constraints; an unknown name (or energy_margin: use require_3lap_energy) raises."""
+    """cons without cfg.disabled_constraints.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+    cons : list of (name, dict)
+
+    Returns
+    -------
+    list of (name, dict)
+        Raises ValueError for an unknown name, or energy_margin (use require_3lap_energy).
+    """
     off = list(cfg.disabled_constraints)
     if not off:
         return cons
@@ -861,6 +971,13 @@ def drop_disabled(cfg, cons):
 
 
 def add_full_driver(prob, cfg: FullMDOConfig):
+    """Set SLSQP, the design variables, the plug-in's objective and the constraints on a problem.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    cfg : FullMDOConfig
+    """
     m = prob.model
     prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP", tol=cfg.tol, maxiter=cfg.maxiter, disp=True)
     for name, bd in cfg.design_variables.items():
@@ -871,8 +988,18 @@ def add_full_driver(prob, cfg: FullMDOConfig):
 
 
 def apply_full_values(prob, cfg: FullMDOConfig, stores=False, skip=()):
-    """Config values onto a set-up full model. stores: m_pay is computed (stores.py); skip: names not to set
-    (e.g. inputs connected from another mission point)."""
+    """Put config values onto a set-up full model.
+
+    Parameters
+    ----------
+    prob : om.Problem or setter
+        Anything with set_val (multipoint._PointSetter, rdo_problem._NodeSetter).
+    cfg : FullMDOConfig
+    stores : bool
+        m_pay is computed (stores.py).
+    skip : iterable of str
+        Names not to set (e.g. inputs connected from another mission point).
+    """
     apply_aero_mass_values(prob, cfg, exclude={"m_sys"} | ({"m_pay"} if stores else set()) | set(skip))
     pr, st = cfg.propulsion, cfg.stability
     motor = ["Kv", "Rm", "I0"]
@@ -915,6 +1042,18 @@ def apply_full_values(prob, cfg: FullMDOConfig, stores=False, skip=()):
 
 
 def build_full_problem(cfg: FullMDOConfig, driver=True):
+    """The set-up single-point problem of a config.
+
+    Parameters
+    ----------
+    cfg : FullMDOConfig
+    driver : bool
+        Add the optimiser. Without it, the score is still computed, for reports and robustness.
+
+    Returns
+    -------
+    om.Problem
+    """
     prob = om.Problem(reports=False)
     build_full_model(prob.model, cfg)
     if driver:
@@ -928,7 +1067,17 @@ def build_full_problem(cfg: FullMDOConfig, driver=True):
 
 def load_full_config(path, placeholders=None, ruleset=None):
     """A FullMDOConfig YAML over its layers (placeholders.yaml, the ruleset; config/loader.py load_layered).
-    placeholders/ruleset: layer data to use instead of the files (the UI's unsaved edits)."""
+
+    Parameters
+    ----------
+    path : str or Path
+    placeholders, ruleset : dict, optional
+        Layer data to use instead of the files (the UI's unsaved edits).
+
+    Returns
+    -------
+    FullMDOConfig
+    """
     from pathlib import Path
 
     from ..config.loader import load_layered
@@ -940,7 +1089,19 @@ def load_full_config(path, placeholders=None, ruleset=None):
 
 
 def full_config_from_dict(data, path):
-    """FullMDOConfig from loaded YAML data (extends: resolved); relative file references resolve against path."""
+    """FullMDOConfig from loaded YAML data (extends: resolved).
+
+    Parameters
+    ----------
+    data : dict
+    path : Path
+        The config file; relative file references resolve against it.
+
+    Returns
+    -------
+    FullMDOConfig
+        Raises ValueError if fixed_design_variables names something that isn't a design variable.
+    """
     from pathlib import Path
 
     from ..config.loader import _merge, load_yaml

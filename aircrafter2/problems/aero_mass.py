@@ -1,18 +1,8 @@
-"""Coupled aero + mass (MDF).
+"""Coupled aero and mass (MDF, multidisciplinary feasible): cruise aero, the lift balance and the G&G mass closure.
 
-    airfoil (shape DVs -> Kulfan, t/c, t at spar, A/c^2, P/c)
-    geometry (b, c, l_ht, tails, cargo bay -> S, chords, l_tb, S_cb, V_h, V_v)
-    MDA  [Newton, solve_subsystems, DirectSolver]
-        cruise aero point  (alpha_cruise)  -> L, D, C_m,wing, C_L,alpha, C_L,max
-        balance            alpha_cruise such that L = W
-        G&G mass group     (its own NLBGS closure on m)  -> W, masses, tube sizing
-
-Coupling: W (mass -> aero via the lift balance); C_m and C_L,alpha (aero -> mass, Eqs. 46, 47,
-54); t/c, t at spar, A/c^2, P/c (airfoil -> mass); the tube radius follows the airfoil (D1).
-
-The optimisation minimises cruise drag at fixed speed. With mass in the loop, a thicker section
-costs profile drag but buys a lighter spar (larger tube radius), which lowers W and with it the
-induced drag. That is the trade this problem exists to show.
+Coupling: W (mass -> aero, through the lift balance); C_m and C_L,alpha (aero -> mass, Garcia & Gamboa Eqs. 46, 47, 54);
+t/c, t at the spar, A/c^2, P/c (airfoil -> mass); the tube radius follows the airfoil (docs/DECISIONS.md#plan-d1).
+lap_mdo and full_mdo reuse its pieces. Formulation and the trade it shows: docs/modules/problems.md, "aero_mass".
 """
 
 from typing import Literal
@@ -56,6 +46,8 @@ MASS_FROM_OTHERS = {
 
 
 class GeometryInputs(BaseModel):
+    """The geometry section of a config: tail, boom, cargo box and spar station (mostly placeholders)."""
+
     model_config = ConfigDict(extra="forbid")
     l_ht: float = Field(0.8, description="m, tail arm (PLACEHOLDER)")
     S_ht: float = Field(0.06, description="m^2 (PLACEHOLDER)")
@@ -68,6 +60,8 @@ class GeometryInputs(BaseModel):
 
 
 class AeroMassProblemConfig(BaseModel):
+    """The aero_mass config, and the base of the lap_mdo and full_mdo configs."""
+
     model_config = ConfigDict(extra="forbid")
 
     airfoil: AirfoilConfig = AirfoilConfig()
@@ -93,7 +87,16 @@ class AeroMassProblemConfig(BaseModel):
 
 
 def load_aero_mass_config(path):
-    """Load an aero_mass YAML: ``mass_config`` names the base mass YAML; ``mass`` overrides it."""
+    """Load an aero_mass YAML: ``mass_config`` names the base mass YAML, and ``mass`` overrides it.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    AeroMassProblemConfig
+    """
     from pathlib import Path
 
     from ..config.loader import _merge, load_layered, load_yaml
@@ -106,6 +109,14 @@ def load_aero_mass_config(path):
 
 
 class AeroMassMDA(om.Group):
+    """The MDA (multidisciplinary analysis): cruise aero, alpha_cruise such that L = W, and the mass group, solved by
+    Newton.
+
+    Options
+    -------
+    cfg : AeroMassProblemConfig
+    """
+
     def initialize(self):
         self.options.declare("cfg", types=AeroMassProblemConfig)
 
@@ -156,7 +167,13 @@ class AeroMassMDA(om.Group):
 
 
 def add_aero_mass_model(m, cfg: AeroMassProblemConfig):
-    """Add airfoil, geometry and the aero + mass MDA to a model (all promoted)."""
+    """Add airfoil, geometry and the aero + mass MDA to a model (all promoted).
+
+    Parameters
+    ----------
+    m : om.Group
+    cfg : AeroMassProblemConfig
+    """
     m.add_subsystem(
         "airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes), promotes=["*"]
     )
@@ -188,13 +205,29 @@ def add_aero_mass_model(m, cfg: AeroMassProblemConfig):
 
 
 def add_structural_constraints(m, cfg: AeroMassProblemConfig):
+    """Add the no-stall, spar wall and spar radius constraints.
+
+    Parameters
+    ----------
+    m : om.Group
+    cfg : AeroMassProblemConfig
+    """
     m.add_constraint("cruise.cl_margin_sec", lower=0.0)
     m.add_constraint("wall_ratio", upper=cfg.wall_ratio_max)
     m.add_constraint("r_tube", lower=cfg.r_tube_min, units="m", ref=0.01)
 
 
 def apply_aero_mass_values(prob, cfg: AeroMassProblemConfig, exclude=()):
-    """Set the config values on a set-up problem (flight condition, geometry, mass inputs, initial point)."""
+    """Set the config values on a set-up problem: flight condition, geometry, mass inputs, initial point.
+
+    Parameters
+    ----------
+    prob : om.Problem or setter
+        Anything with set_val.
+    cfg : AeroMassProblemConfig
+    exclude : iterable of str
+        Mass inputs not to set.
+    """
     atm = isa(cfg.altitude)
     prob.set_val("v", cfg.V, units="m/s")
     prob.set_val("rho", atm["rho"], units="kg/m**3")
@@ -211,6 +244,18 @@ def apply_aero_mass_values(prob, cfg: AeroMassProblemConfig, exclude=()):
 
 
 def build_aero_mass_problem(cfg: AeroMassProblemConfig, driver=True):
+    """The set-up aero_mass problem.
+
+    Parameters
+    ----------
+    cfg : AeroMassProblemConfig
+    driver : bool
+        Add the optimiser.
+
+    Returns
+    -------
+    om.Problem
+    """
     prob = om.Problem(reports=False)
     m = prob.model
     add_aero_mass_model(m, cfg)

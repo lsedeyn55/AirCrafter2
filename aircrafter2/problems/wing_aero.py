@@ -1,12 +1,11 @@
-"""Wing-aero problem: aero-only rectangular wing at fixed lift.
+"""Wing-aero problem: an aero-only rectangular wing at fixed lift, the smallest problem in the package.
 
-minimise   CD                       (= drag, since q and S are fixed)
-w.r.t.     b, c, alpha, tc_scale, camber_scale (and bump modes, if any)
-subject to L = W                    (fixed lift)
-           b c = S                  (fixed wing area, i.e. fixed wing loading)
-           tc_max >= tc_min         (room for the spar; PLACEHOLDER, aero_mass couples mass)
-           CL_max / CL >= 1.2^2     (cruise at >= 1.2 V_stall, as in the lap modeller)
-           cl_margin_sec >= 0       (no stalled strip)
+    minimise   CD                       (= drag, since q and S are fixed)
+    w.r.t.     b, c, alpha, tc_scale, camber_scale (and bump modes, if any)
+    subject to L = W, b c = S, tc_max >= tc_min (placeholder, docs/OPEN_QUESTIONS.md Q5), CL_max / CL >= 1.2^2, no
+    stalled strip
+
+Uses airfoil/ and aero/; aero_mass couples the mass. Report: docs/problems/ and docs/modules/problems.md.
 """
 
 from typing import Literal
@@ -21,12 +20,16 @@ from ..config.aero import AeroConfig, AirfoilConfig
 
 
 class Bounds(BaseModel):
+    """Lower and upper bound of a design variable, in the variable's units."""
+
     model_config = ConfigDict(extra="forbid")
     lower: float
     upper: float
 
 
 class WingAeroProblemConfig(BaseModel):
+    """The wing_aero config: airfoil, aero, flight condition, limits and design variables."""
+
     model_config = ConfigDict(extra="forbid")
 
     airfoil: AirfoilConfig = AirfoilConfig()
@@ -51,6 +54,18 @@ class WingAeroProblemConfig(BaseModel):
 
 
 def build_wing_aero_problem(cfg: WingAeroProblemConfig, driver=True):
+    """The set-up wing-aero problem.
+
+    Parameters
+    ----------
+    cfg : WingAeroProblemConfig
+    driver : bool
+        Add the optimiser.
+
+    Returns
+    -------
+    om.Problem
+    """
     prob = om.Problem(reports=False)
     m = prob.model
     seed = load_seed(cfg.airfoil.seed)
@@ -100,7 +115,16 @@ def build_wing_aero_problem(cfg: WingAeroProblemConfig, driver=True):
 
 
 def load_wing_aero_config(path):
-    """A wing_aero YAML over its layers (placeholders.yaml, the ruleset): configs/wing_aero.yaml."""
+    """A wing_aero YAML over its layers (placeholders.yaml, the ruleset): configs/wing_aero.yaml.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    WingAeroProblemConfig
+    """
     from ..config.loader import load_layered
 
     return WingAeroProblemConfig(**load_layered(path, WingAeroProblemConfig.model_fields))

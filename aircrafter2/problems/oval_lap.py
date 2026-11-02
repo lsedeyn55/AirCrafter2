@@ -1,22 +1,7 @@
-"""Oval-lap problem: minimise the lap time of a simple oval at fixed cruise speed.
+"""Oval-lap problem: minimise the lap time of a simple oval at fixed cruise speed, with a fixed mass.
 
-One wing and airfoil, two aero points at the same speed:
-
-    cruise: alpha_cruise such that L = W                (equality constraint)
-    turn:   alpha_turn; load factor n = L_turn / W (KS-capped at n_struct)
-
-    minimise   lap_time = (2 L_s + 2 pi R) / V,   R = V^2 / (g sqrt(n^2 - 1))
-    w.r.t.     b, c, alpha_cruise, alpha_turn, tc_scale, camber_scale
-    subject to L_cruise = W
-               CL_max / CL_turn   >= turn_clmax_ratio_min   (the C_L margin that sets the turn radius)
-               CL_max / CL_cruise >= 1.44                    (cruise at >= 1.2 V_stall)
-               tc_max >= tc_min                              (spar placeholder)
-               cl_margin_sec >= 0 at both points
-               P_turn = D_turn V / eta <= P_available        (optional)
-
-Mass is fixed (W) here; aero_mass couples the G&G mass model. Without a power limit the problem
-favours a large wing, because at fixed speed only the turn radius matters, and a larger wing has
-more lift to spare. The bounds on b and c, plus the optional power constraint, keep it finite.
+One wing and airfoil, two aero points at the same speed (cruise and turn), feeding mission/oval.py. aero_mass couples
+the G&G (Garcia & Gamboa 2022) mass model. Formulation and why the bounds matter: docs/modules/problems.md, "oval_lap".
 """
 
 from typing import Literal
@@ -35,6 +20,8 @@ FT = 0.3048
 
 
 class OvalLapProblemConfig(BaseModel):
+    """The oval_lap config: airfoil, aero, fixed speed and weight, turn limits and design variables."""
+
     model_config = ConfigDict(extra="forbid")
 
     airfoil: AirfoilConfig = AirfoilConfig()
@@ -76,6 +63,18 @@ SHARED = ["b", "c", "v", "rho", "mu", "upper_weights", "lower_weights", "le_weig
 
 
 def build_oval_lap_problem(cfg: OvalLapProblemConfig, driver=True):
+    """The set-up oval-lap problem.
+
+    Parameters
+    ----------
+    cfg : OvalLapProblemConfig
+    driver : bool
+        Add the optimiser.
+
+    Returns
+    -------
+    om.Problem
+    """
     prob = om.Problem(reports=False)
     m = prob.model
     a = cfg.aero

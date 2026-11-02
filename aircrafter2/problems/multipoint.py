@@ -1,27 +1,10 @@
-"""Multipoint problem of the 2024-25 ruleset: one airframe flying Mission 2 and Mission 3 (and checked on Mission 1).
+"""The multipoint problem: one airframe flying Mission 2 and Mission 3, and checked on Mission 1.
 
-    model
-      points  (om.ParallelGroup; serial without MPI)
-        M2   full coupled analysis (full_mdo.build_full_model) with the M2 stores: filled tanks, pylons, X-1.
-             The structure is sized here (the heaviest case: maximum fuel and battery, the rules' wing-tip test case,
-             Rules_2025 p. 9 and p. 17).
-        M3   full coupled analysis with the M3 stores: empty tanks, pylons, X-1. Flies M2's airframe: its structural
-             sizing inputs are M2's mass and speed (sizing="external"), so the structure is the same.
-      scoring (dbf2025): F = M1 + M2 + M3 from M2's fuel weight and 3-lap time and M3's laps
-      rules   TOGW < 55 lb (M2), total propulsion energy <= 100 Wh and fuse current <= min(100 A, C x capacity) at each
-              point, 3 laps in the M2 window
-
-Design variables:
-    shared      the airframe of the base config (b, c, tc_scale, camber_scale, l_ht, S_ht, S_vt, x_cb_frac) and the
-                motor Kv: "the airplane must be flown in the same configuration for all three missions" (p. 10)
-    per point   capacity, x_batt, throttle (names suffixed _M2 / _M3): other inspected battery packs may be flown
-                between attempts (p. 16), the battery station sets the CG per mission (Woombah: p. 19, Table 34), and the
-                throttle is the pilot's setting for each flight
-    M2 only     fuel_mass, up to the declared tanks' capacity (stores.StoreConfig.fuel_capacity)
-    enumerated  the prop of each point (the prop may change per attempt, p. 14), cells, n_motors, the store set
-
-M1 (3 laps in 5 min, no payload, no pylons; p. 10-11) is an analysis-only check of a final design (m1_check).
-Formulation, rules and sources: docs/RESULTS_PLAN.md, docs/modules/scoring.md.
+Two full mission points (problems/full_mdo.py) share the airframe and the motor; M3 flies the structure sized at M2. On
+top sit the flight score (scoring/dbf2025.py or dbf2026.py) and the rule limits. `kind` selects the ruleset: 2024-25 or
+2025-26. To evaluate a 2025-26 design, use build_multipoint_problem(mcfg, driver=False, mda_retry=True), then run_warm.
+Why: docs/DECISIONS.md#r25-multipoint, docs/DECISIONS.md#ff-d5. Details: docs/modules/problems.md, "multipoint";
+docs/modules/scoring.md.
 """
 
 from typing import Literal, Optional
@@ -71,13 +54,16 @@ SIZING_LINKS = [
 ]
 # the flight-safety constraints that fail the M1 check (m1_check); the model-validity limits are only reported
 M1_SAFETY = frozenset({"stall_margin", "SM", "thrust_margin_static", "wall_ratio", "r_tube", "turn_speed_margin"})
-# 2025-26 (kind dbf2026, decision 2026-11-02, OPEN_QUESTIONS Q9/Q62): SM fails the M1 check only below SM_min; above
+# 2025-26 (kind dbf2026; placeholders, docs/OPEN_QUESTIONS.md Q9, Q62; docs/DECISIONS.md#mr-m1-sm): SM fails the M1 check
+# only below SM_min; above
 # SM_max it is reported (SM_high), since a too-large margin costs trim drag and elevator authority, not flight safety.
-# The 2024-25 check (kind dbf2025) keeps both bounds, as published.
+# The 2024-25 check (kind dbf2025) keeps both bounds.
 M1_SM_ONE_SIDED = frozenset({"dbf2026"})
 
 
 class PointConfig(BaseModel):
+    """One mission point's settings: its APC prop (enumerated; rules p. 14)."""
+
     model_config = ConfigDict(extra="forbid")
     prop: str = Field(description="APC prop of this mission point (enumerated; rules p. 14)")
 
@@ -108,6 +94,9 @@ class RulesConfig(BaseModel):
 
 
 class MultipointSettings(BaseModel):
+    """The multipoint block of a config: points, per-point variables, ruleset kind, stores, payload, scoring and
+    rules."""
+
     model_config = ConfigDict(extra="forbid")
     points: dict[Literal["M2", "M3"], PointConfig]
     per_point: list[str] = Field(
@@ -154,6 +143,7 @@ class MultipointConfig(BaseModel):
         return {"fuel_mass": self.fuel_bounds}
 
     def extra_initial(self):
+        """Start values of the extra design variables: {name: value}."""
         if self.mp.kind == "dbf2026":
             return {k: self.mp.payload_initial.get(k, 0.5 * (b.lower + b.upper)) for k, b in self.extra_dvs().items()}
         return {"fuel_mass": self.mp.fuel_initial}
@@ -165,15 +155,39 @@ class MultipointConfig(BaseModel):
         return ["fuel_mass"] if name == "M2" else []
 
     def point_config(self, name):
+        """The base config with this point's prop. M1 flies M3's prop.
+
+        Parameters
+        ----------
+        name : str
+            "M1", "M2" or "M3".
+
+        Returns
+        -------
+        FullMDOConfig
+        """
         cfg = self.base.model_copy(deep=True)
         cfg.propulsion.prop = self.mp.points["M3" if name == "M1" else name].prop
         return cfg
 
     @property
     def shared_dvs(self):
+        """The design variables shared by the points: {name: Bounds}."""
         return {k: b for k, b in self.base.design_variables.items() if k not in self.mp.per_point}
 
     def point_dvs(self, name):
+        """One point's own design variables, suffixed: {capacity_M2: Bounds, ...}.
+
+        Parameters
+        ----------
+        name : str
+            "M2" or "M3".
+
+        Returns
+        -------
+        dict
+            Raises ValueError if a per-point variable has no bounds.
+        """
         out = {}
         for k in self.mp.per_point:
             bd = self.base.design_variables.get(k) or self.mp.per_point_bounds.get(k)
@@ -184,9 +198,11 @@ class MultipointConfig(BaseModel):
 
     @property
     def fuel_bounds(self):
+        """Bounds of fuel_mass [kg], capped at the tanks' capacity."""
         return Bounds(lower=self.mp.fuel.lower, upper=min(self.mp.fuel.upper, self.mp.stores.fuel_capacity))
 
     def all_dvs(self):
+        """Every design variable of the problem: {name: Bounds}."""
         dvs = dict(self.shared_dvs)
         for p in POINTS:
             dvs.update(self.point_dvs(p))
@@ -195,7 +211,18 @@ class MultipointConfig(BaseModel):
 
 
 def load_multipoint_config(path, placeholders=None, ruleset=None):
-    """A multipoint YAML over its layers: placeholders.yaml, then the ruleset (its multipoint: block included)."""
+    """A multipoint YAML over its layers: placeholders.yaml, then the ruleset (its multipoint: block included).
+
+    Parameters
+    ----------
+    path : str or Path
+    placeholders, ruleset : dict, optional
+        Layer data to use instead of the files (the UI's unsaved edits).
+
+    Returns
+    -------
+    MultipointConfig
+    """
     from pathlib import Path
 
     from ..config.loader import load_layered
@@ -207,14 +234,19 @@ def load_multipoint_config(path, placeholders=None, ruleset=None):
 
 
 class _PointSetter:
-    """set_val / get_val for one point: shared names at the top, per-point names suffixed, the rest under
-    <prefix>points.<point>. (prefix: e.g. "nodes.n3." for a robust-design node)."""
+    """set_val and get_val for one point: shared names at the top, per-point names suffixed, the rest under
+    <prefix>points.<point>.
+
+    prefix: e.g. "nodes.n3." for a robust-design node.
+    """
 
     def __init__(self, prob, point, shared, per_point, prefix="", extra=("fuel_mass",)):
+        """Keep the problem, the point and the name sets."""
         self.prob, self.point, self.shared, self.per_point = prob, point, set(shared), set(per_point)
         self.prefix, self.extra = prefix, set(extra)
 
     def _name(self, name):
+        """The model name of a config name, at this point."""
         if name in self.shared or name in self.extra:
             return name
         if name in self.per_point:
@@ -222,14 +254,26 @@ class _PointSetter:
         return f"{self.prefix}points.{self.point}.{name}"
 
     def set_val(self, name, val, units=None, indices=None):
+        """prob.set_val with this point's name."""
         self.prob.set_val(self._name(name), val, units=units, indices=indices)
 
     def get_val(self, name, units=None, indices=None):
+        """prob.get_val with this point's name."""
         return self.prob.get_val(self._name(name), units=units, indices=indices)
 
 
 def multipoint_constraints(mcfg):
-    """[(absolute output name, add_constraint kwargs)]: each point's full-model constraints, then the rules."""
+    """Each point's full-model constraints, then the rules.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+
+    Returns
+    -------
+    list of (str, dict)
+        (absolute output name, add_constraint kwargs).
+    """
     cons = []
     for p in POINTS:
         for name, kw in full_constraints(mcfg.point_config(p)):
@@ -257,8 +301,24 @@ def multipoint_constraints(mcfg):
 
 
 def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
-    """Add the two mission points, the score and the rule components to group m (promoted DVs at m's level).
-    defaults: set the DVs' input defaults here (False when m is one of several robust nodes: set them at the top)."""
+    """Add the two mission points, the score and the rule components to a group, with the design variables promoted at
+    its level.
+
+    Parameters
+    ----------
+    m : om.Group
+    mcfg : MultipointConfig
+    mda_retry : bool
+        Use RetryNewton in the points' MDAs.
+    defaults : bool
+        Set the design variables' input defaults here (False when m is one of several robust nodes: set them at the
+        top).
+
+    Returns
+    -------
+    ScoringPlugin
+        The score's plug-in.
+    """
     from ..scoring.dbf2025 import DBF2025, DBF2025Score
     from ..scoring.dbf2026 import DBF2026, DBF2026Score
 
@@ -358,7 +418,13 @@ def build_multipoint_model(m, mcfg, mda_retry=False, defaults=True):
 
 
 def set_dv_defaults(m, mcfg):
-    """Input defaults (start values and units) of every multipoint design variable, on group m."""
+    """Input defaults (start values and units) of every multipoint design variable.
+
+    Parameters
+    ----------
+    m : om.Group
+    mcfg : MultipointConfig
+    """
     base = mcfg.base
     for name in mcfg.shared_dvs:
         bd = base.design_variables[name]
@@ -374,8 +440,15 @@ def set_dv_defaults(m, mcfg):
 
 
 def add_dvs(m, mcfg, only=None):
-    """The multipoint design variables (bounds, units, refs) on model m; span capped at the rule.
-    only: a subset of the names (the rest stay model inputs at their set values; cost-scaling studies)."""
+    """The multipoint design variables (bounds, units, refs) on a model, with the span capped at the rule.
+
+    Parameters
+    ----------
+    m : om.Group
+    mcfg : MultipointConfig
+    only : iterable of str, optional
+        A subset of the names (the rest stay model inputs at their set values; cost-scaling studies).
+    """
     for name, bd in mcfg.all_dvs().items():
         if only is not None and name not in only:
             continue
@@ -392,6 +465,16 @@ def add_dvs(m, mcfg, only=None):
 
 
 def add_multipoint_driver(prob, mcfg, optimizer="SLSQP", only=None):
+    """Set the optimiser, the design variables, the flight-score objective and the constraints on a problem.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    mcfg : MultipointConfig
+    optimizer : str
+    only : iterable of str, optional
+        As in add_dvs.
+    """
     m = prob.model
     b = mcfg.base
     prob.driver = om.ScipyOptimizeDriver(optimizer=optimizer, tol=b.tol, maxiter=b.maxiter, disp=True)
@@ -402,6 +485,15 @@ def add_multipoint_driver(prob, mcfg, optimizer="SLSQP", only=None):
 
 
 def apply_multipoint_values(prob, mcfg, prefix=""):
+    """Put config values onto a set-up multipoint problem.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    mcfg : MultipointConfig
+    prefix : str
+        Path to the multipoint group, e.g. "nodes.n3." for a robust-design node.
+    """
     shared, per, extra = list(mcfg.shared_dvs), mcfg.mp.per_point, list(mcfg.extra_dvs())
     for p in POINTS:
         apply_full_values(_PointSetter(prob, p, shared, per, prefix, extra), mcfg.point_config(p), stores=True)
@@ -412,7 +504,20 @@ def apply_multipoint_values(prob, mcfg, prefix=""):
 
 
 def build_multipoint_problem(mcfg, driver=True, mda_retry=False):
-    """mda_retry: the points' MDAs warm-start and fall back (rdo_problem.RetryNewton) before declaring failure."""
+    """The set-up multipoint problem of a config.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+    driver : bool
+        Add the optimiser.
+    mda_retry : bool
+        The points' MDAs warm-start and fall back (rdo_problem.RetryNewton) before declaring failure.
+
+    Returns
+    -------
+    om.Problem
+    """
     prob = om.Problem(reports=False)
     build_multipoint_model(prob.model, mcfg, mda_retry=mda_retry)
     if driver:
@@ -423,7 +528,17 @@ def build_multipoint_problem(mcfg, driver=True, mda_retry=False):
 
 
 def initial_values(mcfg):
-    """{design variable: start value} of a multipoint config, as set_dv_defaults and apply_multipoint_values set them."""
+    """Start values of a multipoint config, as set_dv_defaults and apply_multipoint_values set them.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+
+    Returns
+    -------
+    dict
+        {design variable: start value}.
+    """
     base = mcfg.base
     out = {}
     for name in mcfg.shared_dvs:
@@ -438,12 +553,25 @@ def initial_values(mcfg):
 
 
 def run_warm(prob, mcfg_start, dv, run=True):
-    """The warm path to a design (docs/MDA_ROBUSTNESS_PLAN.md): converge at mcfg_start's (unfixed) start design, which
-    converges cold, then set the design variables dv and (run=True) run the model from that converged state.
+    """The warm path to a design: converge at the config's unfixed start design, then move to the target.
 
-    prob is a multipoint problem (build_multipoint_problem) or the robust one (build_robust_multipoint): both promote
-    the design variables at the top level. A cold run_model at a low-speed 2025-26 banner design can diverge; this
-    path cannot be worse. Raises the AnalysisError of the start run (run=False) or of either run."""
+    The start design converges cold. A cold run_model at a low-speed 2025-26 banner design can diverge; this path can't
+    be worse (docs/DECISIONS.md#ff-d5, docs/DECISIONS.md#mr-f2).
+
+    Parameters
+    ----------
+    prob : om.Problem
+        A multipoint problem (build_multipoint_problem) or the robust one (build_robust_multipoint): both promote the
+        design variables at the top level.
+    mcfg_start : MultipointConfig
+        The config whose start design to converge at.
+    dv : dict
+        {design variable: value} of the target.
+    run : bool
+        Run the model at the target as well.
+
+    Raises the AnalysisError of the start run (run=False) or of either run.
+    """
     for k, x in initial_values(mcfg_start).items():
         prob.set_val(k, x)
     prob.run_model()
@@ -454,17 +582,45 @@ def run_warm(prob, mcfg_start, dv, run=True):
 
 
 def design_values(prob, mcfg):
-    """{design variable: value} of a multipoint problem (shared, per point, the ruleset's extras)."""
+    """The design variables of a multipoint problem (shared, per point, the ruleset's extras).
+
+    Parameters
+    ----------
+    prob : om.Problem
+    mcfg : MultipointConfig
+
+    Returns
+    -------
+    dict
+        {design variable: value}.
+    """
     return {k: float(np.ravel(prob.get_val(k))[0]) for k in mcfg.all_dvs()}
 
 
 def m1_check(mcfg, prob):
     """Mission 1 on the final design: M3's prop, battery and throttle, no payload and no pylons, the airframe sized at
-    M2. Returns dict(passed, laps_frac, ThreeLapTime, constraint values)."""
+    M2.
+
+    Passing means the rule (3 laps in the window) and the flight-safety constraints M1_SAFETY. The others, such as
+    v_fit_margin (the light M1 aircraft can outrun the T(v) fit at M3's throttle), are listed but don't fail it. For
+    2025-26, SM above SM_max doesn't fail it either (docs/DECISIONS.md#mr-m1-sm).
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+    prob : om.Problem
+        The run multipoint problem.
+
+    Returns
+    -------
+    dict
+        passed, laps_frac, ThreeLapTime [s], m_total [kg], violated, SM_high, constraints; or passed and error if the
+        MDA fails.
+    """
     from openmdao.core.analysis_error import AnalysisError
 
     cfg = mcfg.point_config("M1")
-    robust = cfg.mda_robust  # RetryNewton robust mode + QuietDirectSolver (docs/MDA_ROBUSTNESS_PLAN.md)
+    robust = cfg.mda_robust  # RetryNewton robust mode + QuietDirectSolver (docs/DECISIONS.md#mr-f1)
     q = om.Problem(reports=False)
     build_full_model(q.model, cfg, sizing="external", stores=mcfg.store_set("M1"), mda_retry=robust)
     q.setup()
@@ -489,13 +645,11 @@ def m1_check(mcfg, prob):
         if (kw.get("lower") is not None and cons[n] < kw["lower"] - 1e-6)
         or (kw.get("upper") is not None and cons[n] > kw["upper"] + 1e-6)
     ]
-    # pass = the rule (3 laps in the window) and the flight-safety constraints; model-validity limits (v_fit_margin:
-    # the light M1 aircraft can outrun the T(v) fit at M3's throttle) and the others are reported, not failed on
     sm_kw = dict(full_constraints(cfg)).get("SM", {})
     sm_high = "SM" in cons and sm_kw.get("upper") is not None and cons["SM"] > sm_kw["upper"] + 1e-6
     safety = set(viol) & M1_SAFETY
     if sm_high and mcfg.mp.kind in M1_SM_ONE_SIDED:
-        safety.discard("SM")  # above SM_max: reported, not failed (below SM_min still fails)
+        safety.discard("SM")  # above SM_max: listed, not failed (below SM_min still fails)
     ok = v("laps_frac") >= 3.0 and not safety
     return dict(
         passed=bool(ok),
@@ -509,6 +663,17 @@ def m1_check(mcfg, prob):
 
 
 def kv_settings_report(mcfg):
+    """Whether Kv is a design variable, and its bounds.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+
+    Returns
+    -------
+    dict
+        kv_dv, bounds.
+    """
     return dict(kv_dv=kv_is_dv(mcfg.base), bounds=mcfg.base.design_variables.get("Kv"))
 
 

@@ -1,19 +1,9 @@
-"""The AirCrafter lap modeller coupled to aero + mass (MDF).
+"""The AirCrafter lap modeller coupled to aero and mass (MDF, multidisciplinary feasible).
 
-    [aero_mass model: airfoil, geometry, MDA{cruise aero, L = W balance, G&G mass}]
-    mid and near-C_L,max aero points -> three-point drag polar CD = CD0 + CD1 CL + k CL^2
-    SmoothLapModel(m = m_total, S, V, polar, CL_max)  -> Lap1time, ThreeLapTime, laps_frac, margins
-
-    minimise   ThreeLapTime  (placeholder objective; year-specific scoring comes later)
-    w.r.t.     b, c, tc_scale, camber_scale, V
-    subject to stall_margin >= 0 (V >= 1.2 V_stall), turn_speed_margin >= 0,
-               Preq <= power_available (fixed PLACEHOLDER: no propulsion model here),
-               energy for 3 laps <= usable energy, spar wall ratio and minimum tube radius,
-               no stalled strip at cruise.
-
-The lap model replaces the static Cd0, e, Clmax and fixed mass of AirCrafter 1.0 with the
-coupled outputs. The propulsion efficiency eta stays the 1.0 assumption (0.7); full_mdo replaces both eta and the
-power limit with the powertrain model.
+Adds mid and near-C_L,max aero points, the three-point polar and SmoothLapModel to the aero_mass model. The lap model
+replaces AirCrafter 1.0's static Cd0, e, Clmax and fixed mass with coupled outputs. The propulsive efficiency stays
+AirCrafter's assumption (0.7), with a fixed power limit; full_mdo replaces both with the powertrain.
+Formulation: docs/modules/problems.md, "lap_mdo".
 """
 
 import openmdao.api as om
@@ -33,6 +23,8 @@ from .wing_aero import Bounds
 
 
 class LapMDOConfig(AeroMassProblemConfig):
+    """The lap_mdo config: aero_mass's fields, plus the lap inputs and the power limit."""
+
     polar_turn_frac: float = Field(0.95, description="polar's high point at C_L = frac * C_L,max")
     eta: float = Field(0.7, description="propulsive efficiency, assumptions_file.m (no propulsion model here)")
     mu_roll: float = Field(0.02, description="rolling friction, assumptions_file.m")
@@ -49,6 +41,13 @@ class LapMDOConfig(AeroMassProblemConfig):
 
 
 def default_lap_dvs():
+    """The default design variables and their bounds.
+
+    Returns
+    -------
+    dict
+        {name: Bounds}: b, c [m], v [m/s], tc_scale, camber_scale.
+    """
     return {
         "b": Bounds(lower=0.9, upper=1.52),
         "c": Bounds(lower=0.15, upper=0.45),
@@ -59,6 +58,13 @@ def default_lap_dvs():
 
 
 def add_lap_model(model, cfg: LapMDOConfig):
+    """Add the polar's aero points, the polar and the lap model to a model (promoted).
+
+    Parameters
+    ----------
+    model : om.Group
+    cfg : LapMDOConfig
+    """
     a = cfg.aero
     model.add_subsystem("turn_alpha", TurnAlpha(frac=cfg.polar_turn_frac))
     model.connect("alpha_cruise", "turn_alpha.alpha_c")
@@ -99,6 +105,18 @@ LAP_INPUTS = ["eta", "mu_roll", "takeoff_distance", "mission_time", "E_avail", "
 
 
 def build_lap_mdo_problem(cfg: LapMDOConfig, driver=True):
+    """The set-up lap_mdo problem.
+
+    Parameters
+    ----------
+    cfg : LapMDOConfig
+    driver : bool
+        Add the optimiser.
+
+    Returns
+    -------
+    om.Problem
+    """
     prob = om.Problem(reports=False)
     m = prob.model
     add_aero_mass_model(m, cfg)
@@ -122,7 +140,16 @@ def build_lap_mdo_problem(cfg: LapMDOConfig, driver=True):
 
 
 def load_lap_mdo_config(path):
-    """Like load_aero_mass_config, for lap_mdo YAMLs."""
+    """Like load_aero_mass_config, for lap_mdo YAMLs.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    LapMDOConfig
+    """
     from pathlib import Path
 
     from ..config.loader import _merge, load_layered, load_yaml
