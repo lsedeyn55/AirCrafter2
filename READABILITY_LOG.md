@@ -1,9 +1,9 @@
 # Readability pass log
 
 ## Status
-- **Current checkpoint:** 2 (problems, robustness, scoring, config, API, CLI).
-- **Last completed module:** checkpoint 1 complete.
-- **Next step:** checkpoint 2 docstrings, then renames and lambdas.
+- **Current checkpoint:** 3 (constraints_view, ui, plotting, vsp, verification).
+- **Last completed module:** checkpoint 2 complete.
+- **Next step:** checkpoint 3, then the wrap-up.
 
 ## Baseline
 - **Base:** branch `placeholder-fixes-2026` at `e958559`, clean. New branch `readability` at `../AirCrafter2-readability` (neither name existed, so no `-2`).
@@ -72,6 +72,12 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 - **Full suite:** 533 passed, 1 skipped, same as the base.
 - **Self-review:** the helper flags scan and history words in new text. It flagged only anchored lines and the path `archive/legacy`. A wrap tool mangled one equation line in `masses.py` (Eq. 27 joined to the note above); found in review, fixed, and the tool now leaves aligned equation blocks alone. I scanned the rest for the same fault and found none.
 
+### Checkpoint 2
+- **Commits:** problems; config, API and CLI; robustness and scoring; renames and lambdas (`full_mdo`, `multipoint`, `api`, `sampling`, score plug-ins).
+- **Proof by type:** docstring commits: AST with docstrings stripped identical. Rename and lambda commit: analysis points and derivatives bit for bit identical (`qc_cp2`), `test_constraints_view` 103 passed, anchors all match, links all resolve.
+- **Full suite:** 533 passed, 1 skipped, same as the base.
+- **Self-review:** coverage of public objects outside checkpoint 3: 0. History words: only `docs/PLAN.md` as the architecture pointer and two false hits ("used to", "no longer" in their plain meanings). No string literal changed (AST check).
+
 ## Renames
 | File | Function | Old -> new |
 |---|---|---|
@@ -85,6 +91,11 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 | `stores.py` | `Stores.compute` | `o`->`opts`, `x`->`vals`, `c`->`cfg` |
 | `stores2026.py` | `Stores2026.compute` | `o`->`opts`, `x`->`vals`, `c`->`cfg` |
 | `stores2026.py` | `PayloadFuselage.compute`, `Packaging2026.compute` | `c`->`cfg` |
+| `problems/full_mdo.py` | `build_full_model` | `a`->`aero_cfg`, `st`->`stab_cfg`, `pr`->`prop_cfg`, `co`->`course_cfg`, `geo`->`geo_cfg` |
+| `problems/full_mdo.py` | `apply_full_values` | `pr`->`prop_cfg`, `st`->`stab_cfg` |
+| `problems/full_mdo.py` | `full_constraints` | `st`->`stab_cfg` |
+| `api.py` | `motor_report` | `pr`->`prop_cfg` |
+| `scoring/dbf2025.py`, `scoring/dbf2026.py` | `parts` | `o`->`opts` |
 
 ## Moved notes: old docstring paragraph -> new location
 ### `mission/smooth_lap.py` (module docstring, 52 lines)
@@ -132,6 +143,24 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 | `analytic.py` | how to subclass | module docstring (shortened) |
 | `geometry/export.py`, `atmosphere.py` | kept | shortened in place |
 
+### Checkpoint 2
+| Module | Old notes | New location |
+|---|---|---|
+| `problems/full_mdo.py` | model structure, design variables, objective | `problems.md` "full_mdo"; `FullMDA`, `build_full_model` docstrings |
+| `problems/multipoint.py` | model tree, design variables, M1 | `problems.md` "multipoint"; `m1_check` docstring (also the deleted "pass =" comment) |
+| `problems/wing_aero.py`, `oval_lap.py`, `aero_mass.py`, `lap_mdo.py` | formulations, trades | `problems.md`; a short form in `wing_aero`'s module docstring |
+| `scoring/dbf2026.py` (30 lines) | rules verbatim, model, `floored` | `scoring.md` "dbf2026": "Verbatim", "Model" |
+| `scoring/dbf2025.py` | rules verbatim, model | `scoring.md` "dbf2025" (already there); `DBF2025.parts`, `__init__` docstrings |
+| `scoring/base.py` | how to write a plug-in, with its example | `docs/how_to_add_a_scoring_plugin.md` (already there); `ScoringPlugin` docstring |
+| `robustness/rdo_problem.py` | model tree, problem statement | `build_robust_problem` docstring; `robustness.md` |
+| `robustness/rdo_problem.py` `RetryNewton` | fallback orders, continuation | short form in the class; `_continuation` docstring; `robustness.md` "MDA failures at the nodes" |
+| `robustness/rdo_multipoint.py` | tree, statement, parameters | `build_robust_multipoint` docstring; module docstring |
+| `robustness/stats.py`, `quadrature.py`, `uncertainty.py` | formulas, rules | `RobustStats`, `Rule`, `udr`, `smolyak`, `sobol`, `Dist`, `screen` docstrings |
+| `robustness/suite.py` | three functions | their docstrings; `robustness.md` section 1 |
+| `robustness/sampling.py` | retry, failures | `_run` docstring; module docstring |
+| `config/layer_files.py` | file format | new `config.md` "Layer files" |
+| `api.py` | what a run writes | module docstring (shortened) |
+
 ## Decisions
 1. **Coverage counts nested functions.** That's the only count that matches the survey's 694. Options: nested excluded (658). Undo: read the figures as such. Nested helpers get one-line docstrings so the public target of 0 holds under this count.
 2. **`evaluate(self, x)` keeps `x`.** It's a method signature defined by `AnalyticComponent` and overridden everywhere, and the base class documents it. `SmoothLapModel._model(self, x, ...)` is private and called positionally, so it became `inputs`, as the prompt's example says.
@@ -142,6 +171,9 @@ A component class has Options, Inputs, Outputs and Symbols sections, and one lin
 8. **Framework hooks don't need a docstring** (`initialize`, `setup`, `compute`, `compute_partials`, `io`, `evaluate`, ...), as the prompt's rule says, unless they do something non-obvious, so the public target of 0 excludes them. The coverage line reports them separately. Options: a one-liner on each, which would only say "declare the options". Undo: remove the exclusion in the coverage script and write them.
 9. **Public count** follows the survey's: no leading underscore, so dunders are private. That gives its total.
 10. **`x` -> `vals` in `compute` methods** where `inputs` is already taken, since `compute`'s `inputs` is the OpenMDAO vector and `x` the plain dict of it. `c` -> `cfg` in the stores, where `c` otherwise reads as the chord. Physics symbols in `evaluate` methods (`na`, `gR`, `ne`, `dne`, `s`) stayed and got a Symbols block, under the prompt's "if unsure, keep and explain".
+11. **`docs/modules/problems.md`, `config.md`, `stores.md`, `constraints.md` are new pages,** as no existing page fitted. Linked from the README's Documentation list at wrap-up.
+12. **Decision entries beyond the prompt's list:** `plan-g22`, `plan-g23` (PLAN has them, the prompt's range stopped at G21), `plan-m1`, `plan-m7`, `plan-t6` (labels the code used), `mr-quiet`, `tc-takeoff`, `r25-multipoint`, `r26-scoring`, `r26-payload`, `r26-banner`, `r26-wind`, `rr-f-build`, `pr-layers` (other plan files, the same pattern).
+13. **Plan-file references in code became `DECISIONS.md` links,** except inside frozen strings. `docs/PLAN.md` stays as a pointer to the architecture in `aircrafter2/__init__.py` and `plotting/xdsm.py`, since that's a live document for it, not a label.
 7. **`# fmt: off` on six statements** (`smooth_lap` x2, `full_mdo` x3, `garcia_gamboa/group.py`), found by a trial format against the anchor list. Other anchored lines kept their matched text; a few changed around it (for example a closing bracket).
 
 ## Skipped or reverted changes
