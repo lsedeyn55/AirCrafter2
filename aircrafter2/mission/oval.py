@@ -1,17 +1,9 @@
-"""Simple oval lap at constant speed (used by the oval_lap problem).
+"""Simple oval lap at constant speed, used by the oval_lap problem.
 
-Two straights of length L_s and two 180-degree level turns at constant speed V and load
-factor n (developed from the LapTime component in archive/legacy/basic_perf.py):
-
-    R     = V^2 / (g sqrt(n^2 - 1))       level coordinated turn radius
-    t_lap = (2 L_s + 2 pi R) / V
-
-The load factor comes from the turn analysis point, n = L_turn / W, smoothly capped at the
-structural limit n_struct (KS-min). Its C_L is limited by the C_L,max margin constraint on the
-turn point, so "the turn radius is set by the C_L margin to C_L,max".
-
-n is floored smoothly just above 1 (1 + softplus(n - 1)), so the radius stays finite even at
-infeasible iterates; feasible designs have n well above 1.
+Two straights and two 180-degree level turns at constant speed. It takes the load factor from the turn analysis point
+(problems/oval_lap.py) and returns the lap time, a teaching and verification case for the coupled aero.
+Developed from the LapTime component in archive/legacy/basic_perf.py.
+Details: docs/modules/mission.md, "Oval".
 """
 
 import numpy as np
@@ -23,7 +15,31 @@ _N_FLOOR_WIDTH = 0.01
 
 
 class LoadFactor(AnalyticComponent):
-    """n = KSmin(L_turn / W, n_struct)."""
+    """Load factor from the turn point, smoothly capped at the structural limit: n = KSmin(L_turn / W, n_struct).
+
+    Partials are analytic.
+
+    Options
+    -------
+    max_mode : "ks" or "hard"
+        Smooth or hard minimum.
+    rho_ks : float
+        Sharpness of the KS (Kreisselmeier-Steinhauser) smooth minimum.
+
+    Inputs
+    ------
+    L_turn [N], W [N], n_struct
+
+    Outputs
+    -------
+    n_aero : L_turn / W
+    n : capped load factor
+
+    Symbols
+    -------
+    L, W : lift and weight at the turn point [N]
+    na, ns : aerodynamic load factor and structural limit
+    """
 
     def initialize(self):
         self.options.declare("max_mode", default="ks", values=["ks", "hard"])
@@ -44,6 +60,27 @@ class LoadFactor(AnalyticComponent):
 
 
 class OvalLapTime(AnalyticComponent):
+    """Lap time of the oval: R = V^2 / (g sqrt(n^2 - 1)), t_lap = (2 L_s + 2 pi R) / V.
+
+    Partials are analytic.
+
+    Inputs
+    ------
+    V [m/s], n, straight_length [m], g [m/s^2]
+
+    Outputs
+    -------
+    turn_radius [m], turn_rate [rad/s], lap_time [s]
+
+    Symbols
+    -------
+    V : flight speed [m/s]
+    n, ne : load factor, and the same floored smoothly just above 1
+    Ls : length of one straight (L_s) [m]
+    R : level coordinated turn radius [m]
+    s : sqrt(ne^2 - 1)
+    """
+
     def io(self):
         ins = {"V": (20.0, "m/s"), "n": (2.0, None), "straight_length": (304.8, "m"), "g": (9.80665, "m/s**2")}
         outs = {"turn_radius": (10.0, "m"), "turn_rate": (1.0, "rad/s"), "lap_time": (30.0, "s")}
@@ -51,6 +88,7 @@ class OvalLapTime(AnalyticComponent):
 
     def evaluate(self, x):
         V, n, Ls, g = x["V"], x["n"], x["straight_length"], x["g"]
+        # floor n just above 1, so the radius stays finite at infeasible iterates; feasible designs have n well above 1
         ne, dne = softplus(n - 1.0, _N_FLOOR_WIDTH)
         ne = 1.0 + ne
         s = np.sqrt(ne**2 - 1.0)

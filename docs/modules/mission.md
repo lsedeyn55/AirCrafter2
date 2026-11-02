@@ -15,9 +15,42 @@ A faithful port of `performance_modeller.m`:
 
 NaN flags are replaced by continuous margins (`stall_margin`, `turn_speed_margin`).
 
-`matlab_compat=True` reproduces the MATLAB exactly. That includes its rounded V_stall (PLAN M1) and its unflagged
-NaN when a turn is entered below the deceleration table (M7). The port matches `performance_modeller.m`, run in
-MATLAB R2026a, to ~1e-8 (`docs/problems/lap_mdo.md`, `verification/matlab/run_reference.m`).
+`matlab_compat=True` reproduces the MATLAB exactly. That includes its rounded V_stall
+([plan-m1](../DECISIONS.md#plan-m1)) and its unflagged NaN when a turn is entered below the deceleration table
+([plan-m7](../DECISIONS.md#plan-m7)). The port matches `performance_modeller.m`, run in MATLAB R2026a, to ~1e-8
+(`docs/problems/lap_mdo.md`, `verification/matlab/run_reference.m`).
+
+**Source files:** `performance_modeller.m`, `static_thrust_calculator.m`, `leg_calc_straight.m` and `leg_calc_turn.m`, in
+`THESIS/AirCrafter/`. The method is Kallarackel (2025), Ch. 3:
+1. Take-off static thrust required for a given ground roll (Sec. 3.2.2).
+2. Cruise power required from the drag polar at constant power (Sec. 3.2.3).
+3. Constant-power acceleration and deceleration lookup tables, Euler-integrating velocity against time, then integrating
+   to get distance against time (Sec. 3.2.3).
+4. A turn-rate-against-speed table, stall-limited up to the manoeuvre speed and capped at the structural (load-factor)
+   limit above it (Sec. 3.2.3).
+5. A lap assembled leg by leg from Table 3.5: straights use the acceleration table, turns use the deceleration and
+   turn-rate tables. This gives the lap 1 time, the "other lap" time and the 3-lap time.
+6. The lap count achievable within the mission time and energy budget.
+
+**Deliberate deviations from the MATLAB, for OpenMDAO:**
+- **Margins instead of a NaN flag.** The MATLAB screens infeasible points by setting `output.NaNflag = true` and returning
+  early (for example cruise too close to stall, or decelerating below stall in the 360° turn). Hard branches and NaNs
+  suit its brute-force grid search (`AirCrafter.m`), but give a gradient-based driver such as SLSQP nothing to climb. So
+  this port always returns a value and reports two margins, feasible when ≥ 0: `stall_margin` = V − 1.2 V_stall and
+  `turn_speed_margin` = v after the 360° turn − V_stall. Use them as constraints in place of the NaN flag.
+- **No banner block.** The banner-mass and payload-fraction block in `performance_modeller.m` is specific to a past
+  competition, not part of the general method, so it's left out. Add a mission-specific mass term to `design["m"]` if the
+  rules need one.
+
+**Reproduced as they are:**
+- "Lap 1 Leg 1" (the take-off ground roll) is listed in Table 3.5, but its contribution to `Lap1time` is commented out
+  (`% Lap1time = Lap1time + t`), so take-off time is never added. The smooth model has a switch for it
+  (`course.takeoff.in_mission_time`, option `takeoff`, off by default; [tc-takeoff](../DECISIONS.md#tc-takeoff)).
+- `Tstatic` is computed but otherwise unused downstream.
+
+**`lapCount` is a step function of the inputs** (`_lap_count`). Its finite-difference partials are mostly zero, with
+occasional large jumps. Don't use it as a gradient-based objective or constraint: use it for reporting, or drive it with
+a derivative-free driver (such as `om.SimpleGADriver`). For gradient-based optimisation, use the continuous `ThreeLapTime`.
 
 ## Smooth twin (`smooth_lap.py`)
 
@@ -180,7 +213,9 @@ Lengths are in feet and angles in degrees, as the rules write them.
 | `dbf_2025_360_mid` | 500 head, 180, 500 tail, 360, 500 tail, 180, 500 head | Rules_2025 Figure 1 (p. 3): the 360 halfway down the back straight |
 | `oval` | 500 head, 180, 1000 tail, 180, 500 head | the same markers (500 ft from the start line, p. 18), no 360 |
 
-**Validation:**
+A preset file holds `name`, `citation`, `legs` and an optional `lap1_legs`. Legs given inline override the preset.
+
+**Validation (`check_course`):**
 - **Errors:**
   - an empty lap;
   - a lap with no straight;
@@ -188,7 +223,7 @@ Lengths are in feet and angles in degrees, as the rules write them.
   - with take-off on, a lap 1 that does not start with a head-wind straight.
 - **Warnings only,** because the lap model does not need a closed course:
   - total turning that is not a non-zero multiple of 360°;
-  - head-wind and tail-wind distances that differ.
+  - head-wind and tail-wind distances that differ (the lap wouldn't end at the start line).
 
 **Other rules:**
 - `turn_speed_margin` is unchanged: the speed after the first 360° turn, or the lap-1 exit speed if there is none.
@@ -216,4 +251,10 @@ roll its own row. `api.run_design` writes it to `summary.md` and `results.json` 
 
 ## Oval (`oval.py`, used by `oval_lap`)
 
-Constant-speed oval: R = V²/(g√(n² − 1)), lap = (2L_s + 2πR)/V. Kept as a teaching and verification case.
+Constant-speed oval: R = V²/(g√(n² − 1)), lap = (2L_s + 2πR)/V, with two straights of length L_s and two 180° level
+turns at constant speed V. Kept as a teaching and verification case.
+
+The load factor comes from the turn analysis point, n = L_turn / W, smoothly capped at the structural limit n_struct
+(KS-min). Its C_L is limited by the C_L,max margin constraint on the turn point, so the turn radius is set by the C_L
+margin to C_L,max. n is floored smoothly just above 1 (1 + softplus(n − 1)), so the radius stays finite even at infeasible
+iterates; feasible designs have n well above 1.

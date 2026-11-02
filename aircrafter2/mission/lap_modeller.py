@@ -1,64 +1,11 @@
-"""AirCrafter DBF lap-performance modeller, ported to Python/OpenMDAO.
+"""Reference port of the AirCrafter 1.0 lap modeller: tables and loops, as in the MATLAB.
 
-This is a from-scratch Python re-implementation of the methodology described
-in Joshua Kallarackel's thesis, Chapter 3 ("AirCrafter Performance
-Modeller"), and of the MATLAB source it documents:
+The Python version of Kallarackel (2025), Ch. 3, and of performance_modeller.m, with lookup tables and while loops. It
+isn't what the optimisation problems use: it's the reference that mission/smooth_lap.py is checked against, and the
+code check against the MATLAB (lap_mdo). It has no inputs from other disciplines beyond its design dict.
 
-    THESIS/AirCrafter/performance_modeller.m
-    THESIS/AirCrafter/static_thrust_calculator.m
-    THESIS/AirCrafter/leg_calc_straight.m
-    THESIS/AirCrafter/leg_calc_turn.m
-
-The physics is unchanged from the original:
-  1. Take-off static thrust required for a given ground roll (Sec 3.2.2).
-  2. Cruise power required from the drag polar at constant power (3.2.3).
-  3. Constant-power acceleration/deceleration lookup tables built by Euler-
-     integrating velocity vs time, then integrating to get distance vs time
-     (3.2.3).
-  4. A turn-rate-vs-speed table, stall-limited up to the manoeuvre speed and
-     capped at the structural (load-factor) limit above it (3.2.3).
-  5. A lap assembled leg-by-leg from Table 3.5 (straights use the
-     accel table, turns use the decel + turn-rate tables), giving Lap 1 time,
-     "other lap" time, and 3-lap time.
-  6. Lap count achievable within the mission time/energy budget.
-
-Deliberate deviations from the MATLAB, for OpenMDAO use
----------------------------------------------------------
-The MATLAB version screens infeasible design points by setting
-`output.NaNflag = true` and returning early (e.g. cruise speed too close to
-stall, or the aircraft decelerating below stall speed in the 360 turn). Hard
-branches/NaNs are fine for the original's brute-force grid search over design
-points (see AirCrafter.m), but they give a gradient-based OpenMDAO driver
-(e.g. SLSQP) nothing to climb. Instead, this module always returns a value
-and additionally reports continuous *margins*:
-
-  - `stall_margin`      = V - 1.2 * Vstall        (>= 0 is feasible)
-  - `turn_speed_margin` = v_after_360turn - Vstall (>= 0 is feasible)
-
-Use these as `>= 0` constraints in the optimisation problem in place of the
-MATLAB NaNflag check.
-
-The banner-mass/payload-fraction block in performance_modeller.m (specific
-to a banner-carrying mission from a past competition year) has been left
-out, since it is competition-rule-specific and not part of the general
-methodology. Add a mission-specific mass term to `design["m"]` yourself if
-your current rules need it.
-
-Note also that in the original MATLAB, "Lap 1 Leg 1" (take-off ground roll)
-is listed in Table 3.5 but its contribution to Lap1time is commented out
-(`% Lap1time = Lap1time + t`) -- take-off time is never actually added.
-`Tstatic` is computed but otherwise unused downstream. That gap is
-reproduced as-is here (this port stays the MATLAB reference). The smooth
-lap model used by the optimisation problems has a switch for it:
-`course.takeoff.in_mission_time` (smooth_lap.py, option `takeoff`; off by
-default; docs/TAKEOFF_COURSE_PLAN.md).
-
-`lapCount` is inherently a step function of the inputs (see `_lap_count`)
-and its finite-difference partials will mostly be zero with occasional large
-jumps. Don't use it as a gradient-based objective/constraint; use it for
-reporting, or drive it with a derivative-free OpenMDAO driver (e.g.
-`om.SimpleGADriver`). For gradient-based optimisation, target the continuous
-`ThreeLapTime` output instead.
+Instead of the MATLAB's NaN flag it returns continuous margins, `stall_margin` and `turn_speed_margin`.
+Details, deviations from the MATLAB and the lapCount caveat: docs/modules/mission.md, "Reference port".
 """
 
 import numpy as np
@@ -83,8 +30,19 @@ DEFAULT_ASSUMPTIONS = dict(
 def isa_density(altitude, T0=288.15, p0=101325.0, lapse_rate=0.0065, R=287.05287, g0=9.80665):
     """International Standard Atmosphere density, troposphere model (< 11 km).
 
-    Equivalent to MATLAB's `atmosisa(altitude, "extended", "on")` for the
-    altitudes relevant to this modeller.
+    Equivalent to MATLAB's `atmosisa(altitude, "extended", "on")` for the altitudes relevant to this modeller.
+
+    Parameters
+    ----------
+    altitude : float
+        Height above sea level [m].
+    T0, p0, lapse_rate, R, g0 : float
+        Sea-level temperature [K] and pressure [Pa], lapse rate [K/m], gas constant [J/(kg K)], gravity [m/s^2].
+
+    Returns
+    -------
+    float
+        Air density [kg/m^3].
     """
     T = T0 - lapse_rate * altitude
     p = p0 * (T / T0) ** (g0 / (lapse_rate * R))
@@ -109,7 +67,28 @@ def _interp_monotonic(x, xp, fp):
 
 
 def static_thrust_calculator(m, b, AR, sg, altitude, Cd0, Clto, e, mu, g=G):
-    """Required static thrust for a given ground roll (Eq. 3.1-3.3)."""
+    """Required static thrust for a given ground roll (Kallarackel 2025, Eqs. 3.1-3.3).
+
+    Parameters
+    ----------
+    m : float
+        Mass [kg].
+    b, AR : float
+        Span [m] and aspect ratio.
+    sg : float
+        Ground roll distance [m].
+    altitude : float
+        Site altitude [m].
+    Cd0, Clto, e, mu : float
+        Zero-lift drag, take-off lift coefficient, Oswald efficiency and rolling friction.
+    g : float
+        Gravity [m/s^2].
+
+    Returns
+    -------
+    float
+        Static thrust [N].
+    """
     rho = isa_density(altitude)
     W = m * g
     S = b**2 / AR
@@ -199,6 +178,7 @@ def _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n, g=G, v_broad_start=No
     """Turn-rate vs speed, stall-limited then capped at the structural limit (Eq 3.10-3.12)."""
 
     def turn_rate(v):
+        """Stall-limited turn rate at speed v (Eq. 3.10) [rad/s]."""
         term = ((0.5 * rho * Clmax * S) / W) ** 2 * v**2 - 1.0 / v**2
         return g * np.sqrt(np.abs(term))
 
@@ -227,8 +207,7 @@ def _build_turn_rate_table(Vstall, V, W, rho, Clmax, S, n, g=G, v_broad_start=No
 
 
 def _interp1(x, xp, fp, matlab_compat):
-    """Linear interpolation. matlab_compat: NaN outside [min(xp), max(xp)] like MATLAB's interp1;
-    otherwise numpy's clamping."""
+    """Linear interpolation. matlab_compat: NaN outside [min(xp), max(xp)] like MATLAB's interp1; otherwise clamped."""
     if matlab_compat:
         lo, hi = np.min(xp), np.max(xp)
         if not (lo <= x <= hi):
@@ -237,7 +216,24 @@ def _interp1(x, xp, fp, matlab_compat):
 
 
 def leg_calc_straight(v_time, s_time, t_time, V1, leg_dist, matlab_compat=False):
-    """Exit velocity + time to cover leg_dist, entering a straight at V1."""
+    """Exit speed and time for a straight of leg_dist, entering at V1.
+
+    Parameters
+    ----------
+    v_time, s_time, t_time : array
+        The acceleration table: speed [m/s], distance [m], time [s].
+    V1 : float
+        Entry speed [m/s].
+    leg_dist : float
+        Length of the leg [m].
+    matlab_compat : bool
+        NaN outside the table, like MATLAB's interp1.
+
+    Returns
+    -------
+    (float, float)
+        Exit speed [m/s] and leg time [s].
+    """
     initial_s = _interp1(V1, v_time, s_time, matlab_compat)
     initial_t = _interp1(V1, v_time, t_time, matlab_compat)
     dist = initial_s + leg_dist
@@ -247,12 +243,29 @@ def leg_calc_straight(v_time, s_time, t_time, V1, leg_dist, matlab_compat=False)
 
 
 def leg_calc_turn(v_time_decel, omega_vs_v, t_time_decel, V1, turn_angle, v_for_omega, matlab_compat=False):
-    """Exit velocity + time to complete turn_angle radians, entering at V1.
+    """Exit speed and time to complete turn_angle, entering at V1.
 
-    If V1 is below the slowest speed in the deceleration table (where the C_L,max-drag
-    deceleration ends), the aircraft does not slow down in the turn: v = V1. MATLAB's interp1
-    returns NaN there instead, and nothing flags it (PLAN §8, M7); matlab_compat reproduces that.
-    The original port clamped to the table edge, which spuriously sped the aircraft up.
+    If V1 is below the slowest speed in the deceleration table (where the C_L,max-drag deceleration ends), the aircraft
+    doesn't slow down in the turn: v = V1. MATLAB's interp1 returns NaN there, and nothing flags it; matlab_compat
+    reproduces that (docs/DECISIONS.md#plan-m7). Clamping to the table edge would speed the aircraft up.
+
+    Parameters
+    ----------
+    v_time_decel, t_time_decel : array or None
+        The deceleration table: speed [m/s], time [s]. None if the aircraft never decelerates.
+    omega_vs_v, v_for_omega : array
+        The turn-rate table: rate [rad/s] at speed [m/s].
+    V1 : float
+        Entry speed [m/s].
+    turn_angle : float
+        Heading change [rad].
+    matlab_compat : bool
+        NaN outside the tables, like MATLAB's interp1.
+
+    Returns
+    -------
+    (float, float)
+        Exit speed [m/s] and turn time [s].
     """
     omega = _interp1(V1, v_for_omega, omega_vs_v, matlab_compat)
     t = turn_angle / omega
@@ -276,9 +289,11 @@ def _lap_performance(Vstall, accel_tables, decel_tables, turn_tables, matlab_com
     straight500 = 500 * FT2M
 
     def straight(v0, dist):
+        """One straight leg of the tables' aircraft."""
         return leg_calc_straight(v_time, s_time, t_time, v0, dist, matlab_compat)
 
     def turn(v0, angle):
+        """One turn leg of the tables' aircraft."""
         return leg_calc_turn(v_time_decel, omega_turn, t_time_decel, v0, angle, v_turn, matlab_compat)
 
     lap1 = 0.0
@@ -315,6 +330,7 @@ def _lap_performance(Vstall, accel_tables, decel_tables, turn_tables, matlab_com
 
 
 def _lap_count(Preq, E, mission_time, lap1_time, other_lap_time, pilot_reaction_time=3.0, max_laps=1000):
+    """Whole laps within the time and energy budget: the MATLAB's counting loop."""
     lap_count = 1
     flight_time = lap1_time + pilot_reaction_time
     while flight_time < mission_time and lap_count < max_laps:
@@ -333,16 +349,26 @@ def _matlab_round(x):
 
 
 def performance_modeller(assumptions, design, matlab_compat=False):
-    """Full port of performance_modeller.m. See module docstring for outputs.
+    """Full port of performance_modeller.m: one design's lap times, lap count and margins.
 
-    matlab_compat=True reproduces the MATLAB exactly where it differs from the cleaned-up port:
-    the stall speed is rounded to an integer, Vstall = round(sqrt(W / (0.5 rho Clmax S))), and
-    that rounded value drives the stall check (1.2 round(Vstall) >= V), the lookup tables and the
-    Vstall output (PLAN §8, M1). Use it only for the code check against MATLAB (lap_mdo report).
+    matlab_compat=True reproduces the MATLAB exactly where it differs: the stall speed is rounded to an integer,
+    Vstall = round(sqrt(W / (0.5 rho Clmax S))), and that value drives the stall check (1.2 round(Vstall) >= V), the
+    lookup tables and the Vstall output (docs/DECISIONS.md#plan-m1). Use it only for the code check against the MATLAB.
 
-    `assumptions`: dict with Cd0, Clmax, Clto, e, n, mu, eta, E, payload_fraction.
-    `design`: dict with m [kg], b [m], AR, V [m/s], altitude [m],
-              takeoff_distance [m], mission_time [s], battery_fraction.
+    Parameters
+    ----------
+    assumptions : dict
+        Cd0, Clmax, Clto, e, n, mu, eta, E [J], payload_fraction.
+    design : dict
+        m [kg], b [m], AR, V [m/s], altitude [m], takeoff_distance [m], mission_time [s], battery_fraction.
+    matlab_compat : bool
+        See above.
+
+    Returns
+    -------
+    dict
+        Tstatic [N], Preq [W], Vstall [m/s], Lap1time, otherLapTime, ThreeLapTime [s], lapCount, stall_margin,
+        turn_speed_margin [m/s].
     """
     altitude = design["altitude"]
     rho = isa_density(altitude)
@@ -408,16 +434,32 @@ def performance_modeller(assumptions, design, matlab_compat=False):
 class AirCrafterPerformance(om.ExplicitComponent):
     """OpenMDAO wrapper around `performance_modeller`.
 
-    Assumptions (Cd0, Clmax, Clto, e, n, mu, eta, E, payload_fraction) are
-    fixed physical/competition constants, so they are a component `option`
-    rather than an OpenMDAO input -- pass a dict overriding any of
-    DEFAULT_ASSUMPTIONS at instantiation, e.g.:
+    Partials are finite difference, not complex step, because the algorithm is a while loop and linear interpolation,
+    not a complex-safe expression. lapCount has no partials, because it's a step function.
 
-        AirCrafterPerformance(assumptions={"Clmax": 1.3, "n": 4})
+    Options
+    -------
+    assumptions : dict
+        Overrides of DEFAULT_ASSUMPTIONS, e.g. AirCrafterPerformance(assumptions={"Clmax": 1.3, "n": 4}). They're fixed
+        constants of the physics and the competition, so they're an option, not an input.
 
-    FD partials are used (not complex-step) because the underlying algorithm
-    is a while-loop + linear interpolation, not a complex-safe analytic
-    expression.
+    Inputs
+    ------
+    m [kg], b [m], AR, V [m/s], altitude [m], takeoff_distance [m], mission_time [s], battery_fraction
+
+    Outputs
+    -------
+    Tstatic [N], Preq [W], Vstall [m/s], Lap1time, otherLapTime, ThreeLapTime [s], lapCount, stall_margin,
+    turn_speed_margin [m/s]
+
+    Symbols
+    -------
+    Cd0, e : zero-lift drag and Oswald efficiency (k = 1 / (pi AR e))
+    Clmax, Clto : maximum and take-off lift coefficients
+    n : structural load factor limit
+    mu : rolling friction coefficient
+    eta : propulsive efficiency, P = D V / eta (Eq. 3.4)
+    E : usable battery energy [J]
     """
 
     def initialize(self):
@@ -464,8 +506,6 @@ class AirCrafterPerformance(om.ExplicitComponent):
             step=1e-4,
             form="forward",
         )
-        # lapCount is a step function -- report it, but don't ask the driver
-        # to differentiate it (partials left at the zero default).
 
     def compute(self, inputs, outputs):
         design = dict(

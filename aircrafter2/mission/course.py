@@ -1,22 +1,10 @@
-"""The flight course and the take-off switch: config data model, presets and validation (docs/modules/mission.md).
+"""The flight course and the take-off switch: config data model, presets and validation.
 
-A course is one lap from the start line, as an ordered list of legs:
-    straight   length_ft > 0 and the along-track wind on it: head, tail or none (crosswind: no along-track component)
-    turn       angle_deg > 0 (turns ignore the wind unless turn_drift is on)
-Lengths in feet and angles in degrees, as the rules write them. ``lap1_legs`` optionally gives a different first lap.
-
-Presets are YAML files in configs/courses/ (``name``, ``citation``, ``legs``, optional ``lap1_legs``). The default,
-``dbf_2025``, is Table 3.5 of Kallarackel (2025), the course the lap model always flew: legs given inline override the
-preset.
-
-Validation (``check_course``):
-    errors     an empty lap, a lap with no straight, a length or angle <= 0, and, with take-off in the mission time,
-               a lap 1 that does not start with a head-wind straight (the ground roll is into the wind)
-    warnings   total turning that is not a multiple of 360 deg, and head-wind and tail-wind distances that differ (the
-               lap would not end at the start line). The lap model does not need a closed course, so these only warn.
-
-The take-off block (``TakeoffConfig``) is the switch of docs/TAKEOFF_COURSE_PLAN.md: off by default, which is the
-original model (lap 1 starts in the air at V_stall).
+A course is one lap from the start line, as an ordered list of straights and turns, in feet and degrees as the rules
+write them. CourseConfig is part of the problem config, and mission/smooth_lap.py flies the legs it produces. Presets
+are YAML files in configs/courses/; the default, dbf_2025, is Kallarackel (2025) Table 3.5. The take-off switch is off
+by default, which is the original model (docs/DECISIONS.md#tc-takeoff).
+Details: docs/modules/mission.md, "Course".
 """
 
 import warnings
@@ -33,6 +21,9 @@ LENGTH_TOL_FT = 1e-6
 
 
 class Leg(BaseModel):
+    """One leg of a course: a straight (length_ft and wind) or a turn (angle_deg). Turns ignore the wind unless
+    turn_drift is on."""
+
     model_config = ConfigDict(extra="forbid")
     kind: Literal["straight", "turn"]
     length_ft: Optional[float] = Field(None, description="straights: ground length (ft)")
@@ -40,10 +31,13 @@ class Leg(BaseModel):
     wind: Literal["head", "tail", "none"] = Field("none", description="straights: along-track wind direction")
 
     def size(self):
+        """The leg's length (ft) or angle (deg)."""
         return self.length_ft if self.kind == "straight" else self.angle_deg
 
 
 class TakeoffConfig(BaseModel):
+    """The take-off switch and its inputs: see docs/modules/mission.md, "Take-off"."""
+
     model_config = ConfigDict(extra="forbid")
     in_mission_time: bool = Field(
         False,
@@ -69,6 +63,8 @@ class TakeoffConfig(BaseModel):
 
 
 class CourseConfig(BaseModel):
+    """A course: a preset or inline legs, an optional different first lap, the reaction time and the switches."""
+
     model_config = ConfigDict(extra="forbid")
     preset: Optional[str] = Field("dbf_2025", description="a preset in configs/courses/ (name or path)")
     legs: Optional[list[Leg]] = Field(None, description="one lap from the start line, in order (overrides the preset)")
@@ -142,6 +138,7 @@ class CourseConfig(BaseModel):
 
 
 def preset_path(name):
+    """The path of a preset: the name itself if it's an existing YAML file, else configs/courses/<name>.yaml."""
     p = Path(name)
     if p.suffix in (".yaml", ".yml") and p.exists():
         return p
@@ -149,10 +146,12 @@ def preset_path(name):
 
 
 def list_presets():
+    """The names of the presets in configs/courses/."""
     return sorted(p.stem for p in COURSES_DIR.glob("*.yaml"))
 
 
 def load_preset_data(name):
+    """A preset's YAML data as a dict. Raises ValueError if it doesn't exist."""
     from ..config.loader import load_yaml
 
     path = preset_path(name)
@@ -162,6 +161,7 @@ def load_preset_data(name):
 
 
 def load_preset(name):
+    """(lap-1 legs, lap-2+ legs) of a preset, as lists of Leg."""
     data = load_preset_data(name)
     other = [Leg(**leg) for leg in data["legs"]]
     lap1 = [Leg(**leg) for leg in data["lap1_legs"]] if data.get("lap1_legs") else other
@@ -169,7 +169,24 @@ def load_preset(name):
 
 
 def save_preset(name, legs, lap1_legs=None, citation="user-defined course", directory=None):
-    """Write configs/courses/<name>.yaml; refuses the shipped presets and names that are not plain identifiers."""
+    """Write configs/courses/<name>.yaml.
+
+    Parameters
+    ----------
+    name : str
+        Preset name: letters, digits, '_' and '-' only, and not a shipped preset.
+    legs, lap1_legs : list of Leg or dict
+        One lap from the start line, and an optional different first lap.
+    citation : str
+        Where the course comes from.
+    directory : path, optional
+        Another folder to write to.
+
+    Returns
+    -------
+    Path
+        The file written. Raises ValueError for a bad name or an invalid course.
+    """
     import yaml
 
     if name in SHIPPED_PRESETS:
@@ -190,6 +207,7 @@ def save_preset(name, legs, lap1_legs=None, citation="user-defined course", dire
 
 
 def _check_lap(legs, label):
+    """(errors, warnings) of one lap."""
     errors, warns = [], []
     if not legs:
         return [f"{label} is empty"], []
@@ -217,7 +235,25 @@ def _check_lap(legs, label):
 
 
 def check_course(lap1, other, takeoff_on=False):
-    """(errors, warnings) of a course given as lists of Leg."""
+    """Validate a course.
+
+    Errors: an empty lap, a lap with no straight, a length or angle <= 0, and, with take-off in the mission time, a lap
+    1 that doesn't start with a head-wind straight (the ground roll is into the wind). Warnings: total turning that
+    isn't a multiple of 360 deg, and head-wind and tail-wind distances that differ (the lap wouldn't end at the start
+    line). The lap model doesn't need a closed course, so these only warn.
+
+    Parameters
+    ----------
+    lap1, other : list of Leg
+        Lap 1 and later laps.
+    takeoff_on : bool
+        Take-off in the mission time.
+
+    Returns
+    -------
+    (list of str, list of str)
+        Errors and warnings.
+    """
     errors, warns = _check_lap(other, "lap")
     if lap1 is not other and lap1 != other:
         e1, w1 = _check_lap(lap1, "lap 1")
@@ -242,10 +278,12 @@ def lap_legs(legs):
 
 
 def lap_length_ft(legs):
+    """Total length of the straights [ft]."""
     return float(sum(leg.length_ft for leg in legs if leg.kind == "straight"))
 
 
 def total_turning_deg(legs):
+    """Total heading change of the turns [deg]."""
     return float(sum(leg.angle_deg for leg in legs if leg.kind == "turn"))
 
 
@@ -264,10 +302,25 @@ def rows_from_legs(legs):
 
 
 def legs_from_rows(rows, label="lap"):
-    """(legs, errors) from leg-table rows, sorted by their order column (ties keep the table order); rows without a
-    kind are skipped. A missing length or angle is an error, as is a row that does not make a Leg."""
+    """Legs from the UI's leg-table rows, sorted by their order column (ties keep the table order).
+
+    Rows without a kind are skipped. A missing length or angle is an error, as is a row that doesn't make a Leg.
+
+    Parameters
+    ----------
+    rows : list of dict
+        order, kind, length_ft, angle_deg, wind.
+    label : str
+        Name of the lap in error messages.
+
+    Returns
+    -------
+    (list of Leg, list of str)
+        The legs and the errors.
+    """
 
     def num(x):
+        """A table cell as a float, or None if it's empty or not a number."""
         try:
             x = float(x)
         except TypeError, ValueError:
