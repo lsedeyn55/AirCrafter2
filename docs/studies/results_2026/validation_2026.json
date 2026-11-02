@@ -1,8 +1,8 @@
 {
- "git": "0f27643-dirty",
+ "git": "15f1dcc",
  "variants": {
   "loo": {
-   "git": "0f27643",
+   "git": "4061c67",
    "config": "configs/humpback_2026.yaml",
    "mass": "loo",
    "mass_label": "USYD factors without Humpback (out-of-sample)",
@@ -856,7 +856,7 @@
    }
   },
   "gg": {
-   "git": "0f27643-dirty",
+   "git": "4061c67",
    "config": "configs/humpback_2026.yaml",
    "mass": "gg",
    "mass_label": "G&G factors (uncalibrated)",
@@ -1710,7 +1710,7 @@
    }
   },
   "cal": {
-   "git": "0f27643-dirty",
+   "git": "4061c67",
    "config": "configs/humpback_2026.yaml",
    "mass": "cal",
    "mass_label": "USYD factors (calibrated, in-sample)",
@@ -2653,14 +2653,15 @@
     "Kv": 270.0,
     "throttle": 1.0,
     "converged": true,
-    "time": 4.323167825999917,
+    "time": 4.119513397999981,
     "M2": {
      "v": 37.610984741369464,
      "v_fit_max": 40.700350908000004,
      "v_fit_margin": 3.0893661666305405,
      "I_static": 48.423720344940385,
      "rpm_margin": 663.8355424539113,
-     "laps_frac": 9.704946744940619
+     "laps_frac": 9.704946744940619,
+     "stall_margin": 20.908043821964213
     },
     "M3": {
      "v": 24.2721817200162,
@@ -2668,13 +2669,21 @@
      "v_fit_margin": 23.330161886378725,
      "I_static": 55.25981160415006,
      "rpm_margin": 1237.1843551084003,
-     "laps_frac": 4.531521027764066
+     "laps_frac": 4.531521027764066,
+     "stall_margin": 10.357602712026232
     }
    },
    {
     "props": "19x10E/19x12E",
     "Kv": 200.0,
     "throttle": 0.5,
+    "converged": false,
+    "error": "Solver 'NL: Newton' on system 'points.M3.mda': residuals contain 'inf' or 'NaN' after 21 iterations."
+   },
+   {
+    "props": "19x10E/19x12E",
+    "Kv": 200.0,
+    "throttle": 1.0,
     "converged": false,
     "error": "Solver 'NL: Newton' on system 'points.M3.mda': residuals contain 'inf' or 'NaN' after 21 iterations."
    },
@@ -2687,24 +2696,18 @@
    },
    {
     "props": "19x10E/19x12E",
-    "Kv": 200.0,
-    "throttle": 1.0,
-    "converged": false,
-    "error": "Solver 'NL: Newton' on system 'points.M3.mda': residuals contain 'inf' or 'NaN' after 21 iterations."
-   },
-   {
-    "props": "19x10E/19x12E",
     "Kv": 270.0,
     "throttle": 1.0,
     "converged": true,
-    "time": 4.434291434001352,
+    "time": 4.103162267005246,
     "M2": {
      "v": 38.242066441522255,
      "v_fit_max": 41.111114932800014,
      "v_fit_margin": 2.869048491277759,
      "I_static": 57.640713036256784,
      "rpm_margin": 262.42167510285253,
-     "laps_frac": 8.908844108213783
+     "laps_frac": 8.908844108213783,
+     "stall_margin": 21.56088696310456
     },
     "M3": {
      "v": 25.357688069321046,
@@ -2712,29 +2715,49 @@
      "v_fit_margin": 22.477036123872463,
      "I_static": 65.70641052270024,
      "rpm_margin": 918.2268172166587,
-     "laps_frac": 4.164361063332803
+     "laps_frac": 4.164361063332803,
+     "stall_margin": 11.484011243983643
     }
    },
    {
     "props": "19x10E/19x12E",
     "Kv": 270.0,
     "throttle": 0.5,
-    "converged": false,
-    "error": "Solver 'NL: Newton' on system 'points.M2.mda': residuals contain 'inf' or 'NaN' after 24 iterations."
+    "converged": true,
+    "time": 30.506379599006323,
+    "M2": {
+     "v": 16.01321246960838,
+     "v_fit_max": 20.555557466400007,
+     "v_fit_margin": 4.542344996791627,
+     "I_static": 9.487564554746388,
+     "rpm_margin": 4001.5479503390643,
+     "laps_frac": 3.6484348387042087,
+     "stall_margin": -1.606873185909084
+    },
+    "M3": {
+     "v": 12.543874362514307,
+     "v_fit_max": 23.9173620966,
+     "v_fit_margin": 11.373487734085694,
+     "I_static": 10.913617228042668,
+     "rpm_margin": 4064.123574159399,
+     "laps_frac": 3.6013842864423746,
+     "stall_margin": -1.7412092118143505
+    }
    },
    {
     "props": "19x12E/22x12E",
     "Kv": 200.0,
     "throttle": 1.0,
     "converged": true,
-    "time": 4.283265154999754,
+    "time": 4.36061819299357,
     "M2": {
      "v": 32.65994817151776,
      "v_fit_max": 35.433129032000004,
      "v_fit_margin": 2.773180860482242,
      "I_static": 30.32219457986934,
      "rpm_margin": 2177.401606174277,
-     "laps_frac": 9.25703455944473
+     "laps_frac": 9.25703455944473,
+     "stall_margin": 15.771817526651823
     },
     "M3": {
      "v": 21.996310405974835,
@@ -2742,7 +2765,8 @@
      "v_fit_margin": 14.788890090025166,
      "I_static": 47.04316157259008,
      "rpm_margin": 1499.5745533543195,
-     "laps_frac": 5.633431536734756
+     "laps_frac": 5.633431536734756,
+     "stall_margin": 7.99631010819831
     }
    },
    {
@@ -2755,16 +2779,42 @@
    {
     "props": "19x12E/22x12E",
     "Kv": 270.0,
+    "throttle": 0.5,
+    "converged": true,
+    "time": 29.159482429997297,
+    "M2": {
+     "v": 20.475902132385354,
+     "v_fit_max": 23.9173620966,
+     "v_fit_margin": 3.4414599642146477,
+     "I_static": 10.913617228042668,
+     "rpm_margin": 4003.3393675949096,
+     "laps_frac": 5.720141098610149,
+     "stall_margin": 3.0383520670356745
+    },
+    "M3": {
+     "v": 14.97736827259461,
+     "v_fit_max": 24.8300103348,
+     "v_fit_margin": 9.85264206220539,
+     "I_static": 17.00446851431672,
+     "rpm_margin": 3049.9696324408173,
+     "laps_frac": 5.1071746977931864,
+     "stall_margin": 0.7586699366702252
+    }
+   },
+   {
+    "props": "19x12E/22x12E",
+    "Kv": 270.0,
     "throttle": 1.0,
     "converged": true,
-    "time": 3.8861903679990064,
+    "time": 4.0548778800002765,
     "M2": {
      "v": 43.720283809997326,
      "v_fit_max": 47.83472419319351,
      "v_fit_margin": 4.114440383196182,
      "I_static": 65.70641052270024,
      "rpm_margin": 348.29606066789347,
-     "laps_frac": 6.767822318277681
+     "laps_frac": 6.767822318277681,
+     "stall_margin": 27.21210285688713
     },
     "M3": {
      "v": 27.839374916511296,
@@ -2772,17 +2822,11 @@
      "v_fit_margin": 21.820645753044758,
      "I_static": 98.75752174510525,
      "rpm_margin": 174.7773659909426,
-     "laps_frac": 3.302153597863062
+     "laps_frac": 3.302153597863062,
+     "stall_margin": 14.057345415884669
     }
-   },
-   {
-    "props": "19x12E/22x12E",
-    "Kv": 270.0,
-    "throttle": 0.5,
-    "converged": false,
-    "error": "Solver 'NL: Newton' on system 'points.M3.mda': residuals contain 'inf' or 'NaN' after 22 iterations."
    }
   ],
-  "git": "0f27643-dirty"
+  "git": "15f1dcc"
  }
 }
