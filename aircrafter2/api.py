@@ -198,20 +198,24 @@ def motor_report(prob, cfg, tol=1e-4):
     -------
     dict
     """
-    v = lambda k: _val(prob, k)  # noqa: E731
-    pr = cfg.propulsion
+
+    def v(k):
+        """One scalar output of the problem."""
+        return _val(prob, k)
+
+    prop_cfg = cfg.propulsion
     out = dict(
         kv_dv=kv_is_dv(cfg),
         Kv=v("Kv"),
         Rm=v("Rm"),
         I0=v("I0"),
         I_static=v("I_static"),
-        I_max=pr.I_max,
+        I_max=prop_cfg.I_max,
         I_margin=v("I_margin"),
         rpm_margin=v("rpm_margin"),
-        Kv_ref=pr.Kv,
-        Rm_ref=pr.Rm,
-        I0_ref=pr.I0,
+        Kv_ref=prop_cfg.Kv,
+        Rm_ref=prop_cfg.Rm,
+        I0_ref=prop_cfg.I0,
     )
     if not out["kv_dv"]:
         out["set_by"] = "fixed (not a design variable)"

@@ -138,23 +138,23 @@ class DBF2026(ScoringPlugin):
         dict
             M1, M2, M3, net_income, m3_term, RAC, EF, flight_score, score, r_M2, r_M3.
         """
-        o = self.options
-        ni = net_income(x["n_p"], x["n_c"], x["laps_M2"], x["E_M2"], o)
+        opts = self.options
+        ni = net_income(x["n_p"], x["n_c"], x["laps_M2"], x["E_M2"], opts)
         t3 = m3_term(x["laps_M3"], x["L_banner"], x["b"] / FT)
-        r2, r3 = ni / o["NI_max"], t3 / o["B_max"]  # the uncapped ratios N / Max (Max: the best team, Q52)
-        d = 0.0 if hard else o["cap_delta"]
+        r2, r3 = ni / opts["NI_max"], t3 / opts["B_max"]  # the uncapped ratios N / Max (Max: the best team, Q52)
+        d = 0.0 if hard else opts["cap_delta"]
         m2 = 1.0 + cap(r2, d)
         m3 = 2.0 + cap(r3, d)
         return dict(
-            M1=o["m1"] + 0.0 * m2,
+            M1=opts["m1"] + 0.0 * m2,
             M2=m2,
             M3=m3,
             net_income=ni,
             m3_term=t3,
             RAC=rac(x["b"] / FT),
             EF=x["E_M2"] / 100.0,
-            flight_score=o["m1"] + m2 + m3,
-            score=o["m1"] + o["w2"] * m2 + o["w3"] * m3,
+            flight_score=opts["m1"] + m2 + m3,
+            score=opts["m1"] + opts["w2"] * m2 + opts["w3"] * m3,
             r_M2=r2,
             r_M3=r3,
         )

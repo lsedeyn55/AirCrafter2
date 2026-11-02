@@ -30,7 +30,11 @@ def _init(cfg, dv, outputs):
 
     if isinstance(cfg, FullMDOConfig):
         prob = build_full_problem(cfg, driver=False)
-        names = lambda k: [k]  # noqa: E731
+
+        def names(k):
+            """The model inputs of parameter k: itself."""
+            return [k]
+
         robust = False
     else:  # a MultipointConfig: each parameter at both mission points (the same aircraft)
         from ..problems.multipoint import build_multipoint_problem

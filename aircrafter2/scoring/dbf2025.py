@@ -100,17 +100,17 @@ class DBF2025(ScoringPlugin):
         dict
             M1, M2, M3, n_pre, flight_score, score.
         """
-        o = self.options
+        opts = self.options
         n_pre = softplus(x["laps_M3"] - 1.0, LAPS_SCALE)[0]
-        m2 = 1.0 + (x["fuel_mass"] / LB / x["t3_M2"]) / o["R2"]
-        m3 = 2.0 + (n_pre + o["bonus"] / o["x1_weight_lb"]) / o["R3"]
+        m2 = 1.0 + (x["fuel_mass"] / LB / x["t3_M2"]) / opts["R2"]
+        m3 = 2.0 + (n_pre + opts["bonus"] / opts["x1_weight_lb"]) / opts["R3"]
         return dict(
-            M1=o["m1"] + 0.0 * m2,
+            M1=opts["m1"] + 0.0 * m2,
             M2=m2,
             M3=m3,
             n_pre=n_pre,
-            flight_score=o["m1"] + m2 + m3,
-            score=o["m1"] + o["w2"] * m2 + o["w3"] * m3,
+            flight_score=opts["m1"] + m2 + m3,
+            score=opts["m1"] + opts["w2"] * m2 + opts["w3"] * m3,
         )
 
     def score(self, x):

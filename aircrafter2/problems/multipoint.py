@@ -636,7 +636,11 @@ def m1_check(mcfg, prob):
         q.run_model()
     except errors as exc:
         return dict(passed=False, error=f"MDA non-convergence: {str(exc)[:200]}")
-    v = lambda k: float(np.ravel(q.get_val(k))[0])  # noqa: E731
+
+    def v(k):
+        """One scalar output of the M1 problem."""
+        return float(np.ravel(q.get_val(k))[0])
+
     cons = {n: v(n) for n, _ in full_constraints(cfg)}
     viol = [
         n

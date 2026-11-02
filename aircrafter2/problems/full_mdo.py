@@ -581,7 +581,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         (StoreConfig, Stores flags): external stores replace the payload input m_pay and its station (stores.py), and
         add their drag to CD_extra.
     """
-    a, st = cfg.aero, cfg.stability
+    aero_cfg, stab_cfg = cfg.aero, cfg.stability
     m.add_subsystem(
         "airfoil", AirfoilGroup(seed=load_seed(cfg.airfoil.seed), n_modes=cfg.airfoil.n_modes), promotes=["*"]
     )
@@ -592,7 +592,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
     m.add_subsystem("planform", RectPlanform(), promotes=["*"])
     m.add_subsystem("tail", TailGeometry(), promotes=["*"])
     m.add_subsystem("cargo", CargoBay(), promotes=["*"])
-    pr = cfg.propulsion
+    prop_cfg = cfg.propulsion
     if kv_is_dv(cfg):  # the reference motor rewound to the design Kv: Rm, I0 follow Kv
         m.add_subsystem(
             "motor",
@@ -603,13 +603,13 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
     m.add_subsystem(
         "propulsion",
         Powertrain(
-            prop=pr.prop,
-            v_top=pr.v_top,
-            n_motors=pr.n_motors,
-            battery_topology=pr.battery_topology,
-            apc_dir=pr.apc_dir,
-            fit_range=pr.fit_range,
-            f_fit=pr.f_fit,
+            prop=prop_cfg.prop,
+            v_top=prop_cfg.v_top,
+            n_motors=prop_cfg.n_motors,
+            battery_topology=prop_cfg.battery_topology,
+            apc_dir=prop_cfg.apc_dir,
+            fit_range=prop_cfg.fit_range,
+            f_fit=prop_cfg.f_fit,
         ),
         promotes_inputs=[
             "rho",
@@ -649,8 +649,8 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
             "v_fit_max",
         ],
     )
-    if pr.n_motors == 2:  # wing station and prop clearances (docs/DECISIONS.md#plan-d8)
-        m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
+    if prop_cfg.n_motors == 2:  # wing station and prop clearances (docs/DECISIONS.md#plan-d8)
+        m.add_subsystem("motor_placement", MotorPlacement(station_mode=prop_cfg.station_mode), promotes=["*"])
     m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry, sizing=sizing, stores=stores), promotes=["*"])
     cd_extra = cd_extra_name(cfg, stores)
 
@@ -664,12 +664,12 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         m.add_subsystem(
             name,
             WingAero(
-                num_x=a.num_x,
-                num_y=a.num_y,
-                spacing=a.spacing,
-                nf=a.nf_settings(),
-                max_mode=a.max_mode,
-                rho_ks=a.rho_ks,
+                num_x=aero_cfg.num_x,
+                num_y=aero_cfg.num_y,
+                spacing=aero_cfg.spacing,
+                nf=aero_cfg.nf_settings(),
+                max_mode=aero_cfg.max_mode,
+                rho_ks=aero_cfg.rho_ks,
             ),
             promotes_inputs=SHARED_AERO,
         )
@@ -692,22 +692,22 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         ),
         promotes=["E_mission", "E_usable"],
     )
-    co = cfg.course
-    lap1, lap_other = co.lap_options()
+    course_cfg = cfg.course
+    lap1, lap_other = course_cfg.lap_options()
     banner = stores is not None and stores[1].get("banner", False)
     m.add_subsystem(
         "lap",
         SmoothLapModel(
-            rho_ks=a.rho_ks,
+            rho_ks=aero_cfg.rho_ks,
             power_mode="propulsion",
             lap1=lap1,
             lap_other=lap_other,
-            pilot_reaction_time=co.pilot_reaction_time_s,
-            takeoff=co.takeoff.in_mission_time,
-            start_offset_ft=co.takeoff.start_offset_ft,
-            lap1_cluster=co.lap1_cluster,
-            turn_drift=co.turn_drift,
-            banner_stowed_legs=co.banner_stowed_legs() if banner else (),
+            pilot_reaction_time=course_cfg.pilot_reaction_time_s,
+            takeoff=course_cfg.takeoff.in_mission_time,
+            start_offset_ft=course_cfg.takeoff.start_offset_ft,
+            lap1_cluster=course_cfg.lap1_cluster,
+            turn_drift=course_cfg.turn_drift,
+            banner_stowed_legs=course_cfg.banner_stowed_legs() if banner else (),
         ),
         promotes_inputs=[
             "CD0",
@@ -747,8 +747,8 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
             l_ht={"units": "m"},
             boom_offset={"units": "m"},
             l_tb={"units": "m"},
-            fw={"val": st.wing_cg_frac},
-            fcb={"val": st.x_cb_frac},
+            fw={"val": stab_cfg.wing_cg_frac},
+            fcb={"val": stab_cfg.x_cb_frac},
             m_tail={"units": "kg"},
             m_ht={"units": "kg"},
             m_vt={"units": "kg"},
@@ -760,7 +760,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
 
         m.add_subsystem(
             "packaging",
-            Packaging2026(config=stores[0], x_motor_ref=float(st.x_motor), x_cb_frac0=float(st.x_cb_frac)),
+            Packaging2026(config=stores[0], x_motor_ref=float(stab_cfg.x_motor), x_cb_frac0=float(stab_cfg.x_cb_frac)),
             promotes_inputs=["c", "x_cb_frac", "l_cb", "x_batt", "l_ht", "S_ht", "AR_ht"],
             promotes_outputs=["x_motor", "batt_fwd_margin", "batt_aft_margin", "tail_margin", "x_cb_aft"],
         )
@@ -801,7 +801,9 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
 
     # rotor speed rises with flight speed, so the RPM limit is checked at the top (full-throttle level) speed
     m.add_subsystem("rpm_at_v", PolyAt(), promotes_inputs=[("coeffs", "RPM_coeffs"), "v"])
-    top = "v_fit_max" if pr.fit_range == "throttle" else "v_top"  # part throttle: the fit range moves with throttle
+    top = (
+        "v_fit_max" if prop_cfg.fit_range == "throttle" else "v_top"
+    )  # part throttle: the fit range moves with throttle
     m.add_subsystem(
         "limits",
         om.ExecComp(
@@ -820,7 +822,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         promotes=["*"],
     )
     m.connect("rpm_at_v.y", "rpm_v")
-    if pr.pack_I_max is not None:  # shared pack: the pack current can bind before the per-ESC limit
+    if prop_cfg.pack_I_max is not None:  # shared pack: the pack current can bind before the per-ESC limit
         m.add_subsystem(
             "pack_limit",
             om.ExecComp(
@@ -842,28 +844,28 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         promotes=["*"],
     )
 
-    geo = cfg.geometry
+    geo_cfg = cfg.geometry
     for name, val, units in [
         ("b", cfg.initial.get("b", 1.2), "m"),
         ("c", cfg.initial.get("c", 0.3), "m"),
         ("rho", 1.2, "kg/m**3"),
-        ("x_spar", geo.x_spar, None),
-        ("l_ht", geo.l_ht, "m"),
-        ("S_ht", geo.S_ht, "m**2"),
-        ("S_vt", geo.S_vt, "m**2"),
+        ("x_spar", geo_cfg.x_spar, None),
+        ("l_ht", geo_cfg.l_ht, "m"),
+        ("S_ht", geo_cfg.S_ht, "m**2"),
+        ("S_vt", geo_cfg.S_vt, "m**2"),
         ("g", 9.80665, "m/s**2"),
-        ("AR_ht", st.AR_ht, None),
+        ("AR_ht", stab_cfg.AR_ht, None),
         ("r_tb", 0.008, "m"),
-        ("l_cb", geo.l_cb, "m"),
-        ("w_cb", geo.w_cb, "m"),
-        ("h_cb", geo.h_cb, "m"),
-        ("boom_offset", geo.boom_offset, "m"),
+        ("l_cb", geo_cfg.l_cb, "m"),
+        ("w_cb", geo_cfg.w_cb, "m"),
+        ("h_cb", geo_cfg.h_cb, "m"),
+        ("boom_offset", geo_cfg.boom_offset, "m"),
         ("m_motor", cfg.propulsion.m_motor, "kg"),
         ("m_esc", cfg.propulsion.m_esc, "kg"),
         ("m_prop", cfg.propulsion.m_prop, "kg"),
         ("m_avionics", cfg.propulsion.m_avionics, "kg"),
         ("m_nacelle", cfg.propulsion.m_nacelle, "kg"),
-        ("x_motor", st.x_motor, "m"),
+        ("x_motor", stab_cfg.x_motor, "m"),
         ("m_pay", cfg.mass.inputs.get("m_pay", 1.0), "kg"),
         ("mu", 1.8e-5, "Pa*s"),
     ]:
@@ -874,16 +876,16 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         if name == "x_motor" and is_2026(stores):
             continue  # computed: the motor group moves with the payload fuselage (Packaging2026)
         m.set_input_defaults(name, val, units=units)
-    if pr.n_motors == 2:
-        if pr.station_mode == "absolute":
-            m.set_input_defaults("y_m", pr.y_motor_m, units="m")
+    if prop_cfg.n_motors == 2:
+        if prop_cfg.station_mode == "absolute":
+            m.set_input_defaults("y_m", prop_cfg.y_motor_m, units="m")
         else:
-            m.set_input_defaults("y_motor", pr.y_motor)
+            m.set_input_defaults("y_motor", prop_cfg.y_motor)
         for name, val, units in [
-            ("c_clear", pr.c_clear, "m"),
-            ("l_nac", pr.l_nac, "m"),
-            ("d_nac", pr.d_nac, "m"),
-            ("Q_nac", pr.Q_nac, None),
+            ("c_clear", prop_cfg.c_clear, "m"),
+            ("l_nac", prop_cfg.l_nac, "m"),
+            ("d_nac", prop_cfg.d_nac, "m"),
+            ("Q_nac", prop_cfg.Q_nac, None),
         ]:
             m.set_input_defaults(name, val, units=units)
 
@@ -914,7 +916,7 @@ def full_constraints(cfg: FullMDOConfig):
     list of (str, dict)
         (promoted output, add_constraint kwargs).
     """
-    st = cfg.stability
+    stab_cfg = cfg.stability
     cons = [
         ("stall_margin", dict(lower=0.0, ref=1.0)),
         ("turn_speed_margin", dict(lower=0.0, ref=1.0)),
@@ -933,9 +935,9 @@ def full_constraints(cfg: FullMDOConfig):
             cons.append(("I_pack_margin", dict(lower=0.0, ref=10.0)))
     cons += [
         ("v_fit_margin", dict(lower=0.0, ref=10.0)),
-        ("SM", dict(lower=st.SM_min, upper=st.SM_max)),
-        ("V_h", dict(lower=st.V_h_min, upper=st.V_h_max)),
-        ("V_v", dict(lower=st.V_v_min, upper=st.V_v_max)),
+        ("SM", dict(lower=stab_cfg.SM_min, upper=stab_cfg.SM_max)),
+        ("V_h", dict(lower=stab_cfg.V_h_min, upper=stab_cfg.V_h_max)),
+        ("V_v", dict(lower=stab_cfg.V_v_min, upper=stab_cfg.V_v_max)),
         ("wall_ratio", dict(upper=cfg.wall_ratio_max)),
         ("r_tube", dict(lower=cfg.r_tube_min, units="m", ref=0.01)),
         ("cruise.cl_margin_sec", dict(lower=0.0)),
@@ -1001,13 +1003,13 @@ def apply_full_values(prob, cfg: FullMDOConfig, stores=False, skip=()):
         Names not to set (e.g. inputs connected from another mission point).
     """
     apply_aero_mass_values(prob, cfg, exclude={"m_sys"} | ({"m_pay"} if stores else set()) | set(skip))
-    pr, st = cfg.propulsion, cfg.stability
+    prop_cfg, stab_cfg = cfg.propulsion, cfg.stability
     motor = ["Kv", "Rm", "I0"]
     if kv_is_dv(cfg):  # reference motor; the design Kv starts at Kv_ref (cfg.initial["Kv"] overrides below)
         motor = []
         for name in ["Kv", "Rm", "I0"]:
-            prob.set_val(f"{name}_ref", getattr(pr, name))
-        prob.set_val("Kv", pr.Kv)
+            prob.set_val(f"{name}_ref", getattr(prop_cfg, name))
+        prob.set_val("Kv", prop_cfg.Kv)
     for name in [
         "throttle",
         "n_cells",
@@ -1022,20 +1024,20 @@ def apply_full_values(prob, cfg: FullMDOConfig, stores=False, skip=()):
         "m_nacelle",
         "m_avionics",
     ]:
-        prob.set_val(name, getattr(pr, name))
-    prob.set_val("I_max", pr.I_max, units="A")
-    if pr.pack_I_max is not None:
-        prob.set_val("pack_I_max", pr.pack_I_max, units="A")
-    if pr.fit_range == "fixed":
-        prob.set_val("v_top", pr.v_top, units="m/s")
+        prob.set_val(name, getattr(prop_cfg, name))
+    prob.set_val("I_max", prop_cfg.I_max, units="A")
+    if prop_cfg.pack_I_max is not None:
+        prob.set_val("pack_I_max", prop_cfg.pack_I_max, units="A")
+    if prop_cfg.fit_range == "fixed":
+        prob.set_val("v_top", prop_cfg.v_top, units="m/s")
     for name in ["AR_ht", "AR_vt", "tc_tail", "eta_h", "x_motor", "x_avionics", "x_gear"]:
-        prob.set_val(name, getattr(st, name))
+        prob.set_val(name, getattr(stab_cfg, name))
     for name in ["mu_roll", "takeoff_distance", "mission_time", "n_struct"]:
         prob.set_val(f"lap.{name}", getattr(cfg, name))
     if cfg.course.takeoff.in_mission_time:
         for name in ["k_lof", "CL_ground"]:
             prob.set_val(f"lap.{name}", getattr(cfg.course.takeoff, name))
-    prob.set_val("x_cb_frac", st.x_cb_frac)
+    prob.set_val("x_cb_frac", stab_cfg.x_cb_frac)
     for name, val in cfg.initial.items():
         if name not in skip:
             prob.set_val(name, val)
