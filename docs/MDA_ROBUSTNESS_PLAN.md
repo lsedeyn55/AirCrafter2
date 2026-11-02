@@ -12,8 +12,8 @@ Approved 2026-11-02 and built on `placeholder-fixes-2026` (brief `Claude outputs
 The text below this section is the plan as approved; this section records what was built and measured.
 
 **Commits.** `94ed195` this plan; `5b868c1` F1 + F2 + tests; `4061c67` `integer()` rounding check; `15f1dcc` the
-envelope's stall-margin column; `fe681dc` verification runs and the regenerated validation page; then the docs and the
-M1-check commit (Problem 2, decision (b)).
+envelope's stall-margin column; `fe681dc` verification runs and the regenerated validation page; `97f496f` docs;
+`03c768f` the M1 check (Problem 2, decision (b)); `c4c802c` the validation page regenerated after it.
 
 **What was built.**
 - `FullMDOConfig.mda_robust` (bool, default false), `true` in `configs/dbf2026_multipoint.yaml`. It is inherited by
@@ -24,7 +24,7 @@ M1-check commit (Problem 2, decision (b)).
   reference → cold. `good_in` is stored in both modes. Switch off: the original loop, unchanged.
 - F2, `studies/results_2026.py` `optimise`: with `start` or `x0` under the switch, a pre-run at the unfixed config
   start, then the target. The run JSON gets `warm_path` and `mda_fallbacks` (solves needing the continuation, per point).
-- Tests: `tests/test_mda_robust.py` (12 tests) with `tests/data/mda_low_speed_designs.json` (iter2, iter3, pf_before).
+- Tests: `tests/test_mda_robust.py` (12 tests, plus 2 for the M1 check) with `tests/data/mda_low_speed_designs.json` (iter2, iter3, pf_before).
 
 **Deviations from the plan (each decided with the user on 2026-11-02).**
 1. **`QuietDirectSolver`** (new, under the switch only). On this machine a diverged Newton attempt at the iter3 step
@@ -48,7 +48,7 @@ M1-check commit (Problem 2, decision (b)).
 
 | # | Check | Result |
 |---|---|---|
-| 1 | Full suite | Pass: 508 = 496 + 12 new. Two existing tests needed the new field: `NEW_FIELDS` in `test_placeholders.py`, and a `constraints_view` anchor for the new `raise`. The final count is from the rerun after commit 5. |
+| 1 | Full suite | Pass: 510 = 496 + 14 new (12 robustness, 2 M1 check), 18 min, after the last code commit. Two existing tests needed the new field: `NEW_FIELDS` in `test_placeholders.py`, and a `constraints_view` anchor for the new `raise`. |
 | 2 | `configs_snapshot.py` vs `tests/data/configs_reference.json` | Pass: 152 values, 0 differences (bit for bit). `rdo_off_snapshot.py` has no compare mode; `test_rdo` covers it in the suite. |
 | 3 | Cold smoke `mr_smoke` | Pass: 58 iterations, 292 s, F **6.1723** (M2 2.2711, M3 2.9012), the prototype exactly. Nothing violated. M1 passes (SM 0.369, laps 9.13). `mda_fallbacks`: one continuation per point (the iter3 step). |
 | 4 | Warm `--start mr_smoke` | Pass: 2 iterations, 11 s, ΔF 7e-15, no fallbacks |
