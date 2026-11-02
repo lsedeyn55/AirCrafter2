@@ -283,10 +283,16 @@ class FullMDA(om.Group):
                                + (["fuel_mass"] if flags.get("fuel") else []),
                                promotes_outputs=["m_pay", "x_pay", "CD_stores", "CD_tanks", "CD_pylons", "CD_x1",
                                                  "fuel_capacity"])
-        if stores is not None:
-            self.add_subsystem("cd_extra_total", om.ExecComp("CD_extra_total = CD_extra + CD_stores"),
+        area = cfg.aero.cd_area_gear + cfg.aero.cd_area_lp
+        if area:  # undercarriage + leakage drag areas (2025-26, [HB] Table 29): only when set, so 0 = the old graph
+            self.add_subsystem("cd_areas", om.ExecComp("CD_areas = A / S", CD_areas={"val": 0.0},
+                                                       A={"val": area, "units": "m**2"}, S={"units": "m**2"}),
+                               promotes_inputs=["S"], promotes_outputs=["CD_areas"])
+        terms = ["CD_extra"] + (["CD_stores"] if stores is not None else []) + (["CD_areas"] if area else [])
+        if len(terms) > 1:
+            self.add_subsystem("cd_extra_total", om.ExecComp("CD_extra_total = " + " + ".join(terms)),
                                promotes=["*"])
-        cd_extra = "CD_extra_total" if stores is not None else "CD_extra"
+        cd_extra = cd_extra_name(cfg, stores)
         self.add_subsystem("cruise", WingAero(num_x=a.num_x, num_y=a.num_y, spacing=a.spacing, nf=a.nf_settings(),
                                               max_mode=a.max_mode, rho_ks=a.rho_ks),
                            promotes_inputs=SHARED_AERO + [("alpha", "alpha_cruise")])
@@ -338,6 +344,13 @@ class FullMDA(om.Group):
             self.linear_solver = om.DirectSolver()
 
 
+def cd_extra_name(cfg, stores):
+    """The drag increment the wing aero points add: CD_extra alone, or CD_extra_total when stores or the constant drag
+    areas (aero.cd_area_gear, aero.cd_area_lp) add to it (FullMDA)."""
+    area = cfg.aero.cd_area_gear + cfg.aero.cd_area_lp
+    return "CD_extra_total" if stores is not None or area else "CD_extra"
+
+
 def is_2026(stores):
     """True for the 2025-26 store set (stores2026.Store2026Config): payload, banner and the payload fuselage."""
     from ..stores2026 import Store2026Config
@@ -379,7 +392,7 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
     if pr.n_motors == 2:  # wing station and prop clearances (D8)
         m.add_subsystem("motor_placement", MotorPlacement(station_mode=pr.station_mode), promotes=["*"])
     m.add_subsystem("mda", FullMDA(cfg=cfg, retry=mda_retry, sizing=sizing, stores=stores), promotes=["*"])
-    cd_extra = "CD_extra_total" if stores is not None else "CD_extra"
+    cd_extra = cd_extra_name(cfg, stores)
 
     # polar from three coupled aero points (as in lap_mdo)
     m.add_subsystem("turn_alpha", TurnAlpha(frac=cfg.polar_turn_frac))

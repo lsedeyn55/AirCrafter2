@@ -294,3 +294,41 @@ def test_2025_stations_unchanged():
     for k, x in ref.items():
         if not k.startswith("_"):
             assert _val(p, k) == x, k
+
+
+# --- D3: the undercarriage and leakage drag areas ----------------------------------------------------------------
+
+def test_drag_areas_at_humpback_by_hand():
+    """Humpback (the ruleset's areas): CD_areas = (A_gear + A_lp) / S at every point, added to CD_extra_total; with the
+    areas zeroed the component is absent and CD_extra_total = CD_extra + CD_stores, as before."""
+    from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mcfg = load_multipoint_config(ROOT / "configs" / "humpback_2026.yaml")
+        a = mcfg.base.aero
+        assert (a.cd_area_gear, a.cd_area_lp) == (0.0028, 0.00224)
+        p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+        p.run_model()
+        for pt in ("M2", "M3"):
+            S = _val(p, f"points.{pt}.S")
+            assert _val(p, f"points.{pt}.CD_areas") == pytest.approx((0.0028 + 0.00224) / S, rel=1e-14)
+            assert _val(p, f"points.{pt}.CD_extra_total") == pytest.approx(
+                _val(p, f"points.{pt}.CD_extra") + _val(p, f"points.{pt}.CD_stores") + _val(p, f"points.{pt}.CD_areas"),
+                rel=1e-14)
+        mcfg.base.aero.cd_area_gear = mcfg.base.aero.cd_area_lp = 0.0
+        q = build_multipoint_problem(mcfg, driver=False)
+    assert not hasattr(q.model.points.M2.mda, "cd_areas")
+
+
+def test_drag_areas_zero_by_default():
+    """The code default is 0: no 2024-25 or single-point config gets the component (their graphs are unchanged; the
+    2024-25 values are compared == in test_2025_stations_unchanged and the configs snapshot)."""
+    from aircrafter2.problems.full_mdo import load_full_config
+    from aircrafter2.problems.multipoint import load_multipoint_config
+
+    for name in ("full_mdo.yaml", "full_mdo_twin.yaml"):
+        a = load_full_config(ROOT / "configs" / name).aero
+        assert a.cd_area_gear == 0.0 and a.cd_area_lp == 0.0
+    a = load_multipoint_config(ROOT / "configs" / "dbf2025_multipoint.yaml").base.aero
+    assert a.cd_area_gear == 0.0 and a.cd_area_lp == 0.0

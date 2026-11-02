@@ -32,6 +32,10 @@ class AeroConfig(BaseModel):
     h_alpha: float = 1e-4  # deg; step study: docs/verification/neuralfoil_fd_steps.md
     h_logre: float = 1e-5
     h_k: float = 1e-6
+    cd_area_gear: float = Field(0.0, ge=0.0, description="m^2, undercarriage drag area D/q, constant for every design "
+                                "(2025-26: [HB] Table 29 x S_ref; 0 = no component, the original graph)")
+    cd_area_lp: float = Field(0.0, ge=0.0, description="m^2, leakage and protuberance drag area D/q, constant "
+                              "(2025-26: [HB] Table 29 x S_ref; 0 = no component)")
 
     def nf_settings(self):
         return NFSettings(model_size=self.model_size, n_crit=self.n_crit, alpha_min=self.alpha_min,

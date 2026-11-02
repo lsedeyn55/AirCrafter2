@@ -26,6 +26,8 @@ takeoff_distance: 106.68                     # m = 350 ft; cited; no Q; Humpback
 
 # --- airframe (Humpback's, the 2025-26 reference) ---
 mass.options.n_panels: 2                     # -; cited; no Q; modular two-piece wing [HB p. 26, p. 37]
+aero.cd_area_gear: 0.0028                    # m^2 = 0.0050 x 0.5600 m^2; cited; Q63; undercarriage Delta C_D0 0.0050 (M2 column) [HB p. 33 Table 29] on [HB]'s S_ref 868 in^2 [HB p. 36] (59 x 14.57 = 859.6 in^2, Q57); constant for every design (PLACEHOLDER scaling, Q63)
+aero.cd_area_lp: 0.00224                     # m^2 = 0.0040 x 0.5600 m^2; cited; Q63; leakage and protuberance Delta C_D0 0.0040 (M2 column) [HB p. 33 Table 29] on 868 in^2 [HB p. 36]; the same area at M1, M2, M3 (Table 29 lists 0.005 deployed, M3); constant (PLACEHOLDER scaling, Q63)
 
 # --- propulsion: Humpback's (single nose tractor, one pack) ---
 propulsion.Kv: 245.0                         # rpm/V; cited; Q7; reference motor T-Motor AT7215 245 KV [HB Table 27 p. 29]; [TM7]

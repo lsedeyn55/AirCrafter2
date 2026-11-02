@@ -164,7 +164,8 @@ def test_configs_load_as_before_the_migration_except_the_listed_changes(name):
 NEW_FIELDS = {"course.turn_drift": False, "course.lap1_cluster": 2.0, "propulsion.f_fit": 0.8, "mp.kind": "dbf2025",
               "mp.payload": {}, "mp.payload_initial": {}, "mp.rules.pax_per_cargo_min": None,
               "disabled_constraints": [],  # 2026-10-27: the Constraints tab's on/off
-              "mda_robust": False}  # 2026-11-02: the MDA continuation fallback (docs/MDA_ROBUSTNESS_PLAN.md)
+              "mda_robust": False,  # 2026-11-02: the MDA continuation fallback (docs/MDA_ROBUSTNESS_PLAN.md)
+              "aero.cd_area_gear": 0.0, "aero.cd_area_lp": 0.0}  # 2026-11-02: drag areas (Final fixes D3; 2025-26 only)
 
 
 def _new_field(path, change):
