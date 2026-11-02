@@ -1,19 +1,9 @@
-"""APC propeller performance data (PER3_*.dat) and smooth surrogates.
+"""APC propeller performance data (PER3_*.dat files) and smooth surrogates, used by propulsion/powertrain.py.
 
-Data: APC's published performance files (``THESIS/PERFILES2/PER3_*.dat``, outside the repo), the same
-source AirCrafter 1.0 used (parse_apc_txt_folder.m / propSelector.m). Each file has blocks
-"PROP RPM = N" with columns V (mph), J, Pe, Ct, Cp, PWR (Hp), Torque (in-lbf), Thrust (lbf),
-PWR (W), Torque (N-m), Thrust (N), THR/PWR (g/W), Mach, Reyn, FOM.
-
-Surrogate: least-squares polynomials
-    C_T(J, r) = sum_{i<=dj, j<=dr} a_ij J^i r^j,   r = RPM / 10000
-    C_P(J, r) = same form
-fitted over the tabulated (J, RPM) points with C_T >= ct_floor (the windmill branch is
-dropped). Smooth and complex-step safe, so propulsion partials are exact.
-RPM limit (E props): RPM_max = 150000 / D[in]; AirCrafter 1.0 used 0.85 of it (propSelector.m).
-
-Data folder: the ``folder`` argument (config key ``propulsion.apc_dir``), else the ``AIRCRAFTER2_APC_DIR``
-environment variable, else ``THESIS/PERFILES2`` next to the repo.
+Data: APC's published files in THESIS/PERFILES2, outside the repo, the same source AirCrafter 1.0 used
+(parse_apc_txt_folder.m, propSelector.m). Surrogate: least-squares polynomials in the advance ratio J and the rpm.
+They're smooth and complex-step safe, so propulsion partials are exact. RPM limit (E props): RPM_max = 150000 / D[in];
+AirCrafter 1.0 used 0.85 of it (propSelector.m). Details: docs/modules/propulsion.md, "Propeller data".
 """
 
 import os
@@ -31,6 +21,9 @@ DEFAULT_DIR = Path(os.environ[APC_DIR_ENV]).expanduser() if os.environ.get(APC_D
 
 @dataclass
 class APCData:
+    """One prop's parsed data. Diameter and pitch in m; rpm, J, Ct, Cp and mach_tip are arrays over the tabulated
+    points."""
+
     name: str
     diameter: float  # m
     pitch: float  # m
@@ -42,6 +35,20 @@ class APCData:
 
 
 def parse_apc_file(path):
+    """Parse one PER3_*.dat file.
+
+    Each file has blocks "PROP RPM = N" with columns V (mph), J, Pe, Ct, Cp, PWR (Hp), Torque (in-lbf), Thrust (lbf),
+    PWR (W), Torque (N-m), Thrust (N), THR/PWR (g/W), Mach, Reyn, FOM.
+
+    Parameters
+    ----------
+    path : str or Path
+
+    Returns
+    -------
+    APCData
+        Raises ValueError if the name has no diameter x pitch.
+    """
     path = Path(path)
     name = path.stem.replace("PER3_", "")
     m = re.match(r"^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)", name)
@@ -80,12 +87,29 @@ def parse_apc_file(path):
 
 
 def _basis(J, r, dj, dr):
+    """The monomials J^i r^j, i <= dj, j <= dr."""
     J, r = np.asarray(J), np.asarray(r)
     return np.stack([J**i * r**j for i in range(dj + 1) for j in range(dr + 1)], axis=-1)
 
 
 @dataclass
 class PropSurrogate:
+    """Polynomial fits of one prop: C_T(J, r) = sum_{i<=dj, j<=dr} a_ij J^i r^j, r = RPM / 10000, and C_P(J, r) alike.
+
+    Attributes
+    ----------
+    diameter, pitch : float
+        m.
+    a_ct, a_cp : array
+        Coefficients.
+    J_max : float
+        Largest advance ratio with C_T >= ct_floor in the data.
+    rpm_limit : float
+        150000 / D[in].
+    rms_ct, rms_cp : float
+        Fit errors.
+    """
+
     name: str
     diameter: float
     pitch: float
@@ -101,13 +125,29 @@ class PropSurrogate:
     rms_cp: float
 
     def ct(self, J, rpm):
+        """C_T at advance ratio J and rpm."""
         return _basis(J, rpm / 1e4, self.dj, self.dr) @ self.a_ct
 
     def cp(self, J, rpm):
+        """C_P at advance ratio J and rpm."""
         return _basis(J, rpm / 1e4, self.dj, self.dr) @ self.a_cp
 
 
 def fit_prop(data: APCData, dj=4, dr=2, ct_floor=0.0):
+    """Fit the surrogates over the tabulated points with C_T >= ct_floor (the windmill branch is dropped).
+
+    Parameters
+    ----------
+    data : APCData
+    dj, dr : int
+        Degree in J and in rpm.
+    ct_floor : float
+        Lowest C_T kept.
+
+    Returns
+    -------
+    PropSurrogate
+    """
     keep = data.Ct >= ct_floor
     A = _basis(data.J[keep], data.rpm[keep] / 1e4, dj, dr)
     a_ct, *_ = np.linalg.lstsq(A, data.Ct[keep], rcond=None)
@@ -131,6 +171,20 @@ def fit_prop(data: APCData, dj=4, dr=2, ct_floor=0.0):
 
 
 def load_prop(name, folder=None):
+    """Load and fit a prop by name.
+
+    Parameters
+    ----------
+    name : str
+        APC name, e.g. "11x7E".
+    folder : str, optional
+        Config key propulsion.apc_dir. Default: the AIRCRAFTER2_APC_DIR environment variable, else THESIS/PERFILES2.
+
+    Returns
+    -------
+    PropSurrogate
+        Raises FileNotFoundError if the file is missing.
+    """
     folder = Path(folder).expanduser() if folder else DEFAULT_DIR
     path = folder / f"PER3_{name}.dat"
     if not path.is_file():

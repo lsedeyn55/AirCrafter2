@@ -1,9 +1,9 @@
-"""Optional `mockup:` config section: how the 3D mock-up places what the framework does not define.
+"""Optional `mockup:` config section: how the 3D mock-up places what the framework doesn't define.
 
 The framework sizes a rectangular wing, tails, a tail boom, a cargo-bay box and the propulsion units, but not their
 vertical placement, the nacelle shape or the blades. These settings fill that gap for the OpenVSP mock-up only
 (aircrafter2.vsp); they never enter the OpenMDAO model. Every entry is exported to geometry.json under
-`mockup_assumptions` with its source. Woombah = USYD 2025 DBF design report, "Project Woombah".
+`mockup_assumptions` with its source. Woombah = USYD 2025 DBF design report, "Project Woombah". See docs/modules/vsp.md.
 """
 
 from typing import Literal
@@ -14,6 +14,8 @@ IN = 0.0254
 
 
 class MockupInputs(BaseModel):
+    """Placement settings of the OpenVSP mock-up (field descriptions below)."""
+
     model_config = ConfigDict(extra="forbid")
     wing_position: Literal["high"] = Field(
         "high", description="wing chord line on top of the cargo bay (Woombah Sec. 3.5: high-wing configuration)"
@@ -35,7 +37,18 @@ class MockupInputs(BaseModel):
 
 
 def mockup_assumptions(m: MockupInputs, n_motors: int) -> dict:
-    """The mock-up entries the framework does not define: {name: {value, source, note}}."""
+    """The mock-up entries the framework doesn't define.
+
+    Parameters
+    ----------
+    m : MockupInputs
+    n_motors : int
+
+    Returns
+    -------
+    dict
+        {name: {value, source, note}}.
+    """
     out = {
         "wing_position": dict(
             value=m.wing_position,

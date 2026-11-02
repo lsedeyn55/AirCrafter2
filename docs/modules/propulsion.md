@@ -9,6 +9,10 @@ the speed at which thrust equals drag.
 - Each prop gets least-squares polynomials C_T(J, RPM) and C_P(J, RPM): degree 4 in J, degree 2 in RPM/10⁴. The fit
   is about 0.0002 RMS in C_T and 0.001 in C_P. The windmill branch (C_T < 0) is dropped.
 - RPM limit: 150000 / D[in] (APC, E props), used at 85% as in `propSelector.m`.
+- **File format:** blocks `PROP RPM = N`, with columns V (mph), J, Pe, Ct, Cp, PWR (Hp), Torque (in-lbf), Thrust (lbf), PWR (W),
+  Torque (N-m), Thrust (N), THR/PWR (g/W), Mach, Reyn, FOM.
+- **Data folder:** the `folder` argument (config key `propulsion.apc_dir`), else the `AIRCRAFTER2_APC_DIR` environment
+  variable, else `THESIS/PERFILES2` next to the repo.
 
 ## Powertrain (`powertrain.py`)
 
@@ -22,6 +26,19 @@ the speed at which thrust equals drag.
 The rotor speed solves motor torque = prop torque (Newton) at 8 speed nodes from 0 to `v_top`. The outputs are
 cubic fits T(v), P_batt(v) and rpm(v), plus T_static, the static current and m_sys. All partials are exact
 (complex step through the fixed-iteration Newton).
+
+**Fit range (`fit_range`).**
+- `fixed` (default, and every existing config): nodes in [0, `v_top`].
+- `throttle`: nodes in [0, `v_fit_max`], v_fit_max = KSmin(`v_top`, `f_fit` J_max n0 D), with n0 = Kv δ V_oc / 2π the no-load
+  rotor speed at this throttle and J_max the largest advance ratio with C_T ≥ 0 in the APC data. At part throttle the
+  [0, `v_top`] nodes reach advance ratios past windmilling, where the C_T and C_P polynomials extrapolate (for example 138 N
+  at 40 m/s at throttle 0.5, 6S 1050 KV, 10x7E), and the cubic fit is wrong everywhere. The fit is done in s = v / v_fit_max on
+  fixed nodes, so it stays analytic. `v_fit_max` is an output: keep the operating speed below it (`v_fit_margin`).
+
+**Outputs for the lap model:** cubic least-squares fits through the nodes, T(v) = Σ t_i vⁱ (thrust, N) and
+P_batt(v) = Σ p_i vⁱ (power drawn from the battery chemistry, V_oc I_batt, W). Plus the static thrust T(0), the static battery
+current (the maximum), the largest rotor speed over the nodes (for information: the top node is above the flight envelope),
+the rotor-speed fit rpm(v), to be checked at the actual top speed, and the system masses.
 
 ## Several motors (`n_motors`, D8)
 

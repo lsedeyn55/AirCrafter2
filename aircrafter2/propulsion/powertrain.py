@@ -1,44 +1,10 @@
-"""Electric powertrain: battery + ESC + brushless motor + APC propeller (decision B).
+"""Electric powertrain: battery + ESC + brushless motor + APC propeller.
 
-Models (all complex-step safe; the component uses exact cs partials):
-
-Battery    V_oc = n_s V_cell,  R_b = n_s R_cell,  E_nom = n_s V_cell Q,  E_usable = f_use E_nom.
-ESC        ideal PWM at throttle delta: V_motor = delta V_term, I_batt = delta I_motor.
-Motor      first-order DC model (M. Drela, "First-Order DC Electric Motor Model", MIT 16.50
-           notes, 2007):  I = (V_motor - omega / K_v) / R_m,  Q = (I - I_0) / K_v,
-           with K_v in rad/s/V. Combined with the ESC and battery:
-               I = (delta V_oc - omega / K_v) / (R_m + delta^2 R_b)
-Propeller  APC surrogate (apc.py): T = C_T rho n^2 D^4,  Q_p = C_P rho n^2 D^5 / (2 pi),
-           J = v / (n D),  n = omega / (2 pi).
-Operating point: omega solves Q_motor(omega) = Q_prop(omega, v) (Newton, fixed iteration
-count) at fixed flight-speed nodes v_k in [0, v_top].
-
-Several identical units (motor + ESC + prop [+ nacelle]), option ``n_motors`` (1 or 2, see
-``motor_stations``). The operating point is solved once, for one unit; totals scale with the
-number of units. ``battery_topology``:
-    per_motor  one pack of n_cells x capacity per unit (default; Woombah, 2025 rule C-F2). Each unit
-               sees its own pack, so the per-unit operating point is the single-unit one.
-    shared     one pack of n_cells x capacity feeds every ESC. The pack current is n delta I, so
-               V_term = V_oc - n delta I R_b and
-                   I = (delta V_oc - omega / K_v) / (R_m + n delta^2 R_b)
-               (derivation: docs/modules/propulsion.md).
-``capacity`` is the capacity of one pack in both topologies.
-
-Fit range (option ``fit_range``):
-    fixed     nodes in [0, v_top] (default; every existing config)
-    throttle  nodes in [0, v_fit_max], v_fit_max = KSmin(v_top, f_fit J_max n0 D), with n0 = Kv delta V_oc / 2 pi the
-              no-load rotor speed at this throttle and J_max the largest advance ratio with C_T >= 0 in the APC data.
-              At part throttle the [0, v_top] nodes reach advance ratios past windmilling, where the C_T / C_P
-              polynomials extrapolate (e.g. 138 N at 40 m/s at throttle 0.5, 6S 1050 KV, 10x7E) and the cubic fit
-              is wrong everywhere. The fit is done in s = v / v_fit_max on fixed nodes, so it stays analytic.
-              v_fit_max is an output: keep the operating speed below it (v_fit_margin).
-
-Outputs for the lap model: cubic least-squares fits through the nodes
-    T(v)      = sum_i t_i v^i         thrust (N)
-    P_batt(v) = sum_i p_i v^i         power drawn from the battery chemistry, V_oc I_batt (W)
-plus the static thrust T(0), the static battery current (the maximum), the largest rotor
-speed over the nodes (report only: the top node is above the flight envelope), the rotor-speed
-fit rpm(v) (check it at the actual top speed), and the system masses.
+The rotor speed balances motor and prop torque at fixed flight-speed nodes, giving cubic fits T(v), P_batt(v) and rpm(v)
+at a fixed throttle. In the full model it runs before the MDA (problems/full_mdo.py), and its fits and system masses
+feed the MDA and the lap model, so the powertrain sets the power (docs/DECISIONS.md#plan-b).
+Sources: M. Drela, "First-Order DC Electric Motor Model", MIT 16.50 notes, 2007; APC PER3 data (apc.py).
+Details: docs/modules/propulsion.md, "Powertrain".
 """
 
 import numpy as np
@@ -53,9 +19,19 @@ BATTERY_TOPOLOGIES = ("per_motor", "shared")
 def motor_stations(n_motors, y_motor=None):
     """Spanwise stations of the propulsion units, as signed fractions of the semi-span.
 
-    n_motors = 1: one centreline nose tractor, [0.0].
-    n_motors = 2: a symmetric pair of wing-mounted tractors, [-y_motor, +y_motor].
     Built as a list of stations so further symmetric pairs can be added later.
+
+    Parameters
+    ----------
+    n_motors : int
+        1: one centreline nose tractor. 2: a symmetric pair of wing-mounted tractors.
+    y_motor : float, optional
+        Station as a fraction of the semi-span (n_motors = 2), in (0, 1).
+
+    Returns
+    -------
+    list of float
+        [0.0], or [-y_motor, +y_motor]. Raises ValueError for anything else.
     """
     if n_motors == 1:
         return [0.0]
@@ -67,6 +43,60 @@ def motor_stations(n_motors, y_motor=None):
 
 
 class Powertrain(om.ExplicitComponent):
+    """Cubic T(v), P_batt(v) and rpm(v) fits, static thrust and current, energy and masses.
+
+    The operating point is solved once, for one unit, with a fixed iteration count; totals scale with the number of
+    units. Partials are complex step through that fixed-iteration Newton, which makes them exact; everything is
+    complex-step safe.
+
+    Options
+    -------
+    prop : str
+        APC PER3 name (enumerated outside the optimiser, docs/DECISIONS.md#plan-d4).
+    apc_dir : str or None
+        Folder with the APC data (apc.load_prop).
+    n_nodes, deg, newton_iters : int
+        Speed nodes, degree of the fits, and Newton iterations.
+    v_top : float
+        m/s, highest speed node, fit_range = fixed.
+    n_motors : int
+        Identical propulsion units, 1 or 2 (docs/DECISIONS.md#plan-d8).
+    battery_topology : "per_motor" or "shared"
+        One pack per unit, or one pack shared by every ESC. capacity is the capacity of one pack in both.
+    fit_range : "fixed" or "throttle"
+        Fit nodes in [0, v_top], or in [0, v_fit_max(throttle)] for part throttle.
+    f_fit : float
+        v_fit_max = f_fit J_max n0 D, fit_range = throttle.
+
+    Inputs
+    ------
+    throttle, rho [kg/m**3], n_cells, V_cell [V], R_cell [ohm], capacity [A*h], usable_fraction, e_spec [W*h/kg]
+    Kv [rpm/V], Rm [ohm], I0 [A], m_motor, m_esc, m_prop, m_avionics, m_nacelle [kg]
+
+    Outputs
+    -------
+    T_coeffs, P_coeffs, RPM_coeffs : arrays (deg + 1,)
+        Totals over all units, except rpm: T(v) = sum t_i v^i [N], P_batt(v) [W], rpm(v), with v in m/s.
+    T_static, T_static_unit [N], I_static, I_pack_static [A]
+        Static thrust, total and per unit; ESC input current of one unit at v = 0 (the maximum); current of one pack.
+    rpm_max [rpm]
+        Largest rotor speed over the nodes (report only: the top node is above the flight envelope). Use rpm(v) at the
+        actual top speed instead.
+    E_nom_total [W*h], E_usable [J], m_batt, m_motor_unit, m_motor_group, m_sys [kg], v_fit_max [m/s]
+        Full list in `setup()`.
+
+    Symbols
+    -------
+    dl : throttle delta
+    Voc, Rb : pack open-circuit voltage [V] and resistance [ohm]
+    kv : Kv in rad/s/V
+    Rm : winding resistance [ohm]
+    I : motor current [A]
+    omega : rotor speed [rad/s]
+    n, D, J : rotor speed [rev/s], prop diameter [m], advance ratio v / (n D)
+    Qm, Qp : motor and prop torque [N*m]
+    """
+
     def initialize(self):
         self.options.declare("prop", default="11x7E", desc="APC PER3 name (discrete choice, D4)")
         self.options.declare("apc_dir", default=None)
@@ -174,6 +204,18 @@ class Powertrain(om.ExplicitComponent):
         self.declare_partials("m_sys", pack + ["e_spec", "m_avionics"] + unit, method="cs")
 
     def solve_nodes(self, x):
+        """Solve one unit's operating point at every speed node.
+
+        Parameters
+        ----------
+        x : dict
+            Input name -> value (complex allowed).
+
+        Returns
+        -------
+        dict
+            Arrays (n_nodes,): omega [rad/s], I_motor [A], T [N], P_batt [W], eta_prop, J, v [m/s]; and Voc [V].
+        """
         p = self._prop
         D = p.diameter
         rho, dl = x["rho"], x["throttle"]
@@ -183,6 +225,7 @@ class Powertrain(om.ExplicitComponent):
         Rtot = x["Rm"] + self._units_per_pack * dl**2 * Rb  # shared pack: n units sag one pack
 
         def residual(om_, v):
+            """Motor torque minus prop torque at rotor speed om_ and flight speed v, and I, n, J there."""
             I = (dl * Voc - om_ / kv) / Rtot
             Qm = (I - x["I0"]) / kv
             n = om_ / (2 * np.pi)
@@ -205,7 +248,18 @@ class Powertrain(om.ExplicitComponent):
         return dict(omega=om_, I_motor=I, T=T, P_batt=P_batt, eta_prop=eta_prop, J=J, Voc=Voc, v=v)
 
     def v_fit_max(self, x):
-        """Top of the fit range: v_top, or (fit_range = throttle) KSmin(v_top, f_fit J_max n0 D)."""
+        """Top of the fit range: v_top, or (fit_range = throttle) KSmin(v_top, f_fit J_max n0 D).
+
+        Parameters
+        ----------
+        x : dict
+            Input name -> value.
+
+        Returns
+        -------
+        float or array
+            m/s.
+        """
         if self.options["fit_range"] == "fixed":
             return self.options["v_top"]
         from ..smooth import ks_min

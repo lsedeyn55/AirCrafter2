@@ -1,23 +1,32 @@
-"""Motor rewind: the same frame wound for a different Kv (used when Kv is a design variable).
+"""Motor rewind: the same frame wound for a different Kv, used when Kv is a design variable.
 
-The config's motor (Kv, Rm, I0) is a reference motor (Kv_ref, Rm_ref, I0_ref). Rewinding the same stator with
-N turns per phase at the same copper volume (same slot fill):
-    Kv ∝ 1/N                                        (back-EMF constant ∝ N)
-    Rm ∝ N² ∝ 1/Kv²                                 (wire length ∝ N, cross-section ∝ 1/N)
-    I0 = Q0 Kv, with the no-load torque Q0 held     (same iron, same bearings: same no-load loss torque)
-so
-    Kv_eff = Kv · Kv_factor
-    Rm     = Rm_ref (Kv_ref / Kv_eff)²
-    I0     = I0_ref Kv_eff / Kv_ref
-and the motor constant Km = 1 / (Kv √Rm) is unchanged. The mass is unchanged (same frame). Kv_factor is a
-multiplicative winding tolerance (1 except at robust-design nodes), applied before the scaling so that a Kv error
-moves Rm and I0 consistently. Derivation and assumptions: docs/modules/propulsion.md.
+The config's motor is a reference motor (Kv_ref, Rm_ref, I0_ref). This component gives Kv_eff, Rm and I0 to the
+powertrain, holding the frame, the copper volume and the no-load torque. So the motor constant Km = 1 / (Kv sqrt(Rm))
+and the mass don't change. Derivation and assumptions: docs/modules/propulsion.md, "Motor Kv as a design variable".
 """
 
 import openmdao.api as om
 
 
 class MotorRewind(om.ExplicitComponent):
+    """Rewound motor: Kv_eff = Kv Kv_factor, Rm = Rm_ref (Kv_ref / Kv_eff)^2, I0 = I0_ref Kv_eff / Kv_ref.
+
+    With N turns per phase at the same copper volume (same slot fill):
+        Kv ~ 1/N                                        (back-EMF constant ~ N)
+        Rm ~ N^2 ~ 1/Kv^2                               (wire length ~ N, cross-section ~ 1/N)
+        I0 = Q0 Kv, with the no-load torque Q0 held     (same iron, same bearings: same no-load loss torque)
+    Kv_factor is a multiplicative winding tolerance (1 except at robust-design nodes), applied before the scaling so
+    that a Kv error moves Rm and I0 consistently. Partials are analytic.
+
+    Inputs
+    ------
+    Kv [rpm/V], Kv_factor, Kv_ref [rpm/V], Rm_ref [ohm], I0_ref [A]
+
+    Outputs
+    -------
+    Kv_eff [rpm/V], Rm [ohm], I0 [A]
+    """
+
     def setup(self):
         self.add_input("Kv", 900.0, units="rpm/V", desc="design Kv (the design variable)")
         self.add_input("Kv_factor", 1.0, desc="winding tolerance factor (RDO uncertain parameter; 1 nominal)")

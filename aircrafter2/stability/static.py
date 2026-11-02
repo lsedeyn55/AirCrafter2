@@ -1,19 +1,9 @@
-"""Low-fidelity longitudinal static stability (used by full_mdo).
+"""Low-fidelity longitudinal static stability, used by full_mdo: neutral point, CG and static margin.
 
-Neutral point (stick-fixed, wing + tail; fuselage contribution neglected), e.g. Nelson,
-Flight Stability and Automatic Control, Ch. 2; Raymer, Ch. 16:
-
-    x_np = x_ac,w + eta_h V_h (a_h / a_w) (1 - d eps / d alpha) c
-    V_h  = S_ht l_ht / (S c)
-    a_h  = 2 pi A_h / (2 + sqrt(A_h^2 + 4))        Helmbold (Raymer Ch. 12, no sweep, Mach ~ 0)
-    d eps / d alpha = 2 a_w / (pi A)               elliptic-loading downwash estimate
-
-a_w is the coupled wing C_L,alpha from the VLM. The CG is the mass-weighted mean of the component
-stations (origin: wing root leading edge, x aft). SM = (x_np - x_cg) / c.
-
-Interface for an AVL replacement later: inputs (geometry, masses, stations, a_w), outputs
-(x_np, x_cg, SM). A future AVLStability component only has to provide x_np (and could add
-lateral-directional derivatives).
+Takes the masses, stations, tail geometry and the wing's lift slope a_w after the MDA, and feeds the SM constraint.
+Stick-fixed, wing + tail, fuselage contribution neglected, e.g. Nelson, Flight Stability and Automatic Control, Ch. 2;
+Raymer, Ch. 16. An AVL replacement later only has to provide x_np (and could add lateral-directional derivatives).
+Details: docs/modules/stability.md.
 """
 
 import numpy as np
@@ -33,6 +23,33 @@ MASS_STATIONS = [  # (mass input, station input)
 
 
 class StaticStability(om.ExplicitComponent):
+    """Neutral point, CG and static margin. Partials are complex step: short expressions.
+
+        x_np = x_ac,w + eta_h V_h (a_h / a_w) (1 - d eps / d alpha) c
+        V_h  = S_ht l_ht / (S c)
+        a_h  = 2 pi A_h / (2 + sqrt(A_h^2 + 4))        Helmbold (Raymer Ch. 12, no sweep, Mach ~ 0)
+        d eps / d alpha = 2 a_w / (pi A)               elliptic-loading downwash estimate
+
+    The CG is the mass-weighted mean of the component stations (origin: wing root leading edge, x aft). SM = (x_np -
+    x_cg) / c.
+
+    Inputs
+    ------
+    c [m], S [m**2], AR, a_w [1/rad], S_ht [m**2], AR_ht, l_ht [m], eta_h
+    Each mass and station in MASS_STATIONS [kg, m]
+
+    Outputs
+    -------
+    x_np, x_cg [m], SM, V_h, a_h [1/rad], downwash_grad
+
+    Symbols
+    -------
+    a_w, a_h : wing and tail lift-curve slopes [1/rad]; a_w is the coupled C_L,alpha from the VLM (vortex-lattice
+    method)
+    eta_h : tail dynamic-pressure ratio
+    deps : downwash gradient, d eps / d alpha
+    """
+
     def setup(self):
         for name, val, units in [
             ("c", 0.25, "m"),
@@ -78,7 +95,7 @@ class StaticStability(om.ExplicitComponent):
 
 
 def oei_check(prob, cfg):
-    """One-engine-inoperative yaw, twin layout: report-only post-check (not a constraint; D8).
+    """One-engine-inoperative yaw, twin layout: report-only post-check (not a constraint; docs/DECISIONS.md#plan-d8).
 
     The live unit gives a yawing moment N = T_unit y_m, using the static thrust per unit (the worst case).
     Windmilling drag of the dead prop is neglected. Required rudder at the check speed
@@ -88,13 +105,26 @@ def oei_check(prob, cfg):
         C_n,dr    = eta_v V_v a_v tau_r            (per rad of rudder; a_v Helmbold on AR_vt)
         delta_req = C_n,req / C_n,dr
 
-    eta_v, tau_r, delta_max and k are all PLACEHOLDERS (StabilityInputs). Returns None for n_motors = 1.
+    eta_v, tau_r, delta_max and k are all placeholders (StabilityInputs).
+
+    Parameters
+    ----------
+    prob : om.Problem
+        A run problem.
+    cfg : FullMDOConfig
+
+    Returns
+    -------
+    dict or None
+        N_yaw_Nm, V_check_mps, Cn_req, Cn_per_rad_rudder, rudder_req_deg, rudder_max_deg, rudder_margin_deg, ok.
+        None for n_motors = 1.
     """
     if cfg.propulsion.n_motors != 2:
         return None
     st = cfg.stability
 
     def val(k):
+        """One scalar output of the problem."""
         return float(np.ravel(prob.get_val(k))[0])
 
     T, ym, S, b = val("T_static_unit"), val("y_m"), val("S"), val("b")
