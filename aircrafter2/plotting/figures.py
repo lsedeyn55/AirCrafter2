@@ -43,24 +43,57 @@ def _n_motors(p):
     return int(round(v(p, "m_motor_group") / v(p, "m_motor_unit")))
 
 
+def planform_geometry(g):
+    """The top-view geometry of a design in the model's own frame (x aft from the wing root LE, y spanwise).
+
+    planform() and planform_overlay() both draw from this, so the single and overlaid views can't disagree.
+
+    Parameters
+    ----------
+    g : dict
+        b, c, l_ht, S_ht, AR_ht, S_vt, AR_vt, boom_offset, l_cb, w_cb, x_cb (the box centre), x_motor, D_prop [m, m**2].
+
+    Returns
+    -------
+    dict
+        wing, ht and cargo as (y0, x0, width, length) rectangles; vt and boom as (x0, x1) on the centreline; prop as
+        (x, half_span); the HT's span and chord bh, ch.
+    """
+    b, c, l_ht = g["b"], g["c"], g["l_ht"]
+    bh, ch = np.sqrt(g["S_ht"] * g["AR_ht"]), np.sqrt(g["S_ht"] / g["AR_ht"])
+    cv = np.sqrt(g["S_vt"] / g["AR_vt"])
+    x_tail = 0.25 * c + l_ht
+    return dict(
+        wing=(-b / 2, 0.0, b, c),
+        ht=(-bh / 2, x_tail - 0.25 * ch, bh, ch),
+        vt=(x_tail - 0.25 * cv, x_tail + 0.75 * cv),
+        boom=(0.25 * c + g["boom_offset"], x_tail),
+        cargo=(-g["w_cb"] / 2, g["x_cb"] - g["l_cb"] / 2, g["w_cb"], g["l_cb"]),
+        prop=(g["x_motor"] - 0.01, g["D_prop"] / 2),
+        bh=bh,
+        ch=ch,
+    )
+
+
+def _planform_values(p):
+    """The inputs of planform_geometry from a solved full-model problem."""
+    names = ("b", "c", "l_ht", "S_ht", "AR_ht", "S_vt", "AR_vt", "boom_offset", "l_cb", "w_cb", "x_motor", "D_prop")
+    return dict({k: v(p, k) for k in names}, x_cb=v(p, "stations.x_cb"))
+
+
 def planform(p, path, underlay=None):
     """Top view of the design. underlay(ax), if given, draws first (e.g. the OpenVSP mock-up's top view)."""
-    b, c, l_ht = v(p, "b"), v(p, "c"), v(p, "l_ht")
-    Sh, Sv, ARh = v(p, "S_ht"), v(p, "S_vt"), v(p, "AR_ht")
-    bh, ch = np.sqrt(Sh * ARh), np.sqrt(Sh / ARh)
-    lcb, wcb = v(p, "l_cb"), v(p, "w_cb")
+    b, c = v(p, "b"), v(p, "c")
+    Sv = v(p, "S_vt")
+    geo = planform_geometry(_planform_values(p))
     fig, ax = figure(0.8, 0.75)
     if underlay is not None:
         underlay(ax)
-    ax.add_patch(Rectangle((-b / 2, 0), b, c, fc=PALETTE[0], alpha=0.25, ec=PALETTE[0], label="wing"))
-    x_tail = 0.25 * c + l_ht - 0.25 * ch
-    ax.add_patch(
-        Rectangle((-bh / 2, x_tail), bh, ch, fc=PALETTE[2], alpha=0.25, ec=PALETTE[2], label="horizontal tail")
-    )
-    x0 = 0.25 * c + v(p, "boom_offset")
-    ax.plot([0, 0], [x0, 0.25 * c + l_ht], color="k", lw=2, label="tail boom")
-    x_cb = v(p, "stations.x_cb")
-    ax.add_patch(Rectangle((-wcb / 2, x_cb - lcb / 2), wcb, lcb, fc="none", ec=PALETTE[3], ls="--", label="cargo bay"))
+    wing, ht, cargo = geo["wing"], geo["ht"], geo["cargo"]
+    ax.add_patch(Rectangle(wing[:2], wing[2], wing[3], fc=PALETTE[0], alpha=0.25, ec=PALETTE[0], label="wing"))
+    ax.add_patch(Rectangle(ht[:2], ht[2], ht[3], fc=PALETTE[2], alpha=0.25, ec=PALETTE[2], label="horizontal tail"))
+    ax.plot([0, 0], list(geo["boom"]), color="k", lw=2, label="tail boom")
+    ax.add_patch(Rectangle(cargo[:2], cargo[2], cargo[3], fc="none", ec=PALETTE[3], ls="--", label="cargo bay"))
     ax.plot(0, v(p, "x_cg"), "o", color=PALETTE[1], label=f"CG (SM = {v(p, 'SM'):.2f})")
     ax.plot(0, v(p, "x_np"), "^", color="k", label="neutral point")
     xm, Dp = v(p, "x_motor"), v(p, "D_prop")
@@ -81,6 +114,64 @@ def planform(p, path, underlay=None):
     ax.set_xlim(-b / 2 * 1.1, b / 2 * 1.1)
     ax.legend(loc="lower right", fontsize=7)
     ax.set_title(f"b = {b:.2f} m, c = {c:.3f} m, S_v = {Sv:.3f} m²")
+    return save(fig, path)
+
+
+OVERLAY_STYLES = ["-", "--", "-.", ":", (0, (5, 1, 1, 1, 1, 1)), (0, (1, 3))]
+
+
+def planform_overlay(designs, path, datum="wing_le", title=None):
+    """Top views of several designs over each other, at one scale: outlines only, one colour and line style per design.
+
+    Parameters
+    ----------
+    designs : list of dict
+        label, F (the capped flight score, in the legend), geometry (the inputs of planform_geometry), x_cg, x_np.
+    path : str or Path
+    datum : str
+        "wing_le": x from each design's wing root LE (the model's frame). "motor": x from each design's prop plane, so
+        the fuselage and tail lengths compare directly.
+    title : str, optional
+
+    Returns
+    -------
+    str or Path
+        path.
+    """
+    if datum not in ("wing_le", "motor"):
+        raise ValueError(f"datum must be 'wing_le' or 'motor', not {datum!r}")
+    fig, ax = figure(1.0, 1.05)
+    x_extent = []
+    y_extent = []
+    for i, d in enumerate(designs):
+        g = d["geometry"]
+        geo = planform_geometry(g)
+        x0 = g["x_motor"] if datum == "motor" else 0.0
+        col, ls = PALETTE[i % len(PALETTE)], OVERLAY_STYLES[i % len(OVERLAY_STYLES)]
+        kw = dict(fc="none", ec=col, ls=ls, lw=1.2)
+        for rect in (geo["wing"], geo["ht"], geo["cargo"]):
+            ax.add_patch(Rectangle((rect[0], rect[1] - x0), rect[2], rect[3], **kw))
+        ax.plot([0, 0], [geo["boom"][0] - x0, geo["boom"][1] - x0], color=col, ls=ls, lw=0.8)
+        ax.plot([0, 0], [geo["vt"][0] - x0, geo["vt"][1] - x0], color=col, ls="-", lw=2.2, solid_capstyle="butt")
+        xp, half = geo["prop"]
+        ax.plot([-half, half], [xp - x0, xp - x0], color=col, ls=ls, lw=1.2)
+        off = (i - (len(designs) - 1) / 2) * 0.012  # markers side by side, so coincident stations stay readable
+        ax.plot(off, d["x_cg"] - x0, "o", mfc="none", mec=col, ms=5, mew=1.0)
+        ax.plot(off, d["x_np"] - x0, "^", mfc="none", mec=col, ms=5, mew=1.0)
+        ax.plot([], [], color=col, ls=ls, lw=1.2, label=f"{d['label']} (F = {d['F']:.3f})")
+        x_extent += [xp - x0, geo["ht"][1] + geo["ht"][3] - x0, geo["cargo"][1] + geo["cargo"][3] - x0]
+        y_extent.append(g["b"] / 2)
+    ax.plot([], [], "o", mfc="none", mec="k", ms=5, label="CG (M2)")
+    ax.plot([], [], "^", mfc="none", mec="k", ms=5, label="neutral point (M2)")
+    ax.plot([], [], color="k", lw=2.2, label="vertical tail (on the centreline)")
+    ax.set_aspect("equal")
+    ax.set_xlim(-max(y_extent) * 1.08, max(y_extent) * 1.08)
+    ax.set_ylim(max(x_extent) + 0.06, min(x_extent) - 0.06)
+    ax.set_xlabel("y (m)")
+    ax.set_ylabel("x (m), from the prop plane" if datum == "motor" else "x (m), from the wing root LE")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.09), ncol=2, fontsize=7, frameon=False)
+    if title:
+        ax.set_title(title)
     return save(fig, path)
 
 
