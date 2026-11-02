@@ -136,25 +136,25 @@ class Stores2026(om.ExplicitComponent):
         self.declare_partials("*", "*", method="cs")
 
     def compute(self, inputs, outputs):
-        c, o = self.options["config"], self.options
-        x = {k: inputs[k] for k in inputs}
-        n_p, n_c, chord, S = x["n_p"], x["n_c"], x["c"], x["S"]
-        dx = x["x_cb_frac"] - c.x_cb_frac_ref  # the payload moves with the box (rigid fuselage); 0.0 at Humpback
-        x_pax, x_car = (c.x_pax_frac + dx) * chord, (c.x_car_frac + dx) * chord
-        masses = [n_p * c.m_seat, n_c * c.m_slot]
+        cfg, opts = self.options["config"], self.options
+        vals = {k: inputs[k] for k in inputs}
+        n_p, n_c, chord, S = vals["n_p"], vals["n_c"], vals["c"], vals["S"]
+        dx = vals["x_cb_frac"] - cfg.x_cb_frac_ref  # the payload moves with the box (rigid fuselage); 0.0 at Humpback
+        x_pax, x_car = (cfg.x_pax_frac + dx) * chord, (cfg.x_car_frac + dx) * chord
+        masses = [n_p * cfg.m_seat, n_c * cfg.m_slot]
         stations = [x_pax, x_car]
-        if o["payload"]:
-            masses += [n_p * c.m_duck, n_c * c.m_puck]
+        if opts["payload"]:
+            masses += [n_p * cfg.m_duck, n_c * cfg.m_puck]
             stations += [x_pax, x_car]
         m_b = cd_b = dcd = 0.0 * S
-        if o["banner"]:
-            L = x["L_banner"] * INCH
-            H = L / c.banner_ar
-            m_b = c.banner_rho_A * L * H + c.m_banner_ballast + c.m_banner_mech
+        if opts["banner"]:
+            L = vals["L_banner"] * INCH
+            H = L / cfg.banner_ar
+            m_b = cfg.banner_rho_A * L * H + cfg.m_banner_ballast + cfg.m_banner_mech
             masses.append(m_b)
-            stations.append(c.x_banner_frac * chord)
-            cd_b = x["banner_drag_factor"] * c.cd_banner * L * H / S
-            dcd = c.dcd_stowed - cd_b
+            stations.append(cfg.x_banner_frac * chord)
+            cd_b = vals["banner_drag_factor"] * cfg.cd_banner * L * H / S
+            dcd = cfg.dcd_stowed - cd_b
         m = sum(masses)
         outputs["m_pay"] = m
         outputs["x_pay"] = sum(mi * xi for mi, xi in zip(masses, stations)) / m
@@ -215,14 +215,14 @@ class PayloadFuselage(om.ExplicitComponent):
         self.declare_partials("l_car", "n_c", method="cs")
 
     def compute(self, inputs, outputs):
-        c = self.options["config"]
-        if c.fuselage_counts is not None:  # sized for fixed counts (an as-built fuselage), not the flown ones
-            n_p, n_c = (np.array([float(n)]) + 0.0 * inputs["n_p"] for n in c.fuselage_counts)
+        cfg = self.options["config"]
+        if cfg.fuselage_counts is not None:  # sized for fixed counts (an as-built fuselage), not the flown ones
+            n_p, n_c = (np.array([float(n)]) + 0.0 * inputs["n_p"] for n in cfg.fuselage_counts)
         else:
             n_p, n_c = inputs["n_p"], inputs["n_c"]
-        l_pax, l_car, outputs["l_cb"] = fuselage_length(c, n_p, n_c)
-        outputs["w_cb"] = c.w_cb
-        outputs["h_cb"] = c.h_cb
+        l_pax, l_car, outputs["l_cb"] = fuselage_length(cfg, n_p, n_c)
+        outputs["w_cb"] = cfg.w_cb
+        outputs["h_cb"] = cfg.h_cb
         outputs["l_pax"] = l_pax
         outputs["l_car"] = l_car
 
@@ -279,16 +279,16 @@ class Packaging2026(om.ExplicitComponent):
         self.declare_partials("*", "*", method="cs")
 
     def compute(self, inputs, outputs):
-        c = self.options["config"]
+        cfg = self.options["config"]
         x_cb = inputs["x_cb_frac"] * inputs["c"]
-        x_cb_ref = c.x_cb_frac_ref * c.c_ref
-        l_cb_ref = fuselage_length(c, np.array([c.n_p_ref]), np.array([c.n_c_ref]))[2]
+        x_cb_ref = cfg.x_cb_frac_ref * cfg.c_ref
+        l_cb_ref = fuselage_length(cfg, np.array([cfg.n_p_ref]), np.array([cfg.n_c_ref]))[2]
         x_motor = self.options["x_motor_ref"] + (x_cb - x_cb_ref) - (inputs["l_cb"] - l_cb_ref) / 2.0
         aft = x_cb + inputs["l_cb"] / 2.0
         c_ht = np.sqrt(inputs["S_ht"] / inputs["AR_ht"])
         x_tail = 0.25 * inputs["c"] + inputs["l_ht"]
         outputs["x_motor"] = x_motor
-        outputs["batt_fwd_margin"] = inputs["x_batt"] - (x_motor + c.d_batt)
+        outputs["batt_fwd_margin"] = inputs["x_batt"] - (x_motor + cfg.d_batt)
         outputs["batt_aft_margin"] = aft - inputs["x_batt"]
-        outputs["tail_margin"] = (x_tail - 0.25 * c_ht) - aft - c.tail_clear
+        outputs["tail_margin"] = (x_tail - 0.25 * c_ht) - aft - cfg.tail_clear
         outputs["x_cb_aft"] = aft

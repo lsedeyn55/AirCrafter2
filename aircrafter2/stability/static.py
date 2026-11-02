@@ -77,15 +77,15 @@ class StaticStability(om.ExplicitComponent):
         self.declare_partials("*", "*", method="cs")
 
     def compute(self, inputs, outputs):
-        x = {k: inputs[k] for k in inputs}
-        c = x["c"]
-        Ah = x["AR_ht"]
+        vals = {k: inputs[k] for k in inputs}
+        c = vals["c"]
+        Ah = vals["AR_ht"]
         a_h = 2 * np.pi * Ah / (2 + np.sqrt(Ah**2 + 4))
-        deps = 2 * x["a_w"] / (np.pi * x["AR"])
-        V_h = x["S_ht"] * x["l_ht"] / (x["S"] * c)
-        x_np = 0.25 * c + x["eta_h"] * V_h * a_h / x["a_w"] * (1 - deps) * c
-        m_tot = sum(x[m] for m, _ in MASS_STATIONS)
-        x_cg = sum(x[m] * x[s] for m, s in MASS_STATIONS) / m_tot
+        deps = 2 * vals["a_w"] / (np.pi * vals["AR"])
+        V_h = vals["S_ht"] * vals["l_ht"] / (vals["S"] * c)
+        x_np = 0.25 * c + vals["eta_h"] * V_h * a_h / vals["a_w"] * (1 - deps) * c
+        m_tot = sum(vals[m] for m, _ in MASS_STATIONS)
+        x_cg = sum(vals[m] * vals[s] for m, s in MASS_STATIONS) / m_tot
         outputs["x_np"] = x_np
         outputs["x_cg"] = x_cg
         outputs["SM"] = (x_np - x_cg) / c

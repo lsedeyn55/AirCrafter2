@@ -95,40 +95,49 @@ class ParasiteDrag(om.ExplicitComponent):
         self.declare_partials("*", "*", method="cs")
 
     def compute(self, inputs, outputs):
-        x = {k: inputs[k] for k in inputs}
-        q_over_mu = x["rho"] * x["v"] / x["mu"]
-        tc, xt = x["tc_tail"], x["xt_tail"]
+        vals = {k: inputs[k] for k in inputs}
+        q_over_mu = vals["rho"] * vals["v"] / vals["mu"]
+        tc, xt = vals["tc_tail"], vals["xt_tail"]
         FF_tail = 1.0 + 0.6 / xt * tc + 100.0 * tc**4
 
         def surface(Sname, ARname):
             """CD_0 of one rectangular tail surface, chord sqrt(S / AR)."""
-            S = x[Sname]
-            c = np.sqrt(S / x[ARname])
+            S = vals[Sname]
+            c = np.sqrt(S / vals[ARname])
             Swet = S * (1.977 + 0.52 * tc)
-            return cf_turbulent(q_over_mu * c) * FF_tail * x["Q_tail"] * Swet / x["S"]
+            return cf_turbulent(q_over_mu * c) * FF_tail * vals["Q_tail"] * Swet / vals["S"]
 
         outputs["CD_ht"] = surface("S_ht", "AR_ht")
         outputs["CD_vt"] = surface("S_vt", "AR_vt")
         outputs["CD_tail"] = outputs["CD_ht"] + outputs["CD_vt"]
 
-        l, w, h = x["l_cb"], x["w_cb"], x["h_cb"]
+        l, w, h = vals["l_cb"], vals["w_cb"], vals["h_cb"]
         d_eq = np.sqrt(4.0 * w * h / np.pi)
         f = l / d_eq
         S_cb = 2.0 * (l * w + l * h + w * h)
-        cd_cb = cf_turbulent(q_over_mu * l) * (1 + 60 / f**3 + f / 400) * x["Q_fus"] * S_cb / x["S"]
-        lb, rb = x["l_tb"], x["r_tb"]
+        cd_cb = cf_turbulent(q_over_mu * l) * (1 + 60 / f**3 + f / 400) * vals["Q_fus"] * S_cb / vals["S"]
+        lb, rb = vals["l_tb"], vals["r_tb"]
         fb = lb / (2 * rb)
-        cd_boom = cf_turbulent(q_over_mu * lb) * (1 + 60 / fb**3 + fb / 400) * x["Q_fus"] * 2 * np.pi * rb * lb / x["S"]
+        cd_boom = (
+            cf_turbulent(q_over_mu * lb) * (1 + 60 / fb**3 + fb / 400) * vals["Q_fus"] * 2 * np.pi * rb * lb / vals["S"]
+        )
         on = 1.0 if self.options["fuselage_drag"] else 0.0
         outputs["CD_cb"] = on * cd_cb
         outputs["CD_boom"] = on * cd_boom
         outputs["CD_fus"] = on * (cd_cb + cd_boom)
         if self.options["n_nacelles"]:
-            ln, dn = x["l_nac"], x["d_nac"]
+            ln, dn = vals["l_nac"], vals["d_nac"]
             fn = ln / dn
             FF = (1 + 60 / fn**3 + fn / 400) if self.options["nacelle_ff"] == "body" else (1 + 0.35 / fn)
             outputs["CD_nac"] = (
-                self.options["n_nacelles"] * cf_turbulent(q_over_mu * ln) * FF * x["Q_nac"] * np.pi * dn * ln / x["S"]
+                self.options["n_nacelles"]
+                * cf_turbulent(q_over_mu * ln)
+                * FF
+                * vals["Q_nac"]
+                * np.pi
+                * dn
+                * ln
+                / vals["S"]
             )
         else:
             outputs["CD_nac"] = 0.0

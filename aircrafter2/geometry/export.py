@@ -89,7 +89,11 @@ def export_geometry(prob, cfg, config_path=None, optimised=None, success=None, c
     from ..stability import oei_check
 
     pr, st = cfg.propulsion, cfg.stability  # noqa: F841
-    v = lambda k, u=None: _v(prob, k, u)  # noqa: E731
+
+    def v(k, u=None):
+        """One scalar output, in the given units."""
+        return _v(prob, k, u)
+
     up, lo = _arr(prob, "upper_weights"), _arr(prob, "lower_weights")
     le, te = v("le_weight"), v("te_thickness")
     xy = cst.coordinates(np.array(up), np.array(lo), le, te)

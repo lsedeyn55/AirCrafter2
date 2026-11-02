@@ -216,8 +216,8 @@ class Powertrain(om.ExplicitComponent):
         dict
             Arrays (n_nodes,): omega [rad/s], I_motor [A], T [N], P_batt [W], eta_prop, J, v [m/s]; and Voc [V].
         """
-        p = self._prop
-        D = p.diameter
+        prop = self._prop
+        D = prop.diameter
         rho, dl = x["rho"], x["throttle"]
         Voc = x["n_cells"] * x["V_cell"]
         Rb = x["n_cells"] * x["R_cell"]
@@ -230,7 +230,7 @@ class Powertrain(om.ExplicitComponent):
             Qm = (I - x["I0"]) / kv
             n = om_ / (2 * np.pi)
             J = v / (n * D)
-            Qp = p.cp(J, om_ / RPM2RADS) * rho * n**2 * D**5 / (2 * np.pi)
+            Qp = prop.cp(J, om_ / RPM2RADS) * rho * n**2 * D**5 / (2 * np.pi)
             return Qm - Qp, I, n, J
 
         v = self._v if self.options["fit_range"] == "fixed" else self._s * self.v_fit_max(x)
@@ -241,9 +241,9 @@ class Powertrain(om.ExplicitComponent):
             r2, *_ = residual(om_ + h, v)
             om_ = om_ - r / ((r2 - r) / h)
         _, I, n, J = residual(om_, v)
-        T = p.ct(J, om_ / RPM2RADS) * rho * n**2 * D**4
+        T = prop.ct(J, om_ / RPM2RADS) * rho * n**2 * D**4
         P_batt = Voc * dl * I
-        P_shaft = p.cp(J, om_ / RPM2RADS) * rho * n**3 * D**5
+        P_shaft = prop.cp(J, om_ / RPM2RADS) * rho * n**3 * D**5
         eta_prop = np.where(np.real(P_shaft) > 0, T * v / P_shaft, 0.0 * T)
         return dict(omega=om_, I_motor=I, T=T, P_batt=P_batt, eta_prop=eta_prop, J=J, Voc=Voc, v=v)
 
@@ -269,48 +269,48 @@ class Powertrain(om.ExplicitComponent):
         return ks_min([self.options["v_top"] * np.ones_like(v_wm), v_wm], rho=50.0)[0]
 
     def compute(self, inputs, outputs):
-        x = {k: inputs[k] for k in inputs}
-        r = self.solve_nodes(x)  # one unit
-        nu = self._n_units
-        T, P = nu * r["T"], nu * r["P_batt"]
+        vals = {k: inputs[k] for k in inputs}
+        node_results = self.solve_nodes(vals)  # one unit
+        n_units = self._n_units
+        T, P = n_units * node_results["T"], n_units * node_results["P_batt"]
         outputs["T_nodes"] = T
         outputs["P_nodes"] = P
-        outputs["eta_prop_nodes"] = r["eta_prop"]
+        outputs["eta_prop_nodes"] = node_results["eta_prop"]
         if self.options["fit_range"] == "fixed":
-            tc = self._pinv @ T
-            outputs["T_coeffs"] = tc
+            t_coeffs = self._pinv @ T
+            outputs["T_coeffs"] = t_coeffs
             outputs["P_coeffs"] = self._pinv @ P
-            outputs["RPM_coeffs"] = self._pinv @ (r["omega"] / RPM2RADS)
-            V = np.stack([self._v**i for i in range(len(tc))], axis=1)
-            outputs["fit_residual_T"] = np.max(np.abs(np.real(V @ tc - T)))
+            outputs["RPM_coeffs"] = self._pinv @ (node_results["omega"] / RPM2RADS)
+            V = np.stack([self._v**i for i in range(len(t_coeffs))], axis=1)
+            outputs["fit_residual_T"] = np.max(np.abs(np.real(V @ t_coeffs - T)))
             outputs["v_fit_max"] = self.options["v_top"]
         else:  # fit in s = v / vmax on fixed nodes (analytic), then t_i = a_i / vmax^i
-            vmax = self.v_fit_max(x)
+            vmax = self.v_fit_max(vals)
             scale = np.array([vmax**-i for i in range(self.options["deg"] + 1)]).ravel()
-            tc = (self._pinv @ T) * scale
-            outputs["T_coeffs"] = tc
+            t_coeffs = (self._pinv @ T) * scale
+            outputs["T_coeffs"] = t_coeffs
             outputs["P_coeffs"] = (self._pinv @ P) * scale
-            outputs["RPM_coeffs"] = (self._pinv @ (r["omega"] / RPM2RADS)) * scale
-            S = np.stack([self._s**i for i in range(len(tc))], axis=1)
+            outputs["RPM_coeffs"] = (self._pinv @ (node_results["omega"] / RPM2RADS)) * scale
+            S = np.stack([self._s**i for i in range(len(t_coeffs))], axis=1)
             outputs["fit_residual_T"] = np.max(np.abs(np.real(S @ (self._pinv @ T) - T)))
             outputs["v_fit_max"] = vmax
         outputs["T_static"] = T[0]
-        outputs["T_static_unit"] = r["T"][0]
-        outputs["I_static"] = x["throttle"] * r["I_motor"][0]
-        outputs["I_pack_static"] = self._units_per_pack * x["throttle"] * r["I_motor"][0]
+        outputs["T_static_unit"] = node_results["T"][0]
+        outputs["I_static"] = vals["throttle"] * node_results["I_motor"][0]
+        outputs["I_pack_static"] = self._units_per_pack * vals["throttle"] * node_results["I_motor"][0]
         outputs["D_prop"] = self._prop.diameter
         outputs["rpm_max"] = (
-            np.max(np.real(r["omega"])) / RPM2RADS
-            if not np.iscomplexobj(r["omega"])
-            else r["omega"][np.argmax(np.real(r["omega"]))] / RPM2RADS
+            np.max(np.real(node_results["omega"])) / RPM2RADS
+            if not np.iscomplexobj(node_results["omega"])
+            else node_results["omega"][np.argmax(np.real(node_results["omega"]))] / RPM2RADS
         )
         outputs["rpm_limit"] = self._prop.rpm_limit
-        E_nom = self._n_packs * x["n_cells"] * x["V_cell"] * x["capacity"] * 3600.0  # all packs, J
+        E_nom = self._n_packs * vals["n_cells"] * vals["V_cell"] * vals["capacity"] * 3600.0  # all packs, J
         outputs["E_nom_total"] = E_nom / 3600.0
-        outputs["E_usable"] = x["usable_fraction"] * E_nom
-        m_batt = E_nom / 3600.0 / x["e_spec"]
+        outputs["E_usable"] = vals["usable_fraction"] * E_nom
+        m_batt = E_nom / 3600.0 / vals["e_spec"]
         outputs["m_batt"] = m_batt
-        m_unit = x["m_motor"] + x["m_esc"] + x["m_prop"] + x["m_nacelle"]
+        m_unit = vals["m_motor"] + vals["m_esc"] + vals["m_prop"] + vals["m_nacelle"]
         outputs["m_motor_unit"] = m_unit
-        outputs["m_motor_group"] = nu * m_unit
-        outputs["m_sys"] = m_batt + nu * m_unit + x["m_avionics"]
+        outputs["m_motor_group"] = n_units * m_unit
+        outputs["m_sys"] = m_batt + n_units * m_unit + vals["m_avionics"]

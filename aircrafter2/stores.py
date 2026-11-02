@@ -162,63 +162,63 @@ class Stores(om.ExplicitComponent):
         self.declare_partials("*", "*", method="cs")
 
     def compute(self, inputs, outputs):
-        c = self.options["config"]
-        o = self.options
-        x = {k: inputs[k] for k in inputs}
-        chord, S = x["c"], x["S"]
+        cfg = self.options["config"]
+        opts = self.options
+        vals = {k: inputs[k] for k in inputs}
+        chord, S = vals["c"], vals["S"]
         masses, stations = [], []
-        if o["tanks"]:
-            masses.append(c.n_ext * c.bottle.empty_mass + 0.0 * chord)
-            stations.append(c.x_tank_frac * chord)
-            if c.internal_bottle is not None:
-                masses.append(c.internal_bottle.empty_mass + 0.0 * chord)
-                stations.append(c.x_internal_frac * chord)
-        if o["fuel"]:  # fill split by volume between the external and internal tanks
-            v_ext = c.n_ext * c.bottle.volume_L
-            v_int = c.internal_bottle.volume_L if c.internal_bottle is not None else 0.0
-            masses.append(x["fuel_mass"] * v_ext / (v_ext + v_int))
-            stations.append(c.x_tank_frac * chord)
+        if opts["tanks"]:
+            masses.append(cfg.n_ext * cfg.bottle.empty_mass + 0.0 * chord)
+            stations.append(cfg.x_tank_frac * chord)
+            if cfg.internal_bottle is not None:
+                masses.append(cfg.internal_bottle.empty_mass + 0.0 * chord)
+                stations.append(cfg.x_internal_frac * chord)
+        if opts["fuel"]:  # fill split by volume between the external and internal tanks
+            v_ext = cfg.n_ext * cfg.bottle.volume_L
+            v_int = cfg.internal_bottle.volume_L if cfg.internal_bottle is not None else 0.0
+            masses.append(vals["fuel_mass"] * v_ext / (v_ext + v_int))
+            stations.append(cfg.x_tank_frac * chord)
             if v_int:
-                masses.append(x["fuel_mass"] * v_int / (v_ext + v_int))
-                stations.append(c.x_internal_frac * chord)
-        if o["pylons"]:
-            masses.append(c.m_pylons + 0.0 * chord)
-            stations.append(c.x_tank_frac * chord)
-        if o["x1"]:
-            masses += [c.m_x1 + 0.0 * chord, c.m_x1_structure + 0.0 * chord]
-            stations += [c.x_x1_frac * chord, c.x_x1s_frac * chord]
+                masses.append(vals["fuel_mass"] * v_int / (v_ext + v_int))
+                stations.append(cfg.x_internal_frac * chord)
+        if opts["pylons"]:
+            masses.append(cfg.m_pylons + 0.0 * chord)
+            stations.append(cfg.x_tank_frac * chord)
+        if opts["x1"]:
+            masses += [cfg.m_x1 + 0.0 * chord, cfg.m_x1_structure + 0.0 * chord]
+            stations += [cfg.x_x1_frac * chord, cfg.x_x1s_frac * chord]
         m = sum(masses) if masses else 0.0 * chord
         outputs["m_pay"] = m
         outputs["x_pay"] = (sum(mi * xi for mi, xi in zip(masses, stations)) / m) if masses else 0.0 * chord
 
-        re_per_m = x["rho"] * x["v"] / x["mu"]
+        re_per_m = vals["rho"] * vals["v"] / vals["mu"]
         cd_t = cd_p = cd_x = 0.0 * S
-        if o["tanks"]:
-            area = np.pi * c.bottle.diameter**2 / 4.0
-            cd_t = c.n_ext * c.Q_tank * c.cd_bottle * area / S
-        if o["pylons"]:
-            tc = c.pylon_thickness / c.pylon_chord
-            ff = 1.0 + 0.6 / c.pylon_xt * tc + 100.0 * tc**4
-            swet = c.pylon_chord * c.pylon_height * (1.977 + 0.52 * tc)
-            cd_p = c.n_ext * c.Q_pylon * cf_turbulent(re_per_m * c.pylon_chord) * ff * swet / S
-        if o["x1"]:
-            tc = c.x1_wing_tc
+        if opts["tanks"]:
+            area = np.pi * cfg.bottle.diameter**2 / 4.0
+            cd_t = cfg.n_ext * cfg.Q_tank * cfg.cd_bottle * area / S
+        if opts["pylons"]:
+            tc = cfg.pylon_thickness / cfg.pylon_chord
+            ff = 1.0 + 0.6 / cfg.pylon_xt * tc + 100.0 * tc**4
+            swet = cfg.pylon_chord * cfg.pylon_height * (1.977 + 0.52 * tc)
+            cd_p = cfg.n_ext * cfg.Q_pylon * cf_turbulent(re_per_m * cfg.pylon_chord) * ff * swet / S
+        if opts["x1"]:
+            tc = cfg.x1_wing_tc
             ff_w = 1.0 + 0.6 / 0.3 * tc + 100.0 * tc**4
-            swet_w = c.x1_wing_area * (1.977 + 0.52 * tc)
-            f = c.x1_body_length / c.x1_body_diameter
+            swet_w = cfg.x1_wing_area * (1.977 + 0.52 * tc)
+            f = cfg.x1_body_length / cfg.x1_body_diameter
             ff_b = 1.0 + 60.0 / f**3 + f / 400.0
-            swet_b = np.pi * c.x1_body_diameter * c.x1_body_length
+            swet_b = np.pi * cfg.x1_body_diameter * cfg.x1_body_length
             cd_x = (
-                c.Q_x1
+                cfg.Q_x1
                 * (
-                    cf_turbulent(re_per_m * c.x1_wing_chord) * ff_w * swet_w
-                    + cf_turbulent(re_per_m * c.x1_body_length) * ff_b * swet_b
+                    cf_turbulent(re_per_m * cfg.x1_wing_chord) * ff_w * swet_w
+                    + cf_turbulent(re_per_m * cfg.x1_body_length) * ff_b * swet_b
                 )
                 / S
             )
-        k = x["store_drag_factor"]
+        k = vals["store_drag_factor"]
         outputs["CD_tanks"] = k * cd_t
         outputs["CD_pylons"] = k * cd_p
         outputs["CD_x1"] = k * cd_x
         outputs["CD_stores"] = k * (cd_t + cd_p + cd_x)
-        outputs["fuel_capacity"] = c.fuel_capacity
+        outputs["fuel_capacity"] = cfg.fuel_capacity

@@ -330,8 +330,8 @@ def legs_from_rows(rows, label="lap"):
 
     keyed = []
     for i, r in enumerate(rows):
-        o = num(r.get("order"))
-        keyed.append((o if o is not None else float("inf"), i, r))
+        order_value = num(r.get("order"))
+        keyed.append((order_value if order_value is not None else float("inf"), i, r))
     legs, errors = [], []
     for n, (_, _, r) in enumerate(sorted(keyed, key=lambda t: (t[0], t[1])), start=1):
         kind = r.get("kind")

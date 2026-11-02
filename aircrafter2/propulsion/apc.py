@@ -152,7 +152,11 @@ def fit_prop(data: APCData, dj=4, dr=2, ct_floor=0.0):
     A = _basis(data.J[keep], data.rpm[keep] / 1e4, dj, dr)
     a_ct, *_ = np.linalg.lstsq(A, data.Ct[keep], rcond=None)
     a_cp, *_ = np.linalg.lstsq(A, data.Cp[keep], rcond=None)
-    rms = lambda a, y: float(np.sqrt(np.mean((A @ a - y) ** 2)))  # noqa: E731
+
+    def rms(a, y):
+        """RMS error of the fit with coefficients a against the data y."""
+        return float(np.sqrt(np.mean((A @ a - y) ** 2)))
+
     return PropSurrogate(
         name=data.name,
         diameter=data.diameter,
