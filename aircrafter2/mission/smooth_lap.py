@@ -194,10 +194,10 @@ class SmoothLapModel(om.ExplicitComponent):
         self.options.declare("rem_floor_width", default=0.5, desc="m, width of that floor")
 
     def setup(self):
-        o = self.options
-        self._lap1, self._other = normalise_legs(o["lap1"]), normalise_legs(o["lap_other"])
-        if o["takeoff"]:
-            if o["power_mode"] != "propulsion":
+        opts = self.options
+        self._lap1, self._other = normalise_legs(opts["lap1"]), normalise_legs(opts["lap_other"])
+        if opts["takeoff"]:
+            if opts["power_mode"] != "propulsion":
                 raise ValueError(
                     "take-off in the mission time needs power_mode='propulsion': in 'aircrafter' mode "
                     "T = P / v is infinite at rest (course.takeoff.in_mission_time; lap_mdo keeps it off)"
@@ -233,7 +233,7 @@ class SmoothLapModel(om.ExplicitComponent):
             self.add_input("T_coeffs", np.zeros(npoly), desc="T(v) = sum t_i v^i (N, v in m/s)")
             self.add_input("P_coeffs", np.zeros(npoly), desc="P_batt(v) = sum p_i v^i (W)")
             self.add_output("thrust_margin_static", 1.0, units="N")
-        if o["takeoff"]:
+        if opts["takeoff"]:
             self.add_input("k_lof", 1.1, desc="lift-off speed / V_stall")
             self.add_input("CL_ground", 0.15, desc="ground-roll lift coefficient (PLACEHOLDER)")
         for name, val, units in [
@@ -254,11 +254,11 @@ class SmoothLapModel(om.ExplicitComponent):
         self.add_output("lapCount", 5.0, desc="report only (step function)")
         self.declare_partials("*", "*", method="cs")
         self.declare_partials("lapCount", "*", dependent=False)
-        if not o["takeoff"]:
+        if not opts["takeoff"]:
             for name, _ in TAKEOFF_OUTPUTS:
                 self.declare_partials(name, "*", dependent=False)
 
-    def _model(self, x, record=None):
+    def _model(self, inputs, record=None):
         """Fly lap 1 and a later lap, and return every output as a dict.
 
         Parameters
@@ -274,132 +274,161 @@ class SmoothLapModel(om.ExplicitComponent):
             Output name -> value, without lapCount.
         """
         # --- polar and speeds ---
-        o = self.options
-        m, S, V, rho = x["m"], x["S"], x["V"], x["rho"]
-        CD0, CD1, k, CLmax, g = x["CD0"], x["CD1"], x["k"], x["CL_max"], x["g"]
-        cd = lambda cl: CD0 + CD1 * cl + k * cl**2  # noqa: E731
+        opts = self.options
+        m, S, V, rho = inputs["m"], inputs["S"], inputs["V"], inputs["rho"]
+        CD0, CD1, k, CLmax, g = inputs["CD0"], inputs["CD1"], inputs["k"], inputs["CL_max"], inputs["g"]
+
+        def cd(cl):
+            return CD0 + CD1 * cl + k * cl**2
+
         W = m * g
-        qS = lambda v: 0.5 * rho * v**2 * S  # noqa: E731
+
+        def qS(v):
+            return 0.5 * rho * v**2 * S
 
         Vstall = np.sqrt(W / (0.5 * rho * CLmax * S))
 
         # --- thrust and battery power as functions of airspeed ---
-        propulsion = o["power_mode"] == "propulsion"
+        propulsion = opts["power_mode"] == "propulsion"
         if propulsion:
-            tc, pc = x["T_coeffs"], x["P_coeffs"]
-            thrust = lambda v: x["thrust_factor"] * sum(tc[i] * v**i for i in range(len(tc)))  # noqa: E731
-            p_batt = lambda v: sum(pc[i] * v**i for i in range(len(pc)))  # noqa: E731
+            thrust_coeffs, power_coeffs = inputs["T_coeffs"], inputs["P_coeffs"]
+
+            def thrust(v):
+                return inputs["thrust_factor"] * sum(thrust_coeffs[i] * v**i for i in range(len(thrust_coeffs)))
+
+            def p_batt(v):
+                return sum(power_coeffs[i] * v**i for i in range(len(power_coeffs)))
+
             P = p_batt(V)  # battery power at the equilibrium cruise speed
         else:
             D_cruise = qS(V) * cd(W / qS(V))
-            P = D_cruise * V / x["eta"]
-            thrust = lambda v: P / v  # noqa: E731
-            p_batt = lambda v: P + 0.0 * v  # noqa: E731
+            P = D_cruise * V / inputs["eta"]
+
+            def thrust(v):
+                return P / v
+
+            def p_batt(v):
+                return P + 0.0 * v
 
         # --- wind and banner ---
-        th = x["wind_dir"] * (np.pi / 180.0)
-        along, cross = x["wind"] * np.cos(th), x["wind"] * np.sin(th)
-        stowed = set(o["banner_stowed_legs"])
-        cd_stowed = lambda cl: CD0 + x["dCD_stowed"] + CD1 * cl + k * cl**2  # noqa: E731
+        wind_dir_rad = inputs["wind_dir"] * (np.pi / 180.0)
+        along, cross = inputs["wind"] * np.cos(wind_dir_rad), inputs["wind"] * np.sin(wind_dir_rad)
+        stowed = set(opts["banner_stowed_legs"])
+
+        def cd_stowed(cl):
+            return CD0 + inputs["dCD_stowed"] + CD1 * cl + k * cl**2
 
         # --- accelerations and turn rate ---
-        def a_level(v, cdf=cd):  # straight, level: CL = W / qS
-            return (thrust(v) - qS(v) * cdf(W / qS(v))) / m
+        def a_level(v, polar=cd):  # straight, level: CL = W / qS
+            return (thrust(v) - qS(v) * polar(W / qS(v))) / m
 
-        def a_capped(v, cdf=cd):
-            a = a_level(v, cdf)
+        def a_capped(v, polar=cd):
+            a = a_level(v, polar)
             if propulsion:  # fixed throttle: no speed hold, T = D sets the top speed
                 return a
             # smooth min(a_level, (V - v) / tau): the pilot holds V
-            return a - softplus(a - (V - v) / o["tau_hold"], o["a_smooth"])[0]
+            return a - softplus(a - (V - v) / opts["tau_hold"], opts["a_smooth"])[0]
 
-        def a_turn(v, cdf=cd):  # drag at CL_max (MATLAB deceleration tables), only the decelerating part
-            a = (thrust(v) - qS(v) * cdf(CLmax)) / m
-            return -softplus(-a, o["a_smooth"])[0]
+        def a_turn(v, polar=cd):  # drag at CL_max (MATLAB deceleration tables), only the decelerating part
+            a = (thrust(v) - qS(v) * polar(CLmax)) / m
+            return -softplus(-a, opts["a_smooth"])[0]
 
         def omega(v):
             n_stall = qS(v) * CLmax / W
-            n, _ = ks_min([n_stall, x["n_struct"]], o["rho_ks"])
+            n, _ = ks_min([n_stall, inputs["n_struct"]], opts["rho_ks"])
             n = 1.0 + softplus(n - 1.0, 0.01)[0]
             return g * np.sqrt(n**2 - 1.0) / v
 
         def log(lap_no, kind, size, wind, v0, v1, t, e, banner="", drift=0.0):
             if record is not None:
-                r = lambda z: float(np.ravel(np.real(z))[0])  # noqa: E731
+
+                def to_float(z):
+                    return float(np.ravel(np.real(z))[0])
+
                 record.append(
                     dict(
                         lap=lap_no,
                         kind=kind,
-                        size=r(size),
+                        size=to_float(size),
                         wind=wind,
-                        v_entry=r(v0),
-                        v_exit=r(v1),
-                        time=r(t),
-                        energy=r(e),
+                        v_entry=to_float(v0),
+                        v_exit=to_float(v1),
+                        time=to_float(t),
+                        energy=to_float(e),
                         banner=banner,
-                        drift_ft=r(drift),
+                        drift_ft=to_float(drift),
                     )
                 )
 
         # --- the legs ---
-        def straight(v, dist, wind_sign, cluster=1.0, cdf=cd):
+        def straight(v, dist, wind_sign, cluster=1.0, polar=cd):
             # s is ground distance; ground speed = airspeed (crabbed) - wind_sign * along-track wind (+1 = headwind leg)
-            N = o["n_steps_straight"]
+            N = opts["n_steps_straight"]
             h = dist / N
             t = 0.0 * v
             e = 0.0 * v
             w = wind_sign * along
             if wind_sign == 0.0:  # a leg across the course axis: no along-track wind
-                gs = lambda vv: vv - w  # noqa: E731
+
+                def ground_speed(vv):
+                    return vv - w
             else:
-                gs = lambda vv: vv * np.sqrt(1.0 - (cross / vv) ** 2) - w  # noqa: E731
-            f = lambda vv: (a_capped(vv, cdf) / gs(vv), 1.0 / gs(vv), p_batt(vv) / gs(vv))  # noqa: E731
+
+                def ground_speed(vv):
+                    return vv * np.sqrt(1.0 - (cross / vv) ** 2) - w
+
+            def rates(vv):
+                return (a_capped(vv, polar) / ground_speed(vv), 1.0 / ground_speed(vv), p_batt(vv) / ground_speed(vv))
+
             for i in range(N):  # RK4 in distance
                 if cluster != 1.0:  # nodes s_i = dist (i/N)^p: short steps where the integrand is stiff (Q45)
                     h = dist * (((i + 1) / N) ** cluster - (i / N) ** cluster)
-                k1 = f(v)
-                k2 = f(v + 0.5 * h * k1[0])
-                k3 = f(v + 0.5 * h * k2[0])
-                k4 = f(v + h * k3[0])
+                k1 = rates(v)
+                k2 = rates(v + 0.5 * h * k1[0])
+                k3 = rates(v + 0.5 * h * k2[0])
+                k4 = rates(v + h * k3[0])
                 v, t, e = (
                     y + h / 6 * (a1 + 2 * a2 + 2 * a3 + a4) for y, a1, a2, a3, a4 in zip((v, t, e), k1, k2, k3, k4)
                 )
             return v, t, e
 
-        def turn(v, angle_deg, cdf=cd):
+        def turn(v, angle_deg, polar=cd):
             t_turn = np.radians(angle_deg) / omega(v)
-            N = o["n_steps_turn"]
+            N = opts["n_steps_turn"]
             h = t_turn / N
             e = 0.0 * v
-            f = lambda vv: (a_turn(vv, cdf), p_batt(vv))  # noqa: E731  d(v, E)/dt
+
+            def rates(vv):
+                return a_turn(vv, polar), p_batt(vv)
+
             for _ in range(N):
-                k1 = f(v)
-                k2 = f(v + 0.5 * h * k1[0])
-                k3 = f(v + 0.5 * h * k2[0])
-                k4 = f(v + h * k3[0])
+                k1 = rates(v)
+                k2 = rates(v + 0.5 * h * k1[0])
+                k3 = rates(v + 0.5 * h * k2[0])
+                k4 = rates(v + h * k3[0])
                 v, e = (y + h / 6 * (a1 + 2 * a2 + 2 * a3 + a4) for y, a1, a2, a3, a4 in zip((v, e), k1, k2, k3, k4))
             return v, t_turn, e
 
         def ground_roll(w):
             """Rest to lift-off into a headwind w, in airspeed v from w to V_LOF: (t, s, E, smallest a)."""
-            CLg = x["CL_ground"]
+            CLg = inputs["CL_ground"]
 
-            cdg = cd_stowed if 0 in stowed else cd
+            cd_ground = cd_stowed if 0 in stowed else cd
 
             def a_raw(vv):
-                return (thrust(vv) - qS(vv) * cdg(CLg) - x["mu_roll"] * (W - qS(vv) * CLg)) / m
+                return (thrust(vv) - qS(vv) * cd_ground(CLg) - inputs["mu_roll"] * (W - qS(vv) * CLg)) / m
 
-            def f(vv):
-                a = o["a_floor"] + softplus(a_raw(vv) - o["a_floor"], o["a_floor_width"])[0]
+            def rates(vv):
+                a = opts["a_floor"] + softplus(a_raw(vv) - opts["a_floor"], opts["a_floor_width"])[0]
                 return 1.0 / a, (vv - w) / a, p_batt(vv) / a
 
-            N = o["n_steps_takeoff"]
+            N = opts["n_steps_takeoff"]
             h = (V_lof - w) / N
             t, s, e = 0.0 * h, 0.0 * h, 0.0 * h
             a_nodes = [a_raw(w + 0.0 * h)]
             for i in range(N):  # RK4 in airspeed (the integrand does not depend on t, s, E: Simpson per step)
                 v0 = w + i * h
-                k1, k2, k4 = f(v0), f(v0 + 0.5 * h), f(v0 + h)
+                k1, k2, k4 = rates(v0), rates(v0 + 0.5 * h), rates(v0 + h)
                 t, s, e = (y + h / 6 * (a1 + 4 * a2 + a4) for y, a1, a2, a4 in zip((t, s, e), k1, k2, k4))
                 a_nodes.append(a_raw(v0 + h))
             # smallest acceleration over the roll (report only): the node selected by real part
@@ -410,35 +439,35 @@ class SmoothLapModel(om.ExplicitComponent):
             total, energy, v_after_360 = 0.0 * v, 0.0 * v, None
             dx = dy = 0.0 * v  # wind drift of the turns since the last straight (course axis: +x = into the wind)
             for i, (kind, size, sign) in enumerate(legs):
-                st = lap_no == 1 and i in stowed
-                cdf = cd_stowed if st else cd
-                ban = ("stowed" if st else "deployed") if stowed else ""
+                is_stowed = lap_no == 1 and i in stowed
+                polar = cd_stowed if is_stowed else cd
+                banner_state = ("stowed" if is_stowed else "deployed") if stowed else ""
                 if kind == "s":
                     wind = {1.0: "head", -1.0: "tail", 0.0: "none"}.get(sign, f"{sign:g}")
                     L = size * FT2M
                     delta = 0.0 * v
-                    if o["turn_drift"] and sign != 0.0:  # the drift's along-track part shortens (or lengthens) the
+                    if opts["turn_drift"] and sign != 0.0:  # the drift's along-track part shortens (or lengthens) the
                         delta = dx * sign  # leg, its cross-track part is recovered on it
                         L = np.sqrt((L - delta) ** 2 + dy**2)
                     dx = dy = 0.0 * v
                     if roll is not None and i == 0:  # lap 1's first straight: ground roll, then in the air from V_LOF
                         t_r, s_r, e_r = roll
-                        log(lap_no, "ground roll", s_r / FT2M, wind, w_lap1 + 0.0 * v, v, t_r, e_r, ban)
+                        log(lap_no, "ground roll", s_r / FT2M, wind, w_lap1 + 0.0 * v, v, t_r, e_r, banner_state)
                         v0 = v
-                        v, t, e = straight(v, rem_eff, sign, o["lap1_cluster"], cdf)
-                        log(lap_no, "straight", rem_eff / FT2M, wind, v0, v, t, e, ban)
+                        v, t, e = straight(v, rem_eff, sign, opts["lap1_cluster"], polar)
+                        log(lap_no, "straight", rem_eff / FT2M, wind, v0, v, t, e, banner_state)
                         t, e = t + t_r, e + e_r
                     else:
                         v0 = v
                         first = lap_no == 1 and i == 0  # lap 1 starts slow (V_stall or V_LOF): cluster its grid
-                        v, t, e = straight(v, L, sign, o["lap1_cluster"] if first else 1.0, cdf)
-                        log(lap_no, "straight", L / FT2M, wind, v0, v, t, e, ban, -delta / FT2M)
+                        v, t, e = straight(v, L, sign, opts["lap1_cluster"] if first else 1.0, polar)
+                        log(lap_no, "straight", L / FT2M, wind, v0, v, t, e, banner_state, -delta / FT2M)
                 else:
                     v0 = v
-                    v, t, e = turn(v, size, cdf)
-                    if o["turn_drift"]:  # the air mass moves the aircraft by (-along, -cross) t during the turn
+                    v, t, e = turn(v, size, polar)
+                    if opts["turn_drift"]:  # the air mass moves the aircraft by (-along, -cross) t during the turn
                         dx, dy = dx - along * t, dy - cross * t
-                    log(lap_no, "turn", size, "", v0, v, t, e, ban)
+                    log(lap_no, "turn", size, "", v0, v, t, e, banner_state)
                     if size == 360 and v_after_360 is None:
                         v_after_360 = v
                 total = total + t
@@ -447,7 +476,7 @@ class SmoothLapModel(om.ExplicitComponent):
 
         # --- fly lap 1 (from the ground roll, or from V_stall) and a later lap ---
         zero = 0.0 * Vstall
-        to = dict(
+        takeoff_out = dict(
             t_takeoff=zero,
             s_ground_roll=zero,
             V_lof=zero,
@@ -455,15 +484,17 @@ class SmoothLapModel(om.ExplicitComponent):
             takeoff_accel_margin=zero,
             takeoff_straight_margin=zero,
         )
-        if o["takeoff"]:
+        if opts["takeoff"]:
             first = self._lap1[0]
             w_lap1 = first[2] * along  # along-runway component only (crosswind take-off limits not modelled)
-            V_lof = x["k_lof"] * Vstall
+            V_lof = inputs["k_lof"] * Vstall
             t_r, s_r, e_r, a_min = ground_roll(w_lap1)
-            L1 = (first[1] + o["start_offset_ft"]) * FT2M  # the brake-release offset lengthens lap 1's first straight
+            L1 = (
+                first[1] + opts["start_offset_ft"]
+            ) * FT2M  # the brake-release offset lengthens lap 1's first straight
             margin = L1 - s_r
-            rem_eff = o["rem_floor"] + softplus(margin - o["rem_floor"], o["rem_floor_width"])[0]
-            to = dict(
+            rem_eff = opts["rem_floor"] + softplus(margin - opts["rem_floor"], opts["rem_floor_width"])[0]
+            takeoff_out = dict(
                 t_takeoff=t_r,
                 s_ground_roll=s_r,
                 V_lof=V_lof,
@@ -479,17 +510,17 @@ class SmoothLapModel(om.ExplicitComponent):
         _, other, e_other, _ = lap(v, self._other, 2)
 
         # static thrust for the take-off ground roll (Eqs. 3.1-3.3, static_thrust_calculator.m)
-        CLto = x["CL_to"]
+        CLto = inputs["CL_to"]
         VR = 1.2 * np.sqrt(W / (0.5 * rho * S * CLto))
-        Tstatic = m * VR**2 / (2.0 * x["takeoff_distance"]) + qS(VR) * cd(CLto) + x["mu_roll"] * W
+        Tstatic = m * VR**2 / (2.0 * inputs["takeoff_distance"]) + qS(VR) * cd(CLto) + inputs["mu_roll"] * W
 
         # --- lap count ---
-        tr = o["pilot_reaction_time"]
-        laps_time = 1.0 + (x["mission_time"] - (lap1 + tr)) / (other + tr)
-        e_react = P * tr  # reaction time flown at cruise power
-        laps_energy = 1.0 + (x["E_avail"] - (e_lap1 + e_react)) / (e_other + e_react)
+        t_react = opts["pilot_reaction_time"]
+        laps_time = 1.0 + (inputs["mission_time"] - (lap1 + t_react)) / (other + t_react)
+        e_react = P * t_react  # reaction time flown at cruise power
+        laps_energy = 1.0 + (inputs["E_avail"] - (e_lap1 + e_react)) / (e_other + e_react)
         laps_frac, _ = ks_min(
-            [1.0 + softplus(laps_time - 1.0, 0.05)[0], 1.0 + softplus(laps_energy - 1.0, 0.05)[0]], o["rho_ks"]
+            [1.0 + softplus(laps_time - 1.0, 0.05)[0], 1.0 + softplus(laps_energy - 1.0, 0.05)[0]], opts["rho_ks"]
         )
         return dict(
             Vstall=Vstall,
@@ -502,7 +533,7 @@ class SmoothLapModel(om.ExplicitComponent):
             stall_margin=V - 1.2 * Vstall,
             turn_speed_margin=v360 - Vstall,
             energy_3laps=e_lap1 + 2.0 * e_other + 3.0 * e_react,
-            **to,
+            **takeoff_out,
             **({"thrust_margin_static": thrust(0.0 * V) - Tstatic} if propulsion else {}),
         )
 
