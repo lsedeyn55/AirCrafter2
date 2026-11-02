@@ -240,18 +240,59 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
     return out
 
 
-def integer(case):
-    """Payload rounding (docs/RESULTS_2026_PLAN.md §4.2): n_c down and up, n_p = max(3 n_c, round(n_p)), each re-optimised
-    with the counts fixed (from the continuous optimum); the better one is the result."""
+def rounding_check(d, cands, tol=1e-9):
+    """The payload-count constraints of each rounded candidate (n_p, n_c) at the continuous optimum d (one analysis
+    each): fits = fuselage_margin >= 0 and pax_margin >= 0. With the span at its bound, the fuselage length is set by
+    the counts alone, so a candidate that does not fit here is infeasible for every design (docs/RESULTS_2026_PLAN.md
+    §4.2, 2026-11-02)."""
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.problems.multipoint import build_multipoint_problem
+
+    args = (d["cells"], d["props"]["M2"], d["props"]["M3"], d["scoring"], CFG, None, d.get("old_constraints", False),
+            d.get("takeoff", True))
+    mcfg = config(*args)
+    p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+    out = {}
+    try:
+        p.run_model()  # converge at the config's start, then jump (warm)
+        for k, x in d["dv"].items():
+            p.set_val(k, x)
+        for npx, nc in cands:
+            p.set_val("n_p", float(npx))
+            p.set_val("n_c", float(nc))
+            p.run_model()
+            fus, pax = v(p, "rules.fuselage_margin"), v(p, "rules.pax_margin")
+            out[f"{npx}p{nc}c"] = dict(n_p=npx, n_c=nc, fuselage_margin=fus, pax_margin=pax,
+                                       fits=bool(fus >= -tol and pax >= -tol))
+    except AnalysisError as exc:
+        return dict(error=f"MDA non-convergence: {str(exc)[:200]}")
+    return out
+
+
+def integer(case, maxiter=None):
+    """Payload rounding (docs/RESULTS_2026_PLAN.md §4.2): n_c down and up, n_p = max(3 n_c, round(n_p)), plus both
+    counts rounded down (n_p = max(3 n_c, floor(n_p))); the candidates that fit the payload fuselage and the passenger
+    ratio at the continuous optimum (rounding_check) are each re-optimised with the counts fixed; the better one is
+    the result. If none fits, every candidate is run."""
     d = load(case)
     n_p, n_c = d["dv"]["n_p"], d["dv"]["n_c"]
-    outs = []
+    cands = []
     for nc in sorted({math.floor(n_c), math.ceil(n_c)}):
         nc = max(nc, 1)
-        npx = max(3 * nc, round(n_p))
+        for npx in (max(3 * nc, round(n_p)), max(3 * nc, math.floor(n_p))):
+            if (npx, nc) not in cands:
+                cands.append((npx, nc))
+    check = rounding_check(d, cands)
+    keep = [c for c in cands if check.get(f"{c[0]}p{c[1]}c", {}).get("fits")] or cands
+    dump(f"{case}_int_check", dict(case=case, candidates=cands, check=check, run=keep, git=git_hash()))
+    print(f"{case}: rounding candidates {cands}, run {keep}", flush=True)
+    outs = []
+    for npx, nc in keep:
         outs.append(optimise(f"{case}_int_{npx}p{nc}c", d["cells"], d["props"]["M2"], d["props"]["M3"],
                              scoring=d["scoring"], start=case, fixed={"n_p": float(npx), "n_c": float(nc)},
-                             old_constraints=d.get("old_constraints", False), takeoff=d.get("takeoff", True)))
+                             old_constraints=d.get("old_constraints", False), takeoff=d.get("takeoff", True),
+                             maxiter=maxiter))
     return outs
 
 

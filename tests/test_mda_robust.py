@@ -222,7 +222,8 @@ def _results_2026():
 
 
 def test_optimise_warm_path_and_integer(tmp_path, monkeypatch):
-    """optimise(start=the low-speed optimum, maxiter=1) and integer() on it: the warm path runs, no MDA error."""
+    """optimise(start=the low-speed optimum, maxiter=1) and integer() on it: the warm path runs, no MDA error; integer()
+    records its rounding check and runs the candidates that fit."""
     R = _results_2026()
     case = dict(dv=designs()["pf_before"], cells=8.0, props={"M2": "19x12E", "M3": "19x12E"},
                 scoring={"NI_max": 2800.0, "B_max": 1500.0})
@@ -233,8 +234,12 @@ def test_optimise_warm_path_and_integer(tmp_path, monkeypatch):
         out = R.optimise("t_warm", start="case", maxiter=1)
         assert out["error"] is None and (out["ok"] or out["its"] >= 1)
         assert out["warm_path"] is True
-        outs = R.integer("case")
-    assert len(outs) == 2
+        outs = R.integer("case", maxiter=1)
+    check = json.loads((tmp_path / "case_int_check.json").read_text())
+    assert "error" not in check["check"]
+    assert {tuple(c) for c in check["candidates"]} == {(95, 31), (96, 32)}  # n_p 95.28, n_c 31.76
+    assert all(np.isfinite(c["fuselage_margin"]) for c in check["check"].values())
+    assert len(outs) == len(check["run"]) >= 1
     for o in outs:
         assert o["error"] is None, o["error"]
         assert o["warm_path"] is True
