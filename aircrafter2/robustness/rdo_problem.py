@@ -71,20 +71,42 @@ class RetryNewton(om.NewtonSolver):
     """Newton for a robust node, with warm starts and fallbacks before MDA non-convergence is declared.
 
     Start: the node's current state (its last converged one), or, for a node that has never converged, the
-    reference node's converged state. On failure, retry from: the node's last converged state, the reference
-    node's last converged state, the cold initial state (as after setup). Every attempt is logged in
-    ``self.log`` as (solve number, start, converged).
+    reference node's converged state. Every attempt is logged in ``self.log`` as (solve number, start, converged).
+
+    robust=False (the default; every config with ``mda_robust: false``): on failure, retry from the node's last
+    converged state, the reference node's last converged state, then the cold initial state (as after setup).
+
+    robust=True (``mda_robust: true``, docs/MDA_ROBUSTNESS_PLAN.md): on failure, retry from the node's last converged
+    state (skipped when it equals the state the solve started from), then by continuation, then from the reference
+    node's state, then cold. The continuation steps the MDA's input vector linearly from the last converged inputs
+    (``good_in``; the reference node's for a node that has never converged) to the target in 4 steps (t = 1/4 .. 1, the
+    last step the target exactly), each solve warm-started from the previous one; if a step fails, once more in 8
+    steps (log labels "continuation 4", "continuation 8"). The interpolated inputs include upstream outputs such as
+    the T(v) fit coefficients, so the intermediate states are smooth but not physical: only t = 1 is the answer. It
+    takes Newton across a design step that leaves the previous state outside the new root's basin (the low-speed M3
+    banner designs, whose T = D balance has a second, sub-stall root). Under ``mda_robust`` the MDA's linear solver is a
+    QuietDirectSolver, so a diverged attempt that reaches a singular Jacobian fails as an AnalysisError too.
     """
 
-    def __init__(self, **kwargs):
+    CONTINUATION_STEPS = (4, 8)
+
+    def __init__(self, robust=False, **kwargs):
         super().__init__(**kwargs)
+        self.robust = robust
         self.reference = None  # the reference node's RetryNewton (set by build_robust_problem)
         self.good = None       # last converged output vector of this MDA
+        self.good_in = None    # its input vector (stored in both modes; read by the continuation only)
         self.cold = None
         self.log = []
         self.n_solve = 0
 
+    def _converged(self, system):
+        self.good = system._outputs.asarray(copy=True)
+        self.good_in = system._inputs.asarray(copy=True)
+
     def solve(self):
+        if self.robust:
+            return self._solve_robust()
         system = self._system()
         out = system._outputs
         if self.cold is None:
@@ -109,9 +131,104 @@ class RetryNewton(om.NewtonSolver):
                 err = exc
                 continue
             self.log.append((self.n_solve, label, True))
-            self.good = out.asarray(copy=True)
+            self._converged(system)
             return
         raise err
+
+    def _attempt(self, system, label, vec):
+        """One Newton solve from vec (None: the current state); True if it converged."""
+        if vec is not None:
+            system._outputs.set_val(vec)
+        try:
+            super().solve()
+        except AnalysisError as exc:
+            self.log.append((self.n_solve, label, False))
+            self._err = exc
+            return False
+        self.log.append((self.n_solve, label, True))
+        self._converged(system)
+        return True
+
+    def _continuation(self, system, n_steps, start_in, start_out):
+        """Step the input vector from start_in to the target in n_steps, each solve warm-started from the last."""
+        inp, out = system._inputs, system._outputs
+        target = inp.asarray(copy=True)
+        out.set_val(start_out)
+        ok = False
+        try:
+            for i in range(1, n_steps + 1):
+                inp.set_val(target if i == n_steps else start_in + (i / n_steps) * (target - start_in))
+                super().solve()
+            ok = True
+        except AnalysisError as exc:
+            self._err = exc
+        finally:
+            if not ok:  # on success the last step set the target exactly; the solve moves only internal inputs
+                inp.set_val(target)
+        self.log.append((self.n_solve, f"continuation {n_steps}", ok))
+        if ok:
+            self._converged(system)
+        return ok
+
+    def _solve_robust(self):
+        system = self._system()
+        out = system._outputs
+        if self.cold is None:
+            self.cold = out.asarray(copy=True)
+        self.n_solve += 1
+        self._err = None
+        ref = self.reference
+        ref_good = ref.good if ref is not None else None
+        current = out.asarray(copy=True)
+        if self.good is None and ref_good is not None:  # first solve of an off-reference node
+            first = ("reference", ref_good)
+        else:
+            first = ("current", None)
+        if self._attempt(system, *first):
+            return
+        tried = {first[0]}
+        if self.good is not None and not np.array_equal(self.good, current):
+            if self._attempt(system, "own last converged", self.good):
+                return
+        if self.good is not None:
+            cont = (self.good_in, self.good)
+        elif ref is not None and ref.good is not None:
+            cont = (ref.good_in, ref.good)
+        else:
+            cont = None
+        if cont is not None and cont[0] is not None:
+            for n in self.CONTINUATION_STEPS:
+                if self._continuation(system, n, cont[0].copy(), cont[1].copy()):
+                    return
+        for label, vec in (("reference", ref_good), ("cold", self.cold)):
+            if label in tried or vec is None:
+                continue
+            tried.add(label)
+            if self._attempt(system, label, vec):
+                return
+        raise self._err
+
+
+class QuietDirectSolver(om.DirectSolver):
+    """DirectSolver for an MDA under ``mda_robust``: a singular or NaN Jacobian raises AnalysisError at once.
+
+    OpenMDAO's DirectSolver raises RuntimeError and first builds a diagnosis (a dense SVD of the Jacobian), which on a
+    diverged Newton iterate of the 2025-26 MDA takes about 10 minutes and several GB. Here the diagnosis is a short
+    message, and the error is an AnalysisError, so RetryNewton counts it as a failed attempt and falls back
+    (docs/MDA_ROBUSTNESS_PLAN.md, status). A converged state is never singular, so results are unchanged.
+    """
+
+    def _linearize(self):
+        from openmdao.solvers.linear import direct
+
+        fmt = direct.format_singular_error
+        direct.format_singular_error = lambda system, matrix: f"singular Jacobian in '{system.pathname}'"
+        try:
+            super()._linearize()
+        except RuntimeError as exc:
+            raise AnalysisError(str(exc)) from exc
+        finally:
+            direct.format_singular_error = fmt
 
 
 class _NodeSetter:

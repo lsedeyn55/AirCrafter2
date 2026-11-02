@@ -249,11 +249,15 @@ _MDA = [
           "performance", "validity", ("mda_maxiter",), section=4,
           hard_coded=((FM, r"newton = om\.NewtonSolver\(solve_subsystems=True, maxiter=cfg\.mda_maxiter, atol=1e-10",
                        "Newton atol = rtol = 1e-10"),),
-          anchors=((FM, r"err_on_non_converge=True"),),
-          note="non-convergence raises AnalysisError (err_on_non_converge)"),
+          anchors=((FM, r"err_on_non_converge=True"),
+                   ("aircrafter2/robustness/rdo_problem.py", r"raise AnalysisError\(str\(exc\)\) from exc")),
+          note="non-convergence raises AnalysisError (err_on_non_converge); with mda_retry, RetryNewton falls back to "
+               "warm starts, and under mda_robust also to a continuation in the MDA inputs"),
     Entry("balance.v", "thrust balance T = D", "N", "T(v) = D(v): solves v (m/s), bounded 5 m/s <= v <= v_top",
           "performance", "validity", ("mda_maxiter", "propulsion.v_top"), section=4,
-          hard_coded=((FM, r"lower=5\.0, upper=cfg\.propulsion\.v_top", "v in [5 m/s, v_top] (BoundsEnforceLS)"),)),
+          hard_coded=((FM, r"lower=5\.0, upper=cfg\.propulsion\.v_top", "v in [5 m/s, v_top] (BoundsEnforceLS)"),),
+          note="under mda_robust, a failed solve falls back to a continuation in the MDA inputs (the low-speed M3 "
+               "banner designs have a second, sub-stall T = D root; docs/MDA_ROBUSTNESS_PLAN.md)"),
     Entry("mass.closure", "mass closure m = m_total", "kg", "m = m_total (G&G, block Gauss-Seidel with Aitken)",
           "structure", "validity", section=4, applies=lambda c: True,
           hard_coded=((f"{GG}/group.py", r"NonlinearBlockGS\(maxiter=50, atol=1e-12, rtol=1e-12",

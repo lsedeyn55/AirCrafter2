@@ -5,6 +5,9 @@
 # and components are Humpback's (configs/rulesets/dbf_2025_26.yaml); the airframe is the design.
 extends: full_mdo.yaml
 ruleset: rulesets/dbf_2025_26.yaml           # site, mission, scoring, payload and banner bounds, rule limits, wind spreads
+mda_robust: true                             # the MDA continuation fallback and warm --start
+                                             # (docs/MDA_ROBUSTNESS_PLAN.md): the low-speed M3 banner designs
+                                             # have a second, sub-stall T = D root
 
 airfoil: {seed: s3016, n_modes: 0}           # S3016 [HB Table 24 p. 26] (p. 36 prints 'SD3016', Q51)
 mass:

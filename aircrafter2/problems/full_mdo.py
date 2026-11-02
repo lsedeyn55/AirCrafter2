@@ -163,6 +163,10 @@ class FullMDOConfig(AeroMassProblemConfig):
                                  "aircrafter2.robustness.rdo_problem)")
     course: CourseConfig = Field(CourseConfig(), description="course layout, pilot reaction time and the take-off "
                                  "switch (mission/course.py; default: Table 3.5, take-off off = the original model)")
+    mda_robust: bool = Field(False, description="the MDA continuation fallback (robustness.rdo_problem.RetryNewton "
+                             "robust mode) and the warm path for --start (studies/results_2026.py), "
+                             "docs/MDA_ROBUSTNESS_PLAN.md; off by default, so the 2024-25 and single-point results "
+                             "are unchanged")
 
     @model_validator(mode="after")
     def _check_kv_robust(self):
@@ -321,13 +325,17 @@ class FullMDA(om.Group):
         if self.options["retry"]:
             from ..robustness.rdo_problem import RetryNewton
             newton = RetryNewton(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
-                                 iprint=-1, err_on_non_converge=True)
+                                 iprint=-1, err_on_non_converge=True, robust=cfg.mda_robust)
         else:
             newton = om.NewtonSolver(solve_subsystems=True, maxiter=cfg.mda_maxiter, atol=1e-10, rtol=1e-10,
                                      iprint=-1, err_on_non_converge=True)
         newton.linesearch = om.BoundsEnforceLS()
         self.nonlinear_solver = newton
-        self.linear_solver = om.DirectSolver()
+        if self.options["retry"] and cfg.mda_robust:  # a singular Jacobian fails the attempt at once
+            from ..robustness.rdo_problem import QuietDirectSolver
+            self.linear_solver = QuietDirectSolver()
+        else:
+            self.linear_solver = om.DirectSolver()
 
 
 def is_2026(stores):

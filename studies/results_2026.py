@@ -160,6 +160,35 @@ def summarise(p, mcfg):
     return out
 
 
+def initial_values(mcfg):
+    """{design variable: start value} of a multipoint config, as set_dv_defaults and apply_multipoint_values set them."""
+    from aircrafter2.problems.multipoint import POINTS
+
+    base = mcfg.base
+    out = {}
+    for name in mcfg.shared_dvs:
+        bd = base.design_variables[name]
+        out[name] = base.initial.get(name, base.propulsion.Kv if name == "Kv" else 0.5 * (bd.lower + bd.upper))
+    for pt in POINTS:
+        for name, bd in mcfg.point_dvs(pt).items():
+            k = name[: -len(pt) - 1]
+            out[name] = mcfg.mp.per_point_initial.get(name, base.initial.get(k, 0.5 * (bd.lower + bd.upper)))
+    out.update(mcfg.extra_initial())
+    return out
+
+
+def mda_fallbacks(p):
+    """Solves that needed the continuation (RetryNewton robust mode), per point MDA."""
+    out = {}
+    for pt in ("M2", "M3"):
+        solver = p.model._get_subsystem(f"points.{pt}.mda").nonlinear_solver
+        log = getattr(solver, "log", [])
+        out[pt] = dict(solves=getattr(solver, "n_solve", 0),
+                       continuation=len({e[0] for e in log if e[1].startswith("continuation")}),
+                       failed_attempts=len([e for e in log if not e[2]]))
+    return out
+
+
 def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=None, cfg=CFG, maxiter=None, fixed=None,
              old_constraints=False, takeoff=True):
     from openmdao.core.analysis_error import AnalysisError
@@ -171,21 +200,35 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
         mcfg.base.maxiter = maxiter
     p = build_multipoint_problem(mcfg, driver=True, mda_retry=True)
     p.driver.options["disp"] = False
+    warm = bool(mcfg.base.mda_robust and (start or x0))
+    t = time.perf_counter()
+    err = None
+    if warm:  # converge at the config's (unfixed) start first, so the driver's first evaluation is warm
+        for k, x in initial_values(config(cells, m2, m3, scoring, cfg, None, old_constraints, takeoff)).items():
+            p.set_val(k, x)
+        try:
+            p.run_model()
+        except AnalysisError as exc:
+            err = f"warm-path pre-run: MDA non-convergence: {str(exc)[:200]}"
     if start:
         for k, x in load(start)["dv"].items():
             if not (fixed and k in fixed):
                 p.set_val(k, x)
     for k, x in (x0 or {}).items():
         p.set_val(k, x)
-    t = time.perf_counter()
-    err = None
+    for k, x in (fixed or {}).items():
+        p.set_val(k, x)
     try:
+        if err is not None:
+            raise AnalysisError(err)
         res = p.run_driver()
         ok, its = bool(res.success), int(res.iter_count)
     except AnalysisError as exc:
-        ok, its, err = False, int(p.driver.iter_count), f"MDA non-convergence: {str(exc)[:200]}"
+        ok, its = False, int(p.driver.iter_count)
+        err = err or f"MDA non-convergence: {str(exc)[:200]}"
     wall = time.perf_counter() - t
-    out = dict(tag=tag, ok=ok, its=its, error=err, time=wall, start=start, x0=x0, git=git_hash(),
+    out = dict(tag=tag, ok=ok, its=its, error=err, time=wall, start=start, x0=x0, warm_path=warm,
+               mda_fallbacks=mda_fallbacks(p), git=git_hash(),
                maxiter=mcfg.base.maxiter, fixed=fixed, old_constraints=old_constraints, takeoff=takeoff,
                threads=os.environ.get("OMP_NUM_THREADS"), config=str(Path(cfg).relative_to(ROOT)))
     if err is None:
