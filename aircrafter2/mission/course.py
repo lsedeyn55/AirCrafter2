@@ -86,6 +86,7 @@ class CourseConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check(self):
+        """Validate the course: raise on errors, warn on warnings."""
         lap1, other = self.resolve()
         errors, warns = check_course(lap1, other, self.takeoff.in_mission_time)
         if errors:

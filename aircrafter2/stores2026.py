@@ -45,8 +45,8 @@ class Store2026Config(BaseModel):
     cd_banner: float = Field(description="banner C_D on its own area L x H")
     dcd_stowed: float = Field(description="stowed banner Delta C_D0 on the wing area")
     x_banner_frac: float = Field(description="banner (stowed and mechanism) station / chord")
-    # the rigid payload fuselage (docs/DECISIONS.md#ff-d2): shifts written as differences from Humpback's layout, so each
-    # is exactly 0.0 there
+    # the rigid payload fuselage (docs/DECISIONS.md#ff-d2): shifts are differences from Humpback's layout, so each is
+    # exactly 0.0 there
     x_cb_frac_ref: float = Field(
         description="Humpback's box centre / chord: the reference of the payload and motor stations"
     )
