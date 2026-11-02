@@ -219,6 +219,8 @@ drop out of the tab silently (`tests/test_constraints_view.py`).
 
 - `docs/PLAN.md`: architecture, XDSM, module interfaces, every finding and decision.
 - `docs/modules/`: one page per module (physics, equations, assumptions, sources).
+  They include `docs/modules/problems.md`, `config.md`, `stores.md` and `constraints.md`.
+- `docs/DECISIONS.md`: why the code is the way it is, one entry per decision, and the citation keys used in the code (Sources).
 - `docs/how_to_add_a_scoring_plugin.md`: adding a year-specific score.
 - `docs/OPEN_QUESTIONS.md`: placeholders and open decisions.
 - `docs/problems/`: one report per problem in `aircrafter2/problems/` (`oval_lap.md`, `aero_mass.md`, `lap_mdo.md`,
@@ -248,20 +250,35 @@ topic in `examples/`, `verification/` or `studies/`; rerun the script rather tha
 
 ## Layout
 
+**Where to start reading.** Start with `aircrafter2/problems/full_mdo.py`: `build_full_model` is the whole model of one mission point in
+order, with a section comment for each discipline, and each component it adds lives in the folders below. Then read
+`aircrafter2/mission/smooth_lap.py`, the lap model, which is the example the rest of the code follows: each physics class says what it
+computes, lists its options, inputs and outputs, and has a Symbols block linking its names to the equations. `docs/modules/` has the longer
+explanations, one page per folder, and `docs/DECISIONS.md` says why the code is the way it is and what the citation keys mean. To run a
+design rather than read one, start at `aircrafter2/api.py` (one mission point) or `aircrafter2/problems/multipoint.py` (`run_warm`, a whole
+ruleset).
+
+The `aircrafter2/` rows run in data-flow order, from the design variables to the score:
+
 | Path | What |
 |---|---|
-| `aircrafter2/geometry` | rectangular planform, tails, cargo bay |
+| `aircrafter2/config` | YAML loading, placeholder and ruleset layers, schemas of the airfoil, aero and mass sections |
 | `aircrafter2/airfoil` | Kulfan/CST shapes, section geometry, NeuralFoil section solver |
+| `aircrafter2/geometry` | rectangular planform, tails, cargo bay, motor placement; `geometry.json` export |
+| `aircrafter2/propulsion` | APC data, motor + ESC + battery powertrain, rewound motor |
+| `aircrafter2/stores.py`, `aircrafter2/stores2026.py` | what a mission point carries: 2024-25 tanks, pylons and X-1; 2025-26 payload, banner and payload fuselage |
 | `aircrafter2/aero` | OpenAeroStruct VLM + NeuralFoil strip drag, C_L,max, parasite drag, drag polar |
 | `aircrafter2/mass` | Garcia & Gamboa (2022) structure-based and statistical mass, calibration |
-| `aircrafter2/propulsion` | APC data, motor + ESC + battery powertrain |
-| `aircrafter2/stability` | static margin from tail volume |
-| `aircrafter2/mission` | AirCrafter lap model: MATLAB-faithful reference and smooth twin; oval |
-| `aircrafter2/scoring` | objective plug-ins (`three_lap_time`, `laps_in_window`, `dbf2025`) |
-| `aircrafter2/problems` | problem builders, from aero-only up: `wing_aero`, `oval_lap`, `aero_mass`, `lap_mdo`, `full_mdo` (the full model), `multipoint` (2024-25: M2 and M3 on one airframe) |
-| `aircrafter2/robustness` | sensitivities, worst cases, Monte Carlo; robust design optimisation (`rdo_problem.py`, `rdo_multipoint.py`) |
+| `aircrafter2/mission` | AirCrafter lap model: MATLAB-faithful reference and smooth twin; course and take-off; oval |
+| `aircrafter2/stability` | static margin from tail volume, one-engine-inoperative check |
+| `aircrafter2/scoring` | objective plug-ins (`three_lap_time`, `laps_in_window`, `dbf2025`, `dbf2026`) |
+| `aircrafter2/problems` | problem builders, from aero-only up: `wing_aero`, `oval_lap`, `aero_mass`, `lap_mdo`, `full_mdo` (the full model), `multipoint` (2024-25 and 2025-26: M2 and M3 on one airframe) |
+| `aircrafter2/robustness` | sensitivities, worst cases, Monte Carlo; robust design optimisation (`rdo_problem.py`, `rdo_multipoint.py`), `RetryNewton` |
+| `aircrafter2/smooth.py`, `analytic.py`, `atmosphere.py`, `constants.py` | shared helpers: smooth min and max, analytic components, ISA |
+| `aircrafter2/constraints_view.py` | inventory of a problem's constraints, checks and limits (the UI's Constraints tab) |
+| `aircrafter2/api.py`, `cli.py`, `ui/`, `plotting/` | API, CLI, Streamlit, figures |
 | `aircrafter2/vsp` | OpenVSP mock-up: build, render, consistency check |
-| `aircrafter2/plotting`, `api.py`, `cli.py`, `ui/` | figures, API, CLI, Streamlit |
+| `aircrafter2/verification` | hand calculations for the aero checks |
 | `configs/` | run configs (`full_mdo.yaml` is the full model), `placeholders.yaml`, `rulesets/`, shared mass inputs, `verification/` paper cases |
 | `examples/` | user-facing demos, one per problem (`oval_lap`, `aero_mass`, `lap_mdo`, `full_mdo`) |
 | `studies/` | thesis and paper scripts (thesis figures, twin-motor study, OpenVSP mock-ups, tail-boom calibration, 2024-25 validation, results, computational performance) |
