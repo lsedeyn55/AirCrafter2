@@ -1,28 +1,35 @@
-"""Robustness suite (pragmatic, not full RDO), run on a converged design.
+"""Post-optimality checks, run on a converged design (pragmatic, not full RDO, robust design optimisation).
 
-sensitivities   normalised total derivatives (x / f) df/dx of the objective w.r.t. design variables and
-                fixed assumptions, from OpenMDAO compute_totals (same analytic/cs chain as the optimiser).
-worst_cases     one-at-a-time perturbations, re-analysed with the full MDA:
-                  empty mass + X % (ballast), thrust - Y % (lap model), battery capacity - Z %, headwind.
-                Thrust is scaled in the lap model only; the MDA's level-speed balance keeps the nominal thrust
-                (that speed sets the stall margin and the structural design speed).
-monte_carlo     random sampling of uncertain inputs (independent; relative uniform spreads, or the
-                distributions of configs/uncertainty.yaml), full MDA per sample; returns objective statistics
-                and constraint-violation probabilities. Run it on final candidates only (each sample is a
-                full coupled analysis).
-
-Robust design optimisation (robustness inside the optimiser) is in rdo_problem.py.
+sensitivities uses compute_totals; worst_cases perturbs one input at a time; monte_carlo samples the uncertain inputs.
+They take a run problem from api.py or a study, and return plain dicts. Robustness inside the optimiser is in
+rdo_problem.py. Details: docs/modules/robustness.md, "Post-optimality checks".
 """
 
 import numpy as np
 
 
 def _val(prob, name):
+    """One scalar output of the problem."""
     return float(np.ravel(prob.get_val(name))[0])
 
 
 def sensitivities(prob, of, wrt):
-    """{name: (x / f) df/dx} at the current point; wrt are promoted input or DV names (each once)."""
+    """Normalised total derivatives (x / f) df/dx, from compute_totals (the same analytic and cs chain as the
+    optimiser).
+
+    Parameters
+    ----------
+    prob : om.Problem
+    of : str
+        The quantity f.
+    wrt : list of str
+        Promoted input or design variable names, each once.
+
+    Returns
+    -------
+    dict
+        {name: (x / f) df/dx} at the current point. Raises ValueError for duplicates or computed names.
+    """
     if len(set(wrt)) != len(list(wrt)):
         raise ValueError(f"duplicate names in wrt: {sorted(n for n in set(wrt) if list(wrt).count(n) > 1)}")
     check_settable(prob, wrt)
@@ -32,8 +39,17 @@ def sensitivities(prob, of, wrt):
 
 
 def check_settable(prob, names):
-    """Raise if any name is computed by the model: setting it would be silently overwritten by the next run (e.g. Rm
-    and I0 when Kv is a design variable: perturb Rm_ref, Kv_factor instead)."""
+    """Raise if any name is computed by the model: setting it would be silently overwritten by the next run.
+
+    For example Rm and I0 when Kv is a design variable: perturb Rm_ref, Kv_factor instead.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    names : iterable of str
+
+    Raises ValueError.
+    """
     res = prob.model._resolver
     computed = [n for n in names if res.is_prom(n, "output")]
     if computed:
@@ -42,11 +58,31 @@ def check_settable(prob, names):
 
 
 def _snapshot(prob, outputs):
+    """{output: value} at the current point."""
     return {k: _val(prob, k) for k in outputs}
 
 
 def worst_cases(prob, outputs, mass_pct=10.0, thrust_pct=10.0, capacity_pct=10.0, headwind=3.0):
-    """Returns {case: {output: value}} including 'nominal'. Restores the inputs afterwards."""
+    """One-at-a-time perturbations, re-analysed with the full MDA. Restores the inputs afterwards.
+
+    Empty mass + X % (ballast), thrust - Y % (lap model), battery capacity - Z %, headwind. Thrust is scaled in the lap
+    model only: the MDA's level-speed balance keeps the nominal thrust, since that speed sets the stall margin and the
+    structural design speed.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    outputs : list of str
+    mass_pct, thrust_pct, capacity_pct : float
+        Percent.
+    headwind : float
+        m/s.
+
+    Returns
+    -------
+    dict
+        {case: {output: value}}, including 'nominal'.
+    """
     prob.run_model()
     results = {"nominal": _snapshot(prob, outputs)}
     m_empty = _val(prob, "m_empty")
@@ -70,10 +106,22 @@ def worst_cases(prob, outputs, mass_pct=10.0, thrust_pct=10.0, capacity_pct=10.0
 
 
 def monte_carlo(prob, spreads, outputs, n=40, seed=0):
-    """spreads: {input: relative half-width}, each input ~ U(x (1 - s), x (1 + s)); or a list of
-    uncertainty.Dist (e.g. resolve(load_uncertainty("configs/uncertainty.yaml"), ...)), sampled by inverse CDF.
+    """Random sampling of uncertain inputs, with a full MDA per sample. Run it on final candidates only.
 
-    Returns dict(samples=array (n, len(outputs)), names=outputs, failed=count).
+    Parameters
+    ----------
+    prob : om.Problem
+    spreads : dict or list of Dist
+        {input: relative half-width}, each input ~ U(x (1 - s), x (1 + s)); or a list of uncertainty.Dist (e.g.
+        resolve(load_uncertainty("configs/uncertainty.yaml"), ...)), sampled by inverse CDF.
+    outputs : list of str
+    n, seed : int
+        Sample count and random seed.
+
+    Returns
+    -------
+    dict
+        samples = array (n, len(outputs)), names = outputs, failed = count.
     """
     rng = np.random.default_rng(seed)
     if isinstance(spreads, dict):

@@ -1,25 +1,9 @@
 """Propagation rules: nodes and weights for the statistics of a model output f(p).
 
-Every rule is a ``Rule``: N nodes (physical parameter values, shape (N, d)), a mean-weight vector ``a`` and a
-symmetric matrix Q such that, for node outputs f (shape (N,)),
-
-    mu = a . f,        var = f^T Q f,        Q = diag(D) - U diag(c) U^T  (stored factored, U is N x r).
-
-That one form covers every rule below, so the statistics component (stats.py) has exact, analytic partials
-(d mu/df = a, d var/df = 2 Q f) whatever the rule.
-
-udr       univariate dimension reduction (Rahman & Xu 2004):
-              f(p) ~ f_hat(p) = sum_i f(p_bar_1 .. p_i .. p_bar_d) - (d - 1) f(p_bar),
-          with an n-point Gauss rule in each dimension (Gauss-Legendre for uniform inputs, Gauss-Hermite for
-          normal ones, Gauss rule of the triangular density for triangular ones). Nodes: the reference point
-          p_bar (the means) plus the off-mean Gauss points of each dimension; n = 3 gives N = 2d + 1.
-          mu = E[f_hat]. var = Var[f_hat] = sum_i Var_i[f_i(p_i)], the exact variance of the additive
-          approximation (never negative; cross terms are not represented).
-smolyak   Smolyak sparse grid, combination technique on the same Gauss rules with 1, 3, 5, ... points;
-          level L is exact for polynomials of total degree 2L + 1 and represents cross terms. Weights can be
-          negative, so var can be negative: stats.py takes a smooth positive part.
-sobol     a fixed (scrambled, seeded) Sobol' sample with equal weights and the unbiased sample variance.
-          For verification (Monte Carlo reference), not for the optimiser.
+Every rule is a Rule: N nodes, a mean-weight vector and a symmetric matrix Q with mu = a . f and var = f^T Q f. That one
+form covers every rule, so stats.py has exact, analytic partials whatever the rule. Sits between uncertainty.py and the
+robust problems. Rules: UDR (univariate dimension reduction, Rahman & Xu 2004), Smolyak sparse grid, Sobol' sample.
+Details: docs/modules/robustness.md, "Propagation".
 """
 
 from dataclasses import dataclass
@@ -34,6 +18,21 @@ from scipy.stats import qmc
 
 @dataclass
 class Rule:
+    """A propagation rule: mu = a . f, var = f^T Q f, Q = diag(D) - U diag(c) U^T (stored factored, U is N x r), for
+    node outputs f (N,).
+
+    Attributes
+    ----------
+    name : str
+    nodes : array (N, d)
+        Physical parameter values.
+    a, D : array (N,)
+    U : array (N, r)
+    c : array (r,)
+    psd : bool
+        Q is positive semi-definite (var >= 0 for any f).
+    """
+
     name: str
     nodes: np.ndarray  # (N, d), physical values
     a: np.ndarray  # (N,)
@@ -44,19 +43,24 @@ class Rule:
 
     @property
     def n(self):
+        """The number of nodes."""
         return len(self.a)
 
     @property
     def Q(self):
+        """The matrix Q in full, N x N."""
         return np.diag(self.D) - (self.U * self.c) @ self.U.T
 
     def var(self, f):  # complex-step safe (no float cast)
+        """var = f^T Q f. Complex-step safe (no float cast)."""
         return self.D @ (f * f) - self.c @ (self.U.T @ f) ** 2
 
     def var_grad(self, f):
+        """d var/df = 2 Q f."""
         return 2.0 * (self.D * f - self.U @ (self.c * (self.U.T @ f)))
 
     def moments(self, f):
+        """(mu, var) of real node outputs f, as floats."""
         f = np.asarray(f, dtype=float)
         return float(self.a @ f), float(self.var(f))
 
@@ -78,7 +82,19 @@ def _gauss_from_discrete(x, w, n):
 
 
 def gauss_1d(kind, n):
-    """n-point Gauss rule (xi, w) of the standardised variable, weights summing to 1."""
+    """n-point Gauss rule of a standardised variable, with weights summing to 1.
+
+    Parameters
+    ----------
+    kind : str
+        "uniform" (Gauss-Legendre), "normal" (Gauss-Hermite) or "triangular" (the Gauss rule of the triangular density).
+    n : int
+
+    Returns
+    -------
+    (array, array)
+        xi and w. Raises ValueError for an unknown kind.
+    """
     if kind == "uniform":
         xi, w = leggauss(n)
         return xi, w / 2.0
@@ -96,11 +112,27 @@ def gauss_1d(kind, n):
 
 
 def _means(dists):
+    """The distributions' means as an array."""
     return np.array([d.mean for d in dists])
 
 
 def udr(dists, n=3):
-    """Univariate dimension reduction with n Gauss points per dimension."""
+    """Univariate dimension reduction (Rahman & Xu 2004) with n Gauss points per dimension.
+
+    f(p) ~ f_hat(p) = sum_i f(p_bar_1 .. p_i .. p_bar_d) - (d - 1) f(p_bar). Nodes: the reference point p_bar (the
+    means) plus the off-mean Gauss points of each dimension; n = 3 gives N = 2d + 1. mu = E[f_hat]. var = Var[f_hat] =
+    sum_i Var_i[f_i(p_i)], the exact variance of the additive approximation (never negative; cross terms aren't
+    represented).
+
+    Parameters
+    ----------
+    dists : list of Dist
+    n : int
+
+    Returns
+    -------
+    Rule
+    """
     d = len(dists)
     pbar = _means(dists)
     nodes = [pbar.copy()]
@@ -131,7 +163,20 @@ def udr(dists, n=3):
 
 
 def smolyak(dists, level=2):
-    """Smolyak sparse grid (combination technique) on Gauss rules with 2i - 1 points, i = 1 .. level + 1."""
+    """Smolyak sparse grid (combination technique) on Gauss rules with 2i - 1 points, i = 1 .. level + 1.
+
+    Level L is exact for polynomials of total degree 2L + 1, and represents cross terms. Weights can be negative, so var
+    can be negative: stats.py takes a smooth positive part.
+
+    Parameters
+    ----------
+    dists : list of Dist
+    level : int
+
+    Returns
+    -------
+    Rule
+    """
     d = len(dists)
     if d == 0:
         return udr(dists)
@@ -157,10 +202,20 @@ def smolyak(dists, level=2):
 
 
 def sobol(dists, n=1024, seed=0):
-    """Fixed scrambled Sobol' sample (n should be a power of 2), equal weights, unbiased variance.
+    """Fixed scrambled Sobol' sample (n should be a power of 2), equal weights, unbiased variance: a Monte Carlo
+    reference, not for the optimiser.
 
-    Node 0 is the reference point (the means) with zero weight, so that every rule has the reference point
-    first (non-robust constraints are evaluated there); the n samples follow.
+    Node 0 is the reference point (the means) with zero weight, so that every rule has the reference point first
+    (non-robust constraints are evaluated there); the n samples follow.
+
+    Parameters
+    ----------
+    dists : list of Dist
+    n, seed : int
+
+    Returns
+    -------
+    Rule
     """
     d = len(dists)
     u = qmc.Sobol(d=max(d, 1), scramble=True, seed=seed).random(n)[:, :d]
@@ -172,7 +227,17 @@ def sobol(dists, n=1024, seed=0):
 
 
 def make_rule(rcfg, dists):
-    """The rule a RobustConfig asks for, over the given (active) distributions."""
+    """The rule a RobustConfig asks for, over the given (active) distributions.
+
+    Parameters
+    ----------
+    rcfg : RobustConfig
+    dists : list of Dist
+
+    Returns
+    -------
+    Rule
+    """
     if rcfg.quadrature == "udr":
         return udr(dists, rcfg.points)
     if rcfg.quadrature == "smolyak":

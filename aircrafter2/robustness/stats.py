@@ -1,17 +1,8 @@
 """Node outputs -> means, standard deviations, the robust objective and the robust constraint values.
 
-For each tracked quantity q with node values f_j (j = 0 .. N-1) and a propagation rule (quadrature.Rule):
-
-    mu    = a . f
-    var   = f^T Q f                                   (Q = diag(D) - U diag(c) U^T)
-    var+  = var                                       if Q is positive semi-definite (udr, sobol)
-          = (var + sqrt(var^2 + eps^4)) / 2           otherwise (smolyak: weights can be negative)
-    sigma = sqrt(var+ + eps^2)                        (finite derivative at zero variance)
-    lo    = mu - beta sigma        (robust form of q >= lower)
-    hi    = mu + beta sigma        (robust form of q <= upper)
-    robust (objective quantity only) = mu + sign k sigma,   sign = +1 for a minimised score, -1 for a maximised one
-
-All partials are analytic: d mu/df = a, d var/df = 2 Q f, d sigma/df = (d var+/d var) (d var/df) / (2 sigma).
+Sits after the nodes of the robust problem (rdo_problem.py, rdo_multipoint.py), and gives the driver its objective and
+constraints. With a propagation rule (quadrature.Rule), it's one form for every rule, so all partials are analytic.
+Details: docs/modules/robustness.md, "Statistics component".
 """
 
 import numpy as np
@@ -19,11 +10,52 @@ import openmdao.api as om
 
 
 def key_of(name):
-    """Variable-name-safe key of a promoted output name (cruise.cl_margin_sec -> cruise__cl_margin_sec)."""
+    """Variable-name-safe key of a promoted output name (cruise.cl_margin_sec -> cruise__cl_margin_sec).
+
+    Parameters
+    ----------
+    name : str
+
+    Returns
+    -------
+    str
+    """
     return name.replace(".", "__")
 
 
 class RobustStats(om.ExplicitComponent):
+    """Statistics of each tracked quantity, with node values f_j (j = 0 .. N-1).
+
+        mu    = a . f
+        var   = f^T Q f                                   (Q = diag(D) - U diag(c) U^T)
+        var+  = var                                       if Q is positive semi-definite (udr, sobol)
+              = (var + sqrt(var^2 + eps^4)) / 2           otherwise (smolyak: weights can be negative)
+        sigma = sqrt(var+ + eps^2)                        (finite derivative at zero variance)
+        lo    = mu - beta sigma        (robust form of q >= lower)
+        hi    = mu + beta sigma        (robust form of q <= upper)
+        robust (objective quantity only) = mu + sign k sigma,   sign = +1 for a minimised score, -1 for a maximised one
+
+    All partials are analytic: d mu/df = a, d var/df = 2 Q f, d sigma/df = (d var+/d var) (d var/df) / (2 sigma).
+
+    Options
+    -------
+    rule : quadrature.Rule
+    quantities : dict
+        {key: eps}, with eps in the quantity's units.
+    objective : str or None
+        Key of the objective quantity.
+    k, sign, beta : float
+        As above.
+
+    Inputs
+    ------
+    {q}_n{j} : quantity q at node j
+
+    Outputs
+    -------
+    {q}_mu, {q}_sigma, {q}_lo, {q}_hi, and {q}_robust for the objective
+    """
+
     def initialize(self):
         self.options.declare("rule", desc="quadrature.Rule")
         self.options.declare("quantities", types=dict, desc="{key: eps} (eps in the quantity's units)")
@@ -44,6 +76,7 @@ class RobustStats(om.ExplicitComponent):
                     self.declare_partials(f"{q}_{o}", f"{q}_n{j}")
 
     def _moments(self, f, eps):
+        """(mu, sigma, d sigma/df) of one quantity's node values."""
         r = self.options["rule"]
         mu = r.a @ f
         var = r.var(f)
@@ -57,6 +90,7 @@ class RobustStats(om.ExplicitComponent):
         return mu, sigma, dvp * dvar / (2.0 * sigma)
 
     def _f(self, inputs, q):
+        """One quantity's node values as an array."""
         return np.array([inputs[f"{q}_n{j}"][0] for j in range(self.options["rule"].n)])
 
     def compute(self, inputs, outputs):

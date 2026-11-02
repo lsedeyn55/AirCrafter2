@@ -1,19 +1,9 @@
 """Uncertain model parameters: specs, distributions and first-order screening.
 
-An uncertain parameter is a model input (promoted name, or ``lap.<name>`` for lap-model inputs) with an
-independent distribution. Design variables are never uncertain parameters (manufacturing tolerances on
-design variables are a separate hook, ``RobustConfig.dv_tolerances``, not implemented yet).
-
-Distributions (x = mean + scale * xi):
-    uniform      xi ~ U(-1, 1),                  scale = half-width,  std = scale / sqrt(3)
-    normal       xi ~ N(0, 1),                   scale = std
-    triangular   xi on [-1, 1], density 1 - |xi| (symmetric, mode = mean), scale = half-width,
-                 std = scale / sqrt(6)
-
-Screening (``screen``): first-order variance contributions (df/dp_i * sigma_i)^2 from compute_totals at the
-reference point (all parameters at their means), for the objective and the robust constraints; the smallest
-parameter set (up to ``max_dim``) that covers ``threshold`` of the first-order variance of every screened
-quantity.
+An uncertain parameter is a model input (promoted name, or lap.<name> for lap-model inputs) with an independent
+distribution. Design variables are never uncertain parameters (manufacturing tolerances on them are a hook,
+RobustConfig.dv_tolerances, not implemented). Read from the robust: block and configs/uncertainty.yaml; feeds
+quadrature.py and the robust problems. Details: docs/modules/robustness.md, "Uncertain parameters".
 """
 
 from dataclasses import dataclass
@@ -32,6 +22,8 @@ DEFAULT_ROBUST = ["energy_margin", "thrust_margin_static", "stall_margin", "SM",
 
 
 class UncertainParam(BaseModel):
+    """One uncertain parameter as a config writes it (field descriptions below)."""
+
     model_config = ConfigDict(extra="forbid")
     name: str = Field(description="promoted model input; lap-model inputs as lap.<name>")
     dist: Literal["uniform", "normal", "triangular"] = "uniform"
@@ -48,7 +40,18 @@ class UncertainParam(BaseModel):
 
 
 def for_kv_mode(params, kv_dv):
-    """The parameters that apply to the motor mode (kv_dv: Kv is a design variable), in list order."""
+    """The parameters that apply to the motor mode, in list order.
+
+    Parameters
+    ----------
+    params : list of UncertainParam
+    kv_dv : bool
+        Kv is a design variable.
+
+    Returns
+    -------
+    list of UncertainParam
+    """
     return [p for p in params if p.kv_mode == "both" or p.kv_mode == ("dv" if kv_dv else "fixed")]
 
 
@@ -110,8 +113,18 @@ class RobustConfig(BaseModel):
 
 
 def load_uncertainty(path, kv_dv=None):
-    """The parameter list of an uncertainty YAML (configs/uncertainty.yaml); kv_dv True/False keeps only the
-    parameters of that motor mode (for_kv_mode), None keeps all."""
+    """The parameter list of an uncertainty YAML (configs/uncertainty.yaml).
+
+    Parameters
+    ----------
+    path : str or Path
+    kv_dv : bool, optional
+        True or False keeps only the parameters of that motor mode (for_kv_mode); None keeps all.
+
+    Returns
+    -------
+    list of UncertainParam
+    """
     from ..config.loader import load_yaml
 
     params = [UncertainParam(**p) for p in load_yaml(Path(path))["parameters"]]
@@ -120,7 +133,12 @@ def load_uncertainty(path, kv_dv=None):
 
 @dataclass
 class Dist:
-    """An uncertain parameter resolved to absolute numbers: x = mean + scale * xi."""
+    """An uncertain parameter resolved to absolute numbers: x = mean + scale * xi.
+
+    uniform      xi ~ U(-1, 1),                  scale = half-width,  std = scale / sqrt(3)
+    normal       xi ~ N(0, 1),                   scale = std
+    triangular   xi on [-1, 1], density 1 - |xi| (symmetric, mode = mean), scale = half-width, std = scale / sqrt(6)
+    """
 
     name: str
     kind: str
@@ -130,14 +148,26 @@ class Dist:
 
     @property
     def std(self):
+        """Standard deviation, in the parameter's units."""
         return self.scale * DIST_STD[self.kind]
 
     @property
     def bounds(self):
+        """(lower, upper) of the parameter; infinite for a normal."""
         return (-np.inf, np.inf) if self.kind == "normal" else (self.mean - self.scale, self.mean + self.scale)
 
     def ppf(self, u):
-        """Inverse CDF of the standardised variable, mapped to x."""
+        """Inverse CDF of the standardised variable, mapped to x.
+
+        Parameters
+        ----------
+        u : float or array
+            Probability, in [0, 1].
+
+        Returns
+        -------
+        float or array
+        """
         u = np.asarray(u, dtype=float)
         if self.kind == "uniform":
             xi = 2.0 * u - 1.0
@@ -149,7 +179,18 @@ class Dist:
 
 
 def resolve(params, current_value):
-    """[UncertainParam] -> [Dist]; current_value(name) gives the config value where nominal is None."""
+    """UncertainParams to Dists.
+
+    Parameters
+    ----------
+    params : list of UncertainParam
+    current_value : callable
+        current_value(name) gives the config value where nominal is None.
+
+    Returns
+    -------
+    list of Dist
+    """
     out = []
     for p in params:
         nom = current_value(p.name) if p.nominal is None else p.nominal
@@ -159,27 +200,52 @@ def resolve(params, current_value):
 
 
 def _value(prob, name):
+    """One scalar output of the problem."""
     return float(np.ravel(prob.get_val(name))[0])
 
 
 def first_order_contributions(prob, dists, of):
-    """{quantity: {param: (df/dp sigma)^2}} at the current point (set the parameters to their means first)."""
+    """First-order variance contributions at the current point (set the parameters to their means first).
+
+    Parameters
+    ----------
+    prob : om.Problem
+    dists : list of Dist
+    of : list of str
+
+    Returns
+    -------
+    dict
+        {quantity: {param: (df/dp sigma)^2}}.
+    """
     J = prob.compute_totals(of=list(of), wrt=[d.name for d in dists], return_format="dict")
     return {q: {d.name: (float(np.ravel(J[q][d.name])[0]) * d.std) ** 2 for d in dists} for q in of}
 
 
 def select_parameters(contrib, threshold=0.9, max_dim=5):
-    """Smallest set (<= max_dim) covering `threshold` of every quantity's first-order variance.
+    """Smallest set (<= max_dim) covering threshold of every quantity's first-order variance.
 
-    contrib: {quantity: {param: variance contribution}}; quantities with zero first-order variance are
-    skipped (nothing to cover). Ties: the set with the largest minimum coverage. Returns
-    (selected, coverage {quantity: share}, reached).
+    Quantities with zero first-order variance are skipped (nothing to cover). Ties: the set with the largest minimum
+    coverage.
+
+    Parameters
+    ----------
+    contrib : dict
+        {quantity: {param: variance contribution}}.
+    threshold : float
+    max_dim : int
+
+    Returns
+    -------
+    (list of str, dict, bool)
+        selected, coverage {quantity: share}, reached.
     """
     qs = {q: c for q, c in contrib.items() if sum(c.values()) > 0}
     names = list(next(iter(contrib.values())))
     share = {q: {n: c[n] / sum(c.values()) for n in names} for q, c in qs.items()}
 
     def cover(sel):
+        """Share of each quantity's variance that the set sel covers."""
         return {q: sum(s[n] for n in sel) for q, s in share.items()}
 
     best = None
@@ -196,7 +262,24 @@ def select_parameters(contrib, threshold=0.9, max_dim=5):
 
 
 def screen(prob, dists, of, threshold=0.9, max_dim=5):
-    """Set every parameter to its mean, run the model, and screen. Restores nothing (the caller owns prob)."""
+    """Screen the parameters: first-order variance contributions (df/dp_i sigma_i)^2 at the reference point.
+
+    Sets every parameter to its mean, runs the model, and screens the objective and the robust constraints. Restores
+    nothing: the caller owns prob.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    dists : list of Dist
+    of : list of str
+    threshold : float
+    max_dim : int
+
+    Returns
+    -------
+    dict
+        contrib, selected, coverage, reached, values.
+    """
     for d in dists:
         prob.set_val(d.name, d.mean)
     prob.run_model()

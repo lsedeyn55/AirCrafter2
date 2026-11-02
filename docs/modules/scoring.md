@@ -82,3 +82,33 @@ teams' values (PLACEHOLDERS, Q52).
   r_M3 = 0.953. Uncapped, the payload credit had driven the design to the fuselage-length cap (97 passengers,
   F 6.17).
 
+### Verbatim (`2026-DBF-Rules.pdf`, printed page "N of 34" = PDF page)
+
+    p. 10  RAC = 0.05 * WS + 0.75 (WS = wingspan in ft, measured to the nearest inch); minimum RAC = 0.90 (3 ft span)
+    p. 19  M1 = 1.0 for successful mission.
+    p. 19  Net Income = Income - Cost
+           Income = (#passengers * (Ip1 + (Ip2 * #laps))) + (#cargo * (Ic1 + (Ic2 * #laps)))
+           Ip1 6, Ip2 2, Ic1 10, Ic2 8
+    p. 20  Cost = #laps * (Ce + (#passengers * Cp) + (#cargo * Cc)) * EF
+           EF = Efficiency Factor = Total Propulsion Battery Capacity (W-hrs) / 100;  Ce 10, Cp 0.5, Cc 2
+    p. 20  M2 = 1 + [N_Net_Income / Max_Net_Income]
+    p. 20  M3 = 2 + [N_(#laps X banner length / RAC) / Max_(#laps X banner length / RAC)]
+    p. 21  GM = [Min_(mission time) / N_(mission time)]
+    p. 32  Total Mission Score = M1 + M2 + M3 + GM; times to 0.01 s, lengths to 0.01 in, weights to 0.01 lb/oz
+           (the banner length is recorded rounded down to 1/4 in, p. 12)
+
+### Model
+
+    objective  F = M1 + M2 + M3 (the flight score; GM isn't modelled: it measures the crew, and its time grows with
+               the payload count)
+    M1 = 1     the design is required to pass the M1 check (analysis only)
+    N2, N3     laps in the 5-min window of the M2 and M3 points: the lap model's continuous laps_frac
+    EF         E_M2 / 100, E_M2 = the M2 pack's rated energy (capacity x rated voltage, Wh): the pack is a per-mission
+               choice (p. 24, p. 33), so the M2 pack size trades laps against EF
+    n_p, n_c   passengers and cargo flown (continuous design variables; integers in the final design)
+    L_banner   banner length in inches (design variable); RAC from the span design variable b
+    NI_max, B_max  the best teams' Net_Income and laps x length / RAC: PLACEHOLDERS (OPEN_QUESTIONS Q52)
+    weights    (w2, w3) multiply the M2 and M3 terms, for the single-mission bookends (default 1, 1)
+
+`floored()` gives the same parts with the laps floored to completed laps and the banner and span recorded as the rules record them,
+reported next to the continuous score. It isn't differentiable.

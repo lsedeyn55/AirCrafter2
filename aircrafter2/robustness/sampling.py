@@ -1,14 +1,8 @@
 """Parallel evaluation of the deterministic model at many parameter points (Monte Carlo, quadrature checks).
 
-Each worker process builds the deterministic problem once, sets the design, converges the nominal point, and then
-runs its share of the samples, warm-starting each from the previous converged state. A sample whose MDA fails is
-retried once from the nominal converged state; if it fails again it is recorded as an analysis failure (its row is
-NaN), never as a constraint violation: MDA non-convergence, or (``lap_invalid``) the aircraft's wind limit (a headwind
-near V_stall: it cannot make progress into the wind and would not fly, mission/smooth_lap.py).
-
-With ``mda_robust`` (a MultipointConfig, 2025-26) the problem is built with RetryNewton's robust mode and
-initialised through problems.multipoint.run_warm (converge at the config start, then the design): a cold run at a
-low-speed banner design can diverge (docs/MDA_ROBUSTNESS_PLAN.md). Without it the code path is the original one.
+Each worker process builds the deterministic problem once, sets the design, converges the nominal point, and runs its
+share of the samples, warm-starting each from the previous converged state. Called by the study scripts. With mda_robust
+it goes through problems.multipoint.run_warm (docs/DECISIONS.md#ff-d5). Details: docs/modules/robustness.md.
 
 Memory: one problem is ~0.4-2 GB, so keep `workers` small (5 on a 14 GB machine).
 """
@@ -23,10 +17,12 @@ _W = {}
 
 
 def _value(prob, name):
+    """One scalar output of the problem."""
     return float(np.ravel(prob.get_val(name))[0])
 
 
 def _init(cfg, dv, outputs):
+    """Worker start-up: build the problem and converge the nominal point; prob = None if that fails."""
     import warnings
 
     warnings.filterwarnings("ignore")
@@ -65,6 +61,7 @@ def _init(cfg, dv, outputs):
 
 
 def _restore_nominal():
+    """Put the worker's problem back at the nominal converged state."""
     prob = _W["prob"]
     prob.model._outputs.set_val(_W["nominal"])  # includes the auto-IVC outputs: reset the design too
     for k, v in _W["inputs"].items():
@@ -72,6 +69,12 @@ def _restore_nominal():
 
 
 def _run(task):
+    """Run one sample: (index, output values, how).
+
+    how is "warm", "nominal" (retried once from the nominal state), or an analysis failure: "lap_invalid" (the
+    aircraft's wind limit, a headwind near V_stall: it can't make progress into the wind and wouldn't fly,
+    mission/smooth_lap.py) or "failed" (MDA non-convergence). A failure's row is NaN, never a constraint violation.
+    """
     i, vals = task
     prob = _W["prob"]
     if prob is None:
@@ -94,12 +97,26 @@ def _run(task):
 
 
 def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
-    """Run the deterministic model of `cfg` (a FullMDOConfig, or a MultipointConfig: each parameter is set at both
-    mission points) at design `dv` for each {param: value} in `rows`.
+    """Run the deterministic model at a design for each parameter point, in parallel.
 
-    Returns dict(values=(n, len(outputs)) array with NaN rows for analysis failures, failed=[indices of every
-    analysis failure], lap_invalid=[the subset outside the lap model's validity; the rest are MDA non-convergence],
-    retried=[indices recovered from the nominal state], wall=s, cpu_workers=workers).
+    Parameters
+    ----------
+    cfg : FullMDOConfig or MultipointConfig
+        With a MultipointConfig, each parameter is set at both mission points.
+    dv : dict
+        {design variable: value}.
+    rows : list of dict
+        {param: value} per sample.
+    outputs : list of str
+    workers : int
+    chunksize : int, optional
+
+    Returns
+    -------
+    dict
+        values = (n, len(outputs)) array with NaN rows for analysis failures, failed = indices of every analysis
+        failure, lap_invalid = the subset outside the lap model's validity (the rest are MDA non-convergence), retried =
+        indices recovered from the nominal state, wall [s], workers.
     """
     os.environ.setdefault("OMP_NUM_THREADS", "1")
     n = len(rows)
@@ -129,10 +146,23 @@ def evaluate(cfg, dv, rows, outputs, workers=5, chunksize=None):
 
 
 def violation_probabilities(values, outputs, constraints, rtol=1e-6):
-    """P(violation) per constraint over the converged rows. constraints: [(name, kwargs)] (full_constraints).
+    """P(violation) per constraint over the converged rows.
 
-    A sample violates a bound by more than rtol * max(|bound|, ref, 1): an active constraint that no uncertain
-    parameter moves (e.g. V_h at its lower bound) sits on the bound to the optimiser's tolerance and is not counted.
+    A sample violates a bound by more than rtol * max(|bound|, ref, 1): an active constraint that no uncertain parameter
+    moves (e.g. V_h at its lower bound) sits on the bound to the optimiser's tolerance and isn't counted.
+
+    Parameters
+    ----------
+    values : array (n, len(outputs))
+    outputs : list of str
+    constraints : list of (str, dict)
+        full_constraints.
+    rtol : float
+
+    Returns
+    -------
+    dict
+        {name: probability}.
     """
     idx = {o: j for j, o in enumerate(outputs)}
     ok = ~np.isnan(values).any(axis=1)

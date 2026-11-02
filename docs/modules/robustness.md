@@ -16,6 +16,8 @@ Plan, screening and node-convergence check: `docs/RDO_PLAN.md`. Study results: `
 - **Sensitivities:** normalised (x/f) df/dx from `compute_totals`, for design variables and assumptions.
 - **Worst cases:** empty mass +X % (ballast), lap thrust −Y %, capacity −Z %, headwind. Each one is a full MDA
   re-analysis.
+  Thrust is scaled in the lap model only: the MDA's level-speed balance keeps the nominal thrust, because that speed sets
+  the stall margin and the structural design speed.
 - **Monte Carlo:** independent inputs, one full MDA per sample. The inputs are either relative uniform spreads or
   the distributions of `configs/uncertainty.yaml`, the same source RDO uses. It reports the objective statistics
   and the probability of each constraint being violated. `sampling.evaluate` is the parallel version used by the
@@ -156,6 +158,7 @@ RDO config and `humpback_2026.yaml`; docs/MDA_ROBUSTNESS_PLAN.md), `RetryNewton`
   step at the target exactly; if a step fails, once more in 8 steps. The inputs include upstream outputs such as the
   T(v) fit coefficients, so the intermediate states are smooth but not physical: only the last step is the answer.
   Log labels: `continuation 4`, `continuation 8` (the log keeps its (solve, start, converged) tuples).
+  It takes Newton across a design step that leaves the previous state outside the new root's basin.
 - The MDA's linear solver is a `QuietDirectSolver`: a singular Jacobian (a diverged attempt) raises `AnalysisError` at
   once, instead of OpenMDAO's `RuntimeError` after a dense-SVD diagnosis (about 10 min and several GB on this MDA).
 - Why: at the low-speed 2025-26 banner designs the T = D balance has a second root below stall; a Newton start far

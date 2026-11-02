@@ -1,33 +1,9 @@
 """AIAA DBF 2025-26 (Banner Towing Bush Plane) flight score: the `dbf2026` plug-in.
 
-Verbatim (2026-DBF-Rules.pdf, 2025-26 Design, Build, Fly Rules; printed page "N of 34" = PDF page):
-    p. 10  RAC = 0.05 * WS + 0.75 (WS = wingspan in ft, measured to the nearest inch); minimum RAC = 0.90 (3 ft span)
-    p. 19  M1 = 1.0 for successful mission.
-    p. 19  Net Income = Income - Cost
-           Income = (#passengers * (Ip1 + (Ip2 * #laps))) + (#cargo * (Ic1 + (Ic2 * #laps)))
-           Ip1 6, Ip2 2, Ic1 10, Ic2 8
-    p. 20  Cost = #laps * (Ce + (#passengers * Cp) + (#cargo * Cc)) * EF
-           EF = Efficiency Factor = Total Propulsion Battery Capacity (W-hrs) / 100;  Ce 10, Cp 0.5, Cc 2
-    p. 20  M2 = 1 + [N_Net_Income / Max_Net_Income]
-    p. 20  M3 = 2 + [N_(#laps X banner length / RAC) / Max_(#laps X banner length / RAC)]
-           (Max over all teams, so each ratio is at most 1: the model caps it, smoothly, at 1; cap(), Q52)
-    p. 21  GM = [Min_(mission time) / N_(mission time)]
-    p. 32  Total Mission Score = M1 + M2 + M3 + GM; times to 0.01 s, lengths to 0.01 in, weights to 0.01 lb/oz
-           (the banner length is recorded rounded down to 1/4 in, p. 12)
-
-Model (docs/modules/scoring.md, docs/RESULTS_2026_PLAN.md §4.1):
-    objective  F = M1 + M2 + M3 (the flight score; GM is not modelled: it measures the crew, and its time grows with
-               the payload count)
-    M1 = 1     the design is required to pass the M1 check (analysis only)
-    N2, N3     laps in the 5-min window of the M2 and M3 points: the lap model's continuous laps_frac
-    EF         E_M2 / 100, E_M2 = the M2 pack's rated energy (capacity x rated voltage, Wh): the pack is a per-mission
-               choice (p. 24, p. 33), so the M2 pack size trades laps against EF
-    n_p, n_c   passengers and cargo flown (continuous design variables; integers in the final design)
-    L_banner   banner length in inches (design variable); RAC from the span design variable b
-    NI_max, B_max  the best teams' Net_Income and laps x length / RAC: PLACEHOLDERS (OPEN_QUESTIONS Q52)
-    weights    (w2, w3) multiply the M2 and M3 terms, for the single-mission bookends (default 1, 1)
-`floored()` gives the same parts with the laps floored to completed laps and the banner and span recorded as the
-rules record them (reported next to the continuous score; not differentiable).
+Objective F = M1 + M2 + M3 from the multipoint problem's lap counts, payload, M2 pack energy and banner
+(problems/multipoint.py), with each mission ratio capped at 1 (docs/DECISIONS.md#ff-d1). NI_max and B_max, the best
+teams' values, are placeholders (docs/OPEN_QUESTIONS.md Q52). Source: [R26] pp. 10, 19-21, 32
+(docs/DECISIONS.md#r26-scoring). The rules as written and the model: docs/modules/scoring.md, "dbf2026".
 """
 
 import numpy as np
@@ -40,17 +16,45 @@ RULES = dict(Ip1=6.0, Ip2=2.0, Ic1=10.0, Ic2=8.0, Ce=10.0, Cp=0.5, Cc=2.0)  # [R
 
 
 def net_income(n_p, n_c, laps, E_Wh, k=RULES):
-    """Net Income = Income - Cost, as the rules write it (pp. 19-20)."""
+    """Net Income = Income - Cost, as the rules write it (pp. 19-20).
+
+    Parameters
+    ----------
+    n_p, n_c : float or array
+        Passengers and cargo.
+    laps : float or array
+    E_Wh : float or array
+        Pack energy [W*h]; EF = E_Wh / 100.
+    k : dict
+        The rule's constants, Ip1, Ip2, Ic1, Ic2, Ce, Cp, Cc.
+
+    Returns
+    -------
+    float or array
+    """
     income = n_p * (k["Ip1"] + k["Ip2"] * laps) + n_c * (k["Ic1"] + k["Ic2"] * laps)
     cost = laps * (k["Ce"] + n_p * k["Cp"] + n_c * k["Cc"]) * (E_Wh / 100.0)
     return income - cost
 
 
 def cap(r, delta):
-    """The rules' cap of a mission ratio N / Max at 1 (M2 = 1 + NI / Max_NI with Max the best team's, so the ratio is
-    at most 1: [R26] p. 20), smoothed for the optimiser: exactly r for r <= 1 - delta (every score below the cap is
-    unchanged bit for bit), exactly 1 for r >= 1 + delta, and the C1 quadratic blend r - (r - 1 + delta)^2 / (4 delta)
-    between (bias delta / 4 at r = 1). Branches on the real part, so complex-step safe. delta = 0: the hard min(r, 1)."""
+    """The rules' cap of a mission ratio N / Max at 1, smoothed for the optimiser.
+
+    M2 = 1 + NI / Max_NI with Max the best team's, so the ratio is at most 1 ([R26] p. 20). Exactly r for r <= 1 -
+    delta, so every score below the cap is unchanged bit for bit; exactly 1 for r >= 1 + delta; and the C1 quadratic
+    blend r - (r - 1 + delta)^2 / (4 delta) between (bias delta / 4 at r = 1). Branches on the real part, so
+    complex-step safe.
+
+    Parameters
+    ----------
+    r : float or array
+    delta : float
+        Half-width of the blend; 0 gives the hard min(r, 1).
+
+    Returns
+    -------
+    array
+    """
     r = np.asarray(r)
     re = np.real(r)
     if delta <= 0.0:
@@ -60,12 +64,33 @@ def cap(r, delta):
 
 
 def rac(span_ft):
-    """Rated airplane cost (p. 10); the 0.90 minimum is the 3 ft span bound of the design."""
+    """Rated airplane cost (p. 10); the 0.90 minimum is the 3 ft span bound of the design.
+
+    Parameters
+    ----------
+    span_ft : float or array
+
+    Returns
+    -------
+    float or array
+    """
     return 0.05 * span_ft + 0.75
 
 
 def m3_term(laps, banner_in, span_ft):
-    """#laps x banner length / RAC (p. 20)."""
+    """#laps x banner length / RAC (p. 20).
+
+    Parameters
+    ----------
+    laps : float or array
+    banner_in : float or array
+        Banner length [inch].
+    span_ft : float or array
+
+    Returns
+    -------
+    float or array
+    """
     return laps * banner_in / rac(span_ft)
 
 
@@ -79,12 +104,40 @@ class DBF2026(ScoringPlugin):
     inputs = {"n_p": None, "n_c": None, "laps_M2": None, "E_M2": "W*h", "laps_M3": None, "L_banner": "inch", "b": "m"}
 
     def __init__(self, NI_max=2800.0, B_max=1500.0, w2=1.0, w3=1.0, m1=1.0, cap_delta=0.005, **rules):
+        """Set the options.
+
+        Parameters
+        ----------
+        NI_max, B_max : float
+            The best teams' Net Income and laps x length / RAC, placeholders (Q52).
+        w2, w3 : float
+            Weights on the M2 and M3 terms, for the single-mission bookends (default 1, 1).
+        m1 : float
+            M1: the design is required to pass the M1 check (analysis only).
+        cap_delta : float
+            Half-width of the smooth cap.
+        **rules
+            Overrides of RULES.
+        """
         k = dict(RULES)
         k.update(rules)
         super().__init__(NI_max=NI_max, B_max=B_max, w2=w2, w3=w3, m1=m1, cap_delta=cap_delta, **k)
 
     def parts(self, x, hard=False):
-        """hard: the hard cap min(r, 1), as the judges would record it (floored); else the smooth cap (cap_delta)."""
+        """Every part of the score.
+
+        Parameters
+        ----------
+        x : dict
+            n_p, n_c, laps_M2, E_M2 [W*h], laps_M3, L_banner [inch], b [m].
+        hard : bool
+            The hard cap min(r, 1), as the judges would record it (floored). Otherwise the smooth cap (cap_delta).
+
+        Returns
+        -------
+        dict
+            M1, M2, M3, net_income, m3_term, RAC, EF, flight_score, score, r_M2, r_M3.
+        """
         o = self.options
         ni = net_income(x["n_p"], x["n_c"], x["laps_M2"], x["E_M2"], o)
         t3 = m3_term(x["laps_M3"], x["L_banner"], x["b"] / FT)
@@ -107,6 +160,7 @@ class DBF2026(ScoringPlugin):
         )
 
     def score(self, x):
+        """The objective."""
         return self.parts(x)["score"]
 
     def floored(self, x):
@@ -122,11 +176,28 @@ class DBF2026(ScoringPlugin):
         return self.parts(y, hard=True)
 
     def component(self):
+        """The OpenMDAO component with the score's parts."""
         return DBF2026Score(plugin=self)
 
 
 class DBF2026Score(om.ExplicitComponent):
-    """score (the objective, with the bookend weights), plus M1, M2, M3, flight_score, net_income, m3_term, RAC, EF."""
+    """score (the objective, with the bookend weights), plus M1, M2, M3, flight_score, net_income, m3_term, RAC, EF,
+    r_M2, r_M3.
+
+    Partials are complex step: the plug-in is complex-step safe.
+
+    Options
+    -------
+    plugin : DBF2026
+
+    Inputs
+    ------
+    n_p, n_c, laps_M2, E_M2 [W*h], laps_M3, L_banner [inch], b [m]
+
+    Outputs
+    -------
+    OUT
+    """
 
     OUT = ["score", "M1", "M2", "M3", "flight_score", "net_income", "m3_term", "RAC", "EF", "r_M2", "r_M3"]
 

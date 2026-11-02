@@ -1,26 +1,9 @@
-"""Scoring plug-in interface.
+"""Scoring plug-in interface: turns model outputs into the optimisation objective and, optionally, extra constraints.
 
-A scoring plug-in turns model outputs into the optimisation objective (and, optionally, extra
-constraints). Year-specific DBF rules live in plug-ins; the framework stays generic.
-
-To write one (see docs/how_to_add_a_scoring_plugin.md):
-
-    from aircrafter2.scoring import ScoringPlugin, register
-
-    @register("my_score_2027")
-    class MyScore(ScoringPlugin):
-        sense = "max"                                     # "min" or "max"
-        inputs = {"laps_frac": None, "m_pay": "kg"}      # model outputs/inputs it reads (promoted name: units)
-
-        def score(self, x):                              # x: dict of numpy arrays, complex-step safe
-            return x["laps_frac"] * x["m_pay"]
-
-        def constraints(self):                           # optional: [(name, dict(lower=..., upper=...))]
-            return []
-
-The framework wires the inputs by promoted name, adds an ExecComp-like component computing
-`score` (complex-step partials), and sets it as the objective with the right sign. Plug-ins can
-also be loaded from a dotted path in the config: scoring: {plugin: "mypkg.module:MyScore"}.
+Year-specific DBF rules live in plug-ins, so the framework stays generic. A plug-in reads the lap and mass outputs by
+promoted name; add_scoring adds its component and sets the objective with the right sign. Plug-ins can also be loaded
+from a dotted path in the config: scoring: {plugin: "mypkg.module:MyScore"}. To write one:
+docs/how_to_add_a_scoring_plugin.md.
 """
 
 from abc import ABC, abstractmethod
@@ -33,7 +16,19 @@ _REGISTRY = {}
 
 
 def register(name):
+    """Class decorator: register a plug-in under a name.
+
+    Parameters
+    ----------
+    name : str
+
+    Returns
+    -------
+    callable
+    """
+
     def deco(cls):
+        """Name the class and add it to the registry."""
         cls.name = name
         _REGISTRY[name] = cls
         return cls
@@ -42,11 +37,25 @@ def register(name):
 
 
 def available():
+    """The sorted names of the registered plug-ins."""
     return sorted(_REGISTRY)
 
 
 def get_plugin(spec, **options):
-    """spec: a registered name or 'module.path:ClassName'."""
+    """An instance of a plug-in.
+
+    Parameters
+    ----------
+    spec : str
+        A registered name or 'module.path:ClassName'.
+    **options
+        The plug-in's options.
+
+    Returns
+    -------
+    ScoringPlugin
+        Raises KeyError for an unknown name.
+    """
     if ":" in spec:
         mod, cls = spec.split(":")
         return getattr(import_module(mod), cls)(**options)
@@ -56,12 +65,25 @@ def get_plugin(spec, **options):
 
 
 class ScoringPlugin(ABC):
+    """Base class of the plug-ins.
+
+    Attributes
+    ----------
+    name : str
+    sense : "min" or "max"
+    inputs : dict
+        {promoted name: units} of the model outputs and inputs it reads.
+    ref : float
+        Objective scaling hint.
+    """
+
     name = "unnamed"
     sense = "min"
     inputs: dict = {}
     ref = 1.0  # objective scaling hint
 
     def __init__(self, **options):
+        """Keep the options."""
         self.options = options
 
     @abstractmethod
@@ -69,13 +91,30 @@ class ScoringPlugin(ABC):
         """Score from a dict of input arrays. Must be complex-step safe (numpy arithmetic only)."""
 
     def constraints(self):
+        """Extra constraints: [(name, add_constraint kwargs)]. None by default."""
         return []
 
     def component(self):
+        """The OpenMDAO component that computes the score."""
         return ScoreComponent(plugin=self)
 
 
 class ScoreComponent(om.ExplicitComponent):
+    """score from the plug-in. Partials are complex step, because plug-ins are arbitrary code.
+
+    Options
+    -------
+    plugin : ScoringPlugin
+
+    Inputs
+    ------
+    The plug-in's inputs.
+
+    Outputs
+    -------
+    score
+    """
+
     def initialize(self):
         self.options.declare("plugin")
 
@@ -90,7 +129,15 @@ class ScoreComponent(om.ExplicitComponent):
 
 
 def add_scoring(model, plugin, objective=True):
-    """Add the plug-in's score component (promoted) and set the objective and constraints."""
+    """Add the plug-in's score component (promoted), and set the objective and constraints.
+
+    Parameters
+    ----------
+    model : om.Group
+    plugin : ScoringPlugin
+    objective : bool
+        Set the objective. False in analysis runs.
+    """
     model.add_subsystem("scoring", plugin.component(), promotes_inputs=list(plugin.inputs), promotes_outputs=["score"])
     if objective:
         model.add_objective("score", ref=plugin.ref if plugin.sense == "min" else -plugin.ref)

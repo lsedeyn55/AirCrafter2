@@ -1,20 +1,9 @@
 """Robust design optimisation of the multipoint problem: N uncertainty nodes x 2 mission points.
 
-    model
-      nodes  (om.ParallelGroup; serial without MPI)
-        n0 .. n{N-1}   build_multipoint_model(...) each: M2 + M3 points, score, rules; the design variables promoted
-                       and shared by every node; node j has the uncertain parameters at the rule's node j, the same
-                       value at both mission points (the same aircraft); n0 = every parameter at its mean
-      stats  (RobustStats): node outputs -> mu, sigma, mu - k sigma of the flight score, mu -/+ beta sigma
-
-    maximise   mu_F - k sigma_F                    (F = M1 + M2 + M3, dbf2025)
-    subject to mu_g - beta sigma_g >= lower, mu_g + beta sigma_g <= upper   (robust constraints, both points)
-               g(x, p_bar) within its bounds at the reference node      (the others)
-
-As rdo_problem.py: fixed nodes (common random numbers), UDR by default, RetryNewton warm starts at every point's MDA.
-Uncertain parameters: configs/uncertainty.yaml for the motor mode (Kv a DV: Kv_factor, Rm_ref) plus the config's own
-entries (store_drag_factor). Inputs that the multipoint model computes (m_pay: the stores) are excluded: the fuel is
-weighed at the field (rules p. 10) and the store masses are fixed.
+Each node is problems/multipoint.py's model, with the uncertain parameters at the rule's values, the same at both
+mission points (the same aircraft). As rdo_problem.py: fixed nodes, the UDR (univariate dimension reduction) rule by
+default, RetryNewton at every point's MDA. Inputs the model computes (m_pay: the stores) are excluded: the fuel is
+weighed at the field (rules p. 10), and the store masses are fixed. Details: docs/modules/robustness.md.
 """
 
 import numpy as np
@@ -36,16 +25,40 @@ COMPUTED = {"m_pay"}  # model inputs in the single-point problem that the multip
 
 
 def _value(prob, name):
+    """One scalar output of the problem."""
     return float(np.ravel(prob.get_val(name))[0])
 
 
 def mp_params(mcfg):
+    """The uncertain parameters of the multipoint problem: the motor mode's, without the inputs the model computes.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+
+    Returns
+    -------
+    list of UncertainParam
+    """
     from ..problems.full_mdo import kv_is_dv
 
     return [p for p in for_kv_mode(mcfg.base.robust.parameters, kv_is_dv(mcfg.base)) if p.name not in COMPUTED]
 
 
 def resolved_dists_mp(mcfg, current_value):
+    """The distributions of the multipoint problem.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+    current_value : callable
+        current_value(name) supplies config values for nominal = None.
+
+    Returns
+    -------
+    (list of Dist, list of Dist)
+        All, and the active ones. Raises ValueError if robust.active names something unknown.
+    """
     rob = mcfg.base.robust
     dists = resolve(mp_params(mcfg), current_value)
     names = [d.name for d in dists]
@@ -57,12 +70,36 @@ def resolved_dists_mp(mcfg, current_value):
 
 
 def param_inputs(name, prefix=""):
-    """The model inputs of one uncertain parameter: the same value at both mission points."""
+    """The model inputs of one uncertain parameter: the same value at both mission points.
+
+    Parameters
+    ----------
+    name : str
+    prefix : str
+        Path to the multipoint group.
+
+    Returns
+    -------
+    list of str
+    """
     return [f"{prefix}points.{p}.{name}" for p in POINTS]
 
 
 def first_order_contributions_mp(prob, dists, of, prefix=""):
-    """{quantity: {param: (dq/dp sigma)^2}}, dq/dp summed over both points' inputs of the parameter."""
+    """First-order variance contributions, with dq/dp summed over both points' inputs of the parameter.
+
+    Parameters
+    ----------
+    prob : om.Problem
+    dists : list of Dist
+    of : list of str
+    prefix : str
+
+    Returns
+    -------
+    dict
+        {quantity: {param: (dq/dp sigma)^2}}.
+    """
     wrt = [w for d in dists for w in param_inputs(d.name, prefix)]
     J = prob.compute_totals(of=list(of), wrt=wrt, return_format="dict")
     return {
@@ -74,7 +111,18 @@ def first_order_contributions_mp(prob, dists, of, prefix=""):
 
 
 def robust_names(mcfg, extra=()):
-    """Robust constraints: the config's robust list at both points, plus `extra` (absolute names)."""
+    """The robust constraints: the config's robust list at both points, plus extra.
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+    extra : iterable of str
+        Absolute names.
+
+    Returns
+    -------
+    list of str
+    """
     names = []
     for n, _ in multipoint_constraints(mcfg):
         tail = n.split(".", 2)[-1] if n.startswith("points.") else None
@@ -84,12 +132,31 @@ def robust_names(mcfg, extra=()):
 
 
 def _template_dists(mcfg):
+    """Distributions with the right kinds but placeholder numbers: the rule's size before setup."""
     act = mcfg.base.robust.active
     return [Dist(p.name, p.dist, 1.0, 0.1) for p in mp_params(mcfg) if act is None or p.name in act]
 
 
 def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
-    """The robust multipoint problem. prob.rdo = dict(rule, dists, active, values, solvers, quantities, N)."""
+    """The robust multipoint problem.
+
+        maximise   mu_F - k sigma_F                    (F = M1 + M2 + M3)
+        subject to mu_g - beta sigma_g >= lower, mu_g + beta sigma_g <= upper   (robust constraints, both points)
+                   g(x, p_bar) within its bounds at the reference node      (the others)
+
+    Parameters
+    ----------
+    mcfg : MultipointConfig
+    driver : bool
+        Add the optimiser.
+    extra_robust : iterable of str
+        More robust constraints, by absolute name.
+
+    Returns
+    -------
+    om.Problem
+        Set up; prob.rdo = dict(rule, dists, active, values, solvers, quantities, N).
+    """
     from ..robustness.rdo_problem import RetryNewton  # noqa: F401  (the MDAs are RetryNewton via mda_retry)
 
     rob = mcfg.base.robust
@@ -162,6 +229,16 @@ def build_robust_multipoint(mcfg, driver=True, extra_robust=()):
 
 
 def node_report_mp(prob):
+    """Per point and node: solves, attempts and failed attempts of its MDA.
+
+    Parameters
+    ----------
+    prob : om.Problem
+
+    Returns
+    -------
+    list of dict
+    """
     rows = []
     for p, ss in prob.rdo["solvers"].items():
         for j, s in enumerate(ss):
@@ -171,6 +248,17 @@ def node_report_mp(prob):
 
 
 def robust_summary_mp(prob):
+    """The statistics at the current point.
+
+    Parameters
+    ----------
+    prob : om.Problem
+
+    Returns
+    -------
+    dict
+        {quantity: dict(mu, sigma, lo, hi[, robust])}.
+    """
     out = {}
     for q in prob.rdo["quantities"]:
         k = key_of(q)
