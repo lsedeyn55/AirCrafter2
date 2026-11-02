@@ -1,22 +1,11 @@
 """NeuralFoil section aerodynamics at a prescribed section lift coefficient.
 
-The VLM gives each spanwise strip a section C_l and a Reynolds number. NeuralFoil takes
-alpha, not C_l, so for each strip we solve  C_l,NF(alpha; k, Re) = C_l  on the pre-stall
-branch, then read C_d and C_m there. C_l,max(Re) is the peak of C_l(alpha).
-
-Derivatives use the implicit-function theorem, so nothing is differentiated through the
-root-finder. Only the network's own partials are taken, by central finite differences:
-
-    d alpha / d C_l = 1 / C_l,alpha
-    d X / d C_l     = X_alpha / C_l,alpha                         (X = C_d, C_m)
-    d X / d p       = X_p - X_alpha C_l,p / C_l,alpha             (p = ln Re, Kulfan params)
-    d C_l,max / d p = C_l,p at alpha_peak                         (envelope theorem)
-
-If C_l exceeds C_l,max the strip is "clamped" at alpha_peak: the outputs are then flat in C_l,
-and the optimiser sees the stall through the cl_margin constraint instead.
-
-Reference: NeuralFoil v0.3.3 (P. Sharpe, MIT), https://github.com/peterdsharpe/NeuralFoil; trained on
-XFoil analyses of Kulfan-parameterised airfoils. Cite the version actually used in the thesis.
+The vortex-lattice method gives each spanwise strip a section C_l and a Reynolds number. NeuralFoil takes alpha, not
+C_l, so each strip solves C_l,NF(alpha; k, Re) = C_l on the pre-stall branch. Called by aero/profile_drag.py; partials
+use the implicit-function theorem, so nothing is differentiated through the root-finder.
+Source: NeuralFoil v0.3.3 (P. Sharpe, MIT), https://github.com/peterdsharpe/NeuralFoil, trained on XFoil analyses of
+Kulfan-parameterised airfoils. Cite the version actually used in the thesis.
+Details: docs/modules/aero.md, "NeuralFoil sections".
 """
 
 from dataclasses import dataclass
@@ -28,6 +17,8 @@ N_PARAMS = 18  # [upper(8), lower(8), le_weight, te_thickness]
 
 @dataclass
 class NFSettings:
+    """NeuralFoil model, the alpha grid [deg], the central-difference steps and the Newton iterations."""
+
     model_size: str = "xlarge"
     n_crit: float = 9.0
     alpha_min: float = -8.0  # deg
@@ -40,11 +31,28 @@ class NFSettings:
 
 
 def pack(upper, lower, le, te):
+    """Kulfan parameters as one vector of 18: [upper(8), lower(8), le_weight, te_thickness]."""
     return np.concatenate([np.ravel(upper), np.ravel(lower), np.ravel(le), np.ravel(te)])
 
 
 def nf_eval(P, alpha, Re, s: NFSettings):
-    """P: (18,) or (18, N); alpha (deg), Re: (N,). Returns dict of (N,) arrays."""
+    """Run NeuralFoil.
+
+    Parameters
+    ----------
+    P : array (18,) or (18, N)
+        Kulfan parameters.
+    alpha : array (N,)
+        Angle of attack [deg].
+    Re : array (N,)
+        Reynolds number.
+    s : NFSettings
+
+    Returns
+    -------
+    dict of array (N,)
+        CL, CD, CM, analysis_confidence.
+    """
     import neuralfoil as nf
 
     alpha = np.atleast_1d(np.asarray(alpha, float))
@@ -60,11 +68,29 @@ def nf_eval(P, alpha, Re, s: NFSettings):
 
 
 def _cl(P, alpha, Re, s):
+    """NeuralFoil's C_l only."""
     return nf_eval(P, alpha, Re, s)["CL"]
 
 
 def solve_sections(P, Cl_target, Re, s: NFSettings):
-    """Solve each strip. Returns dict of (n,) arrays."""
+    """Solve each strip: alpha at the target C_l, then C_d and C_m there, and C_l,max(Re).
+
+    If C_l exceeds C_l,max the strip is clamped at alpha_peak: the outputs are flat in C_l, and the optimiser sees the
+    stall through the cl_margin constraint.
+
+    Parameters
+    ----------
+    P : array (18,)
+        Kulfan parameters.
+    Cl_target, Re : array (n,)
+        Section lift coefficient and Reynolds number of each strip.
+    s : NFSettings
+
+    Returns
+    -------
+    dict of array (n,)
+        alpha [deg], Cl, Cd, Cm, conf, Clmax, alpha_peak [deg], clamped, peak_in_grid.
+    """
     Cl_target = np.asarray(Cl_target, float)
     Re = np.asarray(Re, float)
     n = Cl_target.size
@@ -160,10 +186,29 @@ def _central(P, alpha, Re, s, directions):
 
 
 def section_sensitivities(P, sol, Re, s: NFSettings):
-    """Total derivatives of the solved strip quantities.
+    """Total derivatives of the solved strip quantities, by the implicit-function theorem.
 
-    Returns dict with arrays (n,) for d/dCl and d/dlnRe, and (n, 18) for d/dk, for
-    alpha (deg), Cd, Cm; and dClmax_dlnRe (n,), dClmax_dk (n, 18).
+    Only the network's own partials are taken, by central finite differences:
+
+        d alpha / d C_l = 1 / C_l,alpha
+        d X / d C_l     = X_alpha / C_l,alpha                         (X = C_d, C_m)
+        d X / d p       = X_p - X_alpha C_l,p / C_l,alpha             (p = ln Re, Kulfan params)
+        d C_l,max / d p = C_l,p at alpha_peak                         (envelope theorem)
+
+    Parameters
+    ----------
+    P : array (18,)
+        Kulfan parameters.
+    sol : dict
+        From solve_sections.
+    Re : array (n,)
+    s : NFSettings
+
+    Returns
+    -------
+    dict
+        alpha [deg], Cd, Cm: arrays (n,) for d/dCl and d/dlnRe, and (n, 18) for d/dk. Clmax_dlnRe (n,), Clmax_dk (n,
+        18).
     """
     dirs = [("alpha", s.h_alpha), ("logre", s.h_logre)] + [("k", j, s.h_k) for j in range(N_PARAMS)]
     D = _central(P, sol["alpha"], Re, s, dirs)  # (3, n, 20)

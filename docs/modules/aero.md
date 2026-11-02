@@ -61,6 +61,44 @@ Woombah's nacelle dimensions aren't published, so this only shows the placeholde
 **Slipstream is not modelled.** See PLAN §6h for the proposal, and for why leaving it out is only partly neutral
 in a single-versus-twin comparison.
 
+## Parasite drag (`aero/parasite.py`)
+
+Raymer, *Aircraft Design: A Conceptual Approach*, Ch. 12 (component build-up):
+
+    CD_0,i = C_f,i FF_i Q_i S_wet,i / S_ref
+    C_f    = 0.455 / (log10 Re)^2.58              turbulent flat plate (Mach term dropped, M < 0.1)
+    FF     = 1 + (0.6 / x_t) (t/c) + 100 (t/c)^4  thin lifting surfaces (Mach and sweep term dropped)
+    FF     = 1 + 60 / f^3 + f / 400               bodies, fineness f = l / d
+    S_wet  ~ S (1.977 + 0.52 t/c)                 thin surfaces (Raymer Ch. 7 approximation)
+
+Fully turbulent C_f is conservative for small RC surfaces. The wing's own profile drag comes from the NeuralFoil strips.
+- **Tails:** rectangular, chord √(S / AR).
+- **Fuselage:** the cargo-bay box (equivalent diameter from its cross-section area) plus the tail-boom tube. It's included
+  only with `fuselage_drag=True`, as the brief asked for a switch.
+- **Nacelles** (twin wing-mounted layout, `n_nacelles = 2`): the same body build-up per nacelle, a cylinder of length
+  `l_nac` and diameter `d_nac`, S_wet ≈ π d l, C_f at Re_l, times the interference factor `Q_nac`. `nacelle_ff="body"` (the
+  default, as briefed) uses the body form factor above, and `"nacelle"` uses Raymer's nacelle and smooth external store
+  form FF = 1 + 0.35 / f (Ch. 12). For the nose layout the nose is in the fuselage term, and `CD_nac` = 0.
+
+## Polar (`aero/polar.py`)
+
+`ThreePointPolar` fits C_D(C_L) = CD0 + CD1 C_L + k C_L² exactly through three analysed points (cruise, mid, near-C_L,max).
+So the lap model *interpolates* the coupled VLM + NeuralFoil drag over the whole C_L range it uses (cruise, the straights
+down to stall, the C_L,max turns), with no extrapolation.
+
+A two-point CD0 + k C_L² fit was tried first and rejected. Off-design (for example a highly cambered section at high speed
+and low C_L) its k went negative, an unphysical polar that was then extrapolated to C_L,max (`docs/problems/lap_mdo.md`).
+
+## NeuralFoil sections (`airfoil/neuralfoil_section.py`)
+
+Each strip solves C_l,NF(α; k, Re) = C_l on the pre-stall branch, then reads C_d and C_m there. C_l,max(Re) is the peak of
+C_l(α). The derivatives use the implicit-function theorem, with only the network's own partials taken by central finite
+differences; the formulas are in `section_sensitivities`. If C_l exceeds C_l,max, the strip is clamped at α_peak: the
+outputs are flat in C_l, and the optimiser sees the stall through the `cl_margin` constraint.
+
+**Airfoil shape extras.** The trailing-edge thickness is a separate input, a buildability choice. A "full CST" mode with all
+18 Kulfan parameters as design variables isn't implemented yet.
+
 ## Assumptions to know
 
 - **The VLM is a flat plate.** α is measured from zero lift; camber enters only through NeuralFoil. `alpha_sec`

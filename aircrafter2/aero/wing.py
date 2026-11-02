@@ -1,12 +1,11 @@
-"""Aero-only wing analysis point: OpenAeroStruct VLM + NeuralFoil profile drag.
+"""One aero analysis point of the wing: OpenAeroStruct (OAS) vortex-lattice method (VLM) + NeuralFoil profile drag.
 
     b, c --RectWingMesh--> mesh --OAS AeroPoint (with_viscous=False)--> CL, CDi, section Cl
     Kulfan params, section Cl, chords, widths --NeuralFoilStripDrag--> CDp, Cm, Clmax per strip
     --CriticalSectionCLmax--> CL_max ;  --WingPerformance--> CD, L, D, L/D
 
-Promoted inputs: b, c, alpha (deg), v, rho, mu, upper_weights, lower_weights, le_weight,
-te_thickness. Promoted outputs: CDp, CD, q, L, D, L_over_D, CL_max, CL_max_over_CL, Cm_wing,
-CL_alpha, plus the per-strip arrays from the strip-drag component (CL and CDi are vlm.wing_perf.*).
+Fed by geometry and airfoil; feeds the MDA balances, the mass model and the polar. Details: docs/modules/aero.md,
+"Wing".
 """
 
 import numpy as np
@@ -22,8 +21,20 @@ from .profile_drag import NeuralFoilStripDrag
 def oas_surface(num_x, num_y, spacing="cosine"):
     """Minimal OAS surface dict for an aero-only, inviscid VLM surface.
 
-    OAS reads the template mesh *values* at setup (e.g. eval_mtx.py checks which half-wing it
-    is), so it must have the right orientation; its size does not matter (tested).
+    OAS reads the template mesh *values* at setup (e.g. eval_mtx.py checks which half-wing it is), so it must have the
+    right orientation; its size doesn't matter (tested).
+
+    Parameters
+    ----------
+    num_x, num_y : int
+        Chordwise nodes, and spanwise nodes on the half wing.
+    spacing : str
+        "cosine" or "uniform".
+
+    Returns
+    -------
+    dict
+        The surface for AeroPoint.
     """
     return {
         "name": "wing",
@@ -41,6 +52,29 @@ def oas_surface(num_x, num_y, spacing="cosine"):
 
 
 class WingAero(om.Group):
+    """The aero analysis point: mesh, VLM, strips, C_L,max, moment, lift slope and performance.
+
+    Options
+    -------
+    num_x, num_y : int
+        Mesh nodes (chordwise, spanwise on the half wing).
+    spacing : str
+        "cosine" or "uniform".
+    nf : NFSettings or None
+        NeuralFoil settings.
+    max_mode, rho_ks
+        The smooth minimum of CriticalSectionCLmax.
+
+    Inputs
+    ------
+    b [m], c [m], alpha [deg], v [m/s], rho [kg/m**3], mu [Pa*s], upper_weights, lower_weights, le_weight, te_thickness
+
+    Outputs
+    -------
+    CDp, CD, q, L, D, L_over_D, CL_max, CL_max_over_CL, Cm_wing, CL_alpha, and the per-strip arrays of the strip-drag
+    component. CL and CDi are vlm.wing_perf.*; full list in `setup()`.
+    """
+
     def initialize(self):
         self.options.declare("num_x", default=3, types=int)
         self.options.declare("num_y", default=11, types=int)

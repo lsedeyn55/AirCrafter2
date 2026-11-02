@@ -1,14 +1,8 @@
-"""Drag polars for the mission model.
+"""Drag polars for the mission model, from three coupled aero points.
 
-ThreePointPolar fits CD(CL) = CD0 + CD1 CL + k CL^2 exactly through three analysed points
-(cruise, mid, near-C_L,max), so the lap model *interpolates* the coupled VLM + NeuralFoil drag
-over the whole C_L range it uses (cruise, the straights down to stall, the C_L,max turns), with
-no extrapolation. With CD1 = 0 it reduces to the AirCrafter form CD = CD0 + k CL^2
-(Kallarackel 2025, Eqs. 3.5-3.6).
-
-A two-point CD0 + k CL^2 fit was tried first and rejected: off-design (e.g. a highly cambered
-section at high speed and low C_L) its k went negative, an unphysical polar that was then
-extrapolated to C_L,max (docs/problems/lap_mdo.md).
+ThreePointPolar fits CD(CL) through the cruise, mid and near-C_L,max points of the full model, and feeds the lap model.
+With CD1 = 0 it reduces to the AirCrafter form CD = CD0 + k CL^2 (Kallarackel 2025, Eqs. 3.5-3.6).
+Why three points: docs/modules/aero.md, "Polar".
 """
 
 import numpy as np
@@ -16,6 +10,19 @@ import openmdao.api as om
 
 
 class ThreePointPolar(om.ExplicitComponent):
+    """CD(CL) = CD0 + CD1 CL + k CL^2, exactly through three analysed points.
+
+    Partials are complex step, through a 3 x 3 solve.
+
+    Inputs
+    ------
+    CL_0, CD_0, CL_1, CD_1, CL_2, CD_2 : the three points
+
+    Outputs
+    -------
+    CD0, CD1, k : the polar's coefficients
+    """
+
     def setup(self):
         for i, (cl, cd) in enumerate([(0.3, 0.02), (0.7, 0.03), (1.1, 0.06)]):
             self.add_input(f"CL_{i}", cl)
@@ -34,7 +41,24 @@ class ThreePointPolar(om.ExplicitComponent):
 
 
 class TurnAlpha(om.ExplicitComponent):
-    """alpha (from zero lift) for C_L = frac C_L,max, and the midpoint, using C_L ~ alpha (flat-plate VLM)."""
+    """Angles of attack of the mid and near-C_L,max points of the polar.
+
+    alpha (from zero lift) for C_L = frac C_L,max, and the midpoint, using C_L ~ alpha (flat-plate VLM, plan-a2 in
+    docs/DECISIONS.md). Partials are complex step: a short expression.
+
+    Options
+    -------
+    frac : float
+        Fraction of C_L,max at the turn point.
+
+    Inputs
+    ------
+    alpha_c [deg], CL_c, CL_max
+
+    Outputs
+    -------
+    alpha_t, alpha_m [deg]
+    """
 
     def initialize(self):
         self.options.declare("frac", default=0.95)

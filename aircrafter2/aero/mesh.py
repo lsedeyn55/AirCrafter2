@@ -1,7 +1,7 @@
-"""Rectangular half-wing VLM mesh for OpenAeroStruct (symmetry plane at y = 0).
+"""Rectangular half-wing vortex-lattice mesh for OpenAeroStruct (OAS), the first step of an aero point.
 
-OAS convention for symmetric surfaces: y runs from -b/2 (tip) to 0 (root); x is chordwise
-from the leading edge. The mesh is linear in b and c, so partials are constant.
+OAS convention for symmetric surfaces: y runs from -b/2 (tip) to 0 (root), with the symmetry plane at y = 0; x is
+chordwise from the leading edge. Fed by the span and chord; feeds aero/wing.py. See docs/modules/aero.md, "Wing".
 """
 
 import numpy as np
@@ -9,6 +9,24 @@ import openmdao.api as om
 
 
 class RectWingMesh(om.ExplicitComponent):
+    """Mesh of the half wing from span and chord. It's linear in b and c, so partials are constant.
+
+    Options
+    -------
+    num_x, num_y : int
+        Chordwise nodes, and spanwise nodes on the half wing.
+    spacing : "cosine" or "uniform"
+        Spanwise spacing.
+
+    Inputs
+    ------
+    b [m], c [m]
+
+    Outputs
+    -------
+    mesh [m] : array (num_x, num_y, 3)
+    """
+
     def initialize(self):
         self.options.declare("num_x", default=3, types=int, desc="chordwise nodes")
         self.options.declare("num_y", default=11, types=int, desc="spanwise nodes on the half wing")
@@ -52,7 +70,22 @@ class RectWingMesh(om.ExplicitComponent):
 
 
 def template_mesh(num_x, num_y, spacing="cosine", b=1.0, c=1.0):
-    """Mesh with the same node pattern as RectWingMesh (OAS reads its orientation at setup)."""
+    """Mesh with the same node pattern as RectWingMesh (OAS reads its orientation at setup).
+
+    Parameters
+    ----------
+    num_x, num_y : int
+        Mesh nodes.
+    spacing : str
+        "cosine" or "uniform".
+    b, c : float
+        Span and chord [m].
+
+    Returns
+    -------
+    array, shape (num_x, num_y, 3)
+        The mesh [m].
+    """
     comp = RectWingMesh(num_x=num_x, num_y=num_y, spacing=spacing)
     prob = om.Problem(reports=False)
     prob.model.add_subsystem("m", comp)

@@ -1,16 +1,8 @@
-"""Airfoil shape parameterisation (decision D3) and section geometry components.
+"""Airfoil shape parameterisation and section geometry components.
 
-Reduced shape modes on a seed Kulfan airfoil:
-
-    thickness weights  w_t = (u0 - l0) / 2        camber weights  w_c = (u0 + l0) / 2
-    upper = camber_scale * w_c + tc_scale * w_t + B @ d_upper
-    lower = camber_scale * w_c - tc_scale * w_t + B @ d_lower
-    le_weight = camber_scale * le0      (the LEM term is added to both surfaces: a camber mode)
-
-B (8 x n_modes) linearly interpolates n_modes control values spread over the 8 Bernstein
-weights (LE to TE), so each mode is a smooth local bump. n_modes = 0 gives the 2-variable
-(tc_scale, camber_scale) family. TE thickness is a separate input (a buildability choice).
-(A "full CST" mode with all 18 Kulfan parameters as design variables is not implemented yet.)
+Reduced shape modes on a seed Kulfan airfoil, to keep the design variables few (docs/DECISIONS.md#plan-d3). Turns
+tc_scale, camber_scale and optional bump modes into Kulfan parameters, which feed the NeuralFoil strips, and section
+geometry, which feeds the mass model. Equations: docs/modules/aero.md, "Airfoil".
 """
 
 import numpy as np
@@ -20,6 +12,20 @@ from . import cst
 
 
 def mode_basis(n_modes):
+    """The matrix B (8 x n_modes) of the bump modes.
+
+    B linearly interpolates n_modes control values spread over the 8 Bernstein weights (leading edge to trailing edge),
+    so each mode is a smooth local bump.
+
+    Parameters
+    ----------
+    n_modes : int
+        Number of bump modes.
+
+    Returns
+    -------
+    array, shape (8, n_modes)
+    """
     if n_modes == 0:
         return np.zeros((cst.N_W, 0))
     if n_modes == 1:
@@ -33,7 +39,31 @@ def mode_basis(n_modes):
 
 
 class AirfoilShape(om.ExplicitComponent):
-    """Reduced shape DVs -> Kulfan parameters. Linear, so partials are constant."""
+    """Reduced shape design variables -> Kulfan parameters. Linear, so partials are constant.
+
+        thickness weights  w_t = (u0 - l0) / 2        camber weights  w_c = (u0 + l0) / 2
+        upper = camber_scale * w_c + tc_scale * w_t + B @ d_upper
+        lower = camber_scale * w_c - tc_scale * w_t + B @ d_lower
+        le_weight = camber_scale * le0      (the LEM term is added to both surfaces: a camber mode)
+
+    n_modes = 0 gives the 2-variable (tc_scale, camber_scale) family.
+
+    Options
+    -------
+    seed : dict
+        Kulfan dict: upper_weights, lower_weights, leading_edge_weight, TE_thickness.
+    n_modes : int
+
+    Inputs
+    ------
+    tc_scale, camber_scale
+    d_upper, d_lower : arrays (n_modes,), only with modes
+    te_thickness_in : trailing-edge thickness, a separate input (a buildability choice)
+
+    Outputs
+    -------
+    upper_weights, lower_weights (8,), le_weight, te_thickness
+    """
 
     def initialize(self):
         self.options.declare(
@@ -88,6 +118,14 @@ class AirfoilGeometry(om.ExplicitComponent):
     """Kulfan parameters -> t/c, thickness at the spar, A/c^2, P/c (feeds the mass model).
 
     Exact complex-step partials (cst.py is complex-safe).
+
+    Inputs
+    ------
+    upper_weights, lower_weights (8,), le_weight, te_thickness, x_spar
+
+    Outputs
+    -------
+    tc_max, x_tc_max, t_at_spar, A_c2, P_c : see cst.section_geometry
     """
 
     def setup(self):
@@ -113,7 +151,14 @@ class AirfoilGeometry(om.ExplicitComponent):
 
 
 class AirfoilGroup(om.Group):
-    """Shape DVs -> Kulfan parameters -> section geometry. Promotes everything."""
+    """Shape design variables -> Kulfan parameters -> section geometry. Promotes everything.
+
+    Options
+    -------
+    seed : dict
+        Kulfan dict (seeds.load_seed).
+    n_modes : int
+    """
 
     def initialize(self):
         self.options.declare("seed", types=dict)
@@ -127,11 +172,24 @@ class AirfoilGroup(om.Group):
 
 
 def recover_tc_scale(seed, tc_max, camber_scale=1.0, x_spar=0.25):
-    """tc_scale that gives section t/c = tc_max (n_modes = 0 family), the inverse of AirfoilShape + section_geometry.
+    """The tc_scale that gives section t/c = tc_max (n_modes = 0 family): the inverse of AirfoilShape +
+    section_geometry.
 
-    Thickness y_u - y_l = C(x) B(x) (2 tc_scale w_t) + x te: camber_scale and the LE term cancel, and t/c rises
-    monotonically with tc_scale, so a 1-D root solve recovers it to solver precision. Used to rebuild stored
+    Thickness y_u - y_l = C(x) B(x) (2 tc_scale w_t) + x te: camber_scale and the leading-edge term cancel, and t/c
+    rises monotonically with tc_scale, so a 1-D root solve recovers it to solver precision. Used to rebuild stored
     results that kept tc_max but not tc_scale.
+
+    Parameters
+    ----------
+    seed : dict
+        Kulfan dict.
+    tc_max, camber_scale, x_spar : float
+        The target t/c, the camber scale, and the spar station (chord fraction).
+
+    Returns
+    -------
+    float
+        tc_scale.
     """
     from scipy.optimize import brentq
 
@@ -140,6 +198,7 @@ def recover_tc_scale(seed, tc_max, camber_scale=1.0, x_spar=0.25):
     le, te = camber_scale * float(seed["leading_edge_weight"]), float(seed["TE_thickness"])
 
     def gap(ts):
+        """t/c at tc_scale ts, minus the target."""
         g = cst.section_geometry(camber_scale * wc + ts * wt, camber_scale * wc - ts * wt, le, te, x_spar)
         return g["tc_max"] - tc_max
 

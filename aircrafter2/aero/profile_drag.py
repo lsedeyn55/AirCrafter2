@@ -1,15 +1,9 @@
 """Wing profile drag from NeuralFoil strip theory, plus section C_m and C_l,max.
 
-For every spanwise VLM strip i (half wing, symmetric):
-
-    Re_i  = rho V c_i / mu
-    alpha_i solves C_l,NF(alpha_i; k, Re_i) = C_l,i   (the VLM section lift)
-    C_d,i, C_m,i = NeuralFoil at (alpha_i, Re_i)
-    CD_p  = 2 sum_i C_d,i c_i w_i / S_ref             (factor 2: both halves)
-
-This replaces OpenAeroStruct's built-in viscous drag (with_viscous=False), so profile drag is
-not double counted. Partials come from the implicit-function theorem
-(aircrafter2/airfoil/neuralfoil_section.py); only NeuralFoil itself is finite-differenced.
+For every spanwise strip, it finds the section angle that gives the vortex-lattice section lift, and reads drag and
+moment from NeuralFoil there. It sits inside each aero point (aero/wing.py), and replaces OpenAeroStruct's built-in
+viscous drag (with_viscous=False), so profile drag isn't counted twice. Partials come from the implicit-function theorem
+(airfoil/neuralfoil_section.py); only NeuralFoil itself is finite-differenced. Details: docs/modules/aero.md, "Wing".
 """
 
 import numpy as np
@@ -21,6 +15,39 @@ KULFAN_INPUTS = [("upper_weights", 8), ("lower_weights", 8), ("le_weight", 1), (
 
 
 class NeuralFoilStripDrag(om.ExplicitComponent):
+    """Strip drag, moment and C_l,max over the half wing.
+
+        Re_i  = rho V c_i / mu
+        alpha_i solves C_l,NF(alpha_i; k, Re_i) = C_l,i   (the VLM section lift)
+        C_d,i, C_m,i = NeuralFoil at (alpha_i, Re_i)
+        CD_p  = 2 sum_i C_d,i c_i w_i / S_ref             (factor 2: both halves)
+
+    Options
+    -------
+    n_strips : int
+    symmetric : bool
+        Half-wing model, so CD_p counts both halves.
+    settings : NFSettings or None
+
+    Inputs
+    ------
+    upper_weights, lower_weights (8,), le_weight, te_thickness : Kulfan parameters
+    Cl : array (n_strips,), section lift coefficients from the VLM
+    chords [m] (n_strips + 1,), widths [m] (n_strips,), S_ref [m**2], v [m/s], rho [kg/m**3], mu [Pa*s]
+
+    Outputs
+    -------
+    Re_sec, alpha_sec [deg], Cd_sec, Cm_sec, Clmax_sec, cl_margin_sec : arrays (n_strips,)
+    CDp, nf_confidence_min, n_stalled : floats; the last two have no constraint
+
+    Symbols
+    -------
+    P : the 18 Kulfan parameters as one vector
+    c_mid : strip mid chords [m]
+    w : strip widths [m]
+    f : 2 for a half-wing model
+    """
+
     def initialize(self):
         self.options.declare("n_strips", types=int)
         self.options.declare("symmetric", default=True)
@@ -61,6 +88,7 @@ class NeuralFoilStripDrag(om.ExplicitComponent):
         self.declare_partials("CDp", ["Cl", "widths", "S_ref"] + kul + flow)
 
     def _solve(self, inputs):
+        """Solve every strip: (Kulfan vector, mid chords, Reynolds numbers, solution dict)."""
         P = pack(inputs["upper_weights"], inputs["lower_weights"], inputs["le_weight"], inputs["te_thickness"])
         ch = inputs["chords"]
         c_mid = 0.5 * (ch[1:] + ch[:-1])
@@ -98,7 +126,8 @@ class NeuralFoilStripDrag(om.ExplicitComponent):
         dlnRe["chords"][i, i] = 0.5 / c_mid
         dlnRe["chords"][i, i + 1] = 0.5 / c_mid
 
-        def kulfan_blocks(dk):  # (n, 18) -> per input
+        def kulfan_blocks(dk):
+            """Split an (n, 18) Jacobian into one block per Kulfan input."""
             out, j = {}, 0
             for name, size in KULFAN_INPUTS:
                 out[name] = dk[:, j : j + size]

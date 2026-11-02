@@ -1,4 +1,9 @@
-"""Wing C_L,max (critical-section method) and wing totals."""
+"""Wing totals from the strips: C_L,max, section moment, lift-curve slope, drag, lift and L/D.
+
+The last step of an aero point (aero/wing.py), after the vortex-lattice method (VLM) and the NeuralFoil strips. Its
+outputs feed the MDA balances, the mass model (C_m, C_L,alpha) and the polar. Critical-section C_L,max is a classical
+method; see docs/modules/aero.md, "Wing".
+"""
 
 import numpy as np
 import openmdao.api as om
@@ -9,15 +14,35 @@ from ..smooth import ks_min
 class CriticalSectionCLmax(om.ExplicitComponent):
     """Wing C_L,max by the critical-section method.
 
-    The VLM is linear in alpha, so the spanwise section-lift shape at a reference C_L scales
-    with C_L. The wing reaches C_L,max when the first strip reaches its section C_l,max:
+    The VLM is linear in alpha, so the spanwise section-lift shape at a reference C_L scales with C_L. The wing reaches
+    C_L,max when the first strip reaches its section C_l,max:
 
         C_L,max = C_L * min_i ( C_l,max,i / C_l,i )
 
-    This is the classical critical-section method used with lifting-line or VLM span loadings
-    (exact textbook reference to be added in docs/modules/aero.md). The min is a KS-min (or hard min). C_l,max,i is evaluated at the strip
-    Reynolds number of the analysis point, an approximation when the point is not near stall.
-    Strips with C_l,i <= 0 are excluded (floored), so the reference point must have C_L > 0.
+    This is the classical critical-section method used with lifting-line or VLM span loadings (exact textbook reference
+    to be added in docs/modules/aero.md). The min is a KS-min (or hard min). C_l,max,i is evaluated at the strip
+    Reynolds number of the analysis point, an approximation when the point isn't near stall. Strips with C_l,i <= 0 are
+    excluded (floored), so the reference point must have C_L > 0. Partials are analytic.
+
+    Options
+    -------
+    n_strips : int
+        Spanwise strips on the half wing.
+    max_mode : "ks" or "hard"
+        Smooth or hard minimum.
+    rho_ks : float
+        Sharpness of the KS (Kreisselmeier-Steinhauser) minimum.
+
+    Inputs
+    ------
+    CL, Cl : float, array (n_strips,)
+        Wing lift coefficient and section lift coefficients at the reference point.
+    Clmax_sec : array (n_strips,)
+        Section maximum lift coefficients.
+
+    Outputs
+    -------
+    CL_max, CL_max_over_CL : float
     """
 
     def initialize(self):
@@ -36,6 +61,7 @@ class CriticalSectionCLmax(om.ExplicitComponent):
         self.declare_partials("CL_max_over_CL", ["Cl", "Clmax_sec"])
 
     def _ratio(self, inputs):
+        """KS minimum of C_l,max,i / C_l,i: (floored Cl, active strips, ratios, minimum, its weights)."""
         Cl = inputs["Cl"]
         floor = 1e-6
         Clf = np.where(np.real(Cl) > floor, Cl, floor)
@@ -61,12 +87,28 @@ class CriticalSectionCLmax(om.ExplicitComponent):
 
 
 class WingSectionMoment(om.ExplicitComponent):
-    """Wing pitching-moment coefficient from the strip section moments (about each c/4):
+    """Wing pitching-moment coefficient from the strip section moments (about each c/4).
 
-        Cm_wing = f sum_i Cm_i c_i^2 w_i / (S c_ref),   f = 2 for a symmetric half-wing model.
+        Cm_wing = f sum_i Cm_i c_i^2 w_i / (S c_ref),   f = 2 for a symmetric half-wing model
 
-    With c_ref = S/b this is the area- and chord-weighted mean section C_m (for a rectangular
-    wing, the width-weighted mean). Used as G&G's wing C_m in Eqs. 46 and 54.
+    With c_ref = S/b this is the area- and chord-weighted mean section C_m (for a rectangular wing, the width-weighted
+    mean). Used as G&G's (Garcia & Gamboa 2022) wing C_m in Eqs. 46 and 54. Partials are complex step: a short
+    expression.
+
+    Options
+    -------
+    n_strips : int
+
+    Inputs
+    ------
+    Cm_sec : array (n_strips,)
+    chords [m] : array (n_strips + 1,)
+    widths [m] : array (n_strips,)
+    S_ref [m**2]
+
+    Outputs
+    -------
+    Cm_wing
     """
 
     def initialize(self):
@@ -90,10 +132,18 @@ class WingSectionMoment(om.ExplicitComponent):
 
 
 class LiftCurveSlope(om.ExplicitComponent):
-    """Wing C_L,alpha = C_L / alpha (per rad).
+    """Wing lift-curve slope, C_L,alpha = C_L / alpha, per rad.
 
-    Exact for the flat-plate VLM, whose alpha is measured from zero lift (PLAN A2), so C_L is
-    linear in alpha through the origin. Needs alpha != 0.
+    Exact for the flat-plate VLM, whose alpha is measured from zero lift (docs/DECISIONS.md#plan-a2), so C_L is linear
+    in alpha through the origin. Needs alpha != 0. Partials are analytic.
+
+    Inputs
+    ------
+    CL, alpha [rad]
+
+    Outputs
+    -------
+    CL_alpha [1/rad]
     """
 
     def setup(self):
@@ -111,7 +161,18 @@ class LiftCurveSlope(om.ExplicitComponent):
 
 
 class WingPerformance(om.ExplicitComponent):
-    """CD = CDi (VLM) + CDp (NeuralFoil strips) + CD_extra (parasite; set by full_mdo); L, D, L/D."""
+    """CD = CDi (VLM) + CDp (NeuralFoil strips) + CD_extra (parasite; set by full_mdo); L, D, L/D.
+
+    Partials are complex step: a short expression.
+
+    Inputs
+    ------
+    CL, CDi, CDp, CD_extra, v [m/s], rho [kg/m**3], S_ref [m**2]
+
+    Outputs
+    -------
+    CD, q [Pa], L [N], D [N], L_over_D
+    """
 
     def setup(self):
         for name, val in [("CL", 0.5), ("CDi", 0.01), ("CDp", 0.01), ("CD_extra", 0.0)]:

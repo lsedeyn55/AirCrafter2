@@ -1,23 +1,8 @@
-"""Parasite drag of the tails and (optionally) the fuselage: component build-up.
+"""Parasite drag of the tails, the fuselage and the nacelles: a component build-up.
 
-Raymer, Aircraft Design: A Conceptual Approach, Ch. 12 (component build-up method):
-
-    CD_0,i = C_f,i FF_i Q_i S_wet,i / S_ref
-    C_f    = 0.455 / (log10 Re)^2.58            turbulent flat plate (Mach term dropped, M < 0.1)
-    FF     = 1 + (0.6 / x_t) (t/c) + 100 (t/c)^4    thin lifting surfaces (Mach/sweep term dropped)
-    FF     = 1 + 60 / f^3 + f / 400              bodies, fineness f = l / d
-    S_wet  ~ S (1.977 + 0.52 t/c)               thin surfaces (Raymer Ch. 7 approximation)
-
-Fully turbulent C_f is conservative for small RC surfaces. The wing's own profile drag comes from
-NeuralFoil strips, not from here. Tails: rectangular, chord sqrt(S / AR). Fuselage: the cargo-bay
-box (equivalent diameter from its cross-section area) plus the tail-boom tube; included only with
-fuselage_drag=True (brief: "switchable").
-
-Nacelles (twin wing-mounted layout, n_nacelles = 2): the same body build-up per nacelle, a cylinder
-of length l_nac and diameter d_nac, S_wet ~ pi d l, C_f at Re_l, times the interference factor Q_nac.
-nacelle_ff="body" (default, as briefed) uses the body form factor above; "nacelle" uses Raymer's
-nacelle / smooth external store form FF = 1 + 0.35 / f (Ch. 12). For the nose layout the nose is in
-the fuselage term and CD_nac = 0.
+Uses Raymer, Aircraft Design: A Conceptual Approach, Ch. 12. Takes the geometry and flight condition inside the MDA, and
+gives CD_extra, which the aero points add to the wing's own drag. The wing's profile drag comes from the NeuralFoil
+strips, not from here. Details and formulas: docs/modules/aero.md, "Parasite drag".
 """
 
 import numpy as np
@@ -25,10 +10,57 @@ import openmdao.api as om
 
 
 def cf_turbulent(Re):
+    """Turbulent flat-plate skin friction, C_f = 0.455 / (log10 Re)^2.58 (Raymer Ch. 12, Mach term dropped, M < 0.1).
+
+    Parameters
+    ----------
+    Re : float or array
+        Reynolds number.
+
+    Returns
+    -------
+    float or array
+        C_f.
+    """
     return 0.455 / np.log10(Re) ** 2.58
 
 
 class ParasiteDrag(om.ExplicitComponent):
+    """CD_0,i = C_f,i FF_i Q_i S_wet,i / S_ref, summed over the components.
+
+    Partials are complex step: short expressions, and the fineness terms are awkward by hand.
+
+    Options
+    -------
+    fuselage_drag : bool
+        Include the cargo box and tail boom.
+    n_nacelles : 0 or 2
+        Twin wing-mounted layout. The nose layout's nose is in the fuselage term.
+    nacelle_ff : "body" or "nacelle"
+        Which Raymer form factor the nacelles use (docs/DECISIONS.md#plan-t6).
+
+    Inputs
+    ------
+    v [m/s], rho [kg/m**3], mu [Pa*s], S, S_ht, S_vt [m**2], AR_ht, AR_vt, tc_tail, xt_tail, Q_tail
+    l_cb, w_cb, h_cb, l_tb, r_tb [m], Q_fus
+    l_nac, d_nac [m], Q_nac : only with nacelles
+
+    Outputs
+    -------
+    CD_ht, CD_vt, CD_cb, CD_boom, CD_tail, CD_fus, CD_nac, CD_extra
+
+    Symbols
+    -------
+    C_f : skin friction (cf_turbulent)
+    FF : form factor
+    Q : interference factor
+    S_wet, Swet : wetted area [m**2]
+    f, fb, fn : fineness, length / diameter, of the cargo box, boom and nacelle
+    d_eq : equivalent diameter of the box [m]
+    q_over_mu : rho v / mu, Reynolds number per metre [1/m]
+    xt : position of maximum thickness, chord fraction
+    """
+
     def initialize(self):
         self.options.declare("fuselage_drag", default=True)
         self.options.declare("n_nacelles", default=0, values=[0, 2])
@@ -69,6 +101,7 @@ class ParasiteDrag(om.ExplicitComponent):
         FF_tail = 1.0 + 0.6 / xt * tc + 100.0 * tc**4
 
         def surface(Sname, ARname):
+            """CD_0 of one rectangular tail surface, chord sqrt(S / AR)."""
             S = x[Sname]
             c = np.sqrt(S / x[ARname])
             Swet = S * (1.977 + 0.52 * tc)
