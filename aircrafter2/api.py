@@ -427,7 +427,7 @@ def _finish(
     )
     result.files.append(write_geometry(geo, out / "geometry.json"))
     lines = [
-        f"# AirCrafter 2.0 result\n",
+        "# AirCrafter 2.0 result\n",
         f"Config: scoring = `{cfg.scoring.plugin}`, prop = "
         f"`{cfg.propulsion.prop}`, {cfg.propulsion.n_motors} motor(s), {cfg.propulsion.battery_topology} "
         f"battery. {'Optimised' if optimise else 'Analysed'}: success = {success}, "

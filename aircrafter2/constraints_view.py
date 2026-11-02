@@ -24,11 +24,10 @@ rule (they are the stats.* moments and the reference node n0), and the full rule
 import contextlib
 import io
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
-import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 INF = 1e30  # OpenMDAO stores an absent bound as +/- 1e30
