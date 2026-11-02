@@ -172,6 +172,9 @@ a note says so.
 
 For a multipoint config, the UI shows the Constraints tab and the two layer tabs, with no Run button, because it runs
 single-point problems. The multipoint runs are `studies/results_2025.py` and `studies/results_2026.py`.
+To evaluate a 2025-26 design, use the warm path, because a cold run at a low-speed banner design can diverge
+(docs/MDA_ROBUSTNESS_PLAN.md): `p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)`, then
+`run_warm(p, mcfg, dv)` (both in `aircrafter2.problems.multipoint`).
 
 #### The Constraints tab
 
@@ -240,7 +243,7 @@ topic in `examples/`, `verification/` or `studies/`; rerun the script rather tha
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 355 tests (2026-10-26): check_partials, check_totals, verification, CLI, UI
+.venv/bin/python -m pytest          # 534 tests (2026-11-02, about 20 min): check_partials, check_totals, verification, CLI, UI
 ```
 
 ## Layout

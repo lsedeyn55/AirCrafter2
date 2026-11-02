@@ -62,3 +62,23 @@ Woombah flew 13.2 lb in M2 and 7 laps (6 before the launch) with a 0.37 lb X-1 (
   `v_fit_margin` is also listed, but it does not fail the check. The page flags this; M1 is still scored 1.
 - **Bookends (§4):** the `w2`/`w3` options give the M2-only and M3-only optima. The multipoint optimum is close to
   the M2-only one.
+
+## `dbf2026`: AIAA DBF 2025-26, Banner Towing Bush Plane
+
+F = M1 + M2 + M3 with M2 = 1 + cap(NI / NI_max) and M3 = 2 + cap(T3 / B_max), T3 = laps × banner length / RAC
+([R26] pp. 19–20; `aircrafter2/scoring/dbf2026.py`, docs/RESULTS_2026_PLAN.md §4.1). NI_max and B_max are the best
+teams' values (PLACEHOLDERS, Q52).
+
+- **The cap (2026-11-02).** The rules' Max is the best team's, so N / Max is at most 1: F ≤ 6. The model caps each ratio
+  smoothly. cap(r) = r exactly for r ≤ 1 − δ (every score below the cap is unchanged bit for bit), 1 exactly for
+  r ≥ 1 + δ, and the C1 quadratic blend r − (r − 1 + δ)²/(4δ) between. Its bias at r = 1 is δ/4; δ = `cap_delta` =
+  0.005. It branches on the real part, so the complex-step partials hold. A KS max isn't used: it would shift every
+  score near the cap, including Humpback's.
+- **`floored()`** (report only) records the score as the judges would: completed laps, the banner rounded down to
+  1/4 in, the span to the inch, the counts rounded, and the hard cap min(r, 1).
+- **Outputs:** the plug-in also gives the uncapped ratios `r_M2`, `r_M3`. The run JSON (`studies/results_2026.py`)
+  records `cap` = {δ, r_M2, r_M3, M2_capped, M3_capped}.
+- **At the final-fixes optimum** (`fx_smoke_int_72p24c`), r_M2 = 1.0028, inside the blend (M2 1.9998), and
+  r_M3 = 0.953. Uncapped, the payload credit had driven the design to the fuselage-length cap (97 passengers,
+  F 6.17).
+

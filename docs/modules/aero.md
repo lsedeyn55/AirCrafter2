@@ -29,7 +29,12 @@ Code: `aircrafter2/airfoil/`, `aircrafter2/aero/`.
    linear VLM.
 4. **Moment and lift slope.** C_m,wing (chord-weighted strip c_m) and C_L,α = C_L/α, both used by the mass loads.
 5. **Parasite drag** (`aero/parasite.py`): Raymer's component build-up (Ch. 12) for the tails and a switchable
-   fuselage (cargo box + boom). Fully turbulent C_f with thin-surface and body form factors.
+   fuselage (cargo box + boom). Fully turbulent C_f with thin-surface and body form factors. **2025-26:** two
+   constant drag areas from the team's own build-up ([HB] Table 29, M2 column, on S_ref 868 in²), added to
+   `CD_extra_total` at every point as CD_areas = (A_gear + A_lp)/S: `aero.cd_area_gear` 0.0028 m² (undercarriage
+   0.0050) and `aero.cd_area_lp` 0.00224 m² (leakage and protuberances 0.0040). Their constant scaling is a
+   PLACEHOLDER (Q63). The code default is 0.0, and the component exists only when an area is set, so every 2024-25
+   and single-point graph is unchanged. Humpback's M2 C_D0 goes 0.0175 → 0.0266 (Table 29: 0.0430).
 6. **Drag polar for the mission** (`aero/polar.py`): CD = CD0 + CD1 C_L + k C_L², fitted exactly through cruise, mid
    and 0.95 C_L,max points, so the lap model interpolates and never extrapolates.
 

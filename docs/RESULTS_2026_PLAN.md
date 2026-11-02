@@ -444,3 +444,123 @@ Effect on Humpback as built (calibrated, validation_2026.md): F 5.086 → 5.323,
   masses). The smoke optimum's M1 SM is 0.369, inside both bounds, so the decision doesn't touch it.
 - **The X-1's t/c** (`multipoint.stores.x1_wing_tc` 0.10, 2024-25 ruleset) is the same SD8020: 0.101 would apply, not
   changed (2024-25 references frozen).
+
+## Final fixes before the final run (2026-11-02)
+
+Brief `4_PROMPTS/aircrafter2_final_fixes_prompt.md`, branch `placeholder-fixes-2026` from `a41ad07`. Commits: `65c45a0`
+(D5 and the small items), `a580942` (D1), `0cfb746` (D2), `5a27391` (D3), `7310a4f` (the 2025-26 references), `a33cb7d`
+(the verification runs and the validation page), then the docs. Every 2024-25 and single-point reference is unchanged:
+the configs snapshot is identical bit for bit (152 values), and the full suite passes (534 tests, 19 min).
+
+### The fixes
+
+- **D1, the score cap** (`scoring/dbf2026.py`). M2 = 1 + cap(NI / NI_max) and M3 = 2 + cap(T3 / B_max).
+  - *Why:* the rules' Max is the best team's, so each ratio is at most 1 ([R26] p. 20). Uncapped, the payload credit
+    drove the design to the fuselage-length cap: 97 passengers, l_cb 2.29 m, F 6.17 > 6.
+  - *How:* cap is exactly r for r ≤ 1 − δ and exactly 1 for r ≥ 1 + δ, with a C1 quadratic blend between (bias δ/4 at
+    r = 1); δ = `cap_delta` = 0.005. `floored()` applies the hard min(r, 1). The run JSON records `cap` (δ, the
+    uncapped ratios, `M2_capped`, `M3_capped`).
+  - *Effect:* the new optimum sits at the cap, r_M2 = 1.0028, inside the blend (M2 1.9998; the hard cap gives 2.0).
+    Humpback (r 0.55) is unchanged bit for bit.
+  - *AirCrafter 1.0 (not edited):* its selection is unchanged. The selected design (4.2819: M2 1.531, M3 2.750) is below
+    both caps and is the maximum of the uncapped score over the 757 feasible points, so no point can outscore it once
+    capped. None of the 20 stored top designs exceeds a cap (max M2 1.73, max M3 2.92).
+- **D2, the rigid payload fuselage** (`stores2026.py`, 2025-26 only). `x_cb_frac` is now where the wing sits along the
+  fuselage. The payload stations move with the box, and the motor group sits at the box front at Humpback's nose
+  length (0.192 m): x_motor = x_motor_ref + (x_cb − x_cb_ref) − (l_cb − l_cb_ref)/2. Three new constraints:
+  `batt_fwd_margin` (pack behind the motor: d_batt 0.1005 m, cited, Q64), `batt_aft_margin` (pack inside the box) and
+  `tail_margin` (HT leading edge behind the box, no clearance, PLACEHOLDER, Q64). The start design is Humpback's
+  layout (`initial.x_cb_frac` 0.416), and the `x_batt` lower bound is −1.5 m, so the margin governs.
+  - *Why:* at `mr_smoke` the shell (about 2.0 kg) sat 0.19 m ahead of its payload (`x_cb_frac` 0), the pack was
+    0.067 m ahead of the motor, and the 2.29 m box ran 0.61 m past the motor and past the HT.
+  - *Effect:* Humpback as built (42/14) is identical bit for bit, M1 check included. The Table 42 flights now fly in the
+    as-built 42/14 fuselage (`fuselage_counts`): the M2 tests (36/12) change only through it (l_cb 0.849 → 0.991 m;
+    lap 28.59 → 28.55 s and 27.89 → 27.88 s, calibrated masses); the M3 tests are identical.
+- **D3, undercarriage and leakage drag** (2025-26 only): `aero.cd_area_gear` = 0.0050 × S_ref = 0.0028 m² and
+  `aero.cd_area_lp` = 0.0040 × S_ref = 0.00224 m² ([HB] Table 29, M2 column, p. 33; S_ref 868 in² = 0.5600 m², p. 36;
+  Q57), constant for every design (PLACEHOLDER scaling, Q63). They are added at M1, M2 and M3; the stowed banner's 0.004
+  stays (stowed M3 matches Table 29's undercarriage 0.0090), and Table 29's deployed leakage 0.005 is taken as 0.004.
+  - *Why:* the parasite build-up had no undercarriage and no leakage term, and the model flew the test laps 16–48 % too
+    fast. This is a missing component of the team's own build-up, not tuning: nothing is fitted to the flights.
+  - *Effect (Humpback, USYD-LOO):* C_D0 M2 0.0175 → 0.0266 (Table 29: 0.0430), M3 deployed 0.2329 → 0.2421 (0.3600);
+    F 5.3222 → 5.2839, M2 1.5728 → 1.5478, M3 2.7494 → 2.7361; SM 0.396/0.433 unchanged. Lap-time errors (model too
+    fast), before → after: M2 −26.3 → −22.6 %, −16.0 → −14.6 %; M3 −47.9 → −46.4 %, −32.3 → −30.8 %, −21.5 → −20.2 %.
+    About two thirds of the C_D0 gap at M2 remains.
+- **D4, the old constraint set:** `OLD_CONSTRAINTS["stability.SM_max"]` = 0.40, the old 0.20 shifted into the model
+  frame by the same +0.20 c as SM_min (Q9, Q62). *Why:* 0.20 sits below the 2025-26 SM_min 0.25, so the sensitivity
+  could never be feasible.
+- **D5, the robust analysis paths.**
+  - `problems.multipoint.initial_values` (moved from `results_2026`, re-exported) and `run_warm(prob, mcfg_start, dv)`.
+    `optimise`, `rounding_check`, the sampler and the RDO use it.
+  - The sampler builds the 2025-26 problem with RetryNewton's robust mode and starts through `run_warm`.
+  - `m1_check` uses RetryNewton's robust mode and counts a `RuntimeError` as a failure. Setup errors are now raised,
+    after one was found hidden by that catch during D2.
+  - `results_2026.py rdo --tag --case [--maxiter]`: the warm path, the robust summary, the node report and the
+    fallbacks per node.
+  - *Why:* each of these paths did a cold `run_model` at a low-speed banner design (docs/MDA_ROBUSTNESS_PLAN.md).
+- **Small items:**
+  - `kv_set_by` no longer matches `rules.fuselage_margin`;
+  - `integer --maxiter`;
+  - `cruise.nf_confidence_min` is in the run JSON;
+  - the `results_2026.py` docstring lists only the parts that exist.
+
+### Measured (verification 5–10)
+
+| | `mr_smoke` | `mr_smoke_int_96p32c` | `fx_smoke` | `fx_smoke_int_72p24c` |
+|---|---|---|---|---|
+| F (capped) | 6.1723 (uncapped; 5.9012 capped) | 6.1675 (uncapped) | **5.9532** | **5.9532** |
+| F uncapped | 6.1723 | 6.1675 | 5.9562 | 5.9563 |
+| M2 / M3 | 2.2711 / 2.9012 | 2.2642 / 2.9033 | 1.9997 / 2.9535 | 1.9998 / 2.9535 |
+| floored F | 6.0887 | 6.0839 | 5.8474 | 5.8474 |
+| n_p / n_c, banner | 96.9 / 32.3, 249 in | 96 / 32, 250 in | 72.0 / 24.0, 272 in | 72 / 24, 272 in |
+| l_cb (m) | 2.286 (at 1.5 b) | 2.264 | 1.698 | 1.698 |
+| iterations, wall | 58, 292 s | 15, 64 s | 59, 336 s | 6, 54 s |
+
+- **`fx_smoke`** (cold, from Humpback): converged, nothing violated, M1 passes (SM 0.462, laps 9.05).
+  - Active constraints: V_h and V_v lower bounds at both points, the M3 energy, the passenger ratio.
+  - Active bounds: b, **c** (0.45: still active), **camber_scale** (2.0, its upper bound; NeuralFoil confidence 0.953
+    / 0.963).
+  - The 1.5 × span fuselage cap is **no longer active** (fuselage margin 0.59 m).
+  - Kv 235, interior. `x_cb_frac` 0.195, x_motor −0.953 m, x_batt −0.430 / −0.347 m.
+  - Margins: battery forward 0.42 / 0.51 m, battery aft 1.37 / 1.28 m, tail 0.078 m. None is active.
+  - SM 0.402 / 0.396. One continuation per point (the first big step).
+- **Warm `--start fx_smoke`:** 2 iterations, ΔF 2e-14.
+- **`integer`:** candidates 72p23c, 71p23c, 72p24c; all three fit. Results: F 5.9460, 5.9432, **5.9532 (72p24c, the
+  result)**.
+- **RDO readiness at 72p24c** (`fx_rdo_setup_check.json`).
+  - The robust model (11 UDR nodes × 2 points) evaluates through `run_warm`: every solve converged at its first
+    attempt, with no continuation, in 284 s. μ 5.849, σ 0.131.
+  - Node by node on the plain problem: 11/11 converge at the first attempt, with no wind-limit case. F 5.69 (wind
+    8.9 m/s) to 5.97.
+- **RDO smoke** (`rdo --maxiter 3`): runs end to end; it stops at the iteration limit, with no error.
+  - 549 s for 3 SLSQP iterations, about 180 s per iteration.
+  - μ 5.847, σ 0.115, robust 5.731. Every robust bound is finite (M3 static thrust μ − 2σ is −0.25 at iteration 3).
+  - Each M3 node needed one continuation (recovered).
+- **Monte Carlo smoke** (32 scrambled Sobol' points over the five active parameters, 3 workers): 32/32 converge.
+  - 0 retried, 0 MDA failures, 0 wind limits.
+  - 59.5 s wall: 5.6 s per sample per worker, about 0.59 GB peak per worker.
+  - μ 5.848, σ 0.127.
+- **Implied campaign cost:**
+  - A deterministic optimisation: about 5–6 min cold, about 1 min warm.
+  - An RDO: about 3 min per SLSQP iteration, so 1.5–3 h for 30–60 iterations.
+  - A 1024-sample Monte Carlo: about 1024 × 5.6 s / workers, so about 20 min on 5 workers (memory allows about 8).
+
+**Run provenance.**
+- `fx_smoke`, `fx_smoke_warm`, the integer runs and the Monte Carlo smoke record `5a27391-dirty`. During them only the
+  suite's MATLAB timing file and the reference tests (committed in `7310a4f`) differed; no model code did.
+- The RDO smoke records `7310a4f`, and the validation page records `7310a4f` too.
+
+### Biases to state in the results pages (for the final-run session)
+
+- **Tail volumes:** they sit at their PLACEHOLDER minima (V_h 0.35 and V_v 0.02 at `mr_smoke` and at `fx_smoke`,
+  against 0.66–0.80 and 0.059–0.08 flown). There is no directional-stability or crosswind check.
+- **The M3 validation gap and C_D,b:** the model still flies the M3 test laps 20–46 % too fast, and its deployed C_D0
+  0.24 is against Table 29's 0.36. Add Table 29's equivalent, C_D,b ≈ 0.034 on L × H (0.3025 on the wing area), to
+  B9's C_D,b sensitivities.
+- **Calm air:** the deterministic optimum is designed in calm air, against the RDO's 5 m/s mean wind (as in 2024-25).
+  Add one deterministic run at the mean wind (5 m/s, θ = 0) to the B9 list, so the RDO gain separates robustness
+  from designing at the mean.
+- **The box–boom overlap** (Q31): `l_tb = l_ht − boom_offset` with the boom starting inside the payload fuselage. With
+  the 1.70 m box, the overlap is larger than on Humpback, and the box and boom drag and mass double-count it.
+- **The chord bound:** `c` ≤ 0.45 m (`full_mdo.yaml`) is still active at `fx_smoke`, and so is `camber_scale` at
+  2.0. NeuralFoil's confidence stays at 0.95 there, but the airfoil sits at the edge of its parametrisation.

@@ -8,6 +8,17 @@
 - **Motor group:** n × m_motor_unit at `x_motor`, which is measured per unit. Both layouts are symmetric, so
   there is no lateral CG. For the twin config, `x_motor` defaults to −5.5" (Woombah's firewall, 5.5" ahead of
   the LE; PLAN §6h T2).
+- **2025-26: the rigid payload fuselage** (`stores2026.Packaging2026`, docs/RESULTS_2026_PLAN.md "Final fixes" D2).
+  - The payload fuselage moves as one body: `x_cb_frac` (a design variable) is where the wing sits along it. The box
+    structure (x_cb = x_cb_frac c), the payload (x_pax, x_car = (frac + Δ) c, Δ = x_cb_frac − 0.416) and the motor
+    group move together; the banner station stays fixed.
+  - x_motor = x_motor_ref + (x_cb − x_cb_ref) − (l_cb − l_cb_ref)/2: the motor sits at the box front at Humpback's
+    nose length (0.192 m) and moves forward as the box grows forward.
+  - Constraints (2025-26 only): `batt_fwd_margin` = x_batt − (x_motor + d_batt) ≥ 0 (d_batt 0.1005 m, Q64),
+    `batt_aft_margin` = (x_cb + l_cb/2) − x_batt ≥ 0, and `tail_margin` = (x_tail − 0.25 c_ht) − (x_cb + l_cb/2) −
+    tail_clear ≥ 0 (c_ht = √(S_ht/AR_ht), tail_clear 0, Q64).
+  - Every shift is a difference from Humpback's layout, so it is exactly 0.0 there and Humpback as built reproduces
+    bit for bit. The 2024-25 and single-point stations are unchanged.
 - **Static margin:** SM = (x_np − x_cg)/c.
 - **Constraints:** SM, V_h and V_v bands. All are placeholders (Q9).
 - **AVL later:** an AVL-based component only needs to output x_np (and could add lateral derivatives); the

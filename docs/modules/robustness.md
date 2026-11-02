@@ -164,6 +164,20 @@ RDO config and `humpback_2026.yaml`; docs/MDA_ROBUSTNESS_PLAN.md), `RetryNewton`
 With the switch off (every 2024-25 and single-point config), the order and the code path are the original ones. A solve
 that converges at its first attempt gives the same result bit for bit in both modes.
 
+**The other analysis paths under `mda_robust` (2026-11-02, Final fixes D5).** Each of them used to do a cold
+`run_model` at the design, which can diverge at a low-speed 2025-26 banner design.
+- **`problems.multipoint.run_warm(prob, mcfg_start, dv)`** converges at `mcfg_start`'s unfixed start design (which
+  converges cold), then sets `dv` and runs from that state. It works on the multipoint problem and on the robust one
+  (both promote the design variables at the top). Use it to evaluate a 2025-26 design:
+  `p = build_multipoint_problem(mcfg, driver=False, mda_retry=True); run_warm(p, mcfg, dv)`.
+- **Its callers:** `results_2026.optimise` (the warm path for `--start` / `integer()`), `rounding_check`, the
+  `rdo` subcommand and the sampler.
+- **The sampler** (`sampling.evaluate`): for a `MultipointConfig` with `mda_robust` it builds with
+  `mda_retry=True` and starts each worker through `run_warm`. With the switch off, the code path is the original
+  one.
+- **`m1_check`**: under `mda_robust` the M1 model uses RetryNewton's robust mode, and a `RuntimeError` counts as an
+  analysis failure. Setup errors are raised first, not reported as non-convergence.
+
 If all of those fail, the node raises `AnalysisError`:
 - **SLSQP** (the default, `ScipyOptimizeDriver`) then stops, and the run is reported as MDA non-convergence, not
   as an infeasible design.
