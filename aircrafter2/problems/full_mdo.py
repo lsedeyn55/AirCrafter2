@@ -269,8 +269,8 @@ class FullMDA(om.Group):
             from ..stores2026 import Stores2026
 
             scfg, flags = stores
-            self.add_subsystem("stores", Stores2026(config=scfg, **flags),
-                               promotes_inputs=["S", "c", "n_p", "n_c", "banner_drag_factor"]
+            self.add_subsystem("stores", Stores2026(config=scfg, x_cb_frac0=float(cfg.stability.x_cb_frac), **flags),
+                               promotes_inputs=["S", "c", "n_p", "n_c", "banner_drag_factor", "x_cb_frac"]
                                + (["L_banner"] if flags.get("banner") else []),
                                promotes_outputs=["m_pay", "x_pay", "CD_stores", "CD_banner", "dCD_stowed",
                                                  "m_banner"])
@@ -428,6 +428,13 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
         fw={"val": st.wing_cg_frac}, fcb={"val": st.x_cb_frac},
         m_tail={"units": "kg"}, m_ht={"units": "kg"}, m_vt={"units": "kg"}),
         promotes_inputs=["c", "l_ht", "boom_offset", "l_tb", "m_ht", "m_vt", ("fcb", "x_cb_frac")])
+    if is_2026(stores):  # the rigid payload fuselage: motor station and packaging margins (stores2026.py, D2)
+        from ..stores2026 import Packaging2026
+
+        m.add_subsystem("packaging", Packaging2026(config=stores[0], x_motor_ref=float(st.x_motor),
+                                                   x_cb_frac0=float(st.x_cb_frac)),
+                        promotes_inputs=["c", "x_cb_frac", "l_cb", "x_batt", "l_ht", "S_ht", "AR_ht"],
+                        promotes_outputs=["x_motor", "batt_fwd_margin", "batt_aft_margin", "tail_margin", "x_cb_aft"])
     m.add_subsystem("stability", StaticStability(),
                     promotes_inputs=["c", "S", "AR", "S_ht", "AR_ht", "l_ht", "eta_h", "m_wing", "m_tb", "m_cb",
                                      "m_pay", "m_batt", "m_avionics", "m_gear", "x_batt", "x_motor", "x_avionics",
@@ -474,6 +481,8 @@ def build_full_model(m, cfg: FullMDOConfig, mda_retry=False, sizing="own", store
             continue  # computed by the stores
         if name in ("l_cb", "w_cb", "h_cb") and is_2026(stores):
             continue  # the payload fuselage, sized by the payload counts (stores2026.py)
+        if name == "x_motor" and is_2026(stores):
+            continue  # computed: the motor group moves with the payload fuselage (Packaging2026)
         m.set_input_defaults(name, val, units=units)
     if pr.n_motors == 2:
         if pr.station_mode == "absolute":

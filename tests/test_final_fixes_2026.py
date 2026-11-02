@@ -158,3 +158,139 @@ def test_cap_check_partials(r):
     x = {k: float(v[0]) for k, v in _x(42, 14, 8, 100.0, 4, 197.0, 59.0).items()}
     p = run_component(plug.component(), **x)
     check_partials_fd(p)
+
+
+# --- D2: the rigid payload fuselage --------------------------------------------------------------------------------
+
+def _store_cfg(**update):
+    from aircrafter2.problems.multipoint import load_multipoint_config
+
+    sc = load_multipoint_config(CFG26).mp.stores2026
+    return sc.model_copy(update=update) if update else sc
+
+
+def _stores(x_cb_frac, c=0.37008, payload=True):
+    from aircrafter2.stores2026 import Stores2026
+
+    from .conftest import run_component
+
+    return run_component(Stores2026(config=_store_cfg(), payload=payload), n_p=42.0, n_c=14.0, S=0.56, c=c,
+                         x_cb_frac=x_cb_frac)
+
+
+def _packaging(**inputs):
+    from aircrafter2.stores2026 import Packaging2026
+
+    from .conftest import run_component
+
+    x = dict(c=0.37008, x_cb_frac=0.416, x_batt=-0.35, l_ht=1.1, S_ht=0.14839, AR_ht=4.0)
+    sc = _store_cfg()
+    from aircrafter2.stores2026 import fuselage_length
+
+    x["l_cb"] = float(fuselage_length(sc, np.array([42.0]), np.array([14.0]))[2][0])
+    x.update(inputs)
+    return run_component(Packaging2026(config=sc, x_motor_ref=-0.5334), **x), x, sc
+
+
+def test_rigid_fuselage_zero_shift_at_humpback():
+    """At Humpback's reference values every shift is exactly 0.0: x_pay and x_motor equal the old stations (==)."""
+    sc = _store_cfg()
+    p = _stores(0.416)
+    c = 0.37008
+    masses = [42 * sc.m_seat, 14 * sc.m_slot, 42 * sc.m_duck, 14 * sc.m_puck]
+    stations = [sc.x_pax_frac * c, sc.x_car_frac * c] * 2
+    old = sum(m * x for m, x in zip(masses, stations)) / sum(masses)
+    assert _val(p, "c.x_pay") == old
+    q, _, _ = _packaging()
+    assert _val(q, "c.x_motor") == -0.5334
+
+
+def test_rigid_fuselage_moves_rigidly():
+    """x_cb_frac + 0.1: the payload stations and the motor move by 0.1 c."""
+    c = 0.37008
+    assert _val(_stores(0.516), "c.x_pay") - _val(_stores(0.416), "c.x_pay") == pytest.approx(0.1 * c, rel=1e-12)
+    a, _, _ = _packaging()
+    b, _, _ = _packaging(x_cb_frac=0.516)
+    assert _val(b, "c.x_motor") - _val(a, "c.x_motor") == pytest.approx(0.1 * c, rel=1e-12)
+
+
+def test_motor_moves_forward_with_the_box_length():
+    """Growing the box by dl (more passengers) moves the motor forward by dl / 2."""
+    a, x, _ = _packaging()
+    b, _, _ = _packaging(l_cb=x["l_cb"] + 0.2)
+    assert _val(a, "c.x_motor") - _val(b, "c.x_motor") == pytest.approx(0.1, rel=1e-12)
+
+
+def test_packaging_margins_by_hand():
+    q, x, sc = _packaging(x_batt=-0.30, x_cb_frac=0.45, l_ht=1.0)
+    x_cb = 0.45 * x["c"]
+    x_motor = -0.5334 + (x_cb - 0.416 * 0.37008) - (x["l_cb"] - x["l_cb"]) / 2
+    aft = x_cb + x["l_cb"] / 2
+    c_ht = (x["S_ht"] / x["AR_ht"]) ** 0.5
+    assert _val(q, "c.x_motor") == pytest.approx(x_motor, rel=1e-14)
+    assert _val(q, "c.batt_fwd_margin") == pytest.approx(-0.30 - (x_motor + sc.d_batt), rel=1e-12)
+    assert _val(q, "c.batt_aft_margin") == pytest.approx(aft + 0.30, rel=1e-12)
+    assert _val(q, "c.tail_margin") == pytest.approx(0.25 * x["c"] + 1.0 - 0.25 * c_ht - aft - sc.tail_clear,
+                                                     rel=1e-12)
+
+
+@pytest.mark.parametrize("counts", [None, [42.0, 14.0]])
+def test_fixed_count_fuselage(counts):
+    """fuselage_counts on: the fuselage keeps its built size whatever the flown load; off: sized by n_p, n_c."""
+    from aircrafter2.stores2026 import PayloadFuselage, fuselage_length
+
+    from .conftest import run_component
+
+    sc = _store_cfg(fuselage_counts=counts)
+    p = run_component(PayloadFuselage(config=sc), n_p=36.0, n_c=12.0)
+    n = counts or [36.0, 12.0]
+    assert _val(p, "c.l_cb") == float(fuselage_length(sc, np.array([n[0]]), np.array([n[1]]))[2][0])
+
+
+def test_rigid_fuselage_partials():
+    from .conftest import check_partials_fd
+
+    q, _, _ = _packaging(x_cb_frac=0.3, x_batt=-0.5)
+    check_partials_fd(q)
+    check_partials_fd(_stores(0.3))
+
+
+def test_rigid_fuselage_cg_shift_by_hand():
+    """Humpback with x_cb_frac + 0.1: the box structure, the payload and the motor group move by 0.1 c, the rest stays;
+    x_cg moves by 0.1 c (m_cb + m_pay + m_motor_group) / m_total (masses unchanged)."""
+    from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
+
+    out = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for f in (0.416, 0.516):
+            mcfg = load_multipoint_config(ROOT / "configs" / "humpback_2026.yaml")
+            mcfg.base.initial["x_cb_frac"] = f
+            p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+            p.run_model()
+            out.append({k: _val(p, f"points.M2.{k}") for k in ("x_cg", "m_cb", "m_pay", "m_motor_group", "m_total",
+                                                                "x_motor", "x_pay")})
+    a, b = out
+    for k in ("m_cb", "m_pay", "m_motor_group", "m_total"):
+        assert a[k] == pytest.approx(b[k], rel=1e-12)
+    dc = 0.1 * 0.37008
+    assert b["x_motor"] - a["x_motor"] == pytest.approx(dc, rel=1e-9)
+    assert b["x_pay"] - a["x_pay"] == pytest.approx(dc, rel=1e-9)
+    assert b["x_cg"] - a["x_cg"] == pytest.approx(dc * (a["m_cb"] + a["m_pay"] + a["m_motor_group"]) / a["m_total"],
+                                                  rel=1e-9)
+
+
+def test_2025_stations_unchanged():
+    """The 2024-25 multipoint problem has no packaging component and the same stations and score as before D2 (==)."""
+    from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
+
+    ref = json.loads((DATA / "dbf2025_stations_reference.json").read_text())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        p = build_multipoint_problem(load_multipoint_config(ROOT / "configs" / "dbf2025_multipoint.yaml"),
+                                     driver=False)
+        p.run_model()
+    assert not hasattr(p.model.points.M2, "packaging")
+    for k, x in ref.items():
+        if not k.startswith("_"):
+            assert _val(p, k) == x, k

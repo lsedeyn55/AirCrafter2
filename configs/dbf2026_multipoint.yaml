@@ -32,14 +32,16 @@ design_variables:
   b: {lower: 0.9144, upper: 1.524}           # m: 3 ft (RAC >= 0.90 [R26 p. 10]) to 5 ft [R26 p. 10]
   Kv: {lower: 200.0, upper: 270.0}           # rpm/V: the AT7215 family's catalogue windings 200-270 KV [TM7]
   capacity: {lower: 0.5, upper: 4.0}         # Ah per pack; the 100 Wh total [R26 p. 16] is a constraint
-  x_batt: {lower: -0.6, upper: 0.2}          # m; Humpback's pack at -13.8 in = -0.35 m [HB Table 36]
+  x_batt: {lower: -1.5, upper: 0.2}          # m; Humpback's pack at -13.8 in = -0.35 m [HB Table 36]; the lower
+                                             # bound is wide: batt_fwd_margin (the pack behind the motor) governs
   l_ht: {lower: 0.4, upper: 1.4}             # m; Humpback 1.1 m [HB p. 26]
   S_ht: {lower: 0.02, upper: 0.25}           # m^2; Humpback 230 in^2 = 0.148 m^2 [HB p. 36]
   S_vt: {lower: 0.01, upper: 0.10}           # m^2; Humpback 90.9 in^2 = 0.059 m^2
 
 initial: {b: 1.4986, c: 0.3701, tc_scale: 1.0, camber_scale: 1.0, alpha_cruise: 2.0, v: 30.0, capacity: 3.3,
-          l_ht: 1.1, S_ht: 0.1484, S_vt: 0.0586, x_batt: -0.35, Kv: 245.0}
-          # Humpback as the start [HB p. 36]: 59 in x 14.57 in, 8S 3300 mAh
+          l_ht: 1.1, S_ht: 0.1484, S_vt: 0.0586, x_batt: -0.35, Kv: 245.0, x_cb_frac: 0.416}
+          # Humpback as the start [HB p. 36]: 59 in x 14.57 in, 8S 3300 mAh; x_cb_frac: its box centred on the
+          # passengers' CG (6.06 in / 14.57 in [HB Table 36], as humpback_2026.yaml)
 
 multipoint:
   points:

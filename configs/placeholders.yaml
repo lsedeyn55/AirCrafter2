@@ -90,6 +90,12 @@ multipoint.stores2026.m_banner_mech: 0.0766  # kg = 0.169 lb; cited; Q56; by dif
 multipoint.stores2026.cd_banner: 0.0235      # on L x H; cited; Q56; [HB p. 57 Table 41] ripstop, LE-only reinforcement: 0.019-0.028 over 118-275 in, mid-range (mean 0.0237)
 multipoint.stores2026.dcd_stowed: 0.004      # on the wing area; cited; Q56; stowed banner [HB p. 33 Table 29] (undercarriage 0.0050 -> 0.0090)
 multipoint.stores2026.x_banner_frac: 0.47083  # chord fraction = 6.86 / 14.57 in; cited; no Q; banner with deployment [HB Table 36]
+multipoint.stores2026.x_cb_frac_ref: 0.416  # chord fraction = 6.06 / 14.57 in; cited; Q55; Humpback's box centred on the passengers' CG [HB Table 36] (the rigid fuselage's reference)
+multipoint.stores2026.c_ref: 0.37008        # m = 14.57 in; cited; Q55; Humpback's chord [HB p. 36]
+multipoint.stores2026.n_p_ref: 42.0         # -; cited; Q55; Humpback's fuselage capacity, passengers [HB Table 36]
+multipoint.stores2026.n_c_ref: 14.0         # -; cited; Q55; Humpback's fuselage capacity, cargo [HB Table 36]
+multipoint.stores2026.d_batt: 0.1005        # m = 57.9 / 2 + 143 / 2 mm; cited; Q64; half the AT7215 length (81.4 x 57.9 mm, T-Motor AT7215 specifications) + half the GNB 8S 3300 mAh pack's 143 mm (Rotorama listing, Q8; the longest axis taken along the fuselage)
+multipoint.stores2026.tail_clear: 0.0       # m; PLACEHOLDER; Q64; box aft end to the HT leading edge, no extra clearance
 
 # --- fuselage ---
 geometry.l_cb: 0.40                          # m; PLACEHOLDER; Q19; cargo bay box length

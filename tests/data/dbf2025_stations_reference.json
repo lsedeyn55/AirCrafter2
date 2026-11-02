@@ -1,0 +1,20 @@
+{
+ "_source": "configs/dbf2025_multipoint.yaml at its start, mda_retry off, on a580942 (before the rigid payload fuselage, Final fixes D2)",
+ "points.M2.x_motor": -0.1397,
+ "points.M2.x_pay": 0.10729448096045914,
+ "points.M2.x_cg": 0.10046256789531631,
+ "points.M2.x_np": 0.1739885938846677,
+ "points.M2.SM": 0.24508675329783797,
+ "points.M2.m_total": 8.089049299183722,
+ "points.M2.v": 50.790245160276584,
+ "points.M2.CD0": 0.03516119891656892,
+ "points.M3.x_motor": -0.1397,
+ "points.M3.x_pay": 0.06881745451932282,
+ "points.M3.x_cg": 0.08863040765016399,
+ "points.M3.x_np": 0.17400952748378207,
+ "points.M3.SM": 0.28459706611206026,
+ "points.M3.m_total": 4.0890492991837215,
+ "points.M3.v": 32.23669039406482,
+ "points.M3.CD0": 0.037518550107636744,
+ "flight_score": 4.901784710983398
+}

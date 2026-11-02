@@ -37,7 +37,8 @@ POINT_OUT = ["m_total", "m_empty", "m_pay", "m_wing", "m_ht", "m_vt", "m_fus", "
              "ThreeLapTime", "Lap1time", "otherLapTime", "laps_frac", "I_static", "I_pack_static", "rpm_margin",
              "I_margin", "SM", "V_h", "V_v", "CD0", "CD_stores", "energy_margin", "E_nom_total",
              "thrust_margin_static", "v_fit_margin", "stall_margin", "cruise.L_over_D", "Rm", "I0", "l_cb",
-             "t_takeoff", "s_ground_roll", "x_cg", "x_np", "cruise.nf_confidence_min"]
+             "t_takeoff", "s_ground_roll", "x_cg", "x_np", "cruise.nf_confidence_min", "x_motor", "x_pay",
+             "batt_fwd_margin", "batt_aft_margin", "tail_margin", "x_cb_aft"]
 SCORE_OUT = ["score", "M1", "M2", "M3", "flight_score", "net_income", "m3_term", "RAC", "EF", "r_M2", "r_M3"]
 # the old constraint set (the sensitivity of decision 3): AirCrafter 1.0's rpm convention and the Q9 bands
 # SM_max: the old 0.20 shifted into the model frame by the same +0.20 c as SM_min (Q9, Q62; 0.20 itself sits below the

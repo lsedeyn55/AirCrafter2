@@ -99,7 +99,10 @@ def mass_override(variant):
     raise ValueError(variant)
 
 
-def humpback_config(mass=None, m2_prop=None, m3_prop=None, payload=None):
+AS_BUILT_COUNTS = [42.0, 14.0]  # Humpback's fuselage capacity [HB Table 36]: the Table 42 flights flew 36/12 in it
+
+
+def humpback_config(mass=None, m2_prop=None, m3_prop=None, payload=None, fuselage_counts=None):
     from aircrafter2.problems.multipoint import load_multipoint_config
 
     mcfg = load_multipoint_config(ROOT / "configs" / "humpback_2026.yaml")
@@ -112,6 +115,8 @@ def humpback_config(mass=None, m2_prop=None, m3_prop=None, payload=None):
     if m3_prop:
         mcfg.mp.points["M3"].prop = m3_prop
     mcfg.mp.payload_initial.update(payload or {})
+    if fuselage_counts is not None:  # the fuselage as built, whatever the load (stores2026.PayloadFuselage)
+        mcfg.mp.stores2026 = mcfg.mp.stores2026.model_copy(update={"fuselage_counts": list(fuselage_counts)})
     return mcfg
 
 
@@ -131,13 +136,14 @@ def snapshot(p, mcfg):
     return out
 
 
-def _run(mass, th2, th3, m2_prop=None, m3_prop=None, payload=None, ballast=None):
-    """Humpback at throttles (th2, th3) on a fresh problem; ballast {point: kg} through the mass model's hook."""
+def _run(mass, th2, th3, m2_prop=None, m3_prop=None, payload=None, ballast=None, fuselage_counts=None):
+    """Humpback at throttles (th2, th3) on a fresh problem; ballast {point: kg} through the mass model's hook;
+    fuselage_counts: the fuselage sized for these counts (as built), not the flown payload."""
     from openmdao.core.analysis_error import AnalysisError
 
     from aircrafter2.problems.multipoint import build_multipoint_problem
 
-    mcfg = humpback_config(mass, m2_prop, m3_prop, payload)
+    mcfg = humpback_config(mass, m2_prop, m3_prop, payload, fuselage_counts)
     p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
     p.set_val("throttle_M2", 1.0)
     p.set_val("throttle_M3", 1.0)
@@ -175,7 +181,7 @@ def flight_case(job):
     def solve(bal):
         def f(th):
             p, mcfg = _run(mass, th if pt == "M2" else 1.0, th if pt == "M3" else 1.0, payload=payload, ballast=bal,
-                           **props)
+                           fuselage_counts=AS_BUILT_COUNTS, **props)
             return None if p is None else _current(p, mcfg, pt) - t["current_A"]
         hi, f_hi = 1.0, f(1.0)
         if f_hi is None or f_hi < 0:
@@ -197,11 +203,11 @@ def flight_case(job):
         if th is None:
             break
         p, mcfg = _run(mass, th if pt == "M2" else 1.0, th if pt == "M3" else 1.0, payload=payload, ballast=ballast,
-                       **props)
+                       fuselage_counts=AS_BUILT_COUNTS, **props)
         ballast = {pt: ballast[pt] + target - v(p, f"points.{pt}.m_total")}
     if th is not None:
         p, mcfg = _run(mass, th if pt == "M2" else 1.0, th if pt == "M3" else 1.0, payload=payload, ballast=ballast,
-                       **props)
+                       fuselage_counts=AS_BUILT_COUNTS, **props)
         res.update(throttle=th, ballast_kg=ballast[pt], snapshot=snapshot(p, mcfg))
     res["note"] = note
     return name, res

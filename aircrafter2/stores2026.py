@@ -25,6 +25,8 @@ All arithmetic is complex-step safe (method="cs" partials).
 
 import numpy as np
 import openmdao.api as om
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from .smooth import ks_max
@@ -56,6 +58,19 @@ class Store2026Config(BaseModel):
     cd_banner: float = Field(description="banner C_D on its own area L x H")
     dcd_stowed: float = Field(description="stowed banner Delta C_D0 on the wing area")
     x_banner_frac: float = Field(description="banner (stowed and mechanism) station / chord")
+    # the rigid payload fuselage (docs/RESULTS_2026_PLAN.md, Final fixes D2): shifts written as differences from
+    # Humpback's layout, so each is exactly 0.0 there
+    x_cb_frac_ref: float = Field(description="Humpback's box centre / chord: the reference of the payload and motor "
+                                             "stations")
+    c_ref: float = Field(description="m, Humpback's chord (the reference of the box station x_cb_ref)")
+    n_p_ref: float = Field(description="passengers of Humpback's fuselage (its length l_cb_ref)")
+    n_c_ref: float = Field(description="cargo of Humpback's fuselage")
+    d_batt: float = Field(description="m, motor-to-pack-centre clearance: half the motor length + half the pack "
+                                      "length (batt_fwd_margin)")
+    tail_clear: float = Field(description="m, clearance from the box's aft end to the HT leading edge (tail_margin)")
+    fuselage_counts: Optional[list[float]] = Field(None, description="(n_p, n_c) the fuselage is sized for, if not the "
+                                                   "flown counts: the as-built fuselage of a validation flight with a "
+                                                   "smaller load ([HB] Table 42 flew 36/12 in the 42/14 fuselage)")
 
 
 class Stores2026(om.ExplicitComponent):
@@ -65,10 +80,12 @@ class Stores2026(om.ExplicitComponent):
         self.options.declare("config", types=Store2026Config)
         self.options.declare("payload", default=False, desc="ducks and pucks on board (M2)")
         self.options.declare("banner", default=False, desc="banner on board (M3): input L_banner")
+        self.options.declare("x_cb_frac0", default=0.416, desc="default of the input x_cb_frac (the config's, so it "
+                                                                 "matches the stations' in a stand-alone model)")
 
     def setup(self):
         for name, val, units in [("n_p", 42.0, None), ("n_c", 14.0, None), ("S", 0.5, "m**2"), ("c", 0.3, "m"),
-                                 ("banner_drag_factor", 1.0, None)]:
+                                 ("banner_drag_factor", 1.0, None), ("x_cb_frac", self.options["x_cb_frac0"], None)]:
             self.add_input(name, val, units=units)
         if self.options["banner"]:
             self.add_input("L_banner", 197.0, units="inch")
@@ -81,11 +98,13 @@ class Stores2026(om.ExplicitComponent):
         c, o = self.options["config"], self.options
         x = {k: inputs[k] for k in inputs}
         n_p, n_c, chord, S = x["n_p"], x["n_c"], x["c"], x["S"]
+        dx = x["x_cb_frac"] - c.x_cb_frac_ref  # the payload moves with the box (rigid fuselage); 0.0 at Humpback
+        x_pax, x_car = (c.x_pax_frac + dx) * chord, (c.x_car_frac + dx) * chord
         masses = [n_p * c.m_seat, n_c * c.m_slot]
-        stations = [c.x_pax_frac * chord, c.x_car_frac * chord]
+        stations = [x_pax, x_car]
         if o["payload"]:
             masses += [n_p * c.m_duck, n_c * c.m_puck]
-            stations += [c.x_pax_frac * chord, c.x_car_frac * chord]
+            stations += [x_pax, x_car]
         m_b = cd_b = dcd = 0.0 * S
         if o["banner"]:
             L = x["L_banner"] * INCH
@@ -102,6 +121,12 @@ class Stores2026(om.ExplicitComponent):
         outputs["CD_banner"] = cd_b
         outputs["dCD_stowed"] = dcd
         outputs["m_banner"] = m_b
+
+
+def fuselage_length(c, n_p, n_c):
+    """(l_pax, l_car, l_cb) of the payload fuselage for counts n_p, n_c (arrays): l_cb = KSmax(l_pax, l_car)."""
+    l_pax, l_car = c.pax_pitch * n_p, c.car_pitch * n_c
+    return l_pax, l_car, ks_max([l_pax, l_car], c.rho_ks_bay)[0]
 
 
 class PayloadFuselage(om.ExplicitComponent):
@@ -122,9 +147,56 @@ class PayloadFuselage(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         c = self.options["config"]
-        l_pax, l_car = c.pax_pitch * inputs["n_p"], c.car_pitch * inputs["n_c"]
-        outputs["l_cb"] = ks_max([l_pax, l_car], c.rho_ks_bay)[0]
+        if c.fuselage_counts is not None:  # sized for fixed counts (an as-built fuselage), not the flown ones
+            n_p, n_c = (np.array([float(n)]) + 0.0 * inputs["n_p"] for n in c.fuselage_counts)
+        else:
+            n_p, n_c = inputs["n_p"], inputs["n_c"]
+        l_pax, l_car, outputs["l_cb"] = fuselage_length(c, n_p, n_c)
         outputs["w_cb"] = c.w_cb
         outputs["h_cb"] = c.h_cb
         outputs["l_pax"] = l_pax
         outputs["l_car"] = l_car
+
+
+class Packaging2026(om.ExplicitComponent):
+    """The rigid payload fuselage's packaging (docs/RESULTS_2026_PLAN.md, Final fixes D2), after the MDA: the motor
+    group at the box front at Humpback's nose length, and the margins that keep the battery inside the fuselage and the
+    tail behind it. Every shift is a difference from Humpback's layout (x_cb_frac_ref, c_ref, l_cb_ref at n_p_ref,
+    n_c_ref), so it is exactly 0.0 there.
+
+        x_motor         = x_motor_ref + (x_cb - x_cb_ref) - (l_cb - l_cb_ref) / 2,  x_cb = x_cb_frac c
+        batt_fwd_margin = x_batt - (x_motor + d_batt)                    >= 0
+        batt_aft_margin = (x_cb + l_cb / 2) - x_batt                     >= 0
+        tail_margin     = (x_tail - 0.25 c_ht) - (x_cb + l_cb / 2) - tail_clear >= 0,
+                          x_tail = 0.25 c + l_ht (the HT quarter chord), c_ht = sqrt(S_ht / AR_ht)
+    """
+
+    def initialize(self):
+        self.options.declare("config", types=Store2026Config)
+        self.options.declare("x_motor_ref", types=float, desc="m, Humpback's motor station (stability.x_motor)")
+        self.options.declare("x_cb_frac0", default=0.416, desc="default of x_cb_frac (as Stores2026)")
+
+    def setup(self):
+        # defaults as the other components of the point (stations, StaticStability): no ambiguity in a stand-alone model
+        for name, val, units in [("c", 0.25, "m"), ("x_cb_frac", self.options["x_cb_frac0"], None), ("l_cb", 1.0, "m"),
+                                 ("x_batt", 0.1, "m"), ("l_ht", 0.8, "m"), ("S_ht", 0.06, "m**2"),
+                                 ("AR_ht", 4.0, None)]:
+            self.add_input(name, val, units=units)
+        for name in ("x_motor", "batt_fwd_margin", "batt_aft_margin", "tail_margin", "x_cb_aft"):
+            self.add_output(name, 0.0, units="m")
+        self.declare_partials("*", "*", method="cs")
+
+    def compute(self, inputs, outputs):
+        c = self.options["config"]
+        x_cb = inputs["x_cb_frac"] * inputs["c"]
+        x_cb_ref = c.x_cb_frac_ref * c.c_ref
+        l_cb_ref = fuselage_length(c, np.array([c.n_p_ref]), np.array([c.n_c_ref]))[2]
+        x_motor = self.options["x_motor_ref"] + (x_cb - x_cb_ref) - (inputs["l_cb"] - l_cb_ref) / 2.0
+        aft = x_cb + inputs["l_cb"] / 2.0
+        c_ht = np.sqrt(inputs["S_ht"] / inputs["AR_ht"])
+        x_tail = 0.25 * inputs["c"] + inputs["l_ht"]
+        outputs["x_motor"] = x_motor
+        outputs["batt_fwd_margin"] = inputs["x_batt"] - (x_motor + c.d_batt)
+        outputs["batt_aft_margin"] = aft - inputs["x_batt"]
+        outputs["tail_margin"] = (x_tail - 0.25 * c_ht) - aft - c.tail_clear
+        outputs["x_cb_aft"] = aft

@@ -212,6 +212,10 @@ def multipoint_constraints(mcfg):
         cons.append(("rules.pax_margin", dict(lower=0.0, ref=10.0)))
     if mcfg.mp.rules.fuselage_span_ratio_max is not None:
         cons.append(("rules.fuselage_margin", dict(lower=0.0, ref=0.1)))
+    if mcfg.mp.kind == "dbf2026":  # the rigid payload fuselage (stores2026.Packaging2026): battery inside, tail behind
+        cons += [(f"points.{p}.{n}", dict(lower=0.0, ref=0.1)) for p in POINTS
+                 for n in ("batt_fwd_margin", "batt_aft_margin")]
+        cons.append(("points.M2.tail_margin", dict(lower=0.0, ref=0.1)))  # shared geometry: the same at M3
     return cons
 
 
@@ -399,6 +403,7 @@ def m1_check(mcfg, prob):
         q.set_val(k, prob.get_val(f"{k}_M3"))
     for src, dst in SIZING_LINKS:
         q.set_val(dst, prob.get_val(f"points.M2.{src}"))
+    q.final_setup()  # a setup error is raised here, not reported as MDA non-convergence below
     errors = (AnalysisError, RuntimeError) if robust else AnalysisError  # robust: a singular Jacobian too
     try:
         q.run_model()
