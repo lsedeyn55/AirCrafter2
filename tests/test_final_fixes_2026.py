@@ -86,3 +86,75 @@ def test_sampler_robust_at_the_optimum():
     rows = [{"lap.wind": w, "f_build": f} for w, f in ((0.0, 1.0), (2.0, 0.9), (5.0, 1.1), (8.0, 1.0))]
     ev = evaluate(mcfg, optimum(), rows, ["flight_score", "points.M2.SM", "points.M3.v"], workers=2)
     assert ev["failed"] == [] and np.isfinite(ev["values"]).all()
+
+
+# --- D1: the score cap -------------------------------------------------------------------------------------------
+
+def _x(n_p, n_c, laps2, E, laps3, L, b_in):
+    return dict(n_p=np.array([n_p]), n_c=np.array([n_c]), laps_M2=np.array([laps2]), E_M2=np.array([E]),
+                laps_M3=np.array([laps3]), L_banner=np.array([L]), b=np.array([b_in * 0.0254]))
+
+
+@pytest.mark.parametrize("x", [_x(42, 14, 8, 97.68, 4, 197.0, 59.0),    # [HB] Table 43 'actual'
+                               _x(42, 14, 9, 100.0, 5, 197.0, 59.0)])   # [HB] Table 33 design
+def test_cap_exact_below(x):
+    """Below 1 - delta the capped score is the old formula bit for bit (==)."""
+    from aircrafter2.scoring.dbf2026 import DBF2026, m3_term, net_income
+
+    plug = DBF2026(NI_max=2800.0, B_max=1500.0)
+    p = plug.parts(x)
+    ni = net_income(x["n_p"], x["n_c"], x["laps_M2"], x["E_M2"])
+    t3 = m3_term(x["laps_M3"], x["L_banner"], x["b"] / 0.3048)
+    assert p["r_M2"] < 1 - 0.005 and p["r_M3"] < 1 - 0.005
+    assert p["M2"] == 1.0 + ni / 2800.0 and p["M3"] == 2.0 + t3 / 1500.0
+
+
+def test_cap_exact_above():
+    """Above 1 + delta, M2 = 2 and M3 = 3 exactly (the mr_smoke payload: NI 3559 > 2800)."""
+    from aircrafter2.scoring.dbf2026 import DBF2026
+
+    p = DBF2026(NI_max=2800.0, B_max=1500.0).parts(_x(97, 32, 9, 100.0, 9, 249.0, 60.0))
+    assert p["r_M2"] > 1.005 and p["r_M3"] > 1.005
+    assert p["M2"] == 2.0 and p["M3"] == 3.0 and p["flight_score"] == 6.0
+
+
+def test_cap_blend_c1_by_hand():
+    """cap = r - (r - 1 + d)^2 / (4 d) on [1 - d, 1 + d]: value and slope continuous at both joins (by hand: slope
+    1 - (r - 1 + d) / (2 d) = 1 at 1 - d and 0 at 1 + d; value 1 at 1 + d); bias d / 4 at r = 1."""
+    from aircrafter2.scoring.dbf2026 import cap
+
+    d, h = 0.005, 1e-30
+    slope = lambda r: float(np.imag(cap(r + 1j * h, d)) / h)  # noqa: E731
+    blend = lambda r: r - (r - 1 + d) ** 2 / (4 * d)  # noqa: E731
+    assert blend(1 - d) == 1 - d and blend(1 + d) == pytest.approx(1.0, abs=1e-15)
+    assert float(cap(1 - d, d)) == 1 - d and float(cap(1 + d, d)) == 1.0
+    assert slope(1 - d - 1e-9) == 1.0 and slope(1 + d + 1e-9) == 0.0
+    assert slope(1 - d + 1e-9) == pytest.approx(1.0, abs=1e-6) and slope(1 + d - 1e-9) == pytest.approx(0.0, abs=1e-6)
+    assert float(cap(1.0, d)) == pytest.approx(1 - d / 4, rel=1e-14)
+
+
+def test_floored_hard_cap():
+    """floored() applies min(r, 1): inside the blend it keeps r (below 1) or gives 1 (above), not the blend."""
+    from aircrafter2.scoring.dbf2026 import DBF2026, net_income
+
+    x = _x(42, 14, 8, 100.0, 4, 197.0, 59.0)
+    ni = float(net_income(42, 14, 8, 100.0))
+    for r in (0.998, 1.002):
+        plug = DBF2026(NI_max=ni / r, B_max=1500.0)
+        f = plug.floored(x)
+        assert float(np.ravel(f["M2"])[0]) == pytest.approx(1.0 + min(r, 1.0), rel=1e-12)
+        assert float(np.ravel(plug.parts(x)["M2"])[0]) != pytest.approx(1.0 + min(r, 1.0), rel=1e-6)  # the smooth one differs
+
+
+@pytest.mark.parametrize("r", [0.9, 1.0, 1.1])
+def test_cap_check_partials(r):
+    """DBF2026Score (cs partials) against central FD below, inside and above the blend."""
+    from aircrafter2.scoring.dbf2026 import DBF2026, net_income
+
+    from .conftest import check_partials_fd, run_component
+
+    ni = float(net_income(42, 14, 8, 100.0))
+    plug = DBF2026(NI_max=ni / r, B_max=4 * 197.0 / (0.05 * 59 / 12 + 0.75) / r)
+    x = {k: float(v[0]) for k, v in _x(42, 14, 8, 100.0, 4, 197.0, 59.0).items()}
+    p = run_component(plug.component(), **x)
+    check_partials_fd(p)

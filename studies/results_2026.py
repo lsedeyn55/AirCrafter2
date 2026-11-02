@@ -38,7 +38,7 @@ POINT_OUT = ["m_total", "m_empty", "m_pay", "m_wing", "m_ht", "m_vt", "m_fus", "
              "I_margin", "SM", "V_h", "V_v", "CD0", "CD_stores", "energy_margin", "E_nom_total",
              "thrust_margin_static", "v_fit_margin", "stall_margin", "cruise.L_over_D", "Rm", "I0", "l_cb",
              "t_takeoff", "s_ground_roll", "x_cg", "x_np", "cruise.nf_confidence_min"]
-SCORE_OUT = ["score", "M1", "M2", "M3", "flight_score", "net_income", "m3_term", "RAC", "EF"]
+SCORE_OUT = ["score", "M1", "M2", "M3", "flight_score", "net_income", "m3_term", "RAC", "EF", "r_M2", "r_M3"]
 # the old constraint set (the sensitivity of decision 3): AirCrafter 1.0's rpm convention and the Q9 bands
 # SM_max: the old 0.20 shifted into the model frame by the same +0.20 c as SM_min (Q9, Q62; 0.20 itself sits below the
 # 2025-26 SM_min 0.25, so the old set could never be feasible). SM_min stays 0.25.
@@ -170,6 +170,11 @@ def summarise(p, mcfg):
     out["M3"]["m_banner"] = v(p, "points.M3.m_banner")
     out["M3"]["CD_banner"] = v(p, "points.M3.CD_banner")
     out["floored"] = floored_score(p, mcfg)
+    from aircrafter2.scoring.dbf2026 import DBF2026
+
+    out["cap"] = dict(delta=DBF2026(**mcfg.mp.scoring).options["cap_delta"], r_M2=out["score"]["r_M2"],
+                      r_M3=out["score"]["r_M3"], M2_capped=out["score"]["r_M2"] >= 1.0,
+                      M3_capped=out["score"]["r_M3"] >= 1.0)
     out["active_constraints"], out["active_bounds"] = active(p, mcfg)
     out["violated"] = violated(p, mcfg)
     out["kv_set_by"] = kv_set_by(out["active_constraints"], out["active_bounds"])
