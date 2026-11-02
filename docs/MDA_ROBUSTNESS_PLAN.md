@@ -66,6 +66,15 @@ M1-check commit (Problem 2, decision (b)).
 - A `--start` run costs one extra `run_model` (about 6 s).
 - `test_mda_robust.py` adds about 2.5 min to the suite.
 
+**Problem 2: decided (b), 2026-11-02.** `SM_max` stays 0.47. For 2025-26 (`kind: dbf2026`), `m1_check` fails on SM
+only below SM_min; above SM_max it reports `SM_high`.
+- **Deviation:** limited to 2025-26 (`M1_SM_ONE_SIDED` in `aircrafter2/problems/multipoint.py`). The published
+  2024-25 results have Woombah and the AirCrafter 1.0 direct design failing M1 on SM above its 2024-25 SM_max, so a
+  global change would contradict a frozen page if it were rerun.
+- **Humpback's M1 SM:** calibrated 0.4637, USYD-LOO 0.4718, G&G 0.822. The LOO and G&G checks now pass with
+  `SM_high`; G&G's only other violation was SM.
+- **Guard:** the smoke optimum's (and 96p32c's) M1 SM is 0.369, inside [0.25, 0.47].
+
 **Open (not fixed).**
 - The singular M3 Jacobian at evaluation 845 of the old 99p33c run depends on the run's history: it came at an
   infeasible stall, 845 evaluations in. A full replay would pin it down (about 20 min).

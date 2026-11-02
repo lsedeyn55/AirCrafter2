@@ -174,7 +174,8 @@ _POST = [
           ("stability.SM_min", "stability.SM_max", "wall_ratio_max", "r_tube_min", "takeoff_distance", "mu_roll"),
           section=2, applies=_mp, hard_coded=((MP, r'kw\["lower"\] - 1e-6', "1e-6 tolerance"),),
           note="m1_check; the M1_SAFETY set: stall_margin, turn_speed_margin, thrust_margin_static, SM, wall_ratio, "
-               "r_tube (the others are reported)"),
+               "r_tube (the others are reported); 2025-26 (dbf2026): SM fails only below SM_min, above SM_max it is "
+               "reported (SM_high)"),
     Entry("oei.rudder", "one engine inoperative (post-check)", "deg",
           "rudder for the live unit's yaw at oei_speed_factor x V_stall <= rudder_max_deg", "stability", "safety",
           ("stability.rudder_max_deg",), section=2,

@@ -18,6 +18,12 @@ FT = 0.3048
 AC1 = ROOT / "reference" / "aircrafter1" / "runs" / "ac1_2026_r1.json"
 
 
+def _m1(m1):
+    """The M1-check cell: pass / fail with the violated constraints; SM above SM_max is reported, not failed."""
+    cell = "pass" if m1["passed"] else "fail: " + ", ".join(m1.get("violated") or [])
+    return cell + (" (SM above SM_max: reported, not failed)" if m1["passed"] and m1.get("SM_high") else "")
+
+
 def _f(x, nd=2):
     if x is None:
         return "–"
@@ -158,7 +164,7 @@ def render(R):
         rows.append([MASS_VARIANTS[m], _f(c["score"]["flight_score"], 4), _f(c["score"]["M2"], 4),
                      _f(c["score"]["M3"], 4), _f(c["M2"]["laps_frac"], 2), _f(c["M3"]["laps_frac"], 2),
                      _f(c["M2"]["SM"], 3), _f(c["M3"]["SM"], 3), _f(c["M2"]["x_cg"], 4), _f(c["M2"]["x_np"], 4),
-                     "pass" if c["M1"]["passed"] else "fail: " + ", ".join(c["M1"].get("violated") or [])])
+                     _m1(c["M1"])])
     w(_table(["mass model", "F", "M2", "M3", "M2 laps", "M3 laps", "SM M2", "SM M3", "x_cg M2 (m)", "x_np (m)",
               "M1 check"], rows))
     ref = R["variants"].get("loo") or next(iter(R["variants"].values()))

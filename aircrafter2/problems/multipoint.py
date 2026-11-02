@@ -54,6 +54,10 @@ SIZING_LINKS = [("m_total", "m_sizing"), ("v", "v_sizing"), ("cruise.Cm_wing", "
                 ("cruise.CL_alpha", "CL_alpha_sizing")]
 # the flight-safety constraints that fail the M1 check (m1_check); the model-validity limits are only reported
 M1_SAFETY = frozenset({"stall_margin", "SM", "thrust_margin_static", "wall_ratio", "r_tube", "turn_speed_margin"})
+# 2025-26 (kind dbf2026, decision 2026-11-02, OPEN_QUESTIONS Q9/Q62): SM fails the M1 check only below SM_min; above
+# SM_max it is reported (SM_high), since a too-large margin costs trim drag and elevator authority, not flight safety.
+# The 2024-25 check (kind dbf2025) keeps both bounds, as published.
+M1_SM_ONE_SIDED = frozenset({"dbf2026"})
 
 
 class PointConfig(BaseModel):
@@ -374,9 +378,14 @@ def m1_check(mcfg, prob):
             or (kw.get("upper") is not None and cons[n] > kw["upper"] + 1e-6)]
     # pass = the rule (3 laps in the window) and the flight-safety constraints; model-validity limits (v_fit_margin:
     # the light M1 aircraft can outrun the T(v) fit at M3's throttle) and the others are reported, not failed on
-    ok = v("laps_frac") >= 3.0 and not (set(viol) & M1_SAFETY)
+    sm_kw = dict(full_constraints(cfg)).get("SM", {})
+    sm_high = "SM" in cons and sm_kw.get("upper") is not None and cons["SM"] > sm_kw["upper"] + 1e-6
+    safety = set(viol) & M1_SAFETY
+    if sm_high and mcfg.mp.kind in M1_SM_ONE_SIDED:
+        safety.discard("SM")  # above SM_max: reported, not failed (below SM_min still fails)
+    ok = v("laps_frac") >= 3.0 and not safety
     return dict(passed=bool(ok), laps_frac=v("laps_frac"), ThreeLapTime=v("ThreeLapTime"), m_total=v("m_total"),
-                violated=viol, constraints=cons)
+                violated=viol, SM_high=bool(sm_high), constraints=cons)
 
 
 def kv_settings_report(mcfg):

@@ -435,7 +435,12 @@ Effect on Humpback as built (calibrated, validation_2026.md): F 5.086 → 5.323,
   in the MDA's Newton solver, and a warm path for `--start` / `integer()`. The smoke now converges (`mr_smoke`: 58
   iterations, F 6.1723); `--start` and `integer()` (96p32c, F 6.1675) converge too. Every 2024-25 and single-point
   result is unchanged (the switch is off there; configs snapshot bit for bit).
-- **Humpback's M1 post-check (USYD factors without Humpback) now fails on SM:** 0.4676 → 0.4718 > SM_max 0.47 (the
-  heavier prop at the nose). SM_max was set from the M2/M3 values only.
+- **Humpback's M1 post-check (USYD factors without Humpback) failed on SM:** 0.4676 → 0.4718 > SM_max 0.47 (the
+  heavier prop at the nose). SM_max was set from the M2/M3 values only. **Decided 2026-11-02, (b):** `SM_max` stays
+  0.47, and for 2025-26 (`kind: dbf2026`) the M1 check fails on SM only below SM_min. Above SM_max it is reported
+  (`SM_high` in the result), because a too-large margin is a trim-drag and handling cost, not a safety failure (Q9,
+  Q62). The 2024-25 check keeps both bounds, as published. The M2/M3 SM constraints in the optimiser keep both bounds.
+  Humpback's M1 SM: calibrated 0.4637 (pass), USYD-LOO 0.4718 (pass, SM_high), G&G 0.822 (pass, SM_high; uncalibrated
+  masses). The smoke optimum's M1 SM is 0.369, inside both bounds, so the decision doesn't touch it.
 - **The X-1's t/c** (`multipoint.stores.x1_wing_tc` 0.10, 2024-25 ruleset) is the same SD8020: 0.101 would apply, not
   changed (2024-25 references frozen).

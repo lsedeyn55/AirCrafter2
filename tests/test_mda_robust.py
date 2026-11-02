@@ -281,3 +281,48 @@ def test_quiet_direct_solver_singular(quiet):
         assert "singular Jacobian in 'g'" in str(exc.value)
     else:
         assert not isinstance(exc.value, AnalysisError)
+
+
+# --- M1 check, Problem 2 decision (b): 2025-26 SM fails only below SM_min ----------------------------------------
+
+def _m1_humpback(sm_min=None, sm_max=None, kind=None):
+    from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config, m1_check
+
+    mcfg = load_multipoint_config(ROOT / "configs" / "humpback_2026.yaml")
+    if sm_min is not None:
+        mcfg.base.stability.SM_min = sm_min
+    if sm_max is not None:
+        mcfg.base.stability.SM_max = sm_max
+    if kind is not None:
+        mcfg.mp.kind = kind
+    p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+    p.run_model()
+    return m1_check(mcfg, p)
+
+
+def test_m1_check_sm_one_sided_2026():
+    """Humpback as built (M1 SM about 0.46): with SM_max below it the check passes and reports SM_high; with SM_min
+    above it the check fails on SM."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        high = _m1_humpback(sm_max=0.30)
+        low = _m1_humpback(sm_min=0.60, sm_max=0.70)
+    assert high["passed"] and high["SM_high"] and "SM" in high["violated"]
+    assert not low["passed"] and not low["SM_high"] and "SM" in low["violated"]
+
+
+def test_m1_check_sm_two_sided_2025():
+    """The 2024-25 check (kind dbf2025) keeps both SM bounds, as published: Woombah as built fails M1 on SM above
+    SM_max (results_2025.md, 'fail: SM, V_h, V_v')."""
+    from aircrafter2.problems.multipoint import (M1_SM_ONE_SIDED, build_multipoint_problem, load_multipoint_config,
+                                                 m1_check)
+
+    assert M1_SM_ONE_SIDED == {"dbf2026"}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mcfg = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+        assert mcfg.mp.kind == "dbf2025"
+        p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+        p.run_model()
+        m1 = m1_check(mcfg, p)
+    assert m1["SM_high"] and "SM" in m1["violated"] and not m1["passed"]
