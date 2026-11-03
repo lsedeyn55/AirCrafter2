@@ -235,6 +235,7 @@ drop out of the tab silently (`tests/test_constraints_view.py`).
 - `docs/studies/results/`: the 2024-25 results. `INDEX.md` lists every table, figure and JSON with its commit and
   config, and ranks the PLACEHOLDERS by their effect on the score; `validation_2025.md` (Woombah),
   `results_2025.md` (AirCrafter 1.0 vs multipoint vs RDO), `compute_performance.md` (timing and scaling).
+- `docs/studies/results_2026/`: the 2025-26 results, the thesis's main results. `INDEX.md` lists every table, figure and JSON; `validation_2026.md` (Humpback), `results_2026.md` (Humpback, AirCrafter 1.0, MDO, MDO + RDO), `compute_performance_2026.md`.
 - `docs/RESULTS_PLAN.md`: the 2024-25 plan (rules as read, scoring, stores, Woombah values, run list).
 - `docs/RDO_REDUCED_PLAN.md`: the 2024-25 RDO with the reduced mass-and-wind uncertain set (`f_build`, evidence for the spreads).
 - `docs/RDO_PLAN.md`: robust design optimisation plan (uncertain parameters, screening, node convergence, cost).
@@ -245,7 +246,7 @@ topic in `examples/`, `verification/` or `studies/`; rerun the script rather tha
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 534 tests (2026-11-02, about 20 min): check_partials, check_totals, verification, CLI, UI
+.venv/bin/python -m pytest          # 550 tests (2026-11-04, about 17 min): check_partials, check_totals, verification, CLI, UI
 ```
 
 ## Layout

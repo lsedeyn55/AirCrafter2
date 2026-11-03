@@ -850,7 +850,7 @@ def findings(R):
     d = decomposition(R)
     if d:
         F.append(f"**What robustness costs.** Nominal F: {d['nominal']['wind']:+.4f} from designing at the mean wind, {d['nominal']['robust']:+.4f} from robustness itself. Monte Carlo mean: {d['mu']['wind']:+.4f} and {d['mu']['robust']:+.4f}. "
-                 f"Sigma: {d['sigma']['mdo']:.4f} (MDO) to {d['sigma']['rdo']:.4f} (RDO). P(any violation): {d['p_any']['mdo']:.3f} to {d['p_any']['mdo_wind']:.3f} to {d['p_any']['rdo']:.3f}. RDO's gain is in variance and feasibility, not the mean: {sub_stall(R, 'mdo')['n']} of {sub_stall(R, 'mdo')['of']} MDO samples sit on the sub-stall balance, and without them MDO's mean is {sub_stall(R, 'mdo')['mu_without']:.4f} against RDO's {d['mu']['rdo']:.4f}.")
+                 f"Sigma: {d['sigma']['mdo']:.4f} (MDO) to {d['sigma']['rdo']:.4f} (RDO). P(any violation): {d['p_any']['mdo']:.3f} to {d['p_any']['mdo_wind']:.3f} to {d['p_any']['rdo']:.3f}. RDO's gain is in variance and feasibility, not the mean: {sub_stall(R, 'mdo')['n']} of {sub_stall(R, 'mdo')['of']} MDO samples sit on the sub-stall balance, and without them MDO's mean is {sub_stall(R, 'mdo')['mu_without']:.4f} against RDO's {d['mu']['rdo']:.4f}. On the floored score (completed laps, hard cap) the order reverses: RDO {score_of(rob)['floored']:.4f}, MDO {score_of(mdo)['floored']:.4f}.")
     ms = multistart_summary(R)
     if ms:
         F.append(f"**Multistart ({ms['n']} Sobol' starts):** {ms['converged']} converge feasibly, to {len(ms['clusters'])} distinct optimum/optima (F within {OK_F:g}): "

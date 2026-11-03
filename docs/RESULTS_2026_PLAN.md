@@ -564,3 +564,8 @@ the configs snapshot is identical bit for bit (152 values), and the full suite p
   the 1.70 m box, the overlap is larger than on Humpback, and the box and boom drag and mass double-count it.
 - **The chord bound:** `c` ≤ 0.45 m (`full_mdo.yaml`) is still active at `fx_smoke`, and so is `camber_scale` at
   2.0. NeuralFoil's confidence stays at 0.95 there, but the airfoil sits at the edge of its parametrisation.
+
+<!-- final results run -->
+## Final results run
+Done 2026-11-04 on `thesis-results-2026`; freeze tag `results-2026-final` (`0a6527d`). What ran: the enumeration, rounding, `mdo_wind`, multistart, bookends, normalisation, bound and other sensitivities, AirCrafter 1.0 at its shipped steps with mappings (a) and (b), RDO from three starts with robust rounding, common evaluation, 11 Monte Carlos of 1024 points, propagation, screening, node check, wind, placeholders, validation, and the timing. 91 run files back the page, 0 of them off the freeze commit. Cuts: none. Tests: 547 at the freeze, 550 at the final commit. Results: `docs/studies/results_2026/INDEX.md`. Log, with the decisions: `RESULTS_LOG.md`.
+<!-- /final results run -->
