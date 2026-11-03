@@ -1,0 +1,18 @@
+parameter,set,mean,sigma,distribution,source,question
+f_build,in set,1.0000,0.1732,uniform,USYD LOO,Q39 (USYD LOO)
+f_tb,out of set,3.2737,0.5670,uniform,PLACEHOLDER,Q32
+m_avionics,in set,0.2220,0.0192,uniform,PLACEHOLDER,Q32
+lap.wind,in set,5.0000,2.8868,uniform,PLACEHOLDER,Q39
+lap.wind_dir,in set,0.0000,17.3205,uniform,Woodward 1998,Q59
+banner_drag_factor,in set,1.0000,0.1106,uniform,HB Table 41,Q56 ([HB] Table 41)
+f_cb,out of set,1.2708,0.2201,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+f_gear,out of set,0.0302,0.0052,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+e_spec,out of set,176.5000,10.1902,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+R_cell,out of set,0.0050,0.0009,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+Kv_factor,out of set,1.0000,0.0289,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+Rm_ref,out of set,0.0200,0.0023,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+m_motor,out of set,0.5550,0.0320,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+eta_h,out of set,0.9000,0.0520,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+lap.thrust_factor,out of set,1.0000,0.0577,uniform,PLACEHOLDER,Q32 (configs/uncertainty.yaml)
+a_ht,out of set,1.1757,0.2036,uniform,PLACEHOLDER,"Q32 (±30 %, as f_ht)"
+a_vt,out of set,1.3920,0.2411,uniform,PLACEHOLDER,"Q32 (±30 %, as f_vt)"

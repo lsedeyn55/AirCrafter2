@@ -1,0 +1,10 @@
+direction (deg),MDO limit (m/s),stopped by,MDO + RDO limit (m/s),stopped by
+-30.0,12.42,lap_invalid,12.50,lap_invalid
+-22.5,12.42,lap_invalid,12.50,lap_invalid
+-15.0,12.42,lap_invalid,12.50,lap_invalid
+-7.5,12.42,lap_invalid,12.50,lap_invalid
++0.0,12.42,lap_invalid,12.50,lap_invalid
++7.5,12.42,lap_invalid,12.50,lap_invalid
++15.0,12.42,lap_invalid,12.50,lap_invalid
++22.5,12.42,lap_invalid,12.50,lap_invalid
++30.0,12.42,lap_invalid,12.50,lap_invalid

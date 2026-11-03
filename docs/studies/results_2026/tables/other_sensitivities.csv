@@ -1,0 +1,21 @@
+case,design,ok,F,ΔF,F floored,violated
+"old constraint set (rpm 0.85, SM_max 0.40, V_h_max 0.65, V_v_max 0.06), re-optimised",MDO,yes,5.9775,+0.0000,5.8588,none
+"take-off off, re-optimised",MDO,yes,5.9818,+0.0043,5.8924,none
+"C_D,b 0.019 ([HB] Table 41, low) (re-analysis)",MDO,yes,5.9998,+0.0223,5.8588,none
+"C_D,b 0.019 ([HB] Table 41, low), M3 full throttle (re-analysis)",MDO,yes,5.7209,-0.2566,5.4921,M3.I_margin = -1.688
+"C_D,b 0.028 ([HB] Table 41, high) (re-analysis)",MDO,yes,5.8416,-0.1359,5.6755,M3.SM = 4.733
+"C_D,b 0.028 ([HB] Table 41, high), M3 full throttle (re-analysis)",MDO,yes,5.6203,-0.3572,5.4921,M3.I_margin = -1.688
+"C_D,b 0.03 (AirCrafter 1.0) (re-analysis)",MDO,no,–,–,–,"wind limit (lap_invalid): 'points.M3.lap' <class SmoothLapModel>: Error calling compute(), points.M3.lap: non-physical lap (lap times [nan nan], wind 0.00 m/s against V_stall 11.17 m/s): outside the lap model's validity"
+"C_D,b 0.03 (AirCrafter 1.0), M3 full throttle (re-analysis)",MDO,yes,5.6033,-0.3743,5.4921,M3.I_margin = -1.688
+"C_D,b 0.034 (Table 29 deployed, on L x H) (re-analysis)",MDO,yes,5.8388,-0.1387,5.6755,M3.SM = 4.09
+"C_D,b 0.034 (Table 29 deployed, on L x H), M3 full throttle (re-analysis)",MDO,yes,5.5730,-0.4045,5.4921,M3.I_margin = -1.688
+rpm limit 0.85 (re-analysis),MDO,yes,5.9775,+0.0000,5.8588,none
+"C_D,b 0.019 ([HB] Table 41, low) (re-analysis)",MDO + RDO,yes,5.9987,+0.0625,5.9120,none
+"C_D,b 0.019 ([HB] Table 41, low), M3 full throttle (re-analysis)",MDO + RDO,yes,5.7141,-0.2220,5.6080,none
+"C_D,b 0.028 ([HB] Table 41, high) (re-analysis)",MDO + RDO,yes,5.8741,-0.0621,5.7600,none
+"C_D,b 0.028 ([HB] Table 41, high), M3 full throttle (re-analysis)",MDO + RDO,yes,5.6175,-0.3187,5.6080,none
+"C_D,b 0.03 (AirCrafter 1.0) (re-analysis)",MDO + RDO,yes,5.8487,-0.0874,5.7600,none
+"C_D,b 0.03 (AirCrafter 1.0), M3 full throttle (re-analysis)",MDO + RDO,yes,5.6012,-0.3349,5.4560,none
+"C_D,b 0.034 (Table 29 deployed, on L x H) (re-analysis)",MDO + RDO,yes,5.8025,-0.1336,5.7600,none
+"C_D,b 0.034 (Table 29 deployed, on L x H), M3 full throttle (re-analysis)",MDO + RDO,yes,5.5725,-0.3637,5.4560,none
+rpm limit 0.85 (re-analysis),MDO + RDO,yes,5.9362,+0.0000,5.9120,none

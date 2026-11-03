@@ -1,0 +1,18 @@
+parameter,set,source,MDO: first order,MDO: 1-D Gauss,MDO + RDO: first order,MDO + RDO: 1-D Gauss
+lap.wind,in set,PLACEHOLDER,0.0933,0.1088,0.0634,0.0687
+f_build,in set,USYD LOO,0.0425,0.0522,0.0290,0.0292
+banner_drag_factor,in set,HB Table 41,0.0476,0.0477,0.0378,0.0375
+lap.thrust_factor,out of set,PLACEHOLDER,0.0331,0.0409,0.0249,0.0250
+Kv_factor,out of set,PLACEHOLDER,0.0099,0.0333,0.0025,0.0187
+f_cb,out of set,PLACEHOLDER,0.0178,0.0203,0.0131,0.0131
+R_cell,out of set,PLACEHOLDER,0.0060,0.0066,0.0027,0.0030
+f_gear,out of set,PLACEHOLDER,0.0040,0.0040,0.0028,0.0028
+Rm_ref,out of set,PLACEHOLDER,0.0040,0.0040,0.0018,0.0019
+lap.wind_dir,in set,Woodward 1998,0.0000,0.0023,0.0000,0.0016
+f_tb,out of set,PLACEHOLDER,0.0023,0.0023,0.0017,0.0017
+e_spec,out of set,PLACEHOLDER,0.0022,0.0022,0.0015,0.0016
+m_motor,out of set,PLACEHOLDER,0.0022,0.0022,0.0015,0.0015
+a_ht,out of set,PLACEHOLDER,0.0016,0.0016,0.0011,0.0011
+m_avionics,in set,PLACEHOLDER,0.0013,0.0013,0.0009,0.0009
+a_vt,out of set,PLACEHOLDER,0.0004,0.0004,0.0002,0.0002
+eta_h,out of set,PLACEHOLDER,0.0000,0.0000,0.0000,0.0000

@@ -1,0 +1,7 @@
+design,overlap (m),share of the boom (%),mass counted twice (g),M2 drag counted twice (counts)
+Humpback,0.407,43,100,1.6
+AC1 direct (a),0.444,47,110,1.8
+AC1 completed (b),0.444,59,110,1.8
+MDO,0.693,88,171,2.3
+"MDO, mean wind",0.675,83,167,2.2
+MDO + RDO,0.760,92,188,2.5

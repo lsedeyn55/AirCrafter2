@@ -1,0 +1,7 @@
+design,M2 laps,M3 laps,violated,M1 check,M1 laps,continuations,F at mean wind,at the cap
+Humpback,8.25,5.59,none,"pass, SM 0.464",9.64,0 / 0,5.2789,none
+AC1 direct (a),7.82,5.94,none,"pass, SM 0.423",9.00,0 / 1,5.4479,none
+AC1 completed (b),9.12,6.44,none,"pass, SM 0.423",9.18,0 / 0,5.6200,none
+MDO,8.69,5.33,none,"pass, SM 0.440",8.88,0 / 1,5.9225,M2
+"MDO, mean wind",8.73,5.44,none,"pass, SM 0.471, SM_high",8.94,0 / 1,5.9213,M2
+MDO + RDO,8.37,6.16,none,"pass, SM 0.414",8.98,0 / 0,5.8997,M2

@@ -1,0 +1,53 @@
+rank,PLACEHOLDER,effect on F,effect on uncapped F,measure
+1,Q52 normalisation B2,0.4888,0.4879,F re-optimised; mostly a rescaling of the score
+2,Q52 normalisation NI2,0.4484,0.4514,F re-optimised; mostly a rescaling of the score
+3,"uncertainty spread lap.wind (Q32, Q39)",0.1088,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+4,no Q pilot reaction time per lap,0.0928,0.1498,"re-analysis over 1 to 5 (±2 s, assumed)"
+5,Q54 restraint per seat (kg),0.0593,0.0780,"re-analysis over 0 to 0.01 (×0 / ×2, assumed)"
+6,"uncertainty spread lap.thrust_factor (Q32, Q39)",0.0409,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+7,Q54 restraint per slot (kg),0.0401,0.0520,"re-analysis over 0 to 0.02 (×0 / ×2, assumed)"
+8,"uncertainty spread Kv_factor (Q32, Q39)",0.0333,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+9,Q55 passenger pitch (m),0.0311,0.0439,re-analysis over 0.0202 to 0.026 (33.4 in box ([HB] Fig. 9) to +10 %)
+10,Q63 gear drag area (m²),0.0253,0.0358,"re-analysis over 0.0014 to 0.0056 (×0.5 / ×2, scaling PLACEHOLDER)"
+11,Q52 normalisation NI0.5,0.0225,0.1073,F re-optimised; mostly a rescaling of the score
+12,Q52 normalisation B0.5,0.0225,0.9726,F re-optimised; mostly a rescaling of the score
+13,"bound (iii) V_h >= 0.66 ([OH]), V_v >= 0.059 ([W]), the lowest flown",0.0211,–,"F re-optimised, payload counts fixed"
+14,"uncertainty spread f_cb (Q32, Q39)",0.0203,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+15,bound (i) c <= 0.60 m and camber_scale <= 2.5,0.0198,–,"F re-optimised, payload counts fixed"
+16,Q63 leakage drag area (m²),0.0193,0.0284,"re-analysis over 0.00112 to 0.00448 (×0.5 / ×2, scaling PLACEHOLDER)"
+17,Q55 fuselage width (m),0.0179,0.0260,"re-analysis over 0.178 to 0.218 (±10 %, assumed)"
+18,Q8 cell resistance,0.0163,0.0199,"re-analysis over 0.0035 to 0.0065 (±30 % (configs/uncertainty.yaml, Q32))"
+19,Q55 fuselage height (m),0.0126,0.0188,"re-analysis over 0.126 to 0.154 (±10 %, assumed)"
+20,"bound (ii) V_h >= 0.50, V_v >= 0.04 (Raymer 6th ed., Table 6.4, p. 160, homebuilt)",0.0108,–,"F re-optimised, payload counts fixed"
+21,Q56 banner mechanism (kg),0.0077,0.0077,"re-analysis over 0.038 to 0.153 (×0.5 / ×2, assumed)"
+22,"uncertainty spread R_cell (Q32, Q39)",0.0066,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+23,Q19 tail boom radius,0.0063,0.0087,"re-analysis over 0.006 to 0.01 (12-20 mm tube, assumed)"
+24,Q6 boom density,0.0061,0.0085,"re-analysis over 1280 to 1920 (±20 %, assumed)"
+25,Q61 avionics mass,0.0052,0.0072,re-analysis over 0.1887 to 0.2553 (±15 % (Q32))
+26,Q8 cell nominal voltage,0.0045,0.0045,"re-analysis over 3.6 to 3.85 (LiPo 3.6-3.85 V, assumed)"
+27,Q5 tube clearance,0.0041,0.0058,"re-analysis over 0.0005 to 0.002 (×0.5 / ×2, assumed)"
+28,Q16 n_crit,0.0041,0.0067,"re-analysis over 7 to 11 (XFoil: 9 average wind tunnel; ±2, assumed)"
+29,"uncertainty spread f_gear (Q32, Q39)",0.0040,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+30,"uncertainty spread Rm_ref (Q32, Q39)",0.0040,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+31,"uncertainty spread f_tb (Q32, Q39)",0.0023,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+32,"uncertainty spread e_spec (Q32, Q39)",0.0022,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+33,"uncertainty spread m_motor (Q32, Q39)",0.0022,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+34,Q19 boom start offset,0.0020,0.0028,"re-analysis over 0.1 to 0.2 (±0.05 m, assumed)"
+35,Q43 start offset (ft),0.0018,0.0026,"re-analysis over 0 to 50 (0-50 ft, assumed)"
+36,"uncertainty spread a_ht (Q32, Q39)",0.0016,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+37,"uncertainty spread m_avionics (Q32, Q39)",0.0013,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+38,"bound (added) banner <= 500 in, AirCrafter 1.0's grid limit ([HB] Table 7), against the 275 in the team built (Q56)",0.0008,–,"F re-optimised, payload counts fixed"
+39,"uncertainty spread a_vt (Q32, Q39)",0.0004,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"
+40,Q56 stowed banner ΔC_D0,0.0003,0.0003,"re-analysis over 0.002 to 0.008 (×0.5 / ×2, assumed)"
+41,Q40 ground-roll C_L,0.0003,0.0007,re-analysis over 0 to 1 (Q40's study range)
+42,Q41 lift-off factor k_lof,0.0002,0.0004,re-analysis over 1.05 to 1.2 (1.2 = Eq. 3.3's rotation speed (Q41))
+43,Q55 cargo pitch (m),0.0000,0.0000,"re-analysis over 0.0384 to 0.0469 (±10 %, assumed)"
+44,Q23 tail dynamic-pressure ratio eta_h,0.0000,0.0000,"re-analysis over 0.81 to 0.99 (±10 % (configs/uncertainty.yaml, Q32))"
+45,Q23 wing CG / chord,0.0000,0.0000,"re-analysis over 0.35 to 0.45 (±0.05 c, assumed)"
+46,Q23 avionics station,0.0000,0.0000,"re-analysis over -0.2 to 0 (±0.10 m, assumed)"
+47,Q23 gear station,0.0000,0.0000,"re-analysis over 0 to 0.1 (±0.05 m, assumed)"
+48,Q4 ground-test hold point x_gd,0.0000,0.0000,"re-analysis over 0.2 to 0.3 (±0.05 c, assumed)"
+49,Q6 boom strength,0.0000,0.0000,"re-analysis over 5.76e+08 to 8.64e+08 (±20 %, assumed)"
+50,Q6 boom modulus,0.0000,0.0000,"re-analysis over 6.72e+10 to 1.008e+11 (±20 %, assumed)"
+51,Q12 tip-deflection ratio,0.0000,0.0000,"re-analysis over 0.05 to 0.15 (±50 %, assumed)"
+52,"uncertainty spread eta_h (Q32, Q39)",0.0000,–,"sigma of F, 3-point Gauss, this parameter alone, at the MDO design"

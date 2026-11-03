@@ -1,0 +1,9 @@
+constraint,Humpback,MDO,"MDO, mean wind",MDO + RDO
+M2.I_margin,0.006,0.000,0.000,0.000
+M2.SM,0.049,0.000,0.002,0.000
+M2.thrust_margin_static,0.000,0.000,0.000,0.002
+M3.SM,0.301,0.024,0.124,0.020
+M3.energy_margin,0.000,0.008,0.006,0.000
+M3.stall_margin,0.000,0.084,0.062,0.000
+M3.thrust_margin_static,0.000,0.028,0.017,0.000
+any constraint,0.305,0.108,0.187,0.021

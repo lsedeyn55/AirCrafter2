@@ -1,0 +1,8 @@
+run,start,converged,its,nit,wall (h),mean,sigma,mean - k sigma,n_p,n_c,banner (in),continuations,failed attempts,error
+rdo_humpback,humpback,no,5,None,0.07,5.1470,0.0357,5.1113,42.00,14.00,197,9,9,wind limit (lap_invalid): 'nodes.n1.points.M2.lap' <class Sm
+rdo_mdo,8S_19x12E_22x12E_int_72p24c,yes,51,45,0.81,5.8764,0.0836,5.7928,73.82,24.61,228,11,11,
+rdo_mdo_int_73p24c,rdo_mdo,no,20,15,0.28,5.8726,0.0848,5.7878,73.00,24.00,227,2,2,
+rdo_mdo_int_74p24c,rdo_mdo,no,20,15,0.28,5.8739,0.0840,5.7899,74.00,24.00,228,1,1,
+rdo_mdo_int_75p25c,rdo_mdo,no,20,15,0.26,5.8750,0.0836,5.7914,75.00,25.00,228,0,0,
+rdo_mdo_int_75p25c_conv,rdo_mdo_int_75p25c,yes,59,47,0.76,5.8751,0.0836,5.7915,75.00,25.00,228,1,1,
+rdo_second,8S_18x10E_22x12E,yes,43,38,0.66,5.8764,0.0836,5.7928,73.82,24.61,228,11,11,

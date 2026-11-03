@@ -1,0 +1,3 @@
+mass factors,F capped,F floored,M2,M3,M2 take-off mass (kg),empty mass (kg),MC mean,MC sigma,P(any violation)
+Humpback,5.2845,5.1948,1.5479,2.7366,7.625,4.059,5.2672,0.0486,0.293
+Humpback (LOO factors),5.2839,5.1948,1.5478,2.7361,7.638,4.072,5.2667,0.0485,0.323

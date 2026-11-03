@@ -1,0 +1,14 @@
+item,"mapping (a), direct","mapping (b), completed"
+span b,AirCrafter 1.0,AirCrafter 1.0
+chord c,AirCrafter 1.0 (b / AR),AirCrafter 1.0 (b / AR)
+"payload counts n_p, n_c",AirCrafter 1.0 (bundles of 3 + 1),AirCrafter 1.0 (bundles of 3 + 1)
+banner length,AirCrafter 1.0,AirCrafter 1.0
+props per mission,AirCrafter 1.0 (propSelector's minimum-power row),AirCrafter 1.0 (the same)
+M2 battery,AirCrafter 1.0 (fraction x 100 Wh),AirCrafter 2.0 optimises capacity_M2
+M3 battery,the full 100 Wh (AirCrafter 1.0's M3),AirCrafter 2.0 optimises capacity_M3
+throttle per mission,matches AirCrafter 1.0's cruise speed (within 0.5-1),AirCrafter 2.0 optimises
+airfoil,"seed S3016, unscaled","AirCrafter 2.0 optimises tc_scale, camber_scale"
+"tails S_ht, S_vt, arm l_ht","rule: V_h 0.575, V_v 0.05 (band middles), l_ht 1.1 m",AirCrafter 2.0 optimises
+motor Kv,245 rpm/V (AT7215 as flown),AirCrafter 2.0 optimises
+"wing, battery stations",Humpback's,AirCrafter 2.0 optimises
+masses,AirCrafter 2.0's model (AirCrafter 1.0's mass is not imposed),AirCrafter 2.0's model

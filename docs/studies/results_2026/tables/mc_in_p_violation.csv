@@ -1,0 +1,5 @@
+constraint,Humpback,Humpback (LOO factors),AC1 direct (a),AC1 completed (b),MDO,"MDO, mean wind",MDO + RDO
+M2.SM,0.000,0.000,0.000,0.354,0.000,0.000,0.000
+M3.SM,0.293,0.323,0.046,0.000,0.000,0.104,0.000
+M3.stall_margin,0.000,0.000,0.000,0.000,0.071,0.033,0.000
+any constraint,0.293,0.323,0.046,0.354,0.071,0.137,0.000
