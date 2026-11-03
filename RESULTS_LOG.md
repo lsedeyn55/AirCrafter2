@@ -35,6 +35,7 @@
 
 - **Freeze:** tag `results-2026-final` at `0a6527d` (study code, plotting addition, AirCrafter 1.0 options; `git diff ac8e14d 0a6527d -- aircrafter2/` is `plotting/figures.py` only).
 - **Full suite at the freeze commit:** 547 passed, 0 skipped, 16 min 25 s (534 + 13 new in `tests/test_results_2026_study.py`). `check_original.json` restored.
+- **Full suite at the page commit `b1b3159`:** 550 passed, 0 failed, 16 min 30 s (547 + 3 new in `tests/test_results_2026_pages.py`). `check_original.json` restored. The only commit after it changes this log.
 - **Reproducibility check (`fr_check`):** F **5.953236787867297** in **59** iterations, nothing violated, bit for bit against `READABILITY_LOG.md`'s golden result; `mda_fallbacks` M2 and M3 each 59 solves, 1 continuation, 1 failed attempt (also identical). Wall 308 s, peak 0.77 GB.
 
 ## Projection (Checkpoint 0, from the measured costs)
