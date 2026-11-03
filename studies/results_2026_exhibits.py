@@ -225,11 +225,12 @@ def f_enum(R):
     ax.set_xlim(min(good) - 0.01, max(good) + 0.01 + 0.45 * (max(good) - min(good) + 0.01))
     for yi, d in zip(y, runs):
         if d.get("F") is not None:
-            act = [P._short_active(c).replace("M2.", "2:").replace("M3.", "3:").replace("rules_", "").replace("rules.", "") for c in d.get("active_constraints") or []]
-            ax.text(max(good) + 0.012, yi, ", ".join(a for a in act if "V_h" not in a and "V_v" not in a)[:44], fontsize=5.5, va="center")
+            act = d.get("active_constraints") or []
+            names = [("M3 at 100 Wh" if "M3.energy_margin_Wh" in c else "M2 at 100 Wh" if "M2.energy_margin_Wh" in c else "3 passengers per cargo" if "pax_margin" in c else c.replace("points.", "")) for c in act if "V_h" not in c and "V_v" not in c]
+            ax.text(max(good) + 0.012, yi, ", ".join(names), fontsize=5.5, va="center")
     ax.set_ylim(-0.7, len(runs) - 0.3)
-    ax.set_yticks(y, [f"{d['cells']:g}S {d['props']['M2']} / {d['props']['M3']}" if d.get("props") else d["tag"].replace("fr_", "").replace("_", " ") for d in runs], fontsize=7)
-    ax.set_xlabel("F, capped, continuous counts (cross: SLSQP not converged; every case also has V_h and V_v at their minimums)")
+    ax.set_yticks(y, [f"{d['cells']:g}S {d['props']['M2']} / {d['props']['M3']}" + (", Kv 270 start" if "kv270" in d["tag"] else "") if d.get("props") else d["tag"].replace("fr_", "").replace("_", " ").replace("6S 19x12E 22x12E", "6S 19x12E / 22x12E, Kv 245 start") for d in runs], fontsize=7)
+    ax.set_xlabel("F, capped, continuous counts (text: active constraints; every case also has V_h, V_v at their minimums)")
     ax.xaxis.label.set_size(7.5)
     ax.grid(axis="y", visible=False)
     return _save(fig, "propulsion_enumeration")
@@ -252,7 +253,7 @@ def f_cdf(R):
             col = _mc_col(f"fr_mc_{which}_{lab}")
             if col is None:
                 continue
-            ax.plot(col, np.arange(1, len(col) + 1) / len(col), color=COLOR[lab], ls=STYLE[lab], label=SHORT[lab])
+            ax.plot(col, np.arange(1, len(col) + 1) / len(col), color="k" if lab == "rdo" else COLOR[lab], ls=(0, (8, 2)) if lab == "rdo" else STYLE[lab], lw=1.6 if lab == "rdo" else None, label=SHORT[lab])
             any_ = True
         if not any_:
             import matplotlib.pyplot as plt
@@ -284,8 +285,10 @@ def f_pv(R):
             ax.barh(y + 0.4 - (i + 0.5) * h, vals, h, color=COLOR[x], hatch=HATCH[i], edgecolor="w", lw=0, label=SHORT[x])
         ax.set_yticks(y, [r.replace("points.", "") for r in rows], fontsize=7)
         ax.set_xlabel("P(violation), converged samples (analysis failures counted apart)")
-        ax.set_xlim(0, 1)
-        ax.legend(frameon=False, fontsize=7, loc="lower right")
+        top = max(R["designs"][x][key]["p_any"] for x in labs)
+        ax.set_xlim(0, top * 1.15)
+        zero = [SHORT[x] for x in labs if R["designs"][x][key]["p_any"] == 0]
+        ax.legend(frameon=False, fontsize=7, loc="lower right", title=f"no violation: {', '.join(zero)}" if zero else None, title_fontsize=6.5)
         ax.grid(axis="y", visible=False)
         out.append(_save(fig, name))
     return out
@@ -364,6 +367,7 @@ def f_sens(R):
             rows.append((f"{k.replace('NI', 'NI_max x').replace('B', 'B_max x').replace('NI_max x_max', 'NI_max')}", d["F"] - base["F"]))
     if not rows:
         return []
+    failed = [f"C_D,b {c['cd_banner']:g}" for name, c in (re_["cases"].items() if re_ else []) if not c.get("F") and "throttle" not in name and "rpm" not in name]
     rows = sorted(rows, key=lambda r: abs(r[1]))
     fig, ax = figure(1.0, 0.1 + 0.05 * len(rows))
     y = np.arange(len(rows))
@@ -373,7 +377,7 @@ def f_sens(R):
         ax.text(r[1], yi, f" {r[1]:+.3f} ", va="center", ha="left" if r[1] >= 0 else "right", fontsize=6.5)
     ax.set_yticks(y, [r[0] for r in rows], fontsize=7)
     ax.margins(x=0.15)
-    ax.set_xlabel("ΔF against MDO (re-optimised, or re-analysed for C_D,b)")
+    ax.set_xlabel("ΔF against MDO (re-optimised, or re-analysed for C_D,b)" + (f"; no result at {', '.join(failed)}: lap-model limit" if failed else ""))
     ax.grid(axis="y", visible=False)
     return _save(fig, "sensitivities")
 
@@ -386,7 +390,7 @@ def f_ranking(R):
     fig, ax = figure(1.0, 0.75)
     y = np.arange(len(r))
     ax.barh(y, [x["effect"] for x in r], color=PALETTE[0], height=0.6)
-    ax.set_yticks(y, [x["name"][:52] for x in r], fontsize=6.5)
+    ax.set_yticks(y, [(" ".join(x["name"].split()[:2]) + ", tail volumes" if x["name"].startswith("bound (i") and "V_h" in x["name"] else " ".join(x["name"].split()[:2]) + ", chord and camber" if x["name"].startswith("bound (i") else x["name"]) for x in r], fontsize=6.5)
     ax.set_xlabel("effect on F (measure by row: see the ranking table)")
     ax.grid(axis="y", visible=False)
     return _save(fig, "placeholder_ranking")
@@ -440,14 +444,17 @@ def f_compute():
         out.append(_save(fig, "compute_main"))
     sc = C.get("scaling") or {}
     if sc.get("grid_vs_gradient"):
-        fig, axs = figure(1.0, 0.45, ncols=2, gridspec_kw=dict(wspace=0.3))
+        fig, axs = figure(1.0, 0.5, ncols=2, gridspec_kw=dict(wspace=0.3))
         ax = axs[0]
         g = sc["grid_vs_gradient"]
         ax.semilogy([r["n"] for r in g["grid"]], [r["s"] for r in g["grid"]], color=PALETTE[1], ls="--", marker="s", ms=4, label="grid, AC1's cost per call (extrapolated)")
         ax.semilogy([r["n"] for r in g["gradient"]], [r["s"] for r in g["gradient"]], color=PALETTE[0], marker="o", ms=4, label="AC2 SLSQP (measured)")
+        bad = [r for r in g["gradient"] if not r["ok"]]
+        if bad:
+            ax.plot([r["n"] for r in bad], [r["s"] for r in bad], ls="", marker="o", ms=4, mfc="w", color=PALETTE[0], label="AC2, not converged")
         ax.set_xlabel("design variables")
         ax.set_ylabel("wall time (s, log scale)")
-        ax.legend(frameon=False, fontsize=6.5)
+        ax.legend(frameon=False, fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=1)
         ax = axs[1]
         r = sc.get("rdo_vs_d") or []
         ds = [x["d"] for x in r]
@@ -456,7 +463,7 @@ def f_compute():
         ax.semilogy(ds, [x["mc_s"] for x in r], color=PALETTE[1], ls=":", marker="s", ms=4, label="1024-point MC (scaled by nodes)")
         ax.set_xlabel("uncertain parameters d")
         ax.set_ylabel("one robust evaluation (s, log scale)")
-        ax.legend(frameon=False, fontsize=6.5)
+        ax.legend(frameon=False, fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=1)
         out.append(_save(fig, "compute_scaling"))
     return out
 

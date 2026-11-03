@@ -850,7 +850,7 @@ def findings(R):
     d = decomposition(R)
     if d:
         F.append(f"**What robustness costs.** Nominal F: {d['nominal']['wind']:+.4f} from designing at the mean wind, {d['nominal']['robust']:+.4f} from robustness itself. Monte Carlo mean: {d['mu']['wind']:+.4f} and {d['mu']['robust']:+.4f}. "
-                 f"Sigma: {d['sigma']['mdo']:.4f} (MDO) to {d['sigma']['rdo']:.4f} (RDO). P(any violation): {d['p_any']['mdo']:.3f} to {d['p_any']['mdo_wind']:.3f} to {d['p_any']['rdo']:.3f}.")
+                 f"Sigma: {d['sigma']['mdo']:.4f} (MDO) to {d['sigma']['rdo']:.4f} (RDO). P(any violation): {d['p_any']['mdo']:.3f} to {d['p_any']['mdo_wind']:.3f} to {d['p_any']['rdo']:.3f}. RDO's gain is in variance and feasibility, not the mean: {sub_stall(R, 'mdo')['n']} of {sub_stall(R, 'mdo')['of']} MDO samples sit on the sub-stall balance, and without them MDO's mean is {sub_stall(R, 'mdo')['mu_without']:.4f} against RDO's {d['mu']['rdo']:.4f}.")
     ms = multistart_summary(R)
     if ms:
         F.append(f"**Multistart ({ms['n']} Sobol' starts):** {ms['converged']} converge feasibly, to {len(ms['clusters'])} distinct optimum/optima (F within {OK_F:g}): "
@@ -866,7 +866,7 @@ def findings(R):
         F.append(f"**Propagation at the robust optimum:** mean of F {u['mu']:.4f} (UDR), {sm['mu']:.4f} (Smolyak), {so['mu']:.4f} (Sobol'); sigma {u['sigma']:.4f}, {sm['sigma']:.4f}, {so['sigma']:.4f}.")
     tot = {x: (R["designs"][x]["mc_in"]["mda_failed"], R["designs"][x]["mc_in"]["wind_limit"], R["designs"][x]["mc_in"]["N"]) for x in ("humpback", "mdo", "mdo_wind", "rdo") if R["designs"][x].get("mc_in")}
     if tot:
-        F.append("**Analysis failures are counted apart from violations:** in-set Monte Carlo, MDA failures / lap-model limits out of N: " + "; ".join(f"{LABELS[x]} {a} / {b} of {n}" for x, (a, b, n) in tot.items()) + ". The statistics rest on the samples that converged.")
+        F.append("**Analysis failures are counted apart from violations:** in-set Monte Carlo, MDA failures / lap-model limits out of N: " + "; ".join(f"{LABELS[x]} {a} / {b} of {n}" for x, (a, b, n) in tot.items()) + ". A first run lost 17-30 % of its samples to a worker failure, not to the design (RESULTS_LOG.md, Decision 13), and was replaced.")
     re_m, re_r = (R["designs"][x].get("reanalysis") for x in ("mdo", "rdo"))
     if re_m and re_r:
         bad = lambda r: [k for k, x in r["cases"].items() if "rpm" not in k and "full" not in k and (not x.get("ok") or x.get("violated"))]  # noqa: E731
