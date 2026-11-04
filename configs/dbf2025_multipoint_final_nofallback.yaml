@@ -1,0 +1,4 @@
+# Attribution check only (RERUN_2025_LOG.md): dbf2025_multipoint_final.yaml with the MDA continuation fallback off, for the
+# multistarts whose convergence changed against the published study. Take-off on.
+extends: dbf2025_multipoint_final.yaml
+mda_robust: false

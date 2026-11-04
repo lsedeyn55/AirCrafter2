@@ -1,0 +1,794 @@
+[
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Wing -41 % (full-throttle case on the published page)",
+  "src": "",
+  "old": "-41.2 %",
+  "new": "-41.2 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Horizontal tail -5 % (full-throttle case on the published page)",
+  "src": "",
+  "old": "-5.2 %",
+  "new": "-5.2 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Vertical tail +14 % (full-throttle case on the published page)",
+  "src": "",
+  "old": "+14.0 %",
+  "new": "+14.0 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Fuselage +57 % (full-throttle case on the published page)",
+  "src": "",
+  "old": "+57.2 %",
+  "new": "+57.2 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Undercarriage +63 % (full-throttle case on the published page)",
+  "src": "",
+  "old": "+63.4 %",
+  "new": "+63.4 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Structure \u22123 %",
+  "src": "",
+  "old": "-3.2 %",
+  "new": "-3.2 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Structure 5.86 lb against 6.05 lb",
+  "src": "App. A",
+  "old": "5.86 lb",
+  "new": "5.86 lb",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M2 take-off mass \u221210 %",
+  "src": "",
+  "old": "-9.6 %",
+  "new": "-9.6 %",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M2 average lap 27.3 s (lap 2+, logged current)",
+  "src": "",
+  "old": "27.3 s",
+  "new": "27.4 s",
+  "change": "+0.0243",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M2 average lap \u221227 % against 37.4 s",
+  "src": "",
+  "old": "-26.9 %",
+  "new": "-26.8 %",
+  "change": "+0.06498",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M2 3-lap time / 3, take-off included in the new run (not quoted; the fair reading of the 37.4 s)",
+  "src": "",
+  "old": "28.3 s",
+  "new": "29.3 s",
+  "change": "+0.9753",
+  "true": "number changes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M2 average speed +41 % (72.2 mph against 51.1)",
+  "src": "",
+  "old": "+41.4 %",
+  "new": "+36.7 %",
+  "change": "-4.708",
+  "true": "number changes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M3 average speed +39 % (72.9 mph against 52.3)",
+  "src": "",
+  "old": "+39.4 %",
+  "new": "+37.4 %",
+  "change": "-1.952",
+  "true": "number changes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M3 laps 9.8 against 7",
+  "src": "",
+  "old": "9.78",
+  "new": "9.73",
+  "change": "-0.04196",
+  "true": "yes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "M3 laps +40 %",
+  "src": "val_criteria_2025.tex",
+  "old": "+39.7 %",
+  "new": "+39.1 %",
+  "change": "-0.5994",
+  "true": "number changes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Flight rows fail the 10 % criterion (M2 lap, M2 speed, M3 laps, M3 speed)",
+  "src": "val_criteria_2025.tex",
+  "old": "-27 / +41 / +40 / +39 %",
+  "new": "-27 / +37 / +39 / +37 %",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Validation (Woombah, out of sample)",
+  "claim": "Logged-current throttle, M2 (input condition, not quoted)",
+  "src": "",
+  "old": "0.676",
+  "new": "0.675",
+  "change": "-0.001209",
+  "true": "number changes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "Deterministic optimum F = 5.0993",
+  "src": "",
+  "old": "5.0993",
+  "new": "5.0737",
+  "change": "-0.02562",
+  "true": "number changes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "Fuel at the 13.0 lb bottle capacity in every case",
+  "src": "",
+  "old": "11/11 at 13.0 lb",
+  "new": "11/11 at 13.0 lb",
+  "change": "same",
+  "true": "yes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "Best case 6S, 11x8E / 10x7E",
+  "src": "",
+  "old": "6S, 11x8E / 10x7E",
+  "new": "6S, 11x8E / 10x7E",
+  "change": "same",
+  "true": "yes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "Spread across M2 propellers 0.056",
+  "src": "",
+  "old": "0.056",
+  "new": "0.057",
+  "change": "+0.001124",
+  "true": "number changes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "M3 propeller \u2264 0.002",
+  "src": "",
+  "old": "0.0017",
+  "new": "0.0005",
+  "change": "-0.001213",
+  "true": "number changes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "Cell count 0.003",
+  "src": "",
+  "old": "0.0030",
+  "new": "0.0032",
+  "change": "+0.0001915",
+  "true": "yes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "Exactly three M2 laps in calm air (laps constraint active)",
+  "src": "\u00a74 Results, App. A",
+  "old": "3.000",
+  "new": "3.000",
+  "change": "-1.21e-10",
+  "true": "yes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "M3 laps 10.01 (not quoted in the prose; page)",
+  "src": "",
+  "old": "10.01",
+  "new": "9.98",
+  "change": "-0.03731",
+  "true": "number changes"
+ },
+ {
+  "sec": "Deterministic optimum and enumeration",
+  "claim": "M2 3-lap time 84.9 s (page)",
+  "src": "",
+  "old": "84.9 s",
+  "new": "87.7 s",
+  "change": "+2.777",
+  "true": "number changes"
+ },
+ {
+  "sec": "Multistart",
+  "claim": "6 of 10 converged (\"in both years\", \u00a74 Results, App. A)",
+  "src": "",
+  "old": "6",
+  "new": "8",
+  "change": "+2",
+  "true": "**NO**"
+ },
+ {
+  "sec": "Multistart",
+  "claim": "All to one optimum, F 5.0992\u20135.0993 (within about 1e-4, \u00a74 Results)",
+  "src": "",
+  "old": "5.0992\u20135.0993",
+  "new": "5.0737\u20135.0740",
+  "change": "changed",
+  "true": "**NO**"
+ },
+ {
+  "sec": "Multistart",
+  "claim": "4 failed at their first analysis (brief, App. A); \u00a74 says two at the start design, two after 5 and 50 evaluations",
+  "src": "",
+  "old": "its 50, 0, 0, 5",
+  "new": "its 0, 0",
+  "change": "changed",
+  "true": "**NO**"
+ },
+ {
+  "sec": "Multistart",
+  "claim": "K_V \u00d7 M2 throttle constant across converged designs, about 598",
+  "src": "",
+  "old": "598.7\u2013599.3",
+  "new": "599.1\u2013600.0",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Multistart",
+  "claim": "Robust starts K_V 634 to 920 rpm/V",
+  "src": "\u00a74 Results",
+  "old": "634\u2013920",
+  "new": "632\u2013909",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Multistart",
+  "claim": "Robust starts K_V \u00d7 M2 throttle 598\u2013598",
+  "src": "page",
+  "old": "598.2\u2013598.2",
+  "new": "599.3\u2013599.3",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Bookends",
+  "claim": "M2-only gains 0.0013 in M2",
+  "src": "",
+  "old": "+0.0013",
+  "new": "+0.0024",
+  "change": "+0.001062",
+  "true": "number changes"
+ },
+ {
+  "sec": "Bookends",
+  "claim": "M3-only gives up 0.722 in M2",
+  "src": "",
+  "old": "0.722",
+  "new": "0.701",
+  "change": "-0.02146",
+  "true": "number changes"
+ },
+ {
+  "sec": "Bookends",
+  "claim": "M3-only gains 0.0147 in M3",
+  "src": "",
+  "old": "0.0147",
+  "new": "0.0148",
+  "change": "+9.702e-05",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Woombah 5.1020",
+  "src": "",
+  "old": "5.1020",
+  "new": "5.0746",
+  "change": "-0.02741",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (a) 5.3735",
+  "src": "",
+  "old": "5.3735",
+  "new": "5.3308",
+  "change": "-0.04269",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (b) 5.2879",
+  "src": "",
+  "old": "5.2879",
+  "new": "5.2458",
+  "change": "-0.04205",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Robust 5.0986",
+  "src": "y2025.tex",
+  "old": "5.0986",
+  "new": "5.0733",
+  "change": "-0.02539",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "2 L bottles 5.4710",
+  "src": "",
+  "old": "5.4710",
+  "new": "5.4186",
+  "change": "-0.05249",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Gain of 0.183 over mapping (b) (also 0.18 in Discussion, Conclusion)",
+  "src": "",
+  "old": "0.183",
+  "new": "0.173",
+  "change": "-0.01043",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "0.5 L bottles 4.7598",
+  "src": "",
+  "old": "4.7598",
+  "new": "4.7499",
+  "change": "-0.009901",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "The deterministic optimum 0.0027 below Woombah",
+  "src": "",
+  "old": "+0.0027",
+  "new": "+0.0009",
+  "change": "-0.001787",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Ranking of the six designs unchanged (take-off did not change the ranking, \u00a74 Results)",
+  "src": "",
+  "old": "multipoint_2L > ac1_direct > ac1_completed > woombah > multipoint > rdo",
+  "new": "multipoint_2L > ac1_direct > ac1_completed > woombah > multipoint > rdo",
+  "change": "same",
+  "true": "yes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Tank size the largest design effect (4.760, 5.099, 5.471)",
+  "src": "\u00a74 Results",
+  "old": "0.5L 4.760; 1L 5.099; 2L 5.471",
+  "new": "0.5L 4.750; 1L 5.074; 2L 5.419",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Woombah Monte Carlo \u03bc 5.0932",
+  "src": "y2025.tex",
+  "old": "5.0932",
+  "new": "5.0711",
+  "change": "-0.02209",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Woombah Monte Carlo \u03c3 0.0143",
+  "src": "y2025.tex",
+  "old": "0.0143",
+  "new": "0.0140",
+  "change": "-0.0002921",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Woombah Monte Carlo 5th percentile",
+  "src": "mc_2025.tex",
+  "old": "5.0693",
+  "new": "5.0492",
+  "change": "-0.02018",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Woombah largest single-constraint P",
+  "src": "mc_2025.tex",
+  "old": "1.000",
+  "new": "1.000",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (a) Monte Carlo \u03bc 5.3652",
+  "src": "y2025.tex",
+  "old": "5.3652",
+  "new": "5.3307",
+  "change": "-0.03453",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (a) Monte Carlo \u03c3 0.0187",
+  "src": "y2025.tex",
+  "old": "0.0187",
+  "new": "0.0189",
+  "change": "+0.0001951",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (a) Monte Carlo 5th percentile",
+  "src": "mc_2025.tex",
+  "old": "5.3340",
+  "new": "5.3012",
+  "change": "-0.03284",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (a) largest single-constraint P",
+  "src": "mc_2025.tex",
+  "old": "1.000",
+  "new": "1.000",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (b) Monte Carlo \u03bc 5.2756",
+  "src": "y2025.tex",
+  "old": "5.2756",
+  "new": "5.2421",
+  "change": "-0.03349",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (b) Monte Carlo \u03c3 0.0266",
+  "src": "y2025.tex",
+  "old": "0.0266",
+  "new": "0.0258",
+  "change": "-0.0007761",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (b) Monte Carlo 5th percentile",
+  "src": "mc_2025.tex",
+  "old": "5.2326",
+  "new": "5.2027",
+  "change": "-0.02991",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Mapping (b) largest single-constraint P",
+  "src": "mc_2025.tex",
+  "old": "0.585",
+  "new": "0.499",
+  "change": "-0.08594",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Deterministic Monte Carlo \u03bc 5.0905",
+  "src": "y2025.tex",
+  "old": "5.0905",
+  "new": "5.0699",
+  "change": "-0.02058",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Deterministic Monte Carlo \u03c3 0.0131",
+  "src": "y2025.tex",
+  "old": "0.0131",
+  "new": "0.0129",
+  "change": "-0.0002834",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Deterministic Monte Carlo 5th percentile",
+  "src": "mc_2025.tex",
+  "old": "5.0681",
+  "new": "5.0495",
+  "change": "-0.01864",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Deterministic largest single-constraint P",
+  "src": "mc_2025.tex",
+  "old": "0.621",
+  "new": "0.499",
+  "change": "-0.1221",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "2 L Monte Carlo \u03bc 5.4569",
+  "src": "y2025.tex",
+  "old": "5.4569",
+  "new": "5.4148",
+  "change": "-0.04213",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "2 L Monte Carlo \u03c3 0.0323",
+  "src": "y2025.tex",
+  "old": "0.0323",
+  "new": "0.0315",
+  "change": "-0.0007768",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "2 L Monte Carlo 5th percentile",
+  "src": "mc_2025.tex",
+  "old": "5.4042",
+  "new": "5.3659",
+  "change": "-0.03835",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "2 L largest single-constraint P",
+  "src": "mc_2025.tex",
+  "old": "0.573",
+  "new": "0.501",
+  "change": "-0.07227",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Robust Monte Carlo \u03bc 5.0900",
+  "src": "y2025.tex",
+  "old": "5.0900",
+  "new": "5.0695",
+  "change": "-0.02046",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Robust Monte Carlo \u03c3 0.0130",
+  "src": "y2025.tex",
+  "old": "0.0130",
+  "new": "0.0124",
+  "change": "-0.0005992",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Robust Monte Carlo 5th percentile",
+  "src": "mc_2025.tex",
+  "old": "5.0679",
+  "new": "5.0497",
+  "change": "-0.01815",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Robust largest single-constraint P",
+  "src": "mc_2025.tex",
+  "old": "0.016",
+  "new": "0.003",
+  "change": "-0.0127",
+  "true": "number changes"
+ },
+ {
+  "sec": "Common evaluation",
+  "claim": "Analysis failures across the six Monte Carlos: none (\u00a7App. A)",
+  "src": "",
+  "old": "0",
+  "new": "0",
+  "change": "+0",
+  "true": "yes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "RDO nominal cost 0.0007",
+  "src": "",
+  "old": "0.0007",
+  "new": "0.0005",
+  "change": "-0.0002378",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "All 3 robust starts converged",
+  "src": "",
+  "old": "3/3",
+  "new": "3/3",
+  "change": "same",
+  "true": "yes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "Within 1e-6",
+  "src": "",
+  "old": "5.7e-07",
+  "new": "2.1e-11",
+  "change": "-5.651e-07",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "\u03c3_F 0.0131 \u2192 0.0130",
+  "src": "",
+  "old": "0.0131 \u2192 0.0130",
+  "new": "0.0129 \u2192 0.0124",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "Largest single-constraint P(violation) 0.621 \u2192 0.016",
+  "src": "",
+  "old": "0.621 \u2192 0.016",
+  "new": "0.499 \u2192 0.003",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "5th percentile unchanged",
+  "src": "",
+  "old": "5.0681 \u2192 5.0679",
+  "new": "5.0495 \u2192 5.0497",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "The deterministic optimum misses the 3 M2 laps in 62 % of samples",
+  "src": "",
+  "old": "62.1 %",
+  "new": "47.6 %",
+  "change": "-14.55",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "Any headwind costs it laps (M2 laps at the mean wind and mean inputs, calm air 3.000)",
+  "src": "",
+  "old": "2.987",
+  "new": "3.009",
+  "change": "+0.02205",
+  "true": "**NO**"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "Wind was what robustness bought: P(miss M2 laps), calmest to windiest quartile",
+  "src": "",
+  "old": "51 % \u2192 79 %",
+  "new": "48 % \u2192 51 %",
+  "change": "changed",
+  "true": "**NO**"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "(For comparison) P(miss M2 laps), lightest to heaviest build-mass quartile",
+  "src": "",
+  "old": "4 % \u2192 100 %",
+  "new": "0 % \u2192 100 %",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Robustness",
+  "claim": "P(any violation), deterministic \u2192 robust (not quoted; computed from the Monte Carlo arrays, old and new)",
+  "src": "",
+  "old": "1.000 \u2192 0.027",
+  "new": "0.973 \u2192 0.003",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Propagation and variance",
+  "claim": "UDR, Smolyak and Monte Carlo agree: 9, 49, 1024 analyses",
+  "src": "",
+  "old": "9 / 49 / 1024",
+  "new": "9 / 49 / 1024",
+  "change": "same",
+  "true": "yes"
+ },
+ {
+  "sec": "Propagation and variance",
+  "claim": "Mean of F by the three methods agree (to the precision reported)",
+  "src": "",
+  "old": "5.0900 / 5.0900 / 5.0900",
+  "new": "5.0695 / 5.0695 / 5.0695",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Propagation and variance",
+  "claim": "\u03c3 of F by the three methods",
+  "src": "",
+  "old": "0.0130 / 0.0130 / 0.0130",
+  "new": "0.0124 / 0.0124 / 0.0124",
+  "change": "changed",
+  "true": "number changes"
+ },
+ {
+  "sec": "Propagation and variance",
+  "claim": "Every constraint to about 2 % (largest spread in \u03c3 among the methods; the published data give 2.8 %)",
+  "src": "\u00a74 Results",
+  "old": "2.8 %",
+  "new": "0.2 %",
+  "change": "-2.587",
+  "true": "number changes"
+ },
+ {
+  "sec": "Propagation and variance",
+  "claim": "Build mass about 2/3 of the variance of F",
+  "src": "",
+  "old": "0.66",
+  "new": "0.87",
+  "change": "+0.2107",
+  "true": "number changes"
+ },
+ {
+  "sec": "Propagation and variance",
+  "claim": "Wind about 1/3",
+  "src": "",
+  "old": "0.34",
+  "new": "0.13",
+  "change": "-0.2124",
+  "true": "number changes"
+ },
+ {
+  "sec": "Sensitivities",
+  "claim": "Normalisation barely moves the design",
+  "src": "",
+  "old": "largest off-diagonal move: fuel 0.00 lb, M3 laps 0.12 (6 runs)",
+  "new": "largest off-diagonal move: fuel 0.00 lb, M3 laps 0.11 (6 runs)",
+  "change": "changed",
+  "true": "number changes"
+ }
+]
