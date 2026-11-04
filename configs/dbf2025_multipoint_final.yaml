@@ -1,0 +1,7 @@
+# The 2024-25 multipoint problem re-run at the final code (tag results-2026-final), so that the two rulesets are test
+# cases of one framework: RERUN_2025_LOG.md. Take-off in the mission time as dbf2025_multipoint_takeoff.yaml (k_lof,
+# CL_ground, start_offset), the MDA continuation fallback on as the 2025-26 problem. The wind stays along the course
+# axis: no lap.wind_dir parameter and no course.turn_drift, as the 2024-25 ruleset (recorded choice); the course preset
+# stays dbf_2025 (the ruleset's). Mass model: the USYD-calibrated factors of configs/placeholders.yaml.
+extends: dbf2025_multipoint_takeoff.yaml
+mda_robust: true

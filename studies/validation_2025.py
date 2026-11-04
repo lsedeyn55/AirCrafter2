@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "outputs" / "results"
 DOCS = ROOT / "docs" / "studies" / "results"
 LB, FT, MPH = 0.45359237, 0.3048, 0.44704
+CONFIG = ROOT / "configs" / "woombah_2025.yaml"  # --config: Woombah's config (the re-run at the final code)
 LAP_FT = 3000.0  # 500 + 1000 + 500 ft of straights + turns: Woombah's 3000 ft lap distance [W p. 25]
 
 # Woombah as reported [W]: Table 34 (p. 45) masses in lb; Tables 38-39 (p. 59) flight results
@@ -64,6 +65,8 @@ def v(p, k):
 
 def dump(name, data):
     OUT.mkdir(parents=True, exist_ok=True)
+    g = git_hash()
+    data = {**data, "git": g, "git_clean": not g.endswith("-dirty")}
     (OUT / f"validation_{name}.json").write_text(json.dumps(data, indent=1, default=lambda o: o.item()
                                                             if hasattr(o, "item") else o.tolist()))
 
@@ -73,8 +76,11 @@ def load(name):
 
 
 def git_hash():
-    return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
+    """Short HEAD commit, with '-dirty' when tracked files differ from it."""
+    head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                           text=True).stdout.strip()
+    dirty = subprocess.run(["git", "diff", "--quiet", "HEAD"], cwd=ROOT).returncode != 0
+    return head + ("-dirty" if dirty else "")
 
 
 MASS_VARIANTS = {"gg": "G&G factors (uncalibrated)", "loo": "USYD factors without Woombah (out-of-sample)",
@@ -102,7 +108,7 @@ def mass_override(variant):
 def woombah_config(mass=None):
     from aircrafter2.problems.multipoint import load_multipoint_config
 
-    mcfg = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+    mcfg = load_multipoint_config(CONFIG)
     if mass:
         opts, inp = mass_override(mass)
         mcfg.base.mass.options = mcfg.base.mass.options.model_copy(update=opts)
@@ -224,8 +230,10 @@ def _solve_throttle(pt, target_A, other=1.0):
 def woombah():
     from aircrafter2.problems.multipoint import m1_check
 
-    out = dict(git=git_hash(), config="configs/woombah_2025.yaml", mass=MASS, mass_label=MASS_VARIANTS[MASS], cases={})
+    out = dict(git=git_hash(), config=str(CONFIG.relative_to(ROOT)), mass=MASS, mass_label=MASS_VARIANTS[MASS], cases={})
     p, mcfg = _run(1.0, 1.0)
+    if p is None:
+        raise SystemExit("Woombah at full throttle: MDA non-convergence")
     out["cases"]["full_throttle"] = snapshot(p, mcfg)
     out["cases"]["full_throttle"]["M1"] = m1_check(mcfg, p)
     print("full throttle:", {pt: {k: round(out["cases"]["full_throttle"][pt][k], 2) for k in
@@ -571,6 +579,12 @@ if __name__ == "__main__":
     ap.add_argument("part", choices=["corners", "woombah", "calibrate", "report"])
     ap.add_argument("--mass", choices=list(MASS_VARIANTS), default="gg", help="woombah: mass factors (module docstring)")
     ap.add_argument("--force", action="store_true", help="calibrate: rerun the superseded Woombah-only refit")
+    ap.add_argument("--config", help="Woombah's config, relative to the repo root")
+    ap.add_argument("--out", help="output folder, relative to the repo root")
     a = ap.parse_args()
     MASS, FORCE = a.mass, a.force
+    if a.config:
+        CONFIG = ROOT / a.config
+    if a.out:
+        OUT = ROOT / a.out
     globals()[a.part]()

@@ -151,5 +151,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("part", choices=["run", "direct", "completed"])
     ap.add_argument("--refine", type=int, default=1)
+    ap.add_argument("--config", help="deterministic config, relative to the repo root")
+    ap.add_argument("--out", help="output folder, relative to the repo root")
     a = ap.parse_args()
+    R.use_paths(a.out, a.config)
     globals()[a.part](a.refine)

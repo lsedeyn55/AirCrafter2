@@ -1,0 +1,11 @@
+# Project Woombah as built (woombah_2025.yaml) at the final code: take-off in the mission time and the MDA continuation
+# fallback on, the same values as dbf2025_multipoint_final.yaml. Analysis only.
+extends: woombah_2025.yaml
+mda_robust: true
+course:
+  preset: dbf_2025
+  takeoff:
+    in_mission_time: true
+    k_lof: 1.1
+    CL_ground: 0.15
+    start_offset_ft: 0.0

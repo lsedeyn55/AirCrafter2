@@ -33,6 +33,9 @@ OUT = ROOT / "outputs" / "results"
 RUNS = OUT / "runs"
 LB_ = 0.45359237
 CFG = ROOT / "configs" / "dbf2025_multipoint.yaml"
+WOOMBAH_CFG = ROOT / "configs" / "woombah_2025.yaml"
+AC1_JSON = ROOT / "docs" / "studies" / "results" / "aircrafter1_2025.json"  # the reused AirCrafter 1.0 run
+BATCH = 240  # Monte Carlo samples per pool of fresh workers: no worker gets near the ~250-evaluation solver-state defect
 POINT_OUT = ["m_total", "m_empty", "m_pay", "m_wing", "m_ht", "m_vt", "m_fus", "m_gear", "m_sys", "m_batt", "v",
              "ThreeLapTime", "laps_frac", "I_static", "I_pack_static", "rpm_margin", "I_margin", "SM", "CD0",
              "CD_stores", "energy_margin", "E_nom_total", "thrust_margin_static", "v_fit_margin", "stall_margin",
@@ -44,28 +47,78 @@ def v(p, k):
 
 
 def git_hash():
-    return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
+    """Short HEAD commit, with '-dirty' when tracked files differ from it."""
+    head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                           text=True).stdout.strip()
+    dirty = subprocess.run(["git", "diff", "--quiet", "HEAD"], cwd=ROOT).returncode != 0
+    return head + ("-dirty" if dirty else "")
+
+
+def provenance():
+    """The commit, the clean-tree flag and the model package this process imported (the venv's editable install points
+    at another checkout, so a run that imports that one must be visible)."""
+    import aircrafter2
+
+    g = git_hash()
+    return dict(git=g, git_clean=not g.endswith("-dirty"), model_path=str(Path(aircrafter2.__file__).parent))
+
+
+def use_paths(out=None, config=None, rdo_config=None, woombah_config=None, docs=None):
+    """Point the study at another output folder and other configs (the re-run at the final code: RERUN_2025_LOG.md)."""
+    global OUT, RUNS, CFG, DOCS, WOOMBAH_CFG
+    if out:
+        OUT = ROOT / out
+        RUNS = OUT / "runs"
+    if config:
+        CFG = ROOT / config
+    if woombah_config:
+        WOOMBAH_CFG = ROOT / woombah_config
+    if docs:
+        DOCS = ROOT / docs
+    if rdo_config:
+        UQ_SETS["final"] = dict(name="final", cfg=ROOT / rdo_config, out=OUT / "reduced_final", prefix="rdof_", select=False)
 
 
 def dump(tag, data):
     RUNS.mkdir(parents=True, exist_ok=True)
-    (RUNS / f"{tag}.json").write_text(json.dumps(data, indent=1, default=lambda o: o.item() if hasattr(o, "item")
-                                                 else o.tolist()))
+    (RUNS / f"{tag}.json").write_text(json.dumps({**data, **provenance()}, indent=1,
+                                                 default=lambda o: o.item() if hasattr(o, "item") else o.tolist()))
+
+
+def peak_rss_gb():
+    import resource
+
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
+
+
+def mda_fallbacks(p):
+    """Solves that needed the continuation (RetryNewton robust mode), per point MDA."""
+    out = {}
+    for pt in ("M2", "M3"):
+        solver = p.model._get_subsystem(f"points.{pt}.mda").nonlinear_solver
+        log = getattr(solver, "log", [])
+        out[pt] = dict(solves=getattr(solver, "n_solve", 0),
+                       continuation=len({e[0] for e in log if e[1].startswith("continuation")}),
+                       failed_attempts=len([e for e in log if not e[2]]))
+    return out
+
+
+def _kind(exc):
+    return "wind limit (lap_invalid)" if "non-physical lap" in str(exc) else "MDA non-convergence"
 
 
 def load(tag):
     return json.loads((RUNS / f"{tag}.json").read_text())
 
 
-def config(cells=None, m2=None, m3=None, scoring=None, cfg=CFG, fixed=None, bottle=None):
+def config(cells=None, m2=None, m3=None, scoring=None, cfg=None, fixed=None, bottle=None):
     """The multipoint config with overrides; fixed = {design variable: value} pins DVs (equal bounds);
     bottle = a key of stores.BOTTLES for the external tanks."""
     from aircrafter2.problems.multipoint import load_multipoint_config
     from aircrafter2.problems.wing_aero import Bounds
     from aircrafter2.stores import BOTTLES, Bottle
 
-    mcfg = load_multipoint_config(cfg)
+    mcfg = load_multipoint_config(cfg or CFG)
     if bottle:
         mcfg.mp.stores.bottle = Bottle(**BOTTLES[bottle])
     for name, val in (fixed or {}).items():
@@ -126,32 +179,44 @@ def summarise(p, mcfg):
     return out
 
 
-def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=None, cfg=CFG, maxiter=None, fixed=None,
+def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=None, cfg=None, maxiter=None, fixed=None,
              bottle=None):
     from openmdao.core.analysis_error import AnalysisError
 
-    from aircrafter2.problems.multipoint import build_multipoint_problem
+    from aircrafter2.problems.multipoint import build_multipoint_problem, run_warm
 
+    cfg = cfg or CFG
     mcfg = config(cells, m2, m3, scoring, cfg, fixed, bottle)
     if maxiter:
         mcfg.base.maxiter = maxiter
     p = build_multipoint_problem(mcfg, driver=True, mda_retry=True)  # warm-start fallbacks (RDO's RetryNewton)
     p.driver.options["disp"] = False
-    if start:
-        for k, x in load(start)["dv"].items():
-            p.set_val(k, x)
-    for k, x in (x0 or {}).items():
-        p.set_val(k, x)
+    warm = bool(mcfg.base.mda_robust and (start or x0))
     t = time.perf_counter()
     err = None
-    try:
-        res = p.run_driver()
-        ok, its = bool(res.success), int(res.iter_count)
-    except AnalysisError as exc:
-        ok, its, err = False, int(p.driver.iter_count), f"MDA non-convergence: {str(exc)[:200]}"
+    if warm:  # as results_2026.optimise: converge at the config's (unfixed) start, so the first driver evaluation is warm
+        try:
+            run_warm(p, config(cells, m2, m3, scoring, cfg, None, bottle), {}, run=False)
+        except AnalysisError as exc:
+            err = f"warm-path pre-run: {_kind(exc)}: {str(exc)[:200]}"
+    if start:
+        for k, x in load(start)["dv"].items():
+            if not (fixed and k in fixed):
+                p.set_val(k, x)
+    for k, x in (x0 or {}).items():
+        p.set_val(k, x)
+    for k, x in (fixed or {}).items():
+        p.set_val(k, x)
+    ok, its = False, 0
+    if err is None:
+        try:
+            res = p.run_driver()
+            ok, its = bool(res.success), int(res.iter_count)
+        except AnalysisError as exc:
+            ok, its, err = False, int(p.driver.iter_count), f"{_kind(exc)}: {str(exc)[:200]}"
     wall = time.perf_counter() - t
     out = dict(tag=tag, ok=ok, its=its, error=err, time=wall, start=start, x0=x0, git=git_hash(), maxiter=mcfg.base.maxiter,
-               fixed=fixed, bottle=bottle or "1L",
+               fixed=fixed, bottle=bottle or "1L", warm_path=warm, mda_fallbacks=mda_fallbacks(p), peak_rss_gb=peak_rss_gb(),
                threads=os.environ.get("OMP_NUM_THREADS"), config=str(Path(cfg).relative_to(ROOT)))
     if err is None:
         out.update(summarise(p, mcfg))
@@ -347,29 +412,41 @@ def rdo(tag, case=None, start=None, x0=None, maxiter=None, index=None):
         x0 = _sobol_designs(mcfg, 10)[index]
     p = build_robust_multipoint(mcfg, driver=True, extra_robust=("points.M2.laps_frac",))
     p.driver.options["disp"] = False
-    for k, x in (load(start)["dv"] if start else run["dv"]).items():
-        p.set_val(k, x)
-    for k, x in (x0 or {}).items():
-        p.set_val(k, x)
+    from aircrafter2.problems.multipoint import design_values, run_warm
+
+    start_dv = {**(load(start)["dv"] if start else run["dv"]), **(x0 or {})}
     t = time.perf_counter()
     err = None
+    ok, its = False, 0
     try:
+        if mcfg.base.mda_robust:  # as results_2026.rdo: the warm path to the start design
+            try:
+                run_warm(p, _mcfg_for(run), start_dv, run=False)
+            except AnalysisError as exc:
+                raise AnalysisError(f"warm-path pre-run: {exc}") from exc
+        else:
+            for k, x in start_dv.items():
+                p.set_val(k, x)
         res = p.run_driver()
         ok, its = bool(res.success), int(res.iter_count)
     except AnalysisError as exc:
-        ok, its, err = False, int(p.driver.iter_count), f"MDA non-convergence: {str(exc)[:200]}"
+        ok, its, err = False, int(p.driver.iter_count), f"{_kind(exc)}: {str(exc)[:200]}"
     wall = time.perf_counter() - t
-    from aircrafter2.problems.multipoint import design_values
 
-    out = dict(tag=tag, case=run["tag"], ok=ok, its=its, error=err, time=wall, N=p.rdo["N"],
+    fallbacks = [dict(point=pt, node=j, continuation=len({e[0] for e in s_.log if e[1].startswith("continuation")}),
+                      failed_attempts=len([e for e in s_.log if not e[2]]))
+                 for pt, ss in p.rdo["solvers"].items() for j, s_ in enumerate(ss)] if "solvers" in p.rdo else None
+    out = dict(tag=tag, case=run["tag"], ok=ok, its=its, error=err, time=wall, N=p.rdo["N"], fallbacks=fallbacks,
+               peak_rss_gb=peak_rss_gb(),
                active=[d.name for d in p.rdo["active"]], dv=design_values(p, mcfg),
                start=start or (f"sobol{index}" if index is not None else run["tag"]),
-               summary=robust_summary_mp(p), nodes=node_report_mp(p), props=run["props"], cells=run["cells"],
+               summary=robust_summary_mp_safe(p), nodes=node_report_mp(p), props=run["props"], cells=run["cells"],
                k=mcfg.base.robust.k, beta=mcfg.base.robust.beta, git=git_hash(),
                threads=os.environ.get("OMP_NUM_THREADS"))
     dump(tag, out)
-    print(f"{tag}: ok={ok} its={its} {wall:.0f}s mu={out['summary']['flight_score']['mu']:.4f} "
-          f"sigma={out['summary']['flight_score']['sigma']:.4f} {err or ''}", flush=True)
+    fs = (out["summary"] or {}).get("flight_score", {})
+    print(f"{tag}: ok={ok} its={its} {wall:.0f}s mu={fs.get('mu', float('nan')):.4f} "
+          f"sigma={fs.get('sigma', float('nan')):.4f} {err or ''}", flush=True)
 
 
 def robust_summary_mp_safe(p):
@@ -381,6 +458,75 @@ def robust_summary_mp_safe(p):
         return None
 
 
+def any_violation(values, outputs, constraints, rtol=1e-6):
+    """P(any constraint violated) over the converged rows; the same tolerance as sampling.violation_probabilities."""
+    idx = {o: j for j, o in enumerate(outputs)}
+    ok = ~np.isnan(values).any(axis=1)
+    bad = np.zeros(int(ok.sum()), bool)
+    for name, kw in constraints:
+        if name not in idx:
+            continue
+        col = values[ok, idx[name]]
+        for side, sgn in (("lower", -1.0), ("upper", 1.0)):
+            bound = kw.get(side)
+            if bound is not None:
+                tol = rtol * max(abs(bound), abs(kw.get("ref") or 0.0), 1.0)
+                bad |= sgn * (col - bound) > tol
+    return float(bad.mean()) if bad.size else float("nan")
+
+
+def _longest(flags):
+    best = run_ = 0
+    for x in flags:
+        run_ = run_ + 1 if x else 0
+        best = max(best, run_)
+    return best
+
+
+def evaluate_batched(mcfg, dv, rows, outputs, workers, checkpoint=None):
+    """sampling.evaluate over consecutive batches of at most BATCH rows, each on a fresh pool (the worker defect:
+    RESULTS_LOG.md Decision 13; the frozen evaluate keeps one pool). checkpoint: a stem; each finished batch is saved
+    there, so a restart resumes at the next batch."""
+    from aircrafter2.robustness.sampling import evaluate
+
+    parts = []
+    for b, i in enumerate(range(0, len(rows), BATCH)):
+        f = Path(f"{checkpoint}.part{b}.npz") if checkpoint else None
+        if f is not None and f.exists():
+            z = np.load(f)
+            parts.append(dict(values=z["values"], failed=list(z["failed"]), lap_invalid=list(z["lap_invalid"]),
+                              retried=list(z["retried"]), wall=float(z["wall"])))
+            continue
+        ev = evaluate(mcfg, dv, rows[i:i + BATCH], outputs, workers)
+        parts.append(ev)
+        if f is not None:
+            np.savez(f, values=ev["values"], failed=np.array(ev["failed"], int), lap_invalid=np.array(ev["lap_invalid"], int),
+                     retried=np.array(ev["retried"], int), wall=ev["wall"])
+        print(f"  batch {b}: {len(ev['failed'])} failed, {ev['wall']:.0f} s", flush=True)
+    shift = lambda key: sorted(int(b * BATCH + j) for b, p_ in enumerate(parts) for j in p_[key])  # noqa: E731
+    return dict(values=np.vstack([p_["values"] for p_ in parts]), failed=shift("failed"), lap_invalid=shift("lap_invalid"),
+                retried=shift("retried"), wall=sum(p_["wall"] for p_ in parts), workers=workers)
+
+
+def failure_check(mcfg, dv, rows, outputs, ev, workers):
+    """Are the failures the worker defect (blocks at the end of a batch) or the sample? The longest run of consecutive
+    failures, where they fall within their batches, and whether the MDA failures converge on a fresh pool (a report: the
+    NaN rows stay NaN)."""
+    from aircrafter2.robustness.sampling import evaluate
+
+    n = len(rows)
+    flags = np.zeros(n, bool)
+    flags[ev["failed"]] = True
+    pos = [(i % BATCH) / BATCH for i in ev["failed"]]
+    quart = [sum(int(4 * x) == q for x in pos) for q in range(4)]
+    mda = sorted(set(ev["failed"]) - set(ev["lap_invalid"]))
+    out = dict(longest_failed_run=_longest(flags), failed_by_quarter_of_batch=quart, batch=BATCH, mda_failed=mda)
+    if mda:
+        again = evaluate(mcfg, dv, [rows[i] for i in mda], outputs, workers)
+        out["mda_failed_recovered_on_fresh_pool"] = len(mda) - len(again["failed"])
+    return out
+
+
 def monte_carlo(designs, n=MC_N, workers=5):
     """1024 scrambled Sobol' points (seed 0) over all uncertain parameters, the same points for every design.
     designs: [(label, MultipointConfig, dv)]. Writes outputs/results/mc_<label>.npz and mc.json."""
@@ -388,7 +534,7 @@ def monte_carlo(designs, n=MC_N, workers=5):
 
     from aircrafter2.problems.multipoint import build_multipoint_problem, multipoint_constraints
     from aircrafter2.robustness.rdo_multipoint import resolved_dists_mp
-    from aircrafter2.robustness.sampling import evaluate, violation_probabilities
+    from aircrafter2.robustness.sampling import violation_probabilities
 
     summary = json.loads((UQ["out"] / "mc.json").read_text()) if (UQ["out"] / "mc.json").exists() else {}
     for label, mcfg, dv in designs:
@@ -400,9 +546,10 @@ def monte_carlo(designs, n=MC_N, workers=5):
         rows = [{d.name: float(d.ppf(ui)) for d, ui in zip(dists, row)} for row in u]
         cons = multipoint_constraints(mcfg)
         outputs = ["flight_score", "M2", "M3"] + [c for c, _ in cons]
-        ev = evaluate(mcfg, dv, rows, outputs, workers)
+        ev = evaluate_batched(mcfg, dv, rows, outputs, workers, checkpoint=UQ["out"] / f"mc_{label}")
         V = ev["values"]
         np.savez(UQ["out"] / f"mc_{label}.npz", values=V, outputs=np.array(outputs), u=u)
+        fcheck = failure_check(mcfg, dv, rows, outputs, ev, workers)
         ok = ~np.isnan(V).any(axis=1)
         stats = {}
         for j, o in enumerate(outputs[:3]):
@@ -411,8 +558,10 @@ def monte_carlo(designs, n=MC_N, workers=5):
         summary[label] = dict(N=n, failed=len(ev["failed"]), lap_invalid=len(ev.get("lap_invalid", [])),
                               retried=len(ev["retried"]), wall=ev["wall"],
                               stats=stats, p_violation=violation_probabilities(V, outputs, cons),
-                              params=[d.name for d in dists], git=git_hash())
+                              p_any=any_violation(V, outputs, cons), failure_check=fcheck, batch=BATCH,
+                              params=[d.name for d in dists], **provenance())
         (UQ["out"] / "mc.json").write_text(json.dumps(summary, indent=1, default=float))
+        (UQ["out"] / f"mc_{label}.json").write_text(json.dumps(summary[label], indent=1, default=float))
         print(f"MC {label}: failed {len(ev['failed'])}, F mu {stats['flight_score']['mu']:.4f} "
               f"sigma {stats['flight_score']['sigma']:.4f} p5 {stats['flight_score']['p5']:.4f}", flush=True)
 
@@ -468,7 +617,7 @@ def mc_designs(labels=None):
     # one of the three calibration aircraft; studies/validation_2025.py woombah --mass cal)
     w = json.loads((OUT / "validation_woombah_cal.json").read_text())
     if "logged_current" in w["cases"]:
-        wm = load_multipoint_config(ROOT / "configs" / "woombah_2025.yaml")
+        wm = load_multipoint_config(WOOMBAH_CFG)
         wm.base.robust = rob.model_copy(deep=True)
         # the set's tail form: the full set pins gg tails (its f_ht / f_vt spreads), as every other design here
         wm.base.mass.options = wm.base.mass.options.model_copy(
@@ -538,21 +687,57 @@ def common(labels=None):
     """Common evaluation 2: every design in the AirCrafter 2.0 multipoint analysis at nominal inputs (summarise())."""
     from openmdao.core.analysis_error import AnalysisError
 
-    from aircrafter2.problems.multipoint import build_multipoint_problem
+    from aircrafter2.problems.multipoint import build_multipoint_problem, run_warm
 
     out = json.loads((UQ["out"] / "common_nominal.json").read_text()) if (UQ["out"] / "common_nominal.json").exists() else {}
     for label, mcfg, dv in mc_designs(labels):
         p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
-        for k, x in dv.items():
-            p.set_val(k, x)
         try:
-            p.run_model()
-            out[label] = dict(ok=True, **summarise(p, mcfg))
+            if mcfg.base.mda_robust:
+                run_warm(p, mcfg, dv)
+            else:
+                for k, x in dv.items():
+                    p.set_val(k, x)
+                p.run_model()
+            out[label] = dict(ok=True, **summarise(p, mcfg), **provenance())
         except AnalysisError as exc:
-            out[label] = dict(ok=False, error=f"MDA non-convergence: {str(exc)[:200]}")
+            out[label] = dict(ok=False, error=f"{_kind(exc)}: {str(exc)[:200]}", **provenance())
         print(f"common {label}: {out[label].get('score', {}).get('flight_score', out[label].get('error'))}",
               flush=True)
     (UQ["out"] / "common_nominal.json").write_text(json.dumps(out, indent=1, default=float))
+
+
+def continuity():
+    """The six designs of the published 2024-25 page (docs/studies/results/results_2025.json, git 34e4834), unchanged, at the
+    final code: take-off off, then take-off on. Separates what the code change moved from what the take-off moved, and
+    reports whether the old designs still satisfy the constraints in the new model."""
+    from openmdao.core.analysis_error import AnalysisError
+
+    from aircrafter2.problems.multipoint import build_multipoint_problem, multipoint_constraints, run_warm
+    from aircrafter2.robustness.sampling import violation_probabilities
+
+    old = json.loads((ROOT / "docs" / "studies" / "results" / "results_2025.json").read_text())["uq"]["reduced"]["nominal"]
+    res = {}
+    for label, o in old.items():
+        res[label] = dict(old_F=o["score"]["flight_score"], old_M2=o["score"]["M2"], old_M3=o["score"]["M3"],
+                          old_t3=o["M2"]["ThreeLapTime"])
+        bottle = "2L" if o["fuel_lb"] > 13.3 else None
+        wb = label == "woombah"
+        for name, base, wcfg in (("takeoff_off", ROOT / "configs" / "dbf2025_multipoint.yaml", ROOT / "configs" / "woombah_2025.yaml"),
+                                 ("takeoff_on", CFG, WOOMBAH_CFG)):
+            mcfg = config(cfg=wcfg) if wb else config(o["cells"], o["props"]["M2"], o["props"]["M3"], cfg=base, bottle=bottle)
+            p = build_multipoint_problem(mcfg, driver=False, mda_retry=True)
+            try:
+                run_warm(p, mcfg, o["dv"])
+                outs = [c for c, _ in multipoint_constraints(mcfg)]
+                V = np.array([[v(p, c) for c in outs]])
+                res[label][name] = dict(F=v(p, "flight_score"), M2=v(p, "M2"), M3=v(p, "M3"),
+                                        t3=v(p, "points.M2.ThreeLapTime"), m2_total=v(p, "points.M2.m_total"),
+                                        violated=[c for c, x in violation_probabilities(V, outs, multipoint_constraints(mcfg)).items() if x > 0])
+            except AnalysisError as exc:
+                res[label][name] = dict(error=f"{_kind(exc)}: {str(exc)[:200]}")
+        print("continuity", label, {k: x for k, x in res[label].items()}, flush=True)
+    dump("continuity", dict(tag="continuity", designs=res))
 
 
 def robust_eval(workers=5):
@@ -620,6 +805,7 @@ def propagation(workers=5, n=MC_N):
 
     r = best_rdo()
     mcfg = _mcfg_for(load(r["case"]))
+    mc_file = UQ["out"] / "mc_rdo.npz"
     rob = mcfg.base.robust
     p = build_multipoint_problem(mcfg, driver=False)
     dists, act = resolved_dists_mp(mcfg, lambda nm: v(p, f"points.M2.{nm}"))
@@ -642,8 +828,16 @@ def propagation(workers=5, n=MC_N):
     u = qmc.Sobol(len(act), scramble=True, seed=0).random(n)
     rows = [dict(base, **{d.name: float(d.ppf(ui)) for d, ui in zip(act, row)}) for row in u]
     allout = outputs + [c for c, _ in cons if c not in outputs]
-    ev = evaluate(mcfg, r["dv"], rows, allout, workers)
-    V = ev["values"]
+    z = np.load(mc_file) if mc_file.exists() else None
+    if z is not None and len(act) == len(dists) and np.array_equal(z["u"], u):  # every parameter active: the same rows
+        names = [str(x) for x in z["outputs"]]  # as the design's in-set Monte Carlo, so its array is the Sobol' estimate
+        V = z["values"][:, [names.index(o) for o in allout]]
+        mc_summary = json.loads((UQ["out"] / "mc_rdo.json").read_text())
+        ev = dict(values=V, failed=[0] * mc_summary["failed"], wall=0.0)
+        out["sobol_source"] = "the in-set Monte Carlo of this design (same rows, batched)"
+    else:
+        ev = evaluate_batched(mcfg, r["dv"], rows, allout, workers)
+        V = ev["values"]
     ok = ~np.isnan(V).any(axis=1)
     out["methods"]["sobol"] = dict(N=n, failed=len(ev["failed"]), wall=ev["wall"],
                                    stats={o: dict(mu=float(V[ok, j].mean()), sigma=float(V[ok, j].std(ddof=1)))
@@ -672,7 +866,7 @@ def _own_claims():
     m3 = m3_verbatim(TABLE39["M3"]["design"]["laps"] - 1, 0.0, TABLE39["M3"]["design"]["x1_lb"], sc["R3"])
     out["woombah"] = dict(source="Table 39 'Design' column [W p. 59]; M2 time = 3 x the 33 s average lap", fuel_lb=
                           d["fuel_lb"], t3=t3, laps=TABLE39["M3"]["design"]["laps"], M2=m2, M3=m3, F=1 + m2 + m3)
-    a = json.loads((DOCS / "aircrafter1_2025.json").read_text())["aircrafter1_2025"]["DP"]
+    a = json.loads(AC1_JSON.read_text())["aircrafter1_2025"]["DP"]
     ac = load("ac1_direct")["ac1"]
     for tag in ("ac1_direct", "ac1_completed"):
         fuel = ac["fuel_kg"] / LB_
@@ -1446,10 +1640,15 @@ def render(R):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("part", choices=["calibrate", "propagation", "classify", "optimise", "bookends", "screen", "node_check", "rdo", "multistart",
+    ap.add_argument("part", choices=["continuity", "calibrate", "propagation", "classify", "optimise", "bookends", "screen", "node_check", "rdo", "multistart",
                                      "normalisation", "mc", "common", "robust_eval", "report"])
-    ap.add_argument("--set", choices=list(UQ_SETS), default="reduced",
+    ap.add_argument("--set", choices=[*UQ_SETS, "final"], default="reduced",
                     help="uncertain set of the robust parts (default the reduced mass-and-wind set)")
+    ap.add_argument("--config", help="deterministic config, relative to the repo root (default dbf2025_multipoint.yaml)")
+    ap.add_argument("--rdo-config", help="robust config of the 'final' uncertain set")
+    ap.add_argument("--woombah-config", help="Woombah as built (default woombah_2025.yaml)")
+    ap.add_argument("--out", help="output folder, relative to the repo root (default outputs/results)")
+    ap.add_argument("--docs", help="page folder, relative to the repo root")
     ap.add_argument("--labels", nargs="*")
     ap.add_argument("--index", type=int)
     ap.add_argument("--f2", type=float)
@@ -1467,8 +1666,11 @@ if __name__ == "__main__":
     ap.add_argument("--workers", type=int, default=5, help="processes of the sampled evaluations (mc, propagation)")
     ap.add_argument("--bottle", help="external tank bottle: a key of stores.BOTTLES (default the config's 1 L)")
     a = ap.parse_args()
+    use_paths(a.out, a.config, a.rdo_config, a.woombah_config, a.docs)
     use_set(a.set)
-    if a.part == "calibrate":
+    if a.part == "continuity":
+        continuity()
+    elif a.part == "calibrate":
         calibrate()
     elif a.part == "optimise":
         sc = {k: getattr(a, k) for k in ("w2", "w3", "R2", "R3") if getattr(a, k) is not None}
