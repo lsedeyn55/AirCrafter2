@@ -2,7 +2,7 @@
 
 Objective F = M1 + M2 + M3 from the multipoint problem's lap counts, payload, M2 pack energy and banner
 (problems/multipoint.py), with each mission ratio capped at 1 (docs/DECISIONS.md#ff-d1). NI_max and B_max, the best
-teams' values, are placeholders (docs/OPEN_QUESTIONS.md Q52). Source: [R26] pp. 10, 19-21, 32
+teams' values, are placeholders (docs/PLACEHOLDERS.md Q52). Source: [R26] pp. 10, 19-21, 32
 (docs/DECISIONS.md#r26-scoring). The rules as written and the model: docs/modules/scoring.md, "dbf2026".
 """
 

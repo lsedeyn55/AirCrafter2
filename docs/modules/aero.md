@@ -48,7 +48,7 @@ drawn in the drag breakdown. For the nose layout, C_D,nac = 0: the nose is in th
 |---|---|---|
 | `Q_nac` | 1.3 | Woombah Sec. 4.3.2: Q ≈ 1.3 with motors 5.5" ahead of the LE (≈ 1.5 at the LE), after Raymer |
 | `l_nac`, `d_nac` | 0.15 m, 0.05 m | PLACEHOLDERS: not in the Woombah report |
-| `nacelle_ff` | `body` | as briefed: the body form 1 + 60/f³ + f/400; `nacelle` uses Raymer's nacelle/store form 1 + 0.35/f |
+| `nacelle_ff` | `body` | as specified: the body form 1 + 60/f³ + f/400; `nacelle` uses Raymer's nacelle/store form 1 + 0.35/f |
 
 **Cross-check against Woombah Table 26** (M1, two nacelles, C_D0 = 0.00069 on S = 914.5 in², 87 mph), using the
 placeholder size:
@@ -74,10 +74,10 @@ Raymer, *Aircraft Design: A Conceptual Approach*, Ch. 12 (component build-up):
 Fully turbulent C_f is conservative for small RC surfaces. The wing's own profile drag comes from the NeuralFoil strips.
 - **Tails:** rectangular, chord √(S / AR).
 - **Fuselage:** the cargo-bay box (equivalent diameter from its cross-section area) plus the tail-boom tube. It's included
-  only with `fuselage_drag=True`, as the brief asked for a switch.
+  only with `fuselage_drag=True`, behind a switch.
 - **Nacelles** (twin wing-mounted layout, `n_nacelles = 2`): the same body build-up per nacelle, a cylinder of length
   `l_nac` and diameter `d_nac`, S_wet ≈ π d l, C_f at Re_l, times the interference factor `Q_nac`. `nacelle_ff="body"` (the
-  default, as briefed) uses the body form factor above, and `"nacelle"` uses Raymer's nacelle and smooth external store
+  default, as specified) uses the body form factor above, and `"nacelle"` uses Raymer's nacelle and smooth external store
   form FF = 1 + 0.35 / f (Ch. 12). For the nose layout the nose is in the fuselage term, and `CD_nac` = 0.
 
 ## Polar (`aero/polar.py`)

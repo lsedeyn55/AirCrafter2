@@ -89,7 +89,7 @@ class SmoothLapModel(om.ExplicitComponent):
     banner_stowed_legs : tuple of int
         Lap-1 leg indices flown with the banner stowed; () = no banner (docs/DECISIONS.md#r26-banner).
     lap1_cluster : float
-        Grid exponent of lap 1's first straight; 1 = uniform (placeholder, docs/OPEN_QUESTIONS.md Q45).
+        Grid exponent of lap 1's first straight; 1 = uniform (placeholder, docs/PLACEHOLDERS.md Q45).
     n_steps_straight, n_steps_turn, n_steps_takeoff : int
         RK4 steps per leg.
     n_poly : int

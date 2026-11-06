@@ -87,7 +87,7 @@ The check reloads the saved `.vsp3` and compares it with `geometry.json`:
 
 Every parameter matches to < 0.01%. The exception is the x location of maximum t/c (≈ 1%), which comes from the
 sampling grid. The wetted-area differences are explained in each report. Those over 5% are listed in
-OPEN_QUESTIONS Q31.
+PLACEHOLDERS Q31.
 
 The report also gives the shape difference between OpenVSP's own CST airfoil type and the exported Kulfan
 coordinates (≈ 0.004 c). OpenVSP's CST has no Kulfan leading-edge term, so the model uses a file airfoil.

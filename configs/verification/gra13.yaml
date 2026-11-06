@@ -32,8 +32,8 @@ inputs:
   f_vt: 0.3414                 # Table 14 combined (GRA13)
   m_sys: 0.65                  # Table 15
   m_pay: 11.0                  # Table 15
-  y1: 0.474                    # ASSUMPTION: b / (2 n_panels) (OPEN_QUESTIONS Q4)
-  x_gd: 0.26                   # ASSUMPTION: held at the spar (OPEN_QUESTIONS Q4)
+  y1: 0.474                    # ASSUMPTION: b / (2 n_panels) (PLACEHOLDERS Q4)
+  x_gd: 0.26                   # ASSUMPTION: held at the spar (PLACEHOLDERS Q4)
 
 expected:                      # Table 15, calculated masses (kg)
   m_wing: 1.249

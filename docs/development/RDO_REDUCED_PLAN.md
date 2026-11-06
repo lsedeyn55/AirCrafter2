@@ -1,8 +1,8 @@
-# RDO with a reduced uncertainty set (mass and wind): plan
+# RDO with a reduced uncertainty set (mass and wind)
 
-Brief: `4_PROMPTS/aircrafter2_rdo_reduced_prompt.md`. Branch `rdo-reduced` from `results` (`ec639dd`).
-Checkpoint 1 of 3 covers `f_build`, the evidence for each spread, the contributions table, the node check and the
-cost estimate.
+Design notes for the reduced uncertain set of the 2024-25 robust optimisation (branch `rdo-reduced`): the build-mass
+factor `f_build`, the evidence for each spread, the contributions at the deterministic optimum, the node check, the
+cost estimate and the decisions taken.
 
 ## 1. `f_build`: what was built
 
@@ -14,7 +14,7 @@ cost estimate.
 
   It does not touch m_sys (motor, ESC, prop, battery, avionics), `m_ballast` or the payload. The loads, the spar and
   boom sizing, the gear's f_gear m and the total mass all see it.
-- **Implementation choice (flagged).** The brief says "multiplies the sum ... inside the mass closure". I applied the
+- **Implementation choice (flagged).** The specification says "multiplies the sum ... inside the mass closure". I applied the
   factor to each structural component rather than to the sum in `MassSum`.
   - The totals and the closure are identical either way.
   - The difference is the CG. `stability/static.py` builds the CG from the component masses, so only the
@@ -22,7 +22,7 @@ cost estimate.
   - With the factor only in `MassSum`, a heavier airframe would leave the CG and the static margin unchanged.
   - This matters in practice. `f_build` carries 70–78 % of the static-margin variance below, so the choice is
     visible in the results.
-  - Say if you want the literal `MassSum` form instead. It is a three-line change.
+  - The literal `MassSum` form would be a three-line change.
 - **Overlap with `f_tb`.** Both scale the boom. This is accepted as settled: f_tb carries the CG effect of mass at the
   tail, f_build the overall build. It is stated in docs/modules/mass.md.
 - **Tests** (`tests/test_rdo_reduced.py`, all pass):
@@ -50,7 +50,7 @@ cost estimate.
 
 All four remain PLACEHOLDERS (independent uniforms). Proposals are marked and not adopted.
 
-### `f_build` ±30 % about 1.0 (settled), OPEN_QUESTIONS Q39
+### `f_build` ±30 % about 1.0 (settled), PLACEHOLDERS Q39
 
 - **G&G Table 14** (individual correction factors of UBI11, GRA13, UBI15 against the combined value)
   [GG p. 292]:
@@ -84,7 +84,7 @@ All four remain PLACEHOLDERS (independent uniforms). Proposals are marked and no
     nor the one-sided [1.0, 1.3] reaches it.
   - **Proposed, not adopted:** treat the Woombah ratio as a calibration, i.e. a nominal shift (the calibrated mass
     model, or f_build ≈ 2.7), with ±30 % about that. Otherwise the robust design is robust to a ±30 % error on a mass
-    that is itself about 2.7× too light. This would add one RDO run. Your call.
+    that is itself about 2.7× too light. This would add one RDO run.
 
 ### `f_tb` ±30 % (unchanged)
 
@@ -175,7 +175,7 @@ optimum, the start and the six Sobol' designs used before.
 sobol5 fails at every node because its own nominal point does not converge. This is the same design-level MDA
 non-convergence as in the full-set check, not a node problem.
 
-## 5. Cost estimate (checkpoint 2 and 3)
+## 5. Cost estimate
 
 The estimates scale from compute_performance.md: RDO cost per driver iteration is about proportional to N. N = 9 here
 against 15 at d = 7.
@@ -190,17 +190,17 @@ against 15 at d = 7.
 | docs: results_2025.md §3 and §7 regenerated, full set kept as a subsection | – |
 | 8: timing at d = 4, 5 repeats of 3 SLSQP iterations, plus a clean main RDO run | ~20 min + 0.3–0.6 h |
 
-Total about 3–4 h of compute for checkpoint 2 and about 1 h for checkpoint 3.
+Total about 3–4 h of compute for stage 2 and about 1 h for stage 3.
 
-## Decisions for you
+## Open decisions
 
 1. Is the per-component `f_build` (the CG sees it) acceptable, rather than the literal `MassSum` form? (§1)
 2. Should the Woombah ×2.7 be treated as a calibration, with one extra RDO run, or only noted? (§2)
 3. Should the wind range follow the Tucson April mean (proposal: 0–6.6 m/s), or stay at 0–3 m/s? (§2)
 
-None of the three is adopted. Checkpoint 2 runs with the settled values unless you say otherwise.
+None of the three is adopted. Stage 2 runs with the settled values.
 
-## Decisions taken (2026-10-21), and what changed after checkpoint 1
+## Decisions taken (2026-10-21), and what changed after the first review
 
 1. **`f_build` per part** (the CG sees it): kept.
 2. **Woombah ratio as a calibration:**
@@ -228,11 +228,11 @@ None of the three is adopted. Checkpoint 2 runs with the settled values unless y
      (3.5 m/s) is not calm. At the mean the deterministic optimum misses M2's 3 laps (laps_frac 2.98), so the
      reference node is not the deterministic nominal. This was already true of the 0–3 m/s range (centre 1.5 m/s).
 
-The contributions table in §3 above is from checkpoint 1, with the 0–3 m/s wind. The current tables (0–7 m/s, and the
+The contributions table in §3 above is from stage 1, with the 0–3 m/s wind. The current tables (0–7 m/s, and the
 calibrated and one-sided sets) are in results_2025.md §7 and §7b–c. With the wider wind, wind carries most of the
 flight score's variance.
 
-**Wind limit (2026-10-21, your call):** an aircraft may have a wind limit; if it is too windy it does not fly. A
+**Wind limit (decided 2026-10-21):** an aircraft may have a wind limit; if it is too windy it does not fly. A
 headwind near the light M3 aircraft's V_stall is therefore a no-flight condition of the design, not a model error.
 - It is reported as "wind limit (no flight)", with its probability per design, separately from MDA non-convergence
   and from constraint violations, and kept out of the score statistics.
@@ -243,9 +243,9 @@ headwind near the light M3 aircraft's V_stall is therefore a no-flight condition
 
 ## Status (2026-10-21)
 
-All three checkpoints are done:
-- checkpoint 1 at `e86c78f`;
-- checkpoint 2 at `3d6cccd`;
-- checkpoint 3 (timing at d = 4, the clean main run, compute_performance.md, INDEX.md) committed with this line.
+All three stages are done:
+- stage 1 at `e86c78f`;
+- stage 2 at `3d6cccd`;
+- stage 3 (timing at d = 4, the clean main run, compute_performance.md, INDEX.md) committed with this line.
 
 Results: results_2025.md Findings 7–11 and sections 3 and 7. Timing: compute_performance.md §3 and §5.

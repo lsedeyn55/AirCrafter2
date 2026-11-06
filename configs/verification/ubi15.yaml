@@ -32,8 +32,8 @@ inputs:
   f_vt: 0.3414                 # Table 14 combined (UBI15)
   m_sys: 0.65                  # Table 15
   m_pay: 10.0                  # Table 15
-  y1: 0.554                    # ASSUMPTION: b / (2 n_panels) (centre panel edge); not given (OPEN_QUESTIONS Q4)
-  x_gd: 0.3                    # ASSUMPTION: held at the spar (OPEN_QUESTIONS Q4)
+  y1: 0.554                    # ASSUMPTION: b / (2 n_panels) (centre panel edge); not given (PLACEHOLDERS Q4)
+  x_gd: 0.3                    # ASSUMPTION: held at the spar (PLACEHOLDERS Q4)
 
 expected:                      # Table 15, calculated masses (kg)
   m_wing: 0.710

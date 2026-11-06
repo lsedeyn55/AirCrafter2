@@ -1,7 +1,10 @@
-# Thesis results on the 2025-26 ruleset (Project Humpback): plan (checkpoint 1)
+# Thesis results on the 2025-26 ruleset (Project Humpback)
 
-Brief: `THESIS/4_PROMPTS/aircrafter2_final_results_2026_prompt.md`. Branch `results-2026` from the Phase A tag
-`results-2024-25-calibrated`. Results frozen by Fri 30 Oct 2026; thesis due about 8 Nov.
+Plan and model changes for the thesis's 2025-26 results (branch `results-2026`, from the tag
+`results-2024-25-calibrated`): the rules as read, the normalisation, the Humpback data, the model changes, the
+AirCrafter 1.0 mode, the uncertainty set and the run list, then the fixes made before the final run and a generated
+summary of that run. The run log is `docs/development/RESULTS_LOG.md`; the result pages are in
+`docs/studies/results_2026/`.
 
 **Sources and citation keys** (printed page numbers throughout):
 - **[R26]** `3_LITERATURE/26 competition/2026-DBF-Rules.pdf` (34 pp., downloaded 2026-10-26 from aiaa.org). Printed
@@ -31,7 +34,7 @@ to `mass_calibration_usyd.md` §11–12; `classify` skips without a Monte Carlo;
 | reduced-set RDO μ − kσ (nominal F) | 5.1188 (5.1386) | 5.0770 (5.0986) |
 | largest P(violation), multipoint → RDO | 0.866 → 0.028 | 0.621 → 0.016 |
 | 2 L bottle fuel | 26.0 lb (fills) | 22.9 lb (M2 static-thrust margin binds) |
-| M1 check at the best case | fails | **passes** (the brief's "fails" is not what the calibrated run records; Woombah and AirCrafter 1.0 direct fail it) |
+| M1 check at the best case | fails | **passes** (the specification's "fails" is not what the calibrated run records; Woombah and AirCrafter 1.0 direct fail it) |
 
 **Found in Phase A (open):** rerunning `mass_calibration_usyd.py fit` on the committed tree reproduces the combined
 factors exactly, but [OH]'s leave-one-out structure error comes out −34.1 % (published −26 %), which would make
@@ -40,7 +43,7 @@ changed (the in-place write was reverted); see §9 Q9.
 
 ## 1. [R26] as read
 
-| Item | [R26] | Page | Your reading |
+| Item | [R26] | Page | Reading |
 |---|---|---|---|
 | Score | Total Mission Score = M1 + M2 + M3 + GM | 32 | ✓ (F = M1 + M2 + M3; GM not modelled) |
 | M1 | 3 laps in the 5-min window, no payload; M1 = 1.0 | 19 | ✓ |
@@ -89,7 +92,7 @@ off-diagonal ×0.5 / ×2 runs (1400–5600, 750–3000) cover every row above.
 | span, chord, area, AR | 59 in; 14.57 in rectangular; 868 in²; AR 4 (§5.1) / 4.02 (Table 24) | §5.1 p. 36; Table 24 p. 26 | **flag:** 59 × 14.57 = 859.6 in² ≠ 868; Table 24 prints c̄ 1.21 ft (14.52 in) and b 4.92 ft, S 6.03 ft² (= 868 in²) |
 | airfoil, incidence, panels | S3016 (Table 24; p. 24–25) vs "SD3016" (§5.1 p. 36) (Q51); i_w 1.0° (Table 24, §4.5.2 p. 25); end-plates (§8.2.1 p. 58); modular 2-piece wing (p. 26) | | ✓ |
 | tails | S_ht 230 in² (HS 30.7 × 7.5 in, AR 4, SD8020); S_vt 90.9 in² (8.6/7.1 in, 11.9 in span, AR 1.5); l_t 1.1 m; V_H 0.80, V_V 0.08 | §5.1 p. 36; §4.5.3 pp. 26–27 | ✓ |
-| fuselage | length 70.5 in, max width 7.8 in, max height 5.5 in (§5.1); passenger bay 39 × 7.7 in (§5.1) = "3 ft 3 in long, max width 7.7 in" (§4.2.2 p. 22); cargo bay 23.5 × 6.1 in, 2 bays of 7 pucks below the passengers (§4.2.1 p. 21, §5.1); Fig. 9 (p. 24): payload box 2 ft 9.4 in, nose 1 ft 7.7 in (1.3 MAC), tail 3 ft 7.3 in (3 MAC), 5 ft 1 in overall | | **flag:** passenger bay 39 in > payload box 33.4 in (brief); **flag:** 5 ft 1 in (Fig. 9) vs 70.5 in (§5.1); 1.3 MAC = 18.9 in vs 19.7 in |
+| fuselage | length 70.5 in, max width 7.8 in, max height 5.5 in (§5.1); passenger bay 39 × 7.7 in (§5.1) = "3 ft 3 in long, max width 7.7 in" (§4.2.2 p. 22); cargo bay 23.5 × 6.1 in, 2 bays of 7 pucks below the passengers (§4.2.1 p. 21, §5.1); Fig. 9 (p. 24): payload box 2 ft 9.4 in, nose 1 ft 7.7 in (1.3 MAC), tail 3 ft 7.3 in (3 MAC), 5 ft 1 in overall | | **flag:** passenger bay 39 in > payload box 33.4 in (specification); **flag:** 5 ft 1 in (Fig. 9) vs 70.5 in (§5.1); 1.3 MAC = 18.9 in vs 19.7 in |
 | propulsion | AT7215-245KV, Hargrave microDRIVE LP (60 A cont.), 8S LiPo; 19×12 flown in §5.3.10; Table 42 flights 19×10 and 19×12 | Table 27 p. 29; §4.6.1 p. 28; Table 42 p. 58 | **flag: 3380 mAh** (§4.8.3 p. 30; your table) gives 100.05 Wh at 29.6 V, over the 100 Wh rule; **3300 mAh / 97.68 Wh** (GNB 8S, §5.3.10, §5.3.12 p. 42) is used |
 | masses | Table 36: fuselage 6.14, HS 2 × 0.21, VS 0.28, wings 2 × 0.79, motor 1.27, ESC 0.24, empty 9.93; battery 1.22; passengers (42) 1.84; cargo (14) 5.25; banner with deployment 1.21 lb | p. 44 | ✓ (Q47 issues stand: "Mission 1" row 1.22; M2 18.54 vs 18.24 from rows) |
 | drag build-up | C_D0 M1 0.0413, M2 0.0430, M3 stowed 0.0480, deployed 0.3600 (banner 0.3025 on wing area) | Table 29 p. 33 | ✓ |
@@ -98,7 +101,7 @@ off-diagonal ×0.5 / ×2 runs (1400–5600, 750–3000) cover every row above.
 | motor mass | 1.27 lb (Table 36) | | [TM7] 555 g = 1.22 lb incl. cable (mount?) |
 | site | Wichita 1300 ft (Table 7 p. 12); average wind ≈ 16.9 ft/s (5.15 m/s, NWS normals, p. 32) | | |
 
-**Flight data** ([HB] Table 42 p. 58), as in the brief ✓ (M2 17.9 lb, 36/12, 19×10: 28 A, 38.8 s; 19×12: 31 A, 33.2 s;
+**Flight data** ([HB] Table 42 p. 58), as in the specification ✓ (M2 17.9 lb, 36/12, 19×10: 28 A, 38.8 s; 19×12: 31 A, 33.2 s;
 M3 19×10: 118/157/197 in at 12.2/12.4/12.8 lb, 32/32/35 A, 62/56/55 s).
 
 **Inconsistencies listed, not resolved (new Q57):** Table 1 (p. 4) vs Table 43 (p. 59): M2 laps 9 vs 8; M3 laps 5 vs
@@ -139,7 +142,7 @@ but lists C_D for six lengths. Cost Eq. 6 without EF.
   candidates that fit the payload fuselage and the passenger ratio at the continuous optimum (`fuselage_margin` ≥ 0,
   `pax_margin` ≥ 0, `rounding_check` in `studies/results_2026.py`) are re-optimised: with the span at its bound the
   fuselage length is set by the counts alone, and rounding 96.92 passengers up made both of the old rule's cases
-  infeasible for every design (docs/MDA_ROBUSTNESS_PLAN.md, status).
+  infeasible for every design (docs/development/MDA_ROBUSTNESS_PLAN.md, status).
 - **Fuselage sized by the payload** (the cargo box = the constant-section payload fuselage, calibration convention;
   PLACEHOLDER derived from [HB], new Q55):
 
@@ -219,7 +222,7 @@ but lists C_D for six lengths. Cost Eq. 6 without EF.
   0.328 m equivalent chord); [W]'s eCalc NP is at 45.8 % MAC (p. 28), ≈ 0.151 m. The CGs agree within 0.01 m (model
   0.133 m vs Table 34's 4.83 in = 0.123 m). So the model's SM reads about +0.13–0.17 high against the teams' tools
   (rectangular equivalent wing, tail efficiency and downwash model, fuselage terms). Humpback is checked the same way
-  at checkpoint 2.
+  at stage 2.
 - So a bound taken from the reports (0.20) and a bound on the model's own SM are not the same thing (§9 Q4).
 
 ### 4.6 Take-off on, after the Q45 fix (B5)
@@ -251,7 +254,7 @@ but lists C_D for six lengths. Cost Eq. 6 without EF.
   carried to the next straight: its along-course part shortens it if the drift is in the next straight's direction
   of flight and lengthens it otherwise, and its cross-course part d is recovered on that straight, which is flown as
   the hypotenuse √((L − δ)² + d²). Smooth in w and θ.
-- **Conflict with the brief (§9 Q1):** at θ = 0 the turn drift is not zero: the along-course part is w·t_turn. So "the
+- **Conflict with the specification (§9 Q1):** at θ = 0 the turn drift is not zero: the along-course part is w·t_turn. So "the
   current model at θ = 0" and "turn drift" cannot both hold when w > 0. Every reference at w = 0 is unchanged either
   way; the 2024-25 Monte Carlo and RDO runs (w > 0) would move. Proposal: a switch `course.turn_drift` (off by
   default, so every 2024-25 config and reference is bit for bit; on in the 2025-26 configs).
@@ -291,7 +294,7 @@ AirCrafter 1.0 at Humpback's design point. Q47's Table 36 issues are carried as 
 | `performance_modeller.m` 55 | E = batteryFraction × E | M2 fix on (fraction = the grid value) |
 | `performance_modeller.m` 73–84 | banner mass L²/5 × 0.17 kg/m², NaN if m > m/PF | kept (shipped) |
 | `propSelector.m` 56–62 | banner mass | kept |
-| `propSelector.m` 97–108 (the brief's "54–83") | cargo 0.17 kg, passenger 0.02 kg, groups of 3 + 1, fuselage-bay drag C_D 0.05 | kept |
+| `propSelector.m` 97–108 (the specification's "54–83") | cargo 0.17 kg, passenger 0.02 kg, groups of 3 + 1, fuselage-bay drag C_D 0.05 | kept |
 | `propSelector.m` 110–114 | banner drag C_D 0.03 × q × L²/5 | kept |
 | `inputs_file.m` | grid, take-off distance, window, altitude | [HB] Table 7: mass 7–55 lb, span 3–5 ft, AR 4–9, V 33–148 ft/s, battery fraction 0.4–1, banner 25–500 in; TO 350 ft, 4.5-min window, 80 Wh, 1300 ft |
 | `assumptions_file.m` | C_L,max, C_D0, … | [HB] Table 6: C_L,max 1.2, C_L,TO 1.3, C_D0 0.05, η 0.70, n 5, PF 0.4, e 0.85, μ 0.02 |
@@ -316,13 +319,13 @@ Mappings: (a) direct, (b) completed (span, chord, payload counts and banner fixe
 - **Set (d = 5):** f_build ±30 % (cited, USYD LOO), f_tb ±30 % (PLACEHOLDER), m_avionics ±15 %, wind speed 0–10 m/s
   (§4.6), wind direction ±45° (§4.7). UDR N = 2d + 1 = 11 nodes × 2 points; k = 1, β = 2; robust constraints as
   published.
-- **Banner-drag factor (not added; your call, §9 Q5).** Hand estimate (the model value comes at checkpoint 2, from
+- **Banner-drag factor (not added; open decision, §9 Q5).** Hand estimate (the model value comes at stage 2, from
   the screening at the smoke-test optimum): the banner is ≈ 80 % of M3's drag at C_D,b 0.024 (ΔC_D 0.21 on C_D0 ≈
   0.05); M3's laps are energy-limited, so σ(N3)/N3 ≈ 0.8 × σ(C_D,b)/C_D,b = 0.8 × 0.11 = 0.09 (uniform 0.019–0.028:
   σ = 0.0026), and with M3's variable part ≈ 0.5 (USYD 2.52), **σ_F ≈ 0.04**. For comparison, the 2024-25 first-order
   σ_F were wind 0.009, f_build 0.0026, m_avionics 0.0005, f_tb 0.0003. **Recommendation:** add it as the fifth
   mass/drag parameter **in place of f_tb** (the smallest 2024-25 contribution, and a PLACEHOLDER spread), unless the
-  checkpoint-2 screening shows f_tb larger on the payload-sized fuselage.
+  stage-2 screening shows f_tb larger on the payload-sized fuselage.
 - **Out-of-set check:** Monte Carlo of the RDO design over the extended list (motor Kv and Rm, thrust factor, banner
   drag (if not in the set), cell resistance), 1024 Sobol' points.
 
@@ -349,12 +352,12 @@ per worker, limits it).
 | Computational performance (single-threaded, clean tree; AC1 sweep, AC2 multipoint, RDO to convergence), 3 repeats | 9 | ≈ 3 × 2.5 h | 7.5 h |
 | **Total** | | | **≈ 7 h + 7.5 h timing** |
 
-**Schedule:** checkpoint 2 (build, references, validation, AC1 mode, smoke test) Tue 27 Oct; runs overnight Tue–Wed
-(checkpoint 3 Wed 28); timing repeats overnight Wed–Thu; pages, exhibits and report Thu 29; freeze Fri 30. **If the
-checkpoint-2 build runs over,** the first cuts are the brief's: normalisation runs → re-analysis; timing repeats → one
+**Schedule:** stage 2 (build, references, validation, AC1 mode, smoke test) Tue 27 Oct; runs overnight Tue–Wed
+(stage 3 Wed 28); timing repeats overnight Wed–Thu; pages, exhibits and report Thu 29; freeze Fri 30. **If the
+stage-2 build runs over,** the first cuts are the specification's: normalisation runs → re-analysis; timing repeats → one
 clean run each (saves ≈ 5 h).
 
-## 9. Decisions for you
+## 9. Open decisions
 
 1. **Turn drift vs "exactly the current model at θ = 0"** (§4.7): a `course.turn_drift` switch, off for 2024-25 and on
    for 2025-26 (recommended); or always on (2024-25 Monte Carlo/RDO numbers move); or no turn drift (θ only on the
@@ -364,7 +367,7 @@ clean run each (saves ≈ 5 h).
 3. **Normalisation PLACEHOLDERS** (§2): NI_max 2800, B_max 1500.
 4. **SM upper bound** (§4.5): keep 0.20 (covers every reported value; Woombah and possibly Humpback stay outside it
    in the model's own SM), or set it from the modelled as-flown USYD aircraft (Woombah M2 0.23 with the M3 station
-   corrected; Humpback from checkpoint 2), rounded up.
+   corrected; Humpback from stage 2), rounded up.
 5. **Banner-drag factor** (§7): add it in place of f_tb (recommended), or keep the five as decided.
 6. **Wind range** (§4.6): 0–10 m/s (recommended) or keep 0–7.
 7. **Course** (§4.4): the rules' figure = `dbf_2025_360_mid` (recommended), banner deployed at the start of the
@@ -374,22 +377,22 @@ clean run each (saves ≈ 5 h).
 9. **Calibration LOO** (§0): investigate why [OH]'s LOO moved (−26 → −34 %) before the 2025-26 runs and keep
    ±30 % if the published value is reproduced, or adopt ±35 % (the committed code's value) for the 2025-26 study.
 
-### Decided at checkpoint 1 (2026-10-26)
+### Decided at stage 1 (2026-10-26)
 
 1. Turn drift behind a switch `course.turn_drift`: off by default (every 2024-25 config and reference bit for bit),
    on in the 2025-26 configs.
 2. **Uncertain set (d = 5):** f_build, **banner-drag factor C_D,b (uniform 0.019–0.028, [HB] Table 41) in place of
-   f_tb**, m_avionics, wind speed, wind direction; confirmed against the checkpoint-2 screening (f_tb's contribution
+   f_tb**, m_avionics, wind speed, wind direction; confirmed against the stage-2 screening (f_tb's contribution
    on the payload-sized fuselage is reported). f_tb moves to the out-of-set Monte Carlo.
 3. **SM upper bound from the modelled as-flown USYD aircraft:** the largest modelled SM of Woombah (with its M3
-   battery station corrected to Table 34's M2 station) and Humpback (checkpoint 2), rounded up to 0.01.
-4. **Calibration LOO:** investigate first (about an hour at the start of checkpoint 2); keep ±30 % if the published
+   battery station corrected to Table 34's M2 station) and Humpback (stage 2), rounded up to 0.01.
+4. **Calibration LOO:** investigate first (about an hour at the start of stage 2); keep ±30 % if the published
    −26 % reproduces, else adopt the committed code's value and regenerate the calibration page.
-5. Not asked, recommendation stands unless you say otherwise: AirCrafter 1.0 M15 fixed in `2026` mode behind a
+5. Recommendation: AirCrafter 1.0 M15 fixed in `2026` mode behind a
    switch; NI_max 2800, B_max 1500; wind 0–10 m/s; course `dbf_2025_360_mid` with the banner deployed at the start
    of the downwind leg; flown payload counts = capacity.
 
-## Checkpoint 2 (2026-10-27)
+## Progress review (2026-10-27)
 
 **Built** (commits `f6f5432`, references `9d3e02d`): `dbf2026`, the payload / banner / payload-fuselage stores, the
 multipoint problem by ruleset kind, the wind vector with turn drift behind `course.turn_drift`, the banner's
@@ -426,9 +429,9 @@ single-point configs are unchanged. This supersedes the SM lower bound of §4.5 
    direction nodes move from ±34.9° to ±23.2°.
 
 Effect on Humpback as built (calibrated, validation_2026.md): F 5.086 → 5.323, M2 laps 6.96 → 8.76 (8 flown), M3 laps
-4.57 → 5.69, SM 0.389/0.421 → 0.391/0.425. Found while checking (open, for the user):
+4.57 → 5.69, SM 0.389/0.421 → 0.391/0.425. Found while checking (open):
 
-- **The cold-start smoke run failed. Resolved 2026-11-02** (docs/MDA_ROBUSTNESS_PLAN.md). Cause: at the low-speed
+- **The cold-start smoke run failed. Resolved 2026-11-02** (docs/development/MDA_ROBUSTNESS_PLAN.md). Cause: at the low-speed
   M3 banner designs the T = D balance has a second, sub-stall root, and Newton from a start far from the real root
   diverges (SLSQP's first step, Kv 245 → 200 and M3 throttle 1.0 → 0.795; `energy_reserve` 0.0 only changed the path).
   Fix, under the problem-config switch `mda_robust` (on in `dbf2026_multipoint.yaml` only): a continuation fallback
@@ -447,7 +450,7 @@ Effect on Humpback as built (calibrated, validation_2026.md): F 5.086 → 5.323,
 
 ## Final fixes before the final run (2026-11-02)
 
-Brief `4_PROMPTS/aircrafter2_final_fixes_prompt.md`, branch `placeholder-fixes-2026` from `a41ad07`. Commits: `65c45a0`
+Branch `placeholder-fixes-2026` from `a41ad07`. Commits: `65c45a0`
 (D5 and the small items), `a580942` (D1), `0cfb746` (D2), `5a27391` (D3), `7310a4f` (the 2025-26 references), `a33cb7d`
 (the verification runs and the validation page), then the docs. Every 2024-25 and single-point reference is unchanged:
 the configs snapshot is identical bit for bit (152 values), and the full suite passes (534 tests, 19 min).
@@ -497,7 +500,7 @@ the configs snapshot is identical bit for bit (152 values), and the full suite p
     after one was found hidden by that catch during D2.
   - `results_2026.py rdo --tag --case [--maxiter]`: the warm path, the robust summary, the node report and the
     fallbacks per node.
-  - *Why:* each of these paths did a cold `run_model` at a low-speed banner design (docs/MDA_ROBUSTNESS_PLAN.md).
+  - *Why:* each of these paths did a cold `run_model` at a low-speed banner design (docs/development/MDA_ROBUSTNESS_PLAN.md).
 - **Small items:**
   - `kv_set_by` no longer matches `rules.fuselage_margin`;
   - `integer --maxiter`;
@@ -567,5 +570,5 @@ the configs snapshot is identical bit for bit (152 values), and the full suite p
 
 <!-- final results run -->
 ## Final results run
-Done 2026-11-04 on `thesis-results-2026`; freeze tag `results-2026-final` (`0a6527d`). What ran: the enumeration, rounding, `mdo_wind`, multistart, bookends, normalisation, bound and other sensitivities, AirCrafter 1.0 at its shipped steps with mappings (a) and (b), RDO from three starts with robust rounding, common evaluation, 11 Monte Carlos of 1024 points, propagation, screening, node check, wind, placeholders, validation, and the timing. 91 run files back the page, 0 of them off the freeze commit. Cuts: none. Tests: 547 at the freeze, 550 at the final commit. Results: `docs/studies/results_2026/INDEX.md`. Log, with the decisions: `RESULTS_LOG.md`.
+Done 2026-11-04 on `thesis-results-2026`; freeze tag `results-2026-final` (`0a6527d`). What ran: the enumeration, rounding, `mdo_wind`, multistart, bookends, normalisation, bound and other sensitivities, AirCrafter 1.0 at its shipped steps with mappings (a) and (b), RDO from three starts with robust rounding, common evaluation, 11 Monte Carlos of 1024 points, propagation, screening, node check, wind, placeholders, validation, and the timing. 91 run files back the page, 0 of them off the freeze commit. Cuts: none. Tests: 547 at the freeze, 550 at the final commit. Results: `docs/studies/results_2026/INDEX.md`. Log, with the decisions: `docs/development/RESULTS_LOG.md`.
 <!-- /final results run -->

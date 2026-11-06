@@ -1,5 +1,5 @@
 """configs/placeholders.yaml and configs/rulesets/: layer order, the migration, one place per value, save in place
-(docs/PLACEHOLDERS_RULESETS_PLAN.md)."""
+(docs/development/PLACEHOLDERS_RULESETS_PLAN.md)."""
 
 import json
 import re
@@ -74,7 +74,7 @@ def test_mass_layers_placeholders_between_mass_config_and_config(tmp_path):
 
 # --- the migration ------------------------------------------------------------------------------------------------
 
-# Paths whose effective value changed in the migration (most recent line wins; docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# Paths whose effective value changed in the migration (most recent line wins; docs/development/PLACEHOLDERS_RULESETS_PLAN.md).
 MOTOR = {"propulsion.e_spec": (150.0, 134.3), "propulsion.Kv": (900.0, 1050.0), "propulsion.Rm": (0.05, 0.03384),
          "propulsion.I0": (1.0, 1.79), "propulsion.m_motor": (0.15, 0.1127), "propulsion.m_esc": (0.06, 0.127),
          "propulsion.m_prop": (0.03, 0.018), "propulsion.m_avionics": (0.25, 0.222),
@@ -109,7 +109,7 @@ def _diff(a, b, path="", out=None):
     return out
 
 
-# The USYD mass calibration (docs/MASS_CALIBRATION_PLAN.md) changes, in every config with a mass model, the Step 1
+# The USYD mass calibration (docs/development/MASS_CALIBRATION_PLAN.md) changes, in every config with a mass model, the Step 1
 # inputs and the correction factors (to the values of placeholders.yaml), adds the tail model (areal; gg where a config
 # pins it for the f_ht/f_vt spreads), and, in the 2024-25 configs, Woombah's n_panels and cargo box (the ruleset).
 CAL_INPUTS = ["t_tube_min", "sigma_spar", "k_wing", "a_ht", "a_vt", "f_cb", "f_tb", "f_gear", "f_ht", "f_vt"]
@@ -158,13 +158,13 @@ def test_configs_load_as_before_the_migration_except_the_listed_changes(name):
     assert diff == {**EXPECTED_CHANGES.get(name, {}), **_calibration_changes(name, before)}
 
 
-# Schema fields added after the snapshot (docs/RESULTS_2026_PLAN.md, 2026-10-27): absent before, now at their defaults
+# Schema fields added after the snapshot (docs/development/RESULTS_2026_PLAN.md, 2026-10-27): absent before, now at their defaults
 # (or, for the 2025-26 store set, the universal values every multipoint config loads from placeholders.yaml and
 # never uses: mp.kind is dbf2025)
 NEW_FIELDS = {"course.turn_drift": False, "course.lap1_cluster": 2.0, "propulsion.f_fit": 0.8, "mp.kind": "dbf2025",
               "mp.payload": {}, "mp.payload_initial": {}, "mp.rules.pax_per_cargo_min": None,
               "disabled_constraints": [],  # 2026-10-27: the Constraints tab's on/off
-              "mda_robust": False,  # 2026-11-02: the MDA continuation fallback (docs/MDA_ROBUSTNESS_PLAN.md)
+              "mda_robust": False,  # 2026-11-02: the MDA continuation fallback (docs/development/MDA_ROBUSTNESS_PLAN.md)
               "aero.cd_area_gear": 0.0, "aero.cd_area_lp": 0.0}  # 2026-11-02: drag areas (Final fixes D3; 2025-26 only)
 
 
@@ -191,7 +191,7 @@ ALLOWED = {"full_mdo_fixed_kv.yaml", "full_mdo_twin_fixed_kv.yaml", "full_mdo_rd
            # the USYD mass calibration: G&G's published factors (verification, uncalibrated comparisons), the
            # Woombah-out factors, and the full-set RDO configs that pin the gg tails for their f_ht/f_vt spreads
            "mass_garcia_gamboa_2022.yaml", "mass_usyd_loo_woombah.yaml", "full_mdo_rdo.yaml", "full_mdo_twin_rdo.yaml",
-           # the 2025-26 study: the Humpback-out factors and Humpback as built (docs/RESULTS_2026_PLAN.md)
+           # the 2025-26 study: the Humpback-out factors and Humpback as built (docs/development/RESULTS_2026_PLAN.md)
            "mass_usyd_loo_humpback.yaml", "humpback_2026.yaml"}
 
 

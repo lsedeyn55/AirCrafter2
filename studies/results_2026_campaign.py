@@ -1,6 +1,6 @@
-"""The final 2025-26 campaign's queue: every run of the brief's run list, in order, within the memory limit, resuming.
+"""The final 2025-26 campaign's queue: every run of the planned run list, in order, within the memory limit, resuming.
 
-    .venv/bin/python studies/results_2026_campaign.py run     # under systemd-run --user (docs: RESULTS_LOG.md)
+    .venv/bin/python studies/results_2026_campaign.py run     # under systemd-run --user (docs: docs/development/RESULTS_LOG.md)
     .venv/bin/python studies/results_2026_campaign.py status  # what is done, ready, running and left
 
 Each job is one process with a log in outputs/results_2026/logs/. A job is done when its JSON exists and records the
@@ -330,7 +330,7 @@ def run():
 
 
 def write_status(freeze, state, running):
-    """The machine-written part of the log (outputs/results_2026/campaign_status.md, pasted into RESULTS_LOG.md)."""
+    """The machine-written part of the log (outputs/results_2026/campaign_status.md, pasted into docs/development/RESULTS_LOG.md)."""
     lines = [f"Updated {time.strftime('%Y-%m-%d %H:%M:%S')} (freeze {freeze}). Running: {', '.join(running) or 'none'}. "
              f"Failed: {', '.join(state['failed']) or 'none'}.", "", run_table(freeze)]
     (R.OUT / "campaign_status.md").write_text("\n".join(lines) + "\n")

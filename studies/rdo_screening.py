@@ -47,7 +47,7 @@ def active_constraints(prob, tol=1e-4):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = load_full_config(ROOT / "configs" / "full_mdo_fixed_kv.yaml")  # pinned: docs/RDO_PLAN.md (fixed motor)
+    cfg = load_full_config(ROOT / "configs" / "full_mdo_fixed_kv.yaml")  # pinned: docs/development/RDO_PLAN.md (fixed motor)
     cfg.propulsion.prop = "10x7E"
     # G&G tails, as the RDO configs (full_mdo_rdo.yaml): uncertainty.yaml's f_ht / f_vt spreads need them (the USYD
     # calibration's areal tails have no f_ht, f_vt; docs/studies/mass_calibration_usyd.md)

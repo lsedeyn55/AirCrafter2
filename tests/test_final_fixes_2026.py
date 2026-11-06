@@ -1,4 +1,4 @@
-"""Final fixes before the final 2025-26 run (docs/RESULTS_2026_PLAN.md, "Final fixes"): the shared warm path, the
+"""Final fixes before the final 2025-26 run (docs/development/RESULTS_2026_PLAN.md, "Final fixes"): the shared warm path, the
 sampler and m1_check under mda_robust, kv_set_by; the dbf2026 score cap (D1), the rigid payload fuselage (D2) and the
 undercarriage and leakage drag areas (D3)."""
 

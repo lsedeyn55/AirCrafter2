@@ -28,14 +28,14 @@ Why this formulation: [r25-multipoint](../DECISIONS.md#r25-multipoint).
   (Table 26, p. 28: CD0 0.00045 on the wing area for both bottles, about 1/20 of the CFD value). The CFD value is used.
 - **Pylons and the X-1:** Raymer, *Aircraft Design: A Conceptual Approach*, Ch. 12, as in `aero/parasite.py`.
 - **f_drag** (the store drag factor) is an uncertain parameter in the robust problem. Interference factors are PLACEHOLDERS
-  (`docs/OPEN_QUESTIONS.md`).
+  (`docs/PLACEHOLDERS.md`).
 
 All arithmetic is complex-step safe, with `method="cs"` partials.
 
 ## 2025-26: payload, banner and payload fuselage (`stores2026.py`)
 
 Why this formulation: [r26-payload](../DECISIONS.md#r26-payload), [r26-banner](../DECISIONS.md#r26-banner),
-[ff-d2](../DECISIONS.md#ff-d2). Plan: `docs/RESULTS_2026_PLAN.md` §4.2–4.3.
+[ff-d2](../DECISIONS.md#ff-d2). Plan: `docs/development/RESULTS_2026_PLAN.md` §4.2–4.3.
 
 **Rules (`2026-DBF-Rules.pdf`, printed page "N of 34"):**
 - M2 carries passengers (2.3 in rubber ducks, 0.6–0.7 oz) and cargo (hockey pucks, 6 oz) in a single passenger compartment

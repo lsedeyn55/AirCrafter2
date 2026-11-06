@@ -1,4 +1,4 @@
-"""Take-off in the mission time and the editable course (docs/TAKEOFF_COURSE_PLAN.md).
+"""Take-off in the mission time and the editable course (docs/development/TAKEOFF_COURSE_PLAN.md).
 
 Off = unchanged is also covered bit for bit by the regression tests against tests/data/configs_reference.json,
 rdo_off_reference.json, kv_dv_reference.json and multipoint_nominal_reference.json (none regenerated for the take-off

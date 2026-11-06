@@ -8,7 +8,7 @@
 - **Motor group:** n × m_motor_unit at `x_motor`, which is measured per unit. Both layouts are symmetric, so
   there is no lateral CG. For the twin config, `x_motor` defaults to −5.5" (Woombah's firewall, 5.5" ahead of
   the LE; PLAN §6h T2).
-- **2025-26: the rigid payload fuselage** (`stores2026.Packaging2026`, docs/RESULTS_2026_PLAN.md "Final fixes" D2).
+- **2025-26: the rigid payload fuselage** (`stores2026.Packaging2026`, docs/development/RESULTS_2026_PLAN.md "Final fixes" D2).
   - The payload fuselage moves as one body: `x_cb_frac` (a design variable) is where the wing sits along it. The box
     structure (x_cb = x_cb_frac c), the payload (x_pax, x_car = (frac + Δ) c, Δ = x_cb_frac − 0.416) and the motor
     group move together; the banner station stays fixed.

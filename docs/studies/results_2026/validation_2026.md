@@ -155,10 +155,10 @@ Inputs: {'m2_kg': 8.117913832199546, 'm3_kg': 5.256235827664399, 'b': 1.4986, 'A
 | 19x12E/22x12E | 270 | 1.0 | yes | 41.7 | 6.1 | 6.4 | 25.1 | 27.5 | 22.2 | 3.3 | 13.7 |
 
 
-The MDA runs with the continuation fallback (`mda_robust`, docs/MDA_ROBUSTNESS_PLAN.md): cells whose Newton start lies outside the T = D root's basin converge through it. Stall margin = V - 1.2 V_stall (m/s); 'yes, < 1.2 V_stall': the balance converged with V below 1.2 V_stall (stall margin < 0), which the optimiser's stall_margin constraint rejects.
+The MDA runs with the continuation fallback (`mda_robust`, docs/development/MDA_ROBUSTNESS_PLAN.md): cells whose Newton start lies outside the T = D root's basin converge through it. Stall margin = V - 1.2 V_stall (m/s); 'yes, < 1.2 V_stall': the balance converged with V below 1.2 V_stall (stall margin < 0), which the optimiser's stall_margin constraint rejects.
 
 
-The T(v) fit range: `f_fit` = 0.95 for the 2025-26 configs (0.8 in 2024-25): Humpback's props cruise at J ≈ 0.9 J_max, past the 0.8 fit's top node (thrust 5 % low at the M2 cruise speed), while at 0.95 the top node stays inside the APC data and the thrust is within 1.4 % (checkpoint-2 check, 19x12E).
+The T(v) fit range: `f_fit` = 0.95 for the 2025-26 configs (0.8 in 2024-25): Humpback's props cruise at J ≈ 0.9 J_max, past the 0.8 fit's top node (thrust 5 % low at the M2 cruise speed), while at 0.95 the top node stays inside the APC data and the thrust is within 1.4 % (19x12E).
 
 ## 7. [HB] inconsistencies (listed, not resolved; Q57)
 

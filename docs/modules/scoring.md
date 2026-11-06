@@ -37,7 +37,7 @@ A plug-in's `constraints()` (like any new constraint) needs an entry in the cons
 - **t_3** is the lap model's `ThreeLapTime` (lap 1 from the stall speed plus two laps). **Take-off is optional** (`course.takeoff.in_mission_time`, docs/modules/mission.md) and **off in every published result**, while the rule counts it, so the published t_3 is biased short. The bias is not uniform: it favours heavy M2 designs (ΔF −0.008 to −0.053 across the published designs; docs/studies/takeoff_study.md). Stated in every result table.
 - **n_pre** is the laps completed in the window minus the launch lap, from the continuous `laps_frac` surrogate. The softplus floor makes it smooth at laps_frac = 1; it equals laps_frac − 1 to within 1e-9 for laps_frac > 1.5 (tested against the verbatim form). The X-1's mass is carried for the whole M3 flight (it is dropped for the last lap): ignored, a conservative 0.37 lb of ≈ 10 lb.
 - **B / W_X1** is a scenario constant, because the X-1's own flight is not modelled. B = 0 in the main results; B = 2.5 at W_X1 = 0.37 lb (Woombah's X-1 as flown, Design Report Table 39) is a second scenario. B shifts M3 by a constant, so the optimum does not move.
-- **R2, R3** (the best teams' raw values) are PLACEHOLDERS in the config (OPEN_QUESTIONS Q35): R2 = 0.20 lb/s, R3 = 27. Evidence: `docs/RESULTS_PLAN.md` §4 (the official 2025 results give only normalised scores: best M2 2.00, University at Buffalo; best M3 3.00, RPI; USYD 1.58 and 2.28).
+- **R2, R3** (the best teams' raw values) are PLACEHOLDERS in the config (PLACEHOLDERS Q35): R2 = 0.20 lb/s, R3 = 27. Evidence: `docs/development/RESULTS_PLAN.md` §4 (the official 2025 results give only normalised scores: best M2 2.00, University at Buffalo; best M3 3.00, RPI; USYD 1.58 and 2.28).
 - **Bookends:** options `w2`, `w3` weight the M2 and M3 terms of `score`; `flight_score` is always M1 + M2 + M3.
 - **Outputs:** `score` (the objective), `M1`, `M2`, `M3`, `flight_score`, `n_pre`. Partials by complex step.
 
@@ -66,7 +66,7 @@ Woombah flew 13.2 lb in M2 and 7 laps (6 before the launch) with a 0.37 lb X-1 (
 ## `dbf2026`: AIAA DBF 2025-26, Banner Towing Bush Plane
 
 F = M1 + M2 + M3 with M2 = 1 + cap(NI / NI_max) and M3 = 2 + cap(T3 / B_max), T3 = laps × banner length / RAC
-([R26] pp. 19–20; `aircrafter2/scoring/dbf2026.py`, docs/RESULTS_2026_PLAN.md §4.1). NI_max and B_max are the best
+([R26] pp. 19–20; `aircrafter2/scoring/dbf2026.py`, docs/development/RESULTS_2026_PLAN.md §4.1). NI_max and B_max are the best
 teams' values (PLACEHOLDERS, Q52).
 
 - **The cap (2026-11-02).** The rules' Max is the best team's, so N / Max is at most 1: F ≤ 6. The model caps each ratio
@@ -107,7 +107,7 @@ teams' values (PLACEHOLDERS, Q52).
                choice (p. 24, p. 33), so the M2 pack size trades laps against EF
     n_p, n_c   passengers and cargo flown (continuous design variables; integers in the final design)
     L_banner   banner length in inches (design variable); RAC from the span design variable b
-    NI_max, B_max  the best teams' Net_Income and laps x length / RAC: PLACEHOLDERS (OPEN_QUESTIONS Q52)
+    NI_max, B_max  the best teams' Net_Income and laps x length / RAC: PLACEHOLDERS (PLACEHOLDERS Q52)
     weights    (w2, w3) multiply the M2 and M3 terms, for the single-mission bookends (default 1, 1)
 
 `floored()` gives the same parts with the laps floored to completed laps and the banner and span recorded as the rules record them,

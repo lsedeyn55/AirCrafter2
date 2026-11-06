@@ -52,7 +52,7 @@ class TakeoffConfig(BaseModel):
     CL_ground: float = Field(
         0.15,
         ge=0.0,
-        description="ground-roll lift coefficient, PLACEHOLDER (docs/TAKEOFF_COURSE_PLAN.md; OPEN_QUESTIONS)",
+        description="ground-roll lift coefficient, PLACEHOLDER (docs/development/TAKEOFF_COURSE_PLAN.md; PLACEHOLDERS)",
     )
     start_offset_ft: float = Field(
         0.0,
@@ -73,13 +73,13 @@ class CourseConfig(BaseModel):
     turn_drift: bool = Field(
         False,
         description="carry each turn's wind drift (wind x turn time) to the next straight "
-        "(docs/RESULTS_2026_PLAN.md §4.7). False: the original model (turns ignore the wind)",
+        "(docs/development/RESULTS_2026_PLAN.md §4.7). False: the original model (turns ignore the wind)",
     )
     lap1_cluster: float = Field(
         2.0,
         ge=1.0,
         description="grid exponent of lap 1's first straight (nodes at "
-        "s_i = L (i/N)^p, clustered at its slow start; OPEN_QUESTIONS Q45). 1 = the uniform "
+        "s_i = L (i/N)^p, clustered at its slow start; PLACEHOLDERS Q45). 1 = the uniform "
         "grid of every result before 2026-10-27",
     )
     takeoff: TakeoffConfig = TakeoffConfig()

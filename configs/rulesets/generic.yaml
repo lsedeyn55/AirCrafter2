@@ -1,7 +1,7 @@
 # The generic ruleset of the single-point problems (full_mdo*, aero_mass, lap_mdo, wing_aero, oval_lap): the
 # rule-dependent values of the original AirCrafter inputs (inputs_file.m, performance_modeller.m), with no stores,
 # scoring or rule limits (the single-point problems have none). Layer 3, as configs/rulesets/dbf_2024_25.yaml.
-# Decision 2026-10-22 (docs/PLACEHOLDERS_RULESETS_PLAN.md): the single-point configs take this ruleset.
+# Decision 2026-10-22 (docs/development/PLACEHOLDERS_RULESETS_PLAN.md): the single-point configs take this ruleset.
 #
 # One value per line, as a dotted path into the config schema. Comment: # <units>; <PLACEHOLDER | cited>; Q..; <source>
 

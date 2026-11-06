@@ -56,7 +56,7 @@ class GeometryInputs(BaseModel):
     l_cb: float = Field(0.40, description="m, cargo bay box (PLACEHOLDER)")
     w_cb: float = 0.12
     h_cb: float = 0.12
-    x_spar: float = Field(0.25, description="spar position / chord (brief default)")
+    x_spar: float = Field(0.25, description="spar position / chord (default)")
 
 
 class AeroMassProblemConfig(BaseModel):
@@ -72,7 +72,7 @@ class AeroMassProblemConfig(BaseModel):
     V: float = Field(20.0, gt=0, description="m/s, cruise = design speed for the loads (PLACEHOLDER)")
     clmax_ratio_min: float = 1.44
     wall_ratio_max: float = Field(0.2, description="t_tube / r_tube: thin-wall validity of Eqs. 105-117")
-    r_tube_min: float = Field(0.005, description="m, smallest spar tube (PLACEHOLDER: 10 mm OD, OPEN_QUESTIONS Q3)")
+    r_tube_min: float = Field(0.005, description="m, smallest spar tube (PLACEHOLDER: 10 mm OD, PLACEHOLDERS Q3)")
     design_variables: dict[str, Bounds] = {
         "b": Bounds(lower=0.9, upper=1.52),
         "c": Bounds(lower=0.15, upper=0.45),

@@ -2,7 +2,7 @@
 
     minimise   CD                       (= drag, since q and S are fixed)
     w.r.t.     b, c, alpha, tc_scale, camber_scale (and bump modes, if any)
-    subject to L = W, b c = S, tc_max >= tc_min (placeholder, docs/OPEN_QUESTIONS.md Q5), CL_max / CL >= 1.2^2, no
+    subject to L = W, b c = S, tc_max >= tc_min (placeholder, docs/PLACEHOLDERS.md Q5), CL_max / CL >= 1.2^2, no
     stalled strip
 
 Uses airfoil/ and aero/; aero_mass couples the mass. Report: docs/problems/ and docs/modules/problems.md.
@@ -39,7 +39,7 @@ class WingAeroProblemConfig(BaseModel):
     V: float = Field(20.0, gt=0, description="m/s")
     weight: float = Field(49.0, gt=0, description="N, the fixed lift")
     S: float = Field(0.375, gt=0, description="m^2, fixed wing area")
-    tc_min: float = Field(0.10, description="PLACEHOLDER minimum t/c for the spar (OPEN_QUESTIONS Q5)")
+    tc_min: float = Field(0.10, description="PLACEHOLDER minimum t/c for the spar (PLACEHOLDERS Q5)")
     clmax_ratio_min: float = Field(1.44, description="(1.2)^2: V >= 1.2 V_stall")
     design_variables: dict[str, Bounds] = {
         "b": Bounds(lower=0.9, upper=1.52),  # m; 3-5 ft from inputs_file.m

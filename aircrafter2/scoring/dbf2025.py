@@ -2,7 +2,7 @@
 
 Objective F = M1 + M2 + M3 from the multipoint problem's M2 fuel weight and 3-lap time and M3 laps
 (problems/multipoint.py). GM measures the crew, not the aircraft, so it's left out. R2 and R3, the best teams' values,
-are placeholders (docs/OPEN_QUESTIONS.md Q35). Source: Rules_2025.pdf. The rules as written and the model:
+are placeholders (docs/PLACEHOLDERS.md Q35). Source: Rules_2025.pdf. The rules as written and the model:
 docs/modules/scoring.md, "dbf2025".
 """
 

@@ -9,7 +9,7 @@ Two levels:
    It's optional: a config without an enabled `robust:` block is the deterministic problem, unchanged (regression
    test `tests/test_rdo.py::test_rdo_off_matches_pre_rdo_reference`).
 
-Plan, screening and node-convergence check: `docs/RDO_PLAN.md`. Study results: `docs/studies/rdo_study.md`.
+Plan, screening and node-convergence check: `docs/development/RDO_PLAN.md`. Study results: `docs/studies/rdo_study.md`.
 
 ## 1. Post-optimality checks (`suite.py`)
 
@@ -38,9 +38,9 @@ distribution, x = mean + scale · ξ:
 
 Design variables are never uncertain parameters. `robust.dv_tolerances` is a hook for manufacturing tolerances
 (x + δ at the nodes), not implemented yet. **Every spread in `configs/uncertainty.yaml` is a PLACEHOLDER
-(OPEN_QUESTIONS Q32).**
+(PLACEHOLDERS Q32).**
 
-**The parameter pool** (docs/PLACEHOLDERS_RULESETS_PLAN.md) is merged by name in this order:
+**The parameter pool** (docs/development/PLACEHOLDERS_RULESETS_PLAN.md) is merged by name in this order:
 1. the shared spreads in `configs/placeholders.yaml` and the ruleset;
 2. the config's `uncertainty_config` file;
 3. `robust.parameters`.
@@ -60,8 +60,8 @@ pool by itself: `configs/uncertainty.yaml`, the published 15-parameter set of `r
   - `lap.wind` 0–7 m/s (Tucson and Wichita April means 3.7 and 5.6 m/s; capped at the lap model's validity).
   A calibrated variant (`dbf2025_multipoint_rdo_calibrated.yaml`, f_build centred on Woombah's 2.74) and a one-sided
   one (`..._onesided.yaml`, f_build on [1.0, 1.3]) are sensitivity runs.
-  Every other parameter is held at its config value. Evidence for each spread: docs/RDO_REDUCED_PLAN.md §2 and
-  OPEN_QUESTIONS Q39.
+  Every other parameter is held at its config value. Evidence for each spread: docs/development/RDO_REDUCED_PLAN.md §2 and
+  PLACEHOLDERS Q39.
 - `configs/dbf2025_multipoint_rdo_full.yaml` keeps the published 15-parameter set, screened to d = 7.
 
 **Motor Kv a design variable (the default).** The design variables are promoted once and shared by every node, so a
@@ -150,7 +150,7 @@ Each node's Newton solver is a `RetryNewton`:
   the cold start. Every attempt is logged (`node_report`).
 
 With the problem-config switch `mda_robust: true` (default false; on in `configs/dbf2026_multipoint.yaml`, so in its
-RDO config and `humpback_2026.yaml`; docs/MDA_ROBUSTNESS_PLAN.md), `RetryNewton` runs in its robust mode:
+RDO config and `humpback_2026.yaml`; docs/development/MDA_ROBUSTNESS_PLAN.md), `RetryNewton` runs in its robust mode:
 - The order is current → own last converged (skipped when it equals the state the solve started from, the usual case
   in an optimiser step) → **continuation** → reference → cold.
 - The continuation steps the MDA's input vector linearly from the last converged inputs (the reference node's, for a

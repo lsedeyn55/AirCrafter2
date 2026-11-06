@@ -41,13 +41,13 @@ Woombah airframe, both points on the same prop, 6S. v_top = 80 m/s; highest leve
 | **M3 take-off mass** | 10.09 (Table 38: 13.7) | 7.12 | -29 % | 10.33 | +2 % | | |
 | **M1 take-off mass** | 9.32 | 5.91 | -37 % | 9.12 | -2 % | | |
 
-Table 34's M2 total (26.02 lb) is 2.21 lb above the sum of its own rows, and its M3 total omits the empty bottles the rules require; the flight-test take-off masses (Table 38: 26.9 and 13.7 lb) include ballast added after P1 [W p. 60]. The model masses are the full-throttle point's (the closure re-sizes the structure at the closed take-off mass). Table 34 has no servo row (OPEN_QUESTIONS Q48).
+Table 34's M2 total (26.02 lb) is 2.21 lb above the sum of its own rows, and its M3 total omits the empty bottles the rules require; the flight-test take-off masses (Table 38: 26.9 and 13.7 lb) include ballast added after P1 [W p. 60]. The model masses are the full-throttle point's (the closure re-sizes the structure at the closed take-off mass). Table 34 has no servo row (PLACEHOLDERS Q48).
 
 **Superseded: the Woombah-only refit** (Eq. 127, one aircraft; `configs/mass_usyd_woombah.yaml`, from the earlier run at 20ef669, on the earlier placeholders): factors f_wing = 1.22, f_ht = 1.86, f_vt = 1.96, f_cb = 1.12, f_gear = 0.0312 with n_panels = 1; f_wing = 1.96, f_ht = 0.465, f_vt = 0.491, f_cb = 1.11, f_gear = 0.0278 with n_panels = 3 (Woombah's three-piece wing, f_wing^2, PLAN G5). Five factors fit five masses exactly: interpolation, not evidence. Replaced by the three-aircraft calibration, whose Woombah-out factors give the out-of-sample column.
 
 ## 3. Flight performance against Table 39
 
-Table 39 is not internally consistent (docs/RESULTS_PLAN.md §6), so each quantity is compared with each reading. M2 'time' readings: 112.2 s (3 × the 37.4 s average lap), 138.1 s (the total flight time, take-off included). Average speeds are over 3 × 3000 ft. Columns: the mass model (G&G, out-of-sample), then the case.
+Table 39 is not internally consistent (docs/development/RESULTS_PLAN.md §6), so each quantity is compared with each reading. M2 'time' readings: 112.2 s (3 × the 37.4 s average lap), 138.1 s (the total flight time, take-off included). Average speeds are over 3 × 3000 ft. Columns: the mass model (G&G, out-of-sample), then the case.
 
 | Quantity | Table 39 design | Table 39 actual | G&G, full throttle | G&G, logged current | G&G, logged current and mass | out-of-sample, full throttle | out-of-sample, logged current | out-of-sample, logged current and mass |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|

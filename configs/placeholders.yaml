@@ -1,11 +1,11 @@
 # Universal placeholders and assumptions: every value that does NOT depend on the competition rules. Loaded by every
 # problem config (layer 2: code defaults < this file < the ruleset < the problem config < the study variant; the
 # 'placeholders:' key names another file). Rule-dependent values: configs/rulesets/<ruleset>.yaml.
-# Plan and the conflict table (most recent line wins, by git blame): docs/PLACEHOLDERS_RULESETS_PLAN.md.
+# Plan and the conflict table (most recent line wins, by git blame): docs/development/PLACEHOLDERS_RULESETS_PLAN.md.
 #
 # One value per line, as a dotted path into the config schema (propulsion.Kv = propulsion: {Kv: ...}). Comment:
 #   # <units>; <PLACEHOLDER | cited>; Q..; <source or reason>
-# PLACEHOLDER = not USYD data (docs/OPEN_QUESTIONS.md). [W] = 2025 USYD DBF Design Report (Project Woombah), page /
+# PLACEHOLDER = not USYD data (docs/PLACEHOLDERS.md). [W] = 2025 USYD DBF Design Report (Project Woombah), page /
 # table; [TM] = THESIS/3_LITERATURE/25 competition/T-Motor V3115/; G&G = Garcia & Gamboa (2022), Aeronaut. J. 126.
 # Edit here or in the UI's Placeholders tab (which saves in place, keeping every comment).
 
@@ -72,7 +72,7 @@ mass.inputs.f_vt: 0.6749                     # -; cited; Q46; gg form of the sam
 mass.inputs.m_pay: 1.5                       # kg; PLACEHOLDER; Q12, Q19; payload of the single-point problems (the multipoint stores compute it)
 
 # --- 2025-26 payload and banner (stores2026.py; universal: the contest's payload and the banner material) ---
-# [R26] = 2026-DBF-Rules.pdf printed page; [HB] = Project Humpback report printed page / table (docs/RESULTS_2026_PLAN.md)
+# [R26] = 2026-DBF-Rules.pdf printed page; [HB] = Project Humpback report printed page / table (docs/development/RESULTS_2026_PLAN.md)
 multipoint.stores2026.m_duck: 0.01987        # kg = 1.84 lb / 42; cited; Q54; [HB p. 44 Table 36] (rules 0.6-0.7 oz [R26 p. 11]: the top)
 multipoint.stores2026.m_puck: 0.17010        # kg = 6 oz; cited; Q54; hockey puck [R26 p. 11] = 5.25 lb / 14 [HB Table 36]
 multipoint.stores2026.m_seat: 0.005          # kg per passenger; PLACEHOLDER; Q54; EPE floor recess and peeled foam [HB pp. 41-42], not weighed
@@ -133,12 +133,12 @@ aero.n_crit: 9.0                             # -; PLACEHOLDER; Q16; XFoil "avera
 # --- take-off ---
 takeoff_distance: 106.68                     # m = 350 ft; PLACEHOLDER; no Q; Woombah's runway limit [W p. 10 Table 4]; an engineering constraint: there is no take-off distance rule [R p. 10]
 course.takeoff.k_lof: 1.1                    # x V_stall; PLACEHOLDER; Q41; lift-off speed: performance_modeller.m l. 405 comment "full power until 1.1 Vstall", not a measurement
-course.takeoff.CL_ground: 0.15               # -; PLACEHOLDER; Q40; ground-roll C_L at Woombah's 2 deg wing setting, tail-up roll (TAKEOFF_COURSE_PLAN.md)
+course.takeoff.CL_ground: 0.15               # -; PLACEHOLDER; Q40; ground-roll C_L at Woombah's 2 deg wing setting, tail-up roll (docs/development/TAKEOFF_COURSE_PLAN.md)
 
 # --- RDO spreads ---
 # The shared uncertain parameters (aircrafter2/robustness/uncertainty.py UncertainParam), merged by name with the
 # ruleset's spreads, then a config's uncertainty_config file and robust.parameters. The robust 2024-25 problem uses
-# these and the ruleset's lap.wind (d = 4; docs/RDO_REDUCED_PLAN.md, OPEN_QUESTIONS Q39). The published 15-parameter
+# these and the ruleset's lap.wind (d = 4; docs/development/RDO_REDUCED_PLAN.md, PLACEHOLDERS Q39). The published 15-parameter
 # set is configs/uncertainty.yaml (standalone).
 uncertainty:
   - {name: f_build,    dist: uniform, nominal: 1.0, spread: 0.30, source: 'USYD LOO'}  # -; cited; Q39; build-mass factor on the whole structure; spread = the largest |leave-one-out structure error| of the USYD calibration, rounded up to 5 % (docs/studies/mass_calibration_usyd.md)

@@ -4,7 +4,7 @@
 extends: full_mdo.yaml
 fixed_design_variables: [Kv]   # drop the inherited Kv DV: propulsion.Kv/Rm/I0 are the motor, I_max a post-check
 
-# The pinned values (decision: deliberate study variants keep their effective values, docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# The pinned values (decision: deliberate study variants keep their effective values, docs/development/PLACEHOLDERS_RULESETS_PLAN.md).
 # These are the single-motor PLACEHOLDERS of the AIAC-era full_mdo*.yaml; configs/placeholders.yaml now holds the
 # T-Motor V3115 / Woombah values (newer), which would otherwise apply here.
 takeoff_distance: 100.0  # m, inputs_file.m

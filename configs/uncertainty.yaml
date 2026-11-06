@@ -1,7 +1,7 @@
 # Uncertain model parameters for robust design optimisation (robust: block of the full_mdo configs) and for
 # the post-optimality Monte Carlo (examples/full_mdo.py). One source for both.
 # Schema: aircrafter2/robustness/uncertainty.py (UncertainParam). Every spread is a PLACEHOLDER
-# (docs/OPEN_QUESTIONS.md Q32) until it is replaced with Woombah or measured data.
+# (docs/PLACEHOLDERS.md Q32) until it is replaced with Woombah or measured data.
 #
 #   name      promoted model input (lap-model inputs as lap.<name>)
 #   dist      uniform | normal | triangular (symmetric, mode = nominal)
@@ -14,7 +14,7 @@
 # robustness.suite.worst_cases() defaults: thrust -10 %, headwind 3 m/s, mass +10 %.
 # standalone: this list is the whole parameter pool of the configs that name it (the published 15-parameter set of
 # rdo_study, dbf2025_multipoint_rdo_full and examples/full_mdo.py); the shared spreads of configs/placeholders.yaml and
-# the ruleset are not merged in (decision 2026-10-22, docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# the ruleset are not merged in (decision 2026-10-22, docs/development/PLACEHOLDERS_RULESETS_PLAN.md).
 standalone: true
 parameters:
   - {name: f_tb,       dist: uniform, spread: 0.30, relative: true, source: PLACEHOLDER}  # G&G tail-boom factor

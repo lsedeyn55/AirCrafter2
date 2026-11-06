@@ -55,7 +55,7 @@ SIZING_LINKS = [
 ]
 # the flight-safety constraints that fail the M1 check (m1_check); the model-validity limits are only reported
 M1_SAFETY = frozenset({"stall_margin", "SM", "thrust_margin_static", "wall_ratio", "r_tube", "turn_speed_margin"})
-# 2025-26 (kind dbf2026; placeholders, docs/OPEN_QUESTIONS.md Q9, Q62; docs/DECISIONS.md#mr-m1-sm): SM fails the M1
+# 2025-26 (kind dbf2026; placeholders, docs/PLACEHOLDERS.md Q9, Q62; docs/DECISIONS.md#mr-m1-sm): SM fails the M1
 # check only below SM_min; above SM_max it is listed (SM_high), since a too-large margin costs trim drag and elevator
 # authority, not flight safety.
 # The 2024-25 check (kind dbf2025) keeps both bounds.

@@ -4,7 +4,7 @@ Written separately from the OpenMDAO components, directly from the paper's
 equations, with hard max() and a fixed-point loop for the mass closure. Used
 only to cross-check the OpenMDAO group.
 
-It supports the same interpretation switches as the package (see docs/PLAN.md §7)
+It supports the same interpretation switches as the package (see docs/development/PLAN.md §7)
 but none of the smoothing (hard max only; no minimum gauge).
 """
 

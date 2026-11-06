@@ -1,5 +1,5 @@
 """Take-off in the mission time: re-analysis of the published 2024-25 designs (docs/studies/takeoff_study.md,
-docs/TAKEOFF_COURSE_PLAN.md). Analysis only: nothing is re-optimised, no published result is touched.
+docs/development/TAKEOFF_COURSE_PLAN.md). Analysis only: nothing is re-optimised, no published result is touched.
 
     .venv/bin/python studies/takeoff_study.py run        # every design, take-off off and on (+ CL_ground, throttle)
     .venv/bin/python studies/takeoff_study.py woombah    # Woombah as built (validation_2025.md section 3), off and on

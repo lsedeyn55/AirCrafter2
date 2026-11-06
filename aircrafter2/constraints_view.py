@@ -652,7 +652,7 @@ _MDA = [
         section=4,
         hard_coded=((FM, r"lower=5\.0, upper=cfg\.propulsion\.v_top", "v in [5 m/s, v_top] (BoundsEnforceLS)"),),
         note="under mda_robust, a failed solve falls back to a continuation in the MDA inputs (the low-speed M3 "
-        "banner designs have a second, sub-stall T = D root; docs/MDA_ROBUSTNESS_PLAN.md)",
+        "banner designs have a second, sub-stall T = D root; docs/development/MDA_ROBUSTNESS_PLAN.md)",
     ),
     Entry(
         "mass.closure",

@@ -1,4 +1,4 @@
-"""2025-26 ruleset (docs/RESULTS_2026_PLAN.md): the dbf2026 scoring plug-in against hand calculations, the payload,
+"""2025-26 ruleset (docs/development/RESULTS_2026_PLAN.md): the dbf2026 scoring plug-in against hand calculations, the payload,
 banner and payload-fuselage stores, the banner's deployment in the lap model, the wind-direction model (crosswind,
 turn drift, symmetry, theta = 0 bit for bit) and the Q45 lap-1 grid."""
 
@@ -259,7 +259,7 @@ def test_banner_stowed_until_the_downwind_leg():
 @pytest.mark.parametrize("wind", [6.0, 9.0])
 def test_q45_clustered_grid_against_640_steps(wind):
     """The clustered lap-1 grid (default) at 40 steps is within 0.05 % of a uniform 640-step integration near the
-    wind limit; the old uniform 40-step grid is not (docs/RESULTS_2026_PLAN.md §4.6)."""
+    wind limit; the old uniform 40-step grid is not (docs/development/RESULTS_2026_PLAN.md §4.6)."""
     ref = float(_lap(wind, 0.0, False, lap1_cluster=1.0, n_steps_straight=640).get_val("Lap1time")[0])
     new = float(_lap(wind, 0.0, False).get_val("Lap1time")[0])
     assert abs(new / ref - 1) < 5e-4
@@ -267,7 +267,7 @@ def test_q45_clustered_grid_against_640_steps(wind):
 
 def test_multipoint_2026_totals():
     """check_totals of the 2025-26 multipoint problem at Humpback's start (the payload fuselage ahead of the planform:
-    a feedback through the MDA would break the totals, as found at checkpoint 2)."""
+    a feedback through the MDA would break the totals, as found during development)."""
     from aircrafter2.problems.multipoint import build_multipoint_problem, load_multipoint_config
 
     with warnings.catch_warnings():

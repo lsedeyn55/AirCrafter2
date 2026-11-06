@@ -1,6 +1,8 @@
-# Thesis results on the 2024-25 ruleset: plan (checkpoint 1)
+# Thesis results on the 2024-25 ruleset
 
-Brief: `THESIS/4_PROMPTS/aircrafter2_results_prompt.md`. Branch `results` from `kv-dv` at `b2adbb8`.
+Plan for the thesis's 2024-25 results (branch `results`, from `kv-dv`): the rules and scoring, the normalisation
+placeholders, Woombah as built, AirCrafter 1.0's 2024-25 mode, the multipoint problem, the robust optimisation and
+the run list.
 
 **Sources and citation keys:**
 - **[R]** `Rules_2025.pdf` (27 pp.). PDF page = printed page.
@@ -19,9 +21,9 @@ Brief: `THESIS/4_PROMPTS/aircrafter2_results_prompt.md`. Branch `results` from `
 |---|---|
 | `kv-dv` finished | `b2adbb8`, 254 tests pass. Branch `results` created from it. |
 | MATLAB | `/usr/local/bin/matlab`, **R2026a Update 4 (26.1.0.3312084)**, headless `matlab -batch` works. Aerospace Toolbox (`atmosisa`) present. |
-| Sources | All three PDFs are present, plus the V3115 data folder (not named in the brief; it supplies Rm and I0, §5). |
+| Sources | All three PDFs are present, plus the V3115 data folder (not named in the specification; it supplies Rm and I0, §5). |
 
-## 2. The rules as you read them: verified
+## 2. The rules: reading verified
 
 **Verdicts:** ✓ = confirmed. ✗ / + = correction or addition.
 
@@ -38,7 +40,7 @@ Brief: `THESIS/4_PROMPTS/aircrafter2_results_prompt.md`. Branch `results` from `
   - Filled with inert material (water, sand, etc.) to any weight [R p. 8] ✓. + Weights are rounded to 0.01 lb for scoring [R p. 26, Table 1].
 - **External tanks and pylons:** at least two external tanks in M2 and M3; M3 tanks may be empty [R p. 9, p. 11] ✓. Pylons removable [R p. 8] ✓. The maximum number of pylons declared at tech inspection must be fitted for every M2/M3 attempt [R p. 10] ✓.
   - **+** At tech inspection the team declares the maximum number of tanks and the maximum total fuel weight; no attempt may exceed them [R p. 16].
-- **M2 payload:** **✗ The X-1 is carried in M2 too:** "The payload for Mission 2 is the X-1 test vehicle and fuel tanks" [R p. 8, p. 11]. Your reading lists only the tanks.
+- **M2 payload:** **✗ The X-1 is carried in M2 too:** "The payload for Mission 2 is the X-1 test vehicle and fuel tanks" [R p. 8, p. 11]. An earlier reading listed only the tanks.
 - **X-1:**
   - ≤ 0.55 lb [R p. 9] ✓. Under the fuselage between the left and right external tanks [R p. 9] ✓. Released at 200–400 ft AGL [R p. 8, p. 11] ✓.
   - **+** Its weight may differ per attempt, and several X-1s may be brought [R p. 9].
@@ -90,11 +92,11 @@ Verbatim [R p. 11–12, 27]:
 | ERAU's assumption [T p. 182, Table 8-4] | 0.30 (18 lb/min) | 37 (12 laps + 2.5/0.1) | |
 | Shipped AirCrafter 1.0 (`AirCrafter.m` l. 241–243) | 0.2205 (10 kg / 100 s) | 20.5 | |
 
-**Proposed PLACEHOLDERS** (config entries, OPEN_QUESTIONS Q35):
+**Proposed PLACEHOLDERS** (config entries, PLACEHOLDERS Q35):
 - **R2 = 0.20 lb/s:** the USYD back-calculation brackets 0.165–0.203, and it is consistent with the shipped 0.22. UCLA and ERAU guessed high; Josh is low.
 - **R3 = 27:** consistent with the winner-level back-calculation [J] and with a top team flying ~8–10 laps plus a 2.5-point box at ~0.15 lb (ERAU's X-1 was 0.16 lb, [T p. 182]).
 
-The ×0.5 / ×2 grid (0.10–0.40 lb/s, 13.5–54) covers every row above. If you have the real raw values for Buffalo and RPI, they replace these.
+The ×0.5 / ×2 grid (0.10–0.40 lb/s, 13.5–54) covers every row above. Real raw values for Buffalo and RPI, if obtained, replace these.
 
 ## 5. Woombah as built (`configs/woombah_2025.yaml`)
 
@@ -109,14 +111,14 @@ The ×0.5 / ×2 grid (0.10–0.40 lb/s, 13.5–54) covers every row above. If yo
 | Component masses | wing 3.41 lb, nose 0.15, fuselage 1.23, gear 0.66, HT 0.41, VT 0.19, ESC 0.56 (×2), Rx 0.19, Rx battery 0.30, motors 0.50 (×2), props 0.08 (×2), payload structure 0.44, bottles (M2) 13.5, glider structure 0.22, glider 0.33, batteries 1.64 (×2) | [W p. 45 Table 34] |
 | Mission masses | M1 9.32, M2 26.02, M3 10.09, M3-empty 9.76 lb | [W p. 45 Table 34] |
 | Powertrain | 2 × T-Motor V3115 1050 KV; Hargrave microDrive LP ESC (60 A continuous, 120 A burst); Dualsky 2250 mAh 6S 70C (49.95 Wh) per motor; APC 10x7E | [W p. 22–23, Table 23; p. 56] |
-| Motor Rm, I0, mass | 33.84 mΩ; 1.79 A at 10 V; 112.7 g | [TM spec table]. **Not in the report.** You supplied them in the T-Motor folder, so no PLACEHOLDER is needed |
+| Motor Rm, I0, mass | 33.84 mΩ; 1.79 A at 10 V; 112.7 g | [TM spec table]. **Not in the report.** They are in the T-Motor data folder, so no PLACEHOLDER is needed |
 | Motor station | 9.9 in from centreline, 5.5 in ahead of the LE | [W p. 20], already in `full_mdo_twin.yaml` |
 | Fill | steel powder, measured packed density 6.5 lb/L; 1 L Pepsi bottles, 6.5 lb each | [W p. 14, p. 18] |
 | Pylon | 8.1 × 1.0 × 1.82 in | [W p. 18 Table 16] |
 | X-1 | 0.37 lb actual (0.33 design); 15.5 in span, 82 in² wing, 10.62 × 2.36 × 2.75 in fuselage | [W p. 59 Tables 38–39; p. 24 Table 25] |
 | M2 / M3 cases | M2: 13.2 lb fuel (actual) + pylons, tanks, payload structure, X-1. M3: empty tanks + pylons + X-1 | [W p. 59, p. 45] |
 
-**Missing, so PLACEHOLDERs** (OPEN_QUESTIONS):
+**Missing, so PLACEHOLDERs** (PLACEHOLDERS):
 - cell resistance (Dualsky 70C; keep 5 mΩ, Q8);
 - empty bottle mass and diameter (1 L PET; Q36);
 - pylon spanwise station (Q36);
@@ -200,7 +202,7 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 | **M2** | `batteryFraction = 0` ⇒ E = 0 ⇒ lap count 1 everywhere (confirmed in the baseline) | **yes** | **fix** (fraction 1) |
 | M3 | take-off time missing from lap 1 | no (method) | keep, document |
 | M4 | decel mask reuse | no | keep |
-| **M5** | a lookup table that cannot be built within its step limit raises an error | **yes on the 2025 grid** (found in checkpoint 3: the error stops the whole sweep; it never fires on the shipped grid) | **fix** (mark the point infeasible) |
+| **M5** | a lookup table that cannot be built within its step limit raises an error | **yes on the 2025 grid** (found in stage 3: the error stops the whole sweep; it never fires on the shipped grid) | **fix** (mark the point infeasible) |
 | M6 | T_static computed but not used in the lap time | no (method) | keep |
 | **M7** | NaN lap time when the turn-entry speed is below the decel table (m = 7, b = 1.5, AR 9, V = 25) | **yes** (silently drops points) | **fix** (keep the speed) |
 | **M8 (new)** | `propSelector` reads past the last RPM block of a file whose data stop below 0.85 × 150000/D: crash with the full APC set | **yes** (crash) | **fix** (stop at the file end) |
@@ -209,7 +211,7 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 | M11 (new) | `propSelector` computes the minimum-power prop but returns the whole table | no | read the min-power row as "selected" |
 | M12–M13 | `ind2sub` 5-output on 4-D arrays (M3_k used as an index); duplicate rows for tied scores | no | keep |
 | M14 | hard-coded APC path; parser reads `*.txt` only | portability | path argument; `.txt` links |
-| **M13 (new, checkpoint 3)** | `propSelector` crashes (`array2table` on an empty table) when no prop meets the requirement | **yes** (crash) | **fix** (empty table). Related configuration: `propSelector` sizes one prop for the whole aircraft; in `2025` mode `n_props` = 2 splits the static thrust and cruise drag over the twin's two props (a configuration input, as the team would use it for Woombah) |
+| **M13 (new, stage 3)** | `propSelector` crashes (`array2table` on an empty table) when no prop meets the requirement | **yes** (crash) | **fix** (empty table). Related configuration: `propSelector` sizes one prop for the whole aircraft; in `2025` mode `n_props` = 2 splits the static thrust and cruise drag over the twin's two props (a configuration input, as the team would use it for Woombah) |
 
 **Copies.** `reference/aircrafter1/{original,2025}/` with a `mode` switch:
 - `original` must reproduce `baseline/shipped_tested.*` to machine precision;
@@ -242,8 +244,8 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 **Throttle:** recommended as a per-point design variable.
 - **M3:** laps are energy-limited, so full throttle runs the battery flat early. Woombah flew M3 at 54 % / 17–20 A [W p. 26, p. 59].
 - **M2:** likely rides throttle = 1. I'll report that.
-- **Prerequisite (found in this checkpoint):** the powertrain's T(v) fit is wrong at part throttle. At throttle 0.5 it gives 138 N at 40 m/s, because the advance ratio passes the APC data and the C_T polynomial extrapolates past windmilling.
-- **Fix in checkpoint 2, before any part-throttle use:** limit the fit nodes to below each throttle's windmill speed, scaling the node range with throttle (smooth), plus a test. Existing configs keep throttle = 1 and stay bit-identical.
+- **Prerequisite (found in this stage):** the powertrain's T(v) fit is wrong at part throttle. At throttle 0.5 it gives 138 N at 40 m/s, because the advance ratio passes the APC data and the C_T polynomial extrapolates past windmilling.
+- **Fix in stage 2, before any part-throttle use:** limit the fit nodes to below each throttle's windmill speed, scaling the node range with throttle (smooth), plus a test. Existing configs keep throttle = 1 and stay bit-identical.
 
 **Battery per mission:** recommended (the rule allows it, above). Both capacities bounded by 50 Wh per pack ÷ (n_s × 3.7 V) for two packs.
 
@@ -286,7 +288,7 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 - **Reference motor** = the 1050 KV winding (Kv_ref 1050, Rm_ref 33.84 mΩ, I0_ref 1.79 A, 112.7 g).
 - **Rewind vs catalogue:** the rewind model gives R ∝ Kv⁻², I0 ∝ Kv. The catalogue follows R ∝ Kv⁻¹·⁵⁵ and I0 ∝ Kv¹·¹⁶ [TM README]. I'll report the rewind model's error at the 400 / 640 / 900 windings and keep the rewind model (settled).
 - **v_top:** at full throttle, 6S and 1050 KV, the Woombah-like M2 case converges at 52.6 m/s level speed (checked here, with v_top = 100). With v_top = 50/60 the MDA fails.
-  - **Proposal: v_top = 80 m/s, confirmed in checkpoint 2** by a corner sweep (Kv 1050, throttle 1, the lightest M3 case, each prop) showing every level speed < 0.95 v_top, plus the fit residual over the wider range.
+  - **Proposal: v_top = 80 m/s, confirmed in stage 2** by a corner sweep (Kv 1050, throttle 1, the lightest M3 case, each prop) showing every level speed < 0.95 v_top, plus the fit residual over the wider range.
   - If the fit degrades, lower the Kv upper bound instead, and report it.
 
 **Propulsion candidates** (the same for all three methods):
@@ -314,7 +316,7 @@ The shipped code instead grids **cruise speed** (10–30 m/s), uses C_D0 0.012 a
 - **Screening:** re-screen on the multipoint problem with the 90 % rule; report d.
 - **Node check:** across both points before any robust run.
 
-## 12. Run list and cost estimate (checkpoint 4)
+## 12. Run list and cost estimate
 
 Basis:
 - the single-point deterministic optimum (11 DVs) takes 1.3 min (3 threads);
@@ -339,14 +341,14 @@ Basis:
 1. RDO on the **best case only**, plus 2 extra starts (3 runs instead of 5): −3 h.
 2. The 4S and 5S cells only for the best prop pair (11 deterministic runs instead of 27): −1.1 h.
 
-That brings it to **≈ 9.6 h**. The robust propulsion-ranking question is then answered for the best case against the deterministic ranking, not across all cases; I'd state that. Checkpoint 5 (timing, repeats, scaling) is separate, about 6–8 h, and mostly RDO repeats (3 × 90 min) and the RDO-vs-d runs.
+That brings it to **≈ 9.6 h**. The robust propulsion-ranking question is then answered for the best case against the deterministic ranking, not across all cases; I'd state that. Stage 5 (timing, repeats, scaling) is separate, about 6–8 h, and mostly RDO repeats (3 × 90 min) and the RDO-vs-d runs.
 
 ## 13. Things to decide or know
 
-1. **Normalisation placeholders:** R2 = 0.20 lb/s, R3 = 27 (§4). If you have the real raw best values, they replace these.
-2. **Checkpoint 4 cuts** (§12).
+1. **Normalisation placeholders:** R2 = 0.20 lb/s, R3 = 27 (§4). Real raw best values, if obtained, replace these.
+2. **Stage 4 cuts** (§12).
 3. **Per-point throttle**, which needs the part-throttle powertrain fix (§9). Recommended.
-4. **v_top = 80 m/s and Kv ∈ [400, 1050]** (§9), to be confirmed in checkpoint 2.
+4. **v_top = 80 m/s and Kv ∈ [400, 1050]** (§9), to be confirmed in stage 2.
 5. **AirCrafter 1.0 `2025` grid:** Woombah's ranges with the shipped steps and a speed axis of 10–50 m/s (§8). The report's power axis isn't in the shipped code.
 6. **Take-off is missing from the M2 time** in both tools [R p. 11 counts it]. This biases both fast against the flight data; stated, not fixed.
 7. **The X-1 in M2 is 0.37 lb**, the same vehicle, not a lighter one (§9).

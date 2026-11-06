@@ -1,14 +1,13 @@
-# MDA robustness at low-speed banner designs: plan
+# MDA robustness at low-speed banner designs
 
-Brief: `4_PROMPTS/aircrafter2_mda_robustness_prompt.md`. Branch `placeholder-fixes-2026` (`e3d40e8`, clean at the
-start). **Nothing in the repo is changed:** no code, config or test. This file is the only new file under `docs/`, and
-it is uncommitted. Diagnostics ran on a copy of the tree (`e3d40e8`, the same venv packages) in a scratch environment.
-Prototype fixes were tried only in that copy. Scripts, logs and the prototype diffs are in
-`outputs/mda_robustness/` (gitignored), listed in §6.
+Why the multidisciplinary analysis failed at some low-speed banner designs, the fixes considered, and the two that
+were built (F1, a continuation fallback in the Newton solve, and F2, a warm start), with their verification. The
+diagnostics and prototype fixes ran on a copy of the tree (branch `placeholder-fixes-2026`); their scripts, logs and
+diffs are in `outputs/mda_robustness/` (git-ignored), listed in §6.
 
 ## Status (2026-11-02): F1 and F2 built and verified
 
-Approved 2026-11-02 and built on `placeholder-fixes-2026` (brief `Claude outputs/aircrafter2_mda_robustness_impl_prompt.md`).
+Approved and built on `placeholder-fixes-2026` on 2026-11-02.
 The text below this section is the plan as approved; this section records what was built and measured.
 
 **Commits.** `94ed195` this plan; `5b868c1` F1 + F2 + tests; `4061c67` `integer()` rounding check; `15f1dcc` the
@@ -17,8 +16,7 @@ envelope's stall-margin column; `fe681dc` verification runs and the regenerated 
 
 **What was built.**
 - `FullMDOConfig.mda_robust` (bool, default false), `true` in `configs/dbf2026_multipoint.yaml`. It is inherited by
-  `dbf2026_multipoint_rdo.yaml` and by `humpback_2026.yaml` (the as-built validation config; kept on, decided with the
-  user).
+  `dbf2026_multipoint_rdo.yaml` and by `humpback_2026.yaml` (the as-built validation config; kept on by decision).
 - F1, `aircrafter2/robustness/rdo_problem.py`: `RetryNewton(robust=...)`. Robust order: current → own last converged
   (skipped when equal to the start state) → continuation (4 steps, then 8; the last step is the target exactly) →
   reference → cold. `good_in` is stored in both modes. Switch off: the original loop, unchanged.
@@ -26,7 +24,7 @@ envelope's stall-margin column; `fe681dc` verification runs and the regenerated 
   start, then the target. The run JSON gets `warm_path` and `mda_fallbacks` (solves needing the continuation, per point).
 - Tests: `tests/test_mda_robust.py` (12 tests, plus 2 for the M1 check) with `tests/data/mda_low_speed_designs.json` (iter2, iter3, pf_before).
 
-**Deviations from the plan (each decided with the user on 2026-11-02).**
+**Deviations from the plan (each decided on 2026-11-02).**
 1. **`QuietDirectSolver`** (new, under the switch only). On this machine a diverged Newton attempt at the iter3 step
    reaches a singular Jacobian, at M2 as well as M3. OpenMDAO's `DirectSolver` then builds its diagnosis, a dense SVD of
    the MDA Jacobian, which took 575 s and > 3 GB and got a test run OOM-killed. It also raises `RuntimeError`, which
@@ -109,7 +107,7 @@ only below SM_min; above SM_max it reports `SM_high`.
   Both are behind a new switch that is off by default, so every 2024-25 and single-point run follows the old code path
   bit for bit. Prototyped: F1 converges the failing step. The full cold-start smoke run with F1 converged: **58 iterations, F 6.1723 (M2 2.2711, M3
   2.9012), no violated constraints, M1 check passed** (420 s on 1 thread here). It's a prototype run, not a result.
-- **Problem 2** (M1 SM 0.4718 > 0.47) is your decision, §4.
+- **Problem 2** (M1 SM 0.4718 > 0.47) is an open decision, §4.
 
 ## 1. Root cause (diagnostic runs, 2026-11-02)
 
@@ -117,19 +115,19 @@ only below SM_min; above SM_max it reports `SM_high`.
 
 The cold-start smoke run, re-run with every model evaluation's design variables logged
 (`outputs/mda_robustness/diag/cold_smoke_evals.jsonl`), fails at SLSQP's third evaluation, the same point as in the
-brief:
+specification:
 
 | | Kv | throttle_M2 | throttle_M3 | S_ht (m²) | S_vt (m²) | c (m) | b (m) | L_banner (in) | capacity_M3 (Ah) |
 |---|---|---|---|---|---|---|---|---|---|
 | iterations 0–2 (Humpback start) | 245 | 1.0 | 1.0 | 0.1484 | 0.0586 | 0.3701 | 1.4986 | 197.0 | 3.30 |
 | **iteration 3 (fails)** | **200.0** | **0.7725** | **0.795** | **0.0961** | **0.0428** | **0.3398** | 1.4945 | 198.17 | 3.337 |
 
-On this machine (2 cores, 1 thread) it stops with "failed to converge in 30 iterations" instead of your "inf or NaN
+On this machine (2 cores, 1 thread) it stops with "failed to converge in 30 iterations" instead of the reported "inf or NaN
 after 21 iterations". It is the same divergence: the warm-started reproduction below gives the NaN message.
 
 ### 1.2 What Newton does there
 
-- **Warm, from the iteration-2 state** (v 23.4 m/s, α 4.25°), as SLSQP runs it. This gives the brief's message
+- **Warm, from the iteration-2 state** (v 23.4 m/s, α 4.25°), as SLSQP runs it. This gives the specification's message
   exactly ("residuals contain 'inf' or 'NaN' after 25 iterations").
   - Iteration 1: v → 8.79 m/s, α → 9.6°.
   - Then α swings −35°, −84°, +552°, …, −1981°, while v sits on its 5 m/s bound and jumps to 80 m/s.
@@ -138,8 +136,8 @@ after 21 iterations". It is the same divergence: the warm-started reproduction b
   - `m_total` stays at 4.783 kg until iteration 21, then diverges with the rest.
 - **Cold, from the config's initial state** (v 30 m/s, α 2°): iteration 1 sends v to its 5 m/s bound (α 8.4°). It
   diverges the same way, and stops at 30 iterations at a residual of 4e24.
-- **Your stored low-speed optimum** (`pf_before_smoke_…` dv, cold): the same pattern (v 5 m/s, α 128° at iteration 2).
-  It fails on the current tree and, per the brief, on the pre-fix tree.
+- **The stored low-speed optimum** (`pf_before_smoke_…` dv, cold): the same pattern (v 5 m/s, α 128° at iteration 2).
+  It fails on the current tree and, per the specification, on the pre-fix tree.
 
 ### 1.3 Why: two roots, and the starts are outside the real root's basin
 
@@ -170,11 +168,11 @@ T(v) fit of each state (`outputs/mda_robustness/diag/curve_*.csv`):
   never comes back.
 - **What `energy_reserve` 0.0 does.** It doesn't change the MDA's equations: `E_mission` is downstream of the MDA. It
   changes SLSQP's path. With 25 % more mission energy (0.8 of the pack, against 0.64), the first step goes to Kv's lower
-  bound and a 0.795 throttle in one move (my reading of the brief's step; not separately tested). With the reserve,
+  bound and a 0.795 throttle in one move (one reading of the specified step; not separately tested). With the reserve,
   the first step was smaller and stayed in the basin. So it is the trigger, not the cause, and it stays at 0.0 as
   settled.
 
-### 1.4 The brief's suspects
+### 1.4 The specification's suspects
 
 | Suspect | Verdict |
 |---|---|
@@ -193,7 +191,7 @@ T(v) fit of each state (`outputs/mda_robustness/diag/curve_*.csv`):
 | v start 0.6 v_fit_max with `RetryNewton`'s fallbacks (M2 then falls back to cold and converges) | converges (M3 in 4 iterations) |
 | α bounded [−10°, 20°] (`BoundsEnforceLS`, scalar) | **fails.** Pinned at the (v 5 m/s, α 20°) corner for 10 iterations: the scalar step is cut to zero. It reaches the real root at iteration 28 (residual 2e-8), then runs out at 30 iterations. |
 | `ArmijoGoldsteinLS` (both points) | **fails.** M2 now diverges. |
-| Speed balance in s = v / v_fit_max ∈ [0.2, 1], start 0.6 | **fails.** The first step still goes to the lower bound; the prototype then hit NaN at v < 0 (my prototype's error, §2.5) |
+| Speed balance in s = v / v_fit_max ∈ [0.2, 1], start 0.6 | **fails.** The first step still goes to the lower bound; the prototype then hit NaN at v < 0 (an error in the prototype, §2.5) |
 | Warm: iteration-2 state → iteration-3 design (the optimiser's step) | **fails** (as SLSQP) |
 | **Warm + continuation, 4 steps** (prototype F1) | **converges**: v 15.479 m/s, α 9.978°, F 5.17798 |
 | Humpback's converged state → the stored optimum (one warm jump) | **converges at the first attempt** (5.7 s): F 5.981649, M3 v 15.760 m/s |
@@ -216,7 +214,7 @@ goes in the problem config. It is not a placeholder.
 **What.** After the existing starts fail, interpolate the MDA's input vector from the last converged inputs
 (`good_in`, stored next to `good`) to the target: t = 1/4, 1/2, 3/4, 1. Solve at each step, warm-started from the
 previous step, and set the target inputs exactly at the last step. If a step fails, halve it once (8 steps) before
-raising. The prototype has the 4 steps only; the halving and the exact last step are not prototyped yet. This is the brief's candidate 2 done inside the solver, so it covers every caller. That includes SLSQP's
+raising. The prototype has the 4 steps only; the halving and the exact last step are not prototyped yet. This is the specification's candidate 2 done inside the solver, so it covers every caller. That includes SLSQP's
 path, the robust nodes, and the M2 point.
 
 With the switch on, two ordering changes cut the cost of a failing solve (§2.1, cost):
@@ -229,7 +227,7 @@ With the switch on, two ordering changes cut the cost of a failing solve (§2.1,
 - `aircrafter2/problems/full_mdo.py`: the `mda_robust` field in `FullMDOConfig`, passed to `RetryNewton`. The Newton
   line stays as it is, so `constraints_view.py`'s hard-coded regex still matches.
 - `aircrafter2/constraints_view.py`: the `balance.v` / `balance.alpha_cruise` entry notes name the fallback.
-- `docs/modules/` (the MDA page) and `docs/RESULTS_2026_PLAN.md` (a line under "Placeholder fixes").
+- `docs/modules/` (the MDA page) and `docs/development/RESULTS_2026_PLAN.md` (a line under "Placeholder fixes").
 
 **Existing results.**
 - **Switch off: nothing can move.** `RetryNewton`'s code path is the current one. The continuation is never reached
@@ -241,7 +239,7 @@ With the switch on, two ordering changes cut the cost of a failing solve (§2.1,
 
   One exception: the ordering change (skip the duplicate start, continuation before cold) can change which fallback
   succeeds, at a solve that failed its first attempt. In that case only 2025-26 results move, and none are final yet.
-  If you prefer strictly fallback-only, keep the old order and append the continuation (cost: about 25 s more per
+  For a strictly fallback-only version, keep the old order and append the continuation (cost: about 25 s more per
   failing step).
 
 **How I'll show it.**
@@ -264,7 +262,7 @@ With the switch on, two ordering changes cut the cost of a failing solve (§2.1,
 Newton iterations, 10–25 s here) plus 4 short solves (4–6 iterations each, about 5 s). Measured at the iteration-3
 step: 57 s with the current order (three failed attempts first), against 52 s for the old failure. With the ordering
 change, about 15–20 s. Smoke run with the prototype (current order): 58 iterations in 420 s on 1 thread. This isn't comparable with
-your 300 s for `pf_before_smoke` (54 iterations, 3 threads); verification step 3 measures it on your machine.
+the 300 s measured for `pf_before_smoke` (54 iterations, 3 threads); verification step 3 measures it on the development machine.
 
 ### 2.2 F2 (recommended, with F1): warm path for `--start` and `integer()`
 
@@ -303,7 +301,7 @@ Keep as a fallback if F1 turns out too slow in the RDO.
 
 ### 2.4 F4 (fallback only): the IPOPT path with fail flags for the deterministic problem
 
-As in the brief: it changes the optimiser between the nominal and robust results, and the evidence above doesn't need
+As in the specification: it changes the optimiser between the nominal and robust results, and the evidence above doesn't need
 it. Not proposed.
 
 ### 2.5 Tried and rejected
@@ -332,7 +330,7 @@ it. Not proposed.
 
 Long jobs run under `systemd-run --user`. With about 1.3 GB per worker, run 3 and 4 in parallel, then 5's two cases.
 
-## 4. For you
+## 4. Decisions needed
 
 ### Problem 2: Humpback's M1 static margin above SM_max (decision needed)
 
@@ -346,7 +344,7 @@ prop: +12 g at x_motor −0.53 m. Calibrated: 0.4637, which passes. G&G: 0.82, w
 - **(b)** Check only SM's lower bound in M1: a code change in `m1_check`, since a too-large SM is a handling issue,
   not a safety one. It splits `M1_SAFETY`'s SM into a one-sided check.
 
-Which one? Neither is applied until you say.
+Neither is applied until one is chosen.
 
 ### Minor items (not fixed)
 
@@ -355,10 +353,10 @@ Which one? Neither is applied until you say.
 - **Dirty provenance:** `validation_2026` records `0f27643-dirty` for the gg/cal/envelope runs (only docs were
   uncommitted). A clean rerun takes about 20 min. Optional; verification step 7 regenerates it anyway, which makes it
   clean.
-- **Stale worktrees.** `git worktree list` shows four entries. Run `git worktree prune` **on your machine, not from a
+- **Stale worktrees.** `git worktree list` shows four entries. Run `git worktree prune` **on the development machine, not from a
   sandboxed session**: in a session where the paths are mounted elsewhere, every worktree looks "prunable", so a prune
-  there would drop the live `AirCrafter2-constraints-ui` worktree too. On your machine:
-  - the `/tmp/claude-1000/…/wt_before` scratch worktree of `73a1db4` (last session) should be the only prunable one;
+  there would drop the live `AirCrafter2-constraints-ui` worktree too. On the development machine:
+  - the `wt_before` scratch worktree of `73a1db4` should be the only prunable one;
   - `outputs/wt_b2adbb8` is the `configs_snapshot` reference worktree of `b2adbb8`. It still exists; keep it or
     `git worktree remove` it.
 - **Inefficiency in `RetryNewton` (any config):** "own last converged" repeats "current" in an optimiser step: the
@@ -396,6 +394,6 @@ Which one? Neither is applied until you say.
 - `diag_src.tgz`, `diag_sitepkgs.tgz`: the copies used to set up the scratch environment (about 300 MB). Safe to
   delete.
 
-To reproduce on your machine: `PYTHONPATH=. AIRCRAFTER2_APC_DIR=/home/lucas/University/THESIS/PERFILES2
+To reproduce: `PYTHONPATH=. AIRCRAFTER2_APC_DIR=/home/lucas/University/THESIS/PERFILES2
 .venv/bin/python outputs/mda_robustness/diag/variants.py outputs/mda_robustness/diag/cold_smoke_evals.jsonl:2 warm trace
 noretry`. The JSONL paths inside the scripts are given on the command line.

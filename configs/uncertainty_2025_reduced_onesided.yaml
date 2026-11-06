@@ -1,8 +1,8 @@
 # SENSITIVITY: the reduced set with a one-sided f_build on [1.0, 1.3] (builds come out heavier, not lighter): the
 # uniform machinery is symmetric, so nominal 1.15 +/- 0.15, and the reference node sits at a 15 % heavier structure.
-# Reduced uncertain set for the 2024-25 RDO: mass and wind only (docs/RDO_REDUCED_PLAN.md). Only what differs from the
+# Reduced uncertain set for the 2024-25 RDO: mass and wind only (docs/development/RDO_REDUCED_PLAN.md). Only what differs from the
 # shared spreads (configs/placeholders.yaml: f_build, f_tb, m_avionics; configs/rulesets/dbf_2024_25.yaml: lap.wind) is
-# here, merged by name. Evidence: docs/RDO_REDUCED_PLAN.md section 2 and OPEN_QUESTIONS Q39; all PLACEHOLDERS.
+# here, merged by name. Evidence: docs/development/RDO_REDUCED_PLAN.md section 2 and PLACEHOLDERS Q39; all PLACEHOLDERS.
 parameters:
   # build-mass factor on the whole structure (wing, tails, boom, cargo bay, gear): aircrafter2/mass/garcia_gamboa/masses.py
   - {name: f_build,    dist: uniform, nominal: 1.15, spread: 0.15, source: 'Humpback CAD to built'}  # Q39: one-sided [1.0, 1.3]: cited, [HB] p. 43 'a ~20 % increase from CAD to manufacturing' (2026 USYD DBF report)

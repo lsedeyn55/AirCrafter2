@@ -2,7 +2,7 @@
 
 write_tex   pyXDSM TikZ source (compile with LaTeX, e.g. Overleaf; needs the pyxdsm .sty files).
 draw_pdf    a matplotlib quick-look version (no LaTeX needed).
-Called by api.py; see docs/PLAN.md section 4 for the architecture.
+Called by api.py; see docs/development/PLAN.md section 4 for the architecture.
 """
 
 from pathlib import Path

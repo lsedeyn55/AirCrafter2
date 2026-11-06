@@ -1,7 +1,7 @@
-# Reduced uncertain set for the 2024-25 RDO: mass and wind only (docs/RDO_REDUCED_PLAN.md). Every other parameter
+# Reduced uncertain set for the 2024-25 RDO: mass and wind only (docs/development/RDO_REDUCED_PLAN.md). Every other parameter
 # of configs/uncertainty.yaml is held at its nominal (config) value. Schema as configs/uncertainty.yaml.
-# Evidence for each spread: docs/RDO_REDUCED_PLAN.md section 2 and OPEN_QUESTIONS Q39; all four are PLACEHOLDERS.
-# The four spreads are the shared ones (docs/PLACEHOLDERS_RULESETS_PLAN.md): f_build, f_tb and m_avionics in
+# Evidence for each spread: docs/development/RDO_REDUCED_PLAN.md section 2 and PLACEHOLDERS Q39; all four are PLACEHOLDERS.
+# The four spreads are the shared ones (docs/development/PLACEHOLDERS_RULESETS_PLAN.md): f_build, f_tb and m_avionics in
 # configs/placeholders.yaml, lap.wind (0-7 m/s) in configs/rulesets/dbf_2024_25.yaml, in that order. This file holds
 # only what differs from them: nothing. Variants: uncertainty_2025_reduced_calibrated.yaml, _onesided.yaml.
 parameters: []

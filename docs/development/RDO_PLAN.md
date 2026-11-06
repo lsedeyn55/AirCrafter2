@@ -1,29 +1,29 @@
-# Robust design optimisation (RDO) for AirCrafter 2.0: plan (checkpoint 1)
+# Robust design optimisation (RDO)
 
-Brief: `THESIS/aircrafter2_rdo_prompt.md`. Branch `rdo`, from `cleanup/drop-step-names` (4ce4419, the current HEAD
-when the work started). Scripts: `studies/rdo_screening.py`, `studies/rdo_node_check.py`; raw results in
+Design notes for the robust optimisation (branch `rdo`): the uncertain parameters, the screening, the quadrature rule,
+node convergence, failure handling, the cost and the robust problem statement. Scripts: `studies/rdo_screening.py`, `studies/rdo_node_check.py`; raw results in
 `outputs/rdo/` (not in git).
 
-**Read this first.** Every spread below is a PLACEHOLDER (OPEN_QUESTIONS Q32), as are the motor, battery and
+**Note.** Every spread below is a PLACEHOLDER (PLACEHOLDERS Q32), as are the motor, battery and
 payload values they perturb. The study measures how this model behaves under RDO and what RDO costs; the numbers
 are not a design recommendation.
 
-## 0. Decisions and things that differ from the brief
+## 0. Decisions
 
-| Item | What I did | Why |
+| Item | Decision | Why |
 |---|---|---|
 | Screening dimension | **d = 7, N = 15**, not d ≤ 5 | No 5-parameter set reaches 90 % (best: 81 % of the lap time, 95 % of the energy margin, 77 % of the static margin; §2). 7 is the smallest set that does. Going back to the d = 5 set is one line in the config. |
-| "Payload mass" spread | `m_pay` ± 10 % (uniform) | `worst_cases()` has no payload case: its 10 % mass step is ballast on the *empty* mass. I used the payload as briefed with the same 10 %. |
-| Capacity −10 % (a `worst_cases()` case) | Not an uncertain parameter | `capacity` is a design variable; the brief excludes DVs (the DV-tolerance hook covers this later). |
+| "Payload mass" spread | `m_pay` ± 10 % (uniform) | `worst_cases()` has no payload case: its 10 % mass step is ballast on the *empty* mass. I used the payload as specified with the same 10 %. |
+| Capacity −10 % (a `worst_cases()` case) | Not an uncertain parameter | `capacity` is a design variable; the specification excludes DVs (the DV-tolerance hook covers this later). |
 | Headwind | `lap.wind` ~ U(0, 3) m/s, mean 1.5 | 3 m/s is the worst-case default. The course is laid out into the wind, so the wind speed along the straights is ≥ 0. The reference node therefore flies in 1.5 m/s, not the deterministic 0. |
 | AIAC twin-study tag | None exists in the repo (`git tag` is empty) | Nothing to avoid; no history is rewritten either way. |
 | pyOptSparse and IPOPT | pyOptSparse v2.16.1 (from source), Ipopt 3.14.20 with MUMPS 3.0.14 built into the virtual environment by `scripts/install_ipopt.sh` (no sudo; the AUR package needs a password), cyipopt 1.7.0 linked to it by rpath. Checked on a constrained paraboloid. `robust.optimizer: ipopt` selects it; SLSQP stays the default | SNOPT needs a licence. pyOptSparse's SLSQP ignores the fail flag, so only IPOPT can back off from a failed analysis (§5). |
 | Promoted inputs | **None changed** | Every uncertain quantity is already an OpenMDAO input (the `f_*` mass factors, the powertrain values, `eta_h`, `m_pay`, and `lap.wind` / `lap.thrust_factor` on the lap model). |
-| `rho` | Not uncertain | It is in the sensitivity table of `examples/full_mdo.py` but not in its Monte Carlo spreads, which the brief says to start from. |
+| `rho` | Not uncertain | It is in the sensitivity table of `examples/full_mdo.py` but not in its Monte Carlo spreads, which the specification says to start from. |
 
 ## 1. Uncertain parameters
 
-One source: `configs/uncertainty.yaml`, used by the RDO configs (`robust.uncertainty_config`) and, from checkpoint 2,
+One source: `configs/uncertainty.yaml`, used by the RDO configs (`robust.uncertainty_config`) and, from stage 2,
 by the post-optimality Monte Carlo in `examples/full_mdo.py`. All independent.
 
 | Parameter | OpenMDAO input? | Distribution | Nominal | Spread | Std | Source |
@@ -128,7 +128,7 @@ off-nominal nodes). 21 min with 5 workers.
 | corners 6, 8, 13 (b 1.52, c 0.45, capacity 6) | 0/15 | none: the nominal node fails |
 
 - **Hard failures are only at the largest-wing corner** (b = 1.52 m, c = 0.45 m). The deterministic MDA fails there
-  too: it is the existing cold-start limit (PLAN §6h, checkpoint 2), not something RDO adds. The original sweep,
+  too: it is the existing cold-start limit (PLAN §6h, stage 2), not something RDO adds. The original sweep,
   rerun with 11x7E, still gives 21/25.
 - **Warm-starting from the nominal node rescues every off-nominal failure.**
 - The deterministic optimum (c at its 0.15 m lower bound) is far from the failing corner, and the deterministic
@@ -158,7 +158,7 @@ MDA non-convergence and constraint violation are kept separate in every report: 
   left behind.
 - **Not done:** no penalty value (it isn't differentiable and would distort SLSQP's quasi-Newton model), and no
   silent tightening of the bounds. If failures show up near the large-wing corner, tightening the c or b bound is
-  a decision for you; I'd report it and not do it.
+  an open decision; the recommendation is to report it rather than do it.
 
 ## 6. Cost estimate
 
@@ -172,11 +172,11 @@ Measured on this machine (16 cores, 14 GB):
 | optimisation, single 10x7E 4S | 86 s, 39 iterations | **~22 min if the iteration count is similar** (N × deterministic) | ~15 |
 
 ¹ Measured with the node check's 5 workers loading the CPU; the ratio is what carries over. Clean timings follow in
-checkpoint 3.
+stage 3.
 
 - **Monte Carlo reference:** 1000 analyses per design at ~1–3 s each, so 5 worker processes take ~5–10 min. 14 workers
   ran the machine out of memory, so studies run at most ~5 model copies at once.
-- **Whole study** (checkpoints 2–4): about 15 robust optimisations (energy reserve ×2, Pareto ×7, enumeration ×3,
+- **Whole study** (stages 2–4): about 15 robust optimisations (energy reserve ×2, Pareto ×7, enumeration ×3,
   repeats), at ~22 min each, run 3–4 at a time. Plus about 10 Monte Carlo sets of 1000. About 3–4 h of wall time.
 
 ## 7. Robust problem statement
@@ -203,7 +203,7 @@ with        f_j = f(x, y_j; p_j),   μ_f = Σ_j a_j f_j,   σ_f = sqrt(fᵀ Q f 
 - **I_R** = {energy margin, take-off thrust margin, stall margin, SM, wall ratio, r_tube} by default
   (`robust.robust_constraints`). r_tube is geometry-only, so σ = ε and its robust form equals the deterministic one.
 - **β = 2:** about 97.7 % one-sided reliability *if* g is normally distributed. That is an assumption: with uniform
-  inputs and a near-linear g, g is closer to a sum of uniforms. The Monte Carlo P(violation) in checkpoints 2–3
+  inputs and a near-linear g, g is closer to a sum of uniforms. The Monte Carlo P(violation) in stages 2–3
   checks it.
 - **Hook, not implemented:** DV manufacturing tolerances (`robust.dv_tolerances`), with x_j = x + δ_j at the nodes.
 - **The discrete choices** (n_motors, prop, cells) stay in the outer enumeration; the robust problem runs inside
@@ -212,18 +212,18 @@ with        f_j = f(x, y_j; p_j),   μ_f = Σ_j a_j f_j,   σ_f = sqrt(fᵀ Q f 
 Relative to §3.2's x: there, m and V_cruise were design variables. In the built framework they are coupling
 outputs (the G&G mass closure and T = D), and the airfoil is parametrised by tc_scale and camber_scale.
 
-## 8. Implementation (checkpoint 1 status)
+## 8. Implementation status
 
 | File | Content | Status |
 |---|---|---|
 | `aircrafter2/robustness/uncertainty.py` | `UncertainParam`, `RobustConfig` (the `robust:` block, off by default), `Dist`, screening | done |
 | `aircrafter2/robustness/quadrature.py` | Gauss rules, `udr`, `smolyak`, `sobol`; `Rule` with μ = a·f, var = fᵀQf (Q factored) | done |
 | `aircrafter2/robustness/stats.py` | `RobustStats`: μ, σ, μ + kσ, μ ∓ βσ with analytic partials | done |
-| `aircrafter2/robustness/rdo_problem.py` | `build_robust_problem`, `RetryNewton`, node and summary reports | done; optimiser runs in checkpoint 3 |
+| `aircrafter2/robustness/rdo_problem.py` | `build_robust_problem`, `RetryNewton`, node and summary reports | done; optimiser runs in stage 3 |
 | `aircrafter2/problems/full_mdo.py` | `robust:` field; `full_constraints(cfg)` (same list and order as before); `mda_retry` option (off) | done |
 | `configs/uncertainty.yaml`, `full_mdo_rdo.yaml`, `full_mdo_twin_rdo.yaml` | spreads and RDO configs | done |
 | `tests/test_rdo.py` | quadrature vs analytic moments, stats `check_partials`, robust `check_totals` (d = 1), RDO-off regression vs a snapshot from the pre-RDO commit (both configs, rtol 1e-9, incl. 3 SLSQP iterations) | 13 tests pass |
-| CLI / API / UI, `examples/full_mdo.py` reading the shared spreads, docs | | checkpoints 2–4 |
+| CLI / API / UI, `examples/full_mdo.py` reading the shared spreads, docs | | stages 2–4 |
 
 ## References
 

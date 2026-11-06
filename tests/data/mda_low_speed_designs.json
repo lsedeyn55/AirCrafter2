@@ -3,7 +3,7 @@
   "iter2": "outputs/mda_robustness/diag/cold_smoke_evals.jsonl row 1 (SLSQP evaluation 2: the Humpback start, configs/dbf2026_multipoint.yaml initial), the cold-start smoke on e3d40e8",
   "iter3": "outputs/mda_robustness/diag/cold_smoke_evals.jsonl row 2 (SLSQP evaluation 3: the failing step, M3 MDA non-convergence without mda_robust)",
   "pf_before": "outputs/results_2026/runs/pf_before_smoke_8S_19x12E_19x12E.json dv (the low-speed optimum of the pre-placeholder-fix smoke, 73a1db4)",
-  "doc": "docs/MDA_ROBUSTNESS_PLAN.md"
+  "doc": "docs/development/MDA_ROBUSTNESS_PLAN.md"
  },
  "iter2": {
   "b": 1.4986,

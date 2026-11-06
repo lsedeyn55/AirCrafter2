@@ -39,8 +39,8 @@ inputs:
   f_gear: 0.0100               # Table 14, UBI11 individual
   m_sys: 0.62                  # Table 15
   m_pay: 11.0                  # Table 15
-  y1: 0.693333                 # ASSUMPTION: b / (2 n_panels) (OPEN_QUESTIONS Q4)
-  x_gd: 0.3                    # ASSUMPTION: held at the spar (OPEN_QUESTIONS Q4)
+  y1: 0.693333                 # ASSUMPTION: b / (2 n_panels) (PLACEHOLDERS Q4)
+  x_gd: 0.3                    # ASSUMPTION: held at the spar (PLACEHOLDERS Q4)
 
 expected:                      # Table 15, calculated masses (kg)
   m_wing: 0.759

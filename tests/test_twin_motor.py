@@ -186,7 +186,7 @@ def test_cli_overrides_layout(monkeypatch):
     assert pr.y_motor_m == pytest.approx(WOOMBAH_Y_M) and pr.y_motor is None
 
 
-# --- checkpoint 2: wing loads with wing-mounted units (G&G Eqs. 44-46, 48-50) ---------------------------
+# --- wing loads with wing-mounted units (G&G Eqs. 44-46, 48-50) ---------------------------
 from aircrafter2.aero.parasite import ParasiteDrag, cf_turbulent  # noqa: E402
 from aircrafter2.geometry import MotorPlacement  # noqa: E402
 from aircrafter2.mass.garcia_gamboa.loads import WingLoads  # noqa: E402

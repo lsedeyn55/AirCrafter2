@@ -1,9 +1,9 @@
 # Full MDF problem, twin layout: identical to full_mdo.yaml except for the propulsion layout
 # (n_motors = 2 wing-mounted tractors, one pack per motor) and the Woombah-cited twin defaults.
 # Woombah = USYD 2025 DBF design report, "Project Woombah". The motor, battery, nacelle and placeholder values are in
-# configs/placeholders.yaml (T-Motor V3115 and Woombah data since the migration, docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# configs/placeholders.yaml (T-Motor V3115 and Woombah data since the migration, docs/development/PLACEHOLDERS_RULESETS_PLAN.md).
 # Schema: aircrafter2/problems/full_mdo.py (FullMDOConfig). SI units. PLACEHOLDER = not USYD data.
-# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md). Rule-dependent values:
+# Values marked PLACEHOLDER are not USYD data (docs/PLACEHOLDERS.md). Rule-dependent values:
 # configs/rulesets/generic.yaml; a value set here overrides both layers.
 
 placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
@@ -24,7 +24,7 @@ geometry:
   l_ht: 0.8              # m, PLACEHOLDER tail arm
   S_ht: 0.06             # m^2, PLACEHOLDER
   S_vt: 0.03             # m^2, PLACEHOLDER
-  x_spar: 0.25           # brief default
+  x_spar: 0.25           # default
 
 clmax_ratio_min: 1.44    # cruise at >= 1.2 V_stall
 wall_ratio_max: 0.2      # thin-wall validity of the tube equations
@@ -44,7 +44,7 @@ propulsion:              # decision B: the powertrain sets the power; cruise spe
   y_motor_m: 0.2515      # m, nacelle station from the centreline: 9.9 in (Woombah Sec. 5.3.2). Absolute by
                          # default (PLAN 6h T4); or y_motor: 0.2793 as a fraction of the semi-span (9.9/35.45 in)
   Q_nac: 1.3             # interference factor, Woombah Sec. 4.3.2 (motors 5.5 in ahead of the LE; Raymer)
-  nacelle_ff: body       # Raymer body form factor, as briefed; 'nacelle' = 1 + 0.35/f (PLAN 6h T6)
+  nacelle_ff: body       # Raymer body form factor, as specified; 'nacelle' = 1 + 0.35/f (PLAN 6h T6)
   prop: 11x7E            # APC PER3 file (discrete choice, D4: enumerate in examples/full_mdo.py)
   throttle: 1.0          # full throttle (the fastest-lap placeholder objective)
   n_cells: 4             # PLACEHOLDER (Q8)

@@ -1,4 +1,4 @@
-"""The generated parts of RESULTS_LOG.md, docs/RESULTS_2026_PLAN.md, docs/OPEN_QUESTIONS.md and README.md: every number comes
+"""The generated parts of docs/development/RESULTS_LOG.md, docs/development/RESULTS_2026_PLAN.md, docs/PLACEHOLDERS.md and README.md: every number comes
 from the pages' JSON, the run table from the campaign's status file. Rerun after the pages; each part replaces itself.
 
     .venv/bin/python studies/results_2026_docs.py
@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs" / "studies" / "results_2026"
 RUNS = ROOT / "outputs" / "results_2026"
-LOG = ROOT / "RESULTS_LOG.md"
+LOG = ROOT / "docs" / "development" / "RESULTS_LOG.md"
 LABEL = dict(humpback="Humpback", ac1_completed="AC1 mapped (b)", mdo="MDO", mdo_wind="MDO, mean wind", rdo="MDO + RDO")
 
 
@@ -55,7 +55,7 @@ def _floored(n):
     return x["flight_score"] if isinstance(x, dict) else x
 
 
-def morning(R, C, V, S):
+def summary_section(R, C, V, S):
     mdo, rdo, hb, a2 = (nominal(R, x)["score"]["flight_score"] for x in ("mdo", "rdo", "humpback", "ac1_completed"))
     d = R["decomposition"]
     cr = V["criteria"]
@@ -65,25 +65,25 @@ def morning(R, C, V, S):
     norm = {k: v["F"] - R["designs"]["mdo"]["common"]["nominal"]["score"]["flight_score"] for k, v in R["normalisation"].items()}
     ms = R["multistart_summary"]
     bad = next(r for r in C["scaling"]["grid_vs_gradient"]["gradient"] if not r["ok"]) if any(not r["ok"] for r in C["scaling"]["grid_vs_gradient"]["gradient"]) else None
-    return f"""## Morning summary
-**Outcome.** Every planned run finished; no cuts. The four designs, the sensitivities, the Monte Carlos and the timing are done, and the pages are in `docs/studies/results_2026/` (start at `INDEX.md`). In AirCrafter 2.0's own model, MDO reaches F {mdo:.4f}, against {hb:.4f} for Humpback and {a2:.4f} for AirCrafter 1.0 mapped (b). RDO gives up {mdo - rdo:.4f} of nominal F, keeps the mean, cuts sigma from {d['sigma']['mdo']:.4f} to {d['sigma']['rdo']:.4f} and takes P(any violation) from {d['p_any']['mdo']:.3f} to {d['p_any']['rdo']:.3f} in set. Out of set it's {out['mdo']['mc_out']['p_any']:.3f} to {out['rdo']['mc_out']['p_any']:.3f}, so the robustness isn't tuned only to the five parameters. These are comparisons inside one model that favours its own optima, not predictions: the model misses most of Humpback's flight criteria. Tests: {S['freeze_passed']} passed at the freeze, {S['final_passed']} at the final commit. Branch `thesis-results-2026`, tag `results-2026-final` (`{R['freeze']}`), unmerged.
+    return f"""## Summary
+**Outcome.** Every planned run finished; no cuts. The four designs, the sensitivities, the Monte Carlos and the timing are done, and the pages are in `docs/studies/results_2026/` (start at `INDEX.md`). In AirCrafter 2.0's own model, MDO reaches F {mdo:.4f}, against {hb:.4f} for Humpback and {a2:.4f} for AirCrafter 1.0 mapped (b). RDO gives up {mdo - rdo:.4f} of nominal F, keeps the mean, cuts sigma from {d['sigma']['mdo']:.4f} to {d['sigma']['rdo']:.4f} and takes P(any violation) from {d['p_any']['mdo']:.3f} to {d['p_any']['rdo']:.3f} in set. Out of set it is {out['mdo']['mc_out']['p_any']:.3f} to {out['rdo']['mc_out']['p_any']:.3f}, so the robustness is not tuned only to the five parameters. These are comparisons inside one model that favours its own optima, not predictions: the model misses most of Humpback's flight criteria. Tests: {S['freeze_passed']} passed at the freeze, {S['final_passed']} at the final commit. Branch `thesis-results-2026`, tag `results-2026-final` (`{R['freeze']}`).
 
 {headline(R, C)}
 
 **Wall times (single-threaded):** AirCrafter 1.0 sweep {w('AirCrafter 1.0 sweep, shipped steps') / 60:.1f} min; MDO from Humpback {w('AirCrafter 2.0 multipoint, cold') / 60:.1f} min; RDO to convergence {w('RDO to convergence, one run') / 3600:.2f} h.
 
-**The five things most worth your attention:**
-1. **A model bug invalidated my first Monte Carlos; the headline results are clean now.** A worker's problem goes permanently singular after about 250-280 evaluations, which cost 17-30 % of the samples. I reran all 11 with fresh workers, using a new script added after the freeze: an exception to the brief, Decision 13. All samples now converge, and F agrees to about 2e-12 where both runs converged. The bug itself is unfixed, and older studies' Monte Carlos may have hit it ("For me to look at").
-2. **Validation is weak on flight.** §3.7's criteria: structure {cr['mass_pass']} of {cr['mass_n']} rows pass, flight {cr['flight_pass']} of {cr['flight_n']}. M3 laps run 20-46 % too fast. Keep F as a comparison in Chapter 4, not as a predicted score (`validation_2026.md`).
+**Main findings and caveats:**
+1. **A solver-state defect affected the first Monte Carlos; the reported results come from the rerun.** A worker's problem goes permanently singular after about 250-280 evaluations, which cost 17-30 % of the samples. All 11 Monte Carlos were rerun in batches on fresh workers, with a study script added after the freeze (Decision 13). All samples now converge, and F agrees to about 2e-12 where both runs converged. The defect itself is unfixed, and Monte Carlos of earlier studies may have been affected ("Open issues").
+2. **Validation is weak on flight.** §3.7's criteria: structure {cr['mass_pass']} of {cr['mass_n']} rows pass, flight {cr['flight_pass']} of {cr['flight_n']}. M3 laps run 20-46 % too fast. F is a comparison between designs, not a predicted score (`validation_2026.md`).
 3. **Much of the optimum is set by PLACEHOLDERS.** The tail volumes, chord, camber and banner sit on PLACEHOLDER bounds, and M2 sits at the cap, so the normalisation (Q52) sets the payload: F moves {norm['B2']:+.3f} at B_max x2 and {norm['NI2']:+.3f} at NI_max x2. Bound changes are smaller: results_2026.md §5.3.
-4. **Read RDO's gain as variance and feasibility, not mean.** {ss['n']} of {ss['of']} MDO samples sit on the sub-stall balance at fixed throttle. Without them MDO's mean is {ss['mu_without']:.4f}, above RDO's {d['mu']['rdo']:.4f}. Those samples are violations with an F that means little; it's your call how to phrase this in Chapter 4.
-5. **Three judgement calls need your check.** The rounded RDO needed more than the brief's 15 iterations (Decision 10). The multistart converges from only {ms['converged']} of {ms['n']} starts, all to one optimum, and the others are analysis failures at the start design; one of three RDO starts fails too.{f" The {bad['n']}-variable scaling run did not converge in {bad['nit']} iterations, so that scaling curve isn't clean." if bad else ""} The thesis text still describes commit `73a1db4`, not the tag (`INDEX.md` hand-off).
+4. **Read RDO's gain as variance and feasibility, not mean.** {ss['n']} of {ss['of']} MDO samples sit on the sub-stall balance at fixed throttle. Without them MDO's mean is {ss['mu_without']:.4f}, above RDO's {d['mu']['rdo']:.4f}. Those samples are violations with an F that means little.
+5. **Judgement calls.** The rounded RDO needed more than the planned 15 iterations (Decision 10). The multistart converges from only {ms['converged']} of {ms['n']} starts, all to one optimum, and the others are analysis failures at the start design; one of three RDO starts fails too.{f" The {bad['n']}-variable scaling run did not converge in {bad['nit']} iterations, so that scaling curve isn't clean." if bad else ""}
 """
 
 
 def plan(R, C, S):
     return f"""## Final results run
-Done 2026-11-04 on `thesis-results-2026`; freeze tag `results-2026-final` (`{R['freeze']}`). What ran: the enumeration, rounding, `mdo_wind`, multistart, bookends, normalisation, bound and other sensitivities, AirCrafter 1.0 at its shipped steps with mappings (a) and (b), RDO from three starts with robust rounding, common evaluation, 11 Monte Carlos of 1024 points, propagation, screening, node check, wind, placeholders, validation, and the timing. {R['provenance']['n']} run files back the page, {len(R['provenance']['not_at_freeze'])} of them off the freeze commit. Cuts: none. Tests: {S['freeze_passed']} at the freeze, {S['final_passed']} at the final commit. Results: `docs/studies/results_2026/INDEX.md`. Log, with the decisions: `RESULTS_LOG.md`."""
+Done 2026-11-04 on `thesis-results-2026`; freeze tag `results-2026-final` (`{R['freeze']}`). What ran: the enumeration, rounding, `mdo_wind`, multistart, bookends, normalisation, bound and other sensitivities, AirCrafter 1.0 at its shipped steps with mappings (a) and (b), RDO from three starts with robust rounding, common evaluation, 11 Monte Carlos of 1024 points, propagation, screening, node check, wind, placeholders, validation, and the timing. {R['provenance']['n']} run files back the page, {len(R['provenance']['not_at_freeze'])} of them off the freeze commit. Cuts: none. Tests: {S['freeze_passed']} at the freeze, {S['final_passed']} at the final commit. Results: `docs/studies/results_2026/INDEX.md`. Log, with the decisions: `docs/development/RESULTS_LOG.md`."""
 
 
 def questions(R):
@@ -123,24 +123,24 @@ def main():
     perf = "\n".join(f"| {r['name']} | {r['mean']:.3g} s | {r['stat']['n']} |" for r in C["main_rows"])
     text = block(text, "<!-- run table -->", "<!-- /run table -->", f"## Run table\nFrom `outputs/results_2026/campaign_status.md`; every `fr_*` run. The 11 Monte Carlo rows are the batched reruns, at the same commit (Decision 13). `fr_propagation` was rerun on the new arrays.\n\n{table}\n**Timing (single-threaded, `outputs/results_2026/perf/`):**\n\n| measurement | mean | repeats |\n|---|---:|---:|\n{perf}")
     text = block(text, "<!-- findings -->", "<!-- /findings -->", f"## Findings\n{findings}\n\n## Recommendations (as on the page)\n{recs}")
-    summary = morning(R, C, V, S)
-    start, end = "<!-- morning -->", "<!-- /morning -->"
+    summary = summary_section(R, C, V, S)
+    start, end = "<!-- summary -->", "<!-- /summary -->"
     if start in text:
         text = block(text, start, end, summary)
     else:
         head, rest = text.split("\n", 1)
         text = f"{head}\n\n{start}\n{summary.rstrip()}\n{end}\n{rest}"
     LOG.write_text(text)
-    p = ROOT / "docs" / "RESULTS_2026_PLAN.md"
+    p = ROOT / "docs" / "development" / "RESULTS_2026_PLAN.md"
     p.write_text(block(p.read_text(), "<!-- final results run -->", "<!-- /final results run -->", plan(R, C, S)))
-    p = ROOT / "docs" / "OPEN_QUESTIONS.md"
+    p = ROOT / "docs" / "PLACEHOLDERS.md"
     p.write_text(block(p.read_text(), "<!-- final results run -->", "<!-- /final results run -->", questions(R)))
     p = ROOT / "README.md"
     t = p.read_text()
     t = re.sub(r"# \d+ tests \([0-9-]+, about \d+ min\)", f"# {S['final_passed']} tests ({S['date']}, about {S['minutes']} min)", t)
     pointer = "- `docs/studies/results_2026/`: the 2025-26 results, the thesis's main results. `INDEX.md` lists every table, figure and JSON; `validation_2026.md` (Humpback), `results_2026.md` (Humpback, AirCrafter 1.0, MDO, MDO + RDO), `compute_performance_2026.md`.\n"
     if "docs/studies/results_2026/`: " not in t:
-        t = t.replace("- `docs/RESULTS_PLAN.md`:", pointer + "- `docs/RESULTS_PLAN.md`:", 1)
+        t = t.replace("- `docs/development/RESULTS_PLAN.md`:", pointer + "- `docs/development/RESULTS_PLAN.md`:", 1)
     p.write_text(t)
     print("wrote the log's generated parts, the plan's section, the open questions' section, the README")
 

@@ -55,7 +55,7 @@ def test_default_configs_optimise_kv_and_fixed_kv_configs_do_not():
     d, f = default.model_dump(), fixed.model_dump()
     d["design_variables"].pop("Kv")
     # the fixed-Kv config is the default minus the Kv DV, plus the AIAC-era motor values it pins (the placeholders
-    # migration moved the default to the newer T-Motor values; docs/PLACEHOLDERS_RULESETS_PLAN.md), nothing else
+    # migration moved the default to the newer T-Motor values; docs/development/PLACEHOLDERS_RULESETS_PLAN.md), nothing else
     pinned = dict(e_spec=150.0, Kv=900.0, Rm=0.05, I0=1.0, m_motor=0.15, m_esc=0.06, m_prop=0.03, m_avionics=0.25)
     assert {k: f["propulsion"][k] for k in pinned} == pinned
     assert f["takeoff_distance"] == 100.0 and f["stability"]["x_motor"] == -0.30

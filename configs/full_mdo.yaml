@@ -1,8 +1,8 @@
 # Full AirCrafter 2.0 MDF problem: propulsion (decision B), stability, parasite drag.
 # Schema: aircrafter2/problems/full_mdo.py (FullMDOConfig). SI units. PLACEHOLDER = not USYD data.
-# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md). The placeholder values themselves are in
+# Values marked PLACEHOLDER are not USYD data (docs/PLACEHOLDERS.md). The placeholder values themselves are in
 # configs/placeholders.yaml and the rule-dependent ones in configs/rulesets/generic.yaml; a value set here overrides
-# both (docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# both (docs/development/PLACEHOLDERS_RULESETS_PLAN.md).
 
 placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
 ruleset: rulesets/generic.yaml          # rule-dependent values: altitude, mission time, course, headwind spread (layer 3)
@@ -19,7 +19,7 @@ geometry:
   l_ht: 0.8              # m, PLACEHOLDER tail arm
   S_ht: 0.06             # m^2, PLACEHOLDER
   S_vt: 0.03             # m^2, PLACEHOLDER
-  x_spar: 0.25           # brief default
+  x_spar: 0.25           # default
 
 clmax_ratio_min: 1.44    # cruise at >= 1.2 V_stall
 wall_ratio_max: 0.2      # thin-wall validity of the tube equations

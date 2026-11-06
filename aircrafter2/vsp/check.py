@@ -2,7 +2,7 @@
 
 Reloads the written file, so the check covers the file round trip, reads the key parameters and CompGeom wetted areas,
 and compares them with the framework values. The framework is never changed to match: differences are explained in the
-report, and anything over 5 % is listed for docs/OPEN_QUESTIONS.md. See docs/modules/vsp.md.
+report, and anything over 5 % is listed for docs/PLACEHOLDERS.md. See docs/modules/vsp.md.
 """
 
 from pathlib import Path

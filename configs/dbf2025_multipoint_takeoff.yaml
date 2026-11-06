@@ -1,4 +1,4 @@
-# The 2024-25 multipoint problem with take-off in the mission time (docs/TAKEOFF_COURSE_PLAN.md,
+# The 2024-25 multipoint problem with take-off in the mission time (docs/development/TAKEOFF_COURSE_PLAN.md,
 # docs/studies/takeoff_study.md): the ground roll from rest to lift-off is added to lap 1's time and energy at both
 # mission points (and m1_check), as the rules start the clock at throttle advance (Rules_2025.pdf p. 11-12).
 # Everything else is configs/dbf2025_multipoint.yaml. Used for re-analysis only; nothing was re-optimised with it.
@@ -9,5 +9,5 @@ course:
   takeoff:
     in_mission_time: true
     k_lof: 1.1            # performance_modeller.m l. 405: "full power until 1.1 Vstall"
-    CL_ground: 0.15       # PLACEHOLDER: the model's C_L at Woombah's 2 deg wing setting, tail-up roll (TAKEOFF_COURSE_PLAN.md)
+    CL_ground: 0.15       # PLACEHOLDER: the model's C_L at Woombah's 2 deg wing setting, tail-up roll (docs/development/TAKEOFF_COURSE_PLAN.md)
     start_offset_ft: 0.0  # PLACEHOLDER: brake release on the start line

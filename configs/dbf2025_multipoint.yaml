@@ -1,12 +1,12 @@
 # 2024-25 DBF ruleset (X-1 Supersonic Flight Program): multipoint design problem, M2 + M3 on one airframe.
-# Problem: aircrafter2/problems/multipoint.py; plan and sources: docs/RESULTS_PLAN.md.
+# Problem: aircrafter2/problems/multipoint.py; plan and sources: docs/development/RESULTS_PLAN.md.
 # Citations: [R] Rules_2025.pdf page; [W] 2025 USYD DBF Design Report (Project Woombah) page/table;
 # [TM] THESIS/3_LITERATURE/25 competition/T-Motor V3115/ (manufacturer spec table). PLACEHOLDER = not sourced
-# (docs/OPEN_QUESTIONS.md). The propulsion layout and components are Woombah's; the airframe is the design.
+# (docs/PLACEHOLDERS.md). The propulsion layout and components are Woombah's; the airframe is the design.
 extends: full_mdo_twin.yaml
 ruleset: rulesets/dbf_2024_25.yaml           # site, mission, scoring (R2, R3, X-1), stores, rule limits, headwind spread
 # The placeholder values (powertrain, component masses, structure, stability) are in configs/placeholders.yaml, with
-# their [W]/[TM] citations; the 2024-25 rule values in configs/rulesets/dbf_2024_25.yaml (docs/PLACEHOLDERS_RULESETS_PLAN.md).
+# their [W]/[TM] citations; the 2024-25 rule values in configs/rulesets/dbf_2024_25.yaml (docs/development/PLACEHOLDERS_RULESETS_PLAN.md).
 
 airfoil: {seed: clarky, n_modes: 0}          # Clark Y: Woombah's wing airfoil [W p. 20, Table 18]
 mass:

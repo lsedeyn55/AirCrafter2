@@ -22,7 +22,7 @@ resume logic: studies/results_2026_campaign.py; the pages: studies/results_2026_
 
 Design labels (`--label`): humpback, humpback_loo, ac1_direct, ac1_completed, mdo, mdo_wind, rdo (designs()).
 Bookends: the same multipoint problem with the objective reduced to one mission's score (dbf2026 weights w2, w3).
-The model and its decisions: docs/RESULTS_2026_PLAN.md.
+The model and its decisions: docs/development/RESULTS_2026_PLAN.md.
 """
 
 import os
@@ -394,7 +394,7 @@ def optimise(tag, cells=None, m2=None, m3=None, scoring=None, start=None, x0=Non
 def rounding_check(d, cands, tol=1e-9):
     """The payload-count constraints of each rounded candidate (n_p, n_c) at the continuous optimum d (one analysis
     each): fits = fuselage_margin >= 0 and pax_margin >= 0. With the span at its bound, the fuselage length is set by
-    the counts alone, so a candidate that does not fit here is infeasible for every design (docs/RESULTS_2026_PLAN.md
+    the counts alone, so a candidate that does not fit here is infeasible for every design (docs/development/RESULTS_2026_PLAN.md
     §4.2, 2026-11-02)."""
     from openmdao.core.analysis_error import AnalysisError
 
@@ -426,7 +426,7 @@ def _finished(tag):
 
 
 def integer(case, maxiter=None):
-    """Payload rounding (docs/RESULTS_2026_PLAN.md §4.2): n_c down and up, n_p = max(3 n_c, round(n_p)), plus both
+    """Payload rounding (docs/development/RESULTS_2026_PLAN.md §4.2): n_c down and up, n_p = max(3 n_c, round(n_p)), plus both
     counts rounded down (n_p = max(3 n_c, floor(n_p))); the candidates that fit the payload fuselage and the passenger
     ratio at the continuous optimum (rounding_check) are each re-optimised with the counts fixed; the better one is
     the result. If none fits, every candidate is run."""
@@ -449,7 +449,7 @@ def integer(case, maxiter=None):
 
 
 def rdo(tag, case, maxiter=None, start=None, free=False, fixed=None):
-    """One robust optimisation (configs/dbf2026_multipoint_rdo.yaml, docs/RESULTS_2026_PLAN.md §7) at the cells, props and
+    """One robust optimisation (configs/dbf2026_multipoint_rdo.yaml, docs/development/RESULTS_2026_PLAN.md §7) at the cells, props and
     scoring of run `case`, from the design of run `start` (default `case`). free: the payload counts are design variables
     (else they stay as `case` fixed them); fixed: pin these instead. The warm path: converge the robust problem at the
     config's (unfixed) start, set the design, then run the driver."""

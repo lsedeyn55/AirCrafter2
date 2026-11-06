@@ -1,4 +1,4 @@
-"""Q45: step resolution of lap 1's first straight near the wind limit (docs/RESULTS_2026_PLAN.md §4.6).
+"""Q45: step resolution of lap 1's first straight near the wind limit (docs/development/RESULTS_2026_PLAN.md §4.6).
 
 Lap-1 time (and the lap-2+ time, a control) at the default 40 steps against a uniform 640-step reference, for the
 uniform grid (the old one, lap1_cluster = 1) and the clustered grids (s_i = L (i/N)^p, p = 2, 3), at winds 0-12 m/s (failures past the validity edge are NaN),

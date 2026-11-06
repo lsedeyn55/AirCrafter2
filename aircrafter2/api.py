@@ -322,7 +322,7 @@ def reanalyse_with_motor(cfg, dv, Kv, Rm, I0, m_motor, reference=None):
     """Re-analyse a design (no optimiser) with a real motor instead of the continuous-Kv one.
 
     Builds the fixed-motor problem and runs the coupled analysis. No motor catalogue is built in: the caller supplies
-    the motor (placeholder, docs/OPEN_QUESTIONS.md Q7).
+    the motor (placeholder, docs/PLACEHOLDERS.md Q7).
 
     Parameters
     ----------

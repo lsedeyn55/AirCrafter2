@@ -5,7 +5,7 @@ by this same file on the pre-RDO commit. Regenerate (only if the deterministic m
     .venv/bin/python tests/rdo_off_snapshot.py tests/data/rdo_off_reference.json
 The fixed-Kv configs (full_mdo_fixed_kv.yaml, full_mdo_twin_fixed_kv.yaml) are compared with this reference; the
 Kv-as-design-variable defaults have their own (tests/data/kv_dv_reference.json, same script), regenerated
-2026-10-22 after the placeholders migration (docs/PLACEHOLDERS_RULESETS_PLAN.md); the fixed-Kv configs still
+2026-10-22 after the placeholders migration (docs/development/PLACEHOLDERS_RULESETS_PLAN.md); the fixed-Kv configs still
 reproduce rdo_off_reference.json bit for bit (since the USYD mass calibration, with the pre-calibration mass model,
 tests/migration.py). kv_dv_reference.json was regenerated again on 2026-10-23 for the calibration.
 """

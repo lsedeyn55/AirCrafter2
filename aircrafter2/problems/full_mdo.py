@@ -76,11 +76,11 @@ class PropulsionInputs(BaseModel):
         "5.5 in ahead of the LE (Raymer)",
     )
     nacelle_ff: Literal["body", "nacelle"] = Field(
-        "body", description="form factor: Raymer body (as briefed) or Raymer nacelle/store 1 + 0.35/f (PLAN 6h T6)"
+        "body", description="form factor: Raymer body (as specified) or Raymer nacelle/store 1 + 0.35/f (PLAN 6h T6)"
     )
     m_nacelle: float = Field(
         0.0,
-        description="kg per unit; 0 for the nose layout (in G&G's fuselage). PLACEHOLDER for twin (OPEN_QUESTIONS Q25)",
+        description="kg per unit; 0 for the nose layout (in G&G's fuselage). PLACEHOLDER for twin (PLACEHOLDERS Q25)",
     )
     pack_I_max: Optional[float] = Field(
         None, description="A, pack current limit (shared topology), PLACEHOLDER; None = off"
@@ -157,7 +157,7 @@ class StabilityInputs(BaseModel):
     rudder_tau: float = Field(0.5, description="rudder effectiveness d(alpha_v)/d(delta_r), PLACEHOLDER (OEI only)")
     rudder_max_deg: float = Field(25.0, description="deg, maximum rudder deflection, PLACEHOLDER (OEI only)")
     oei_speed_factor: float = Field(1.2, description="OEI check speed / V_stall, PLACEHOLDER (OEI only)")
-    SM_min: float = Field(0.05, description="PLACEHOLDER (OPEN_QUESTIONS Q9)")
+    SM_min: float = Field(0.05, description="PLACEHOLDER (PLACEHOLDERS Q9)")
     SM_max: float = Field(0.20, description="PLACEHOLDER")
     V_h_min: float = Field(0.35, description="PLACEHOLDER, around Raymer Table 6.4 values")
     V_h_max: float = Field(0.65, description="PLACEHOLDER")
@@ -186,7 +186,7 @@ class FullMDOConfig(AeroMassProblemConfig):
     n_struct: float = 5.0
     scoring: ScoringConfig = ScoringConfig()
     energy_reserve: float = Field(
-        0.2, description="fraction of usable battery energy kept in reserve (PLACEHOLDER, OPEN_QUESTIONS Q24)"
+        0.2, description="fraction of usable battery energy kept in reserve (PLACEHOLDER, PLACEHOLDERS Q24)"
     )
     require_3lap_energy: bool = Field(True, description="constrain the reserve-adjusted energy to cover 3 laps")
     disabled_constraints: list[str] = Field(
@@ -209,7 +209,7 @@ class FullMDOConfig(AeroMassProblemConfig):
         False,
         description="the MDA continuation fallback (robustness.rdo_problem.RetryNewton "
         "robust mode) and the warm path for --start (studies/results_2026.py), "
-        "docs/MDA_ROBUSTNESS_PLAN.md; off by default, so the 2024-25 and single-point results "
+        "docs/development/MDA_ROBUSTNESS_PLAN.md; off by default, so the 2024-25 and single-point results "
         "are unchanged",
     )
 
@@ -281,7 +281,7 @@ def default_full_dvs():
         "S_vt": Bounds(lower=0.01, upper=0.10),
         "x_batt": Bounds(lower=-0.35, upper=0.2),
         "x_cb_frac": Bounds(lower=0.0, upper=0.6),
-        "Kv": Bounds(lower=500.0, upper=1500.0),  # rpm/V, PLACEHOLDER bounds (OPEN_QUESTIONS Q34)
+        "Kv": Bounds(lower=500.0, upper=1500.0),  # rpm/V, PLACEHOLDER bounds (PLACEHOLDERS Q34)
     }
 
 

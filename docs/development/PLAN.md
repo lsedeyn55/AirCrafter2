@@ -1,11 +1,11 @@
-# AirCrafter 2.0: Build Plan (Step 1: Explore and Plan)
+# AirCrafter 2.0: build plan and development record
 
 > **Build steps and current names.** This plan is the development record, so it refers to work by build
 > step. The code, configs, tests and reports are named by what they are:
 >
 > | Build step | What it is | Name in the repo |
 > |---|---|---|
-> | 1 | explore and plan (this document) | `docs/PLAN.md` |
+> | 1 | explore and plan (this document) | `docs/development/PLAN.md` |
 > | 2 | Garcia & Gamboa mass model | `aircrafter2/mass/`, "G&G mass model" |
 > | 3 | aero-only wing at fixed lift | `wing_aero` (`problems/wing_aero.py`, `configs/wing_aero.yaml`) |
 > | 4 | simple oval lap, fixed cruise speed | `oval_lap` (`docs/problems/oval_lap.md`) |
@@ -15,10 +15,9 @@
 > | 8 | scoring plug-ins, CLI, figures, UI | `aircrafter2/scoring/`, `cli.py`, `plotting/`, `ui/` |
 > | 9+ | twin motor, OpenVSP, ... | named by subject (`twin_motor_study`, `vsp/`, ...) |
 
-Status: **draft for review**. No package code has been written yet. Everything below comes
-from reading the sources listed in §1. Two small scratch scripts were also run (outside
-the repo) to check equations from the Garcia & Gamboa (2022) paper; their results are
-reported in §7.
+The plan was written before any package code, from the sources listed in §1; two small scratch scripts also checked
+equations from the Garcia & Gamboa (2022) paper (§7). The status sections (§6b onwards) were added as each build
+step was finished.
 
 Notation: "G&G" means Garcia, G.L. & Gamboa, P.V. (2022), *Mass prediction models for air cargo
 challenge aircraft*, Aeronaut. J. 126, 249–296, doi:10.1017/aer.2021.68. "Eq. N" always refers
@@ -36,7 +35,7 @@ to a G&G equation unless stated otherwise.
 | `AirCrafter2/dbf_performance_modeller.py` | read | Reused as the mission core (§5.7). |
 | `AirCrafter2/{rect_wing,quick_example_oas,basic_mdo,basic_perf,draft}.py` | read | Patterns reused (§2). They were moved to `examples/legacy/` unchanged (now `archive/legacy/`). They import only external libraries, so the move doesn't break them. |
 | G&G 2022 paper (all of it, including Tables 1–15) | read; key pages rendered to check garbled equations | Mass model spec (§6). Errata and ambiguities are in §7. |
-| `0_DELIVERABLES/Preliminary Report/Thesis_Preliminary_Report.pdf` Ch. 3 | read | Formal problem and XDSM (Fig. 3.1). The XDSM is updated in §4. Two points where the brief supersedes the report are in §9 (B1). |
+| `0_DELIVERABLES/Preliminary Report/Thesis_Preliminary_Report.pdf` Ch. 3 | read | Formal problem and XDSM (Fig. 3.1). The XDSM is updated in §4. Two points where the specification supersedes the report are in §9 (B1). |
 | `2_DBF_CODE/Spar Sizer 3.1/…/WingSparSizing_V3_0_1.m` (+ `getDeflection.m`, `runavl_C2.m`, `wing.avl`) | read (reference only) | Notes in §10. One of them conflicts with the single-tube G&G concept (§9, B2). |
 
 Environment checks:
@@ -47,7 +46,7 @@ Environment checks:
   and I don't plan to require it (SLSQP is the default).
 - MATLAB is installed (`/usr/local/bin/matlab`), so step 6 can generate reference outputs directly from the original
   code. That needs the Aerospace Toolbox for `atmosisa`.
-- `THESIS/` is **not a git repository**. See OPEN_QUESTIONS Q1.
+- `THESIS/` is **not a git repository**. See PLACEHOLDERS Q1.
 
 ---
 
@@ -262,7 +261,7 @@ database mode, by an outer enumeration over a short catalogue (D4).
   - Sources: Raymer Ch. 16 and Nelson Ch. 2. The exact edition and equation numbers will be cited in code.
 - CG: mass-weighted average of component masses at component stations (from geometry plus config offsets).
 - Outputs: `x_cg, x_np, SM, V_h, V_v`.
-- Constraints: `SM ∈ [SM_min, SM_max]`, `V_h ∈ […]`, `V_v ∈ […]`. All bands are **placeholders** in config (OPEN_QUESTIONS).
+- Constraints: `SM ∈ [SM_min, SM_max]`, `V_h ∈ […]`, `V_v ∈ […]`. All bands are **placeholders** in config (PLACEHOLDERS).
 - Interface: `StabilityModel` ABC with inputs (geometry, masses, a_w) and outputs (x_np, SM). An `AVLStability`
   implementation can later wrap `runavl_C2.m`-style file generation (§10).
 
@@ -270,7 +269,7 @@ database mode, by an outer enumeration over a short catalogue (D4).
 - **Reference model.** The ported `performance_modeller()` runs unchanged, with `Cd0, e, Clmax, m, eta`
   replaced by inputs from aero, mass and propulsion. A `matlab_compat` flag reproduces the MATLAB `round(Vstall)`
   (§8, M1) for the step 6 code check.
-- **Proposal D2 (needs your approval).** The reference model's gradients come from FD through while loops and
+- **Proposal D2 (needed approval).** The reference model's gradients come from FD through while loops and
   table lookups whose length changes with the inputs. That gives noisy or stepwise derivatives, which SLSQP handles
   badly. I propose a *smooth twin* with the same physics:
   - same constant-power assumption, accel/decel at C_L,max, stall-limited turn rate capped by n, and leg sequence
@@ -280,8 +279,8 @@ database mode, by an outer enumeration over a short catalogue (D4).
   - every `max/min/clip` replaced by a smooth version.
 
   It's complex-step safe, so its partials can be exact. A test would require it to match the reference to <1% over
-  a grid. The reference stays the source of truth for reporting and for the MATLAB check. If you'd rather keep a
-  single FD-differentiated model, step 4 and step 6 still work; optimisation will just be slower and less robust.
+  a grid. The reference stays the source of truth for reporting and for the MATLAB check. With a
+  single FD-differentiated model instead, step 4 and step 6 still work; optimisation will just be slower and less robust.
 - Outputs: `Lap1time, otherLapTime, ThreeLapTime, laps_frac` (continuous surrogate:
   `smoothmin(t_mission/t_lap, E_usable/(P t_lap))`), `lapCount` (report only), `Tstatic_req, Preq, Vstall,
   stall_margin, turn_speed_margin, energy_used`.
@@ -357,7 +356,7 @@ fitted to Table 15's real masses, recovers the Table 14 individual factors (with
 **Closure solver.** Standalone, the mass group uses NonlinearBlockGS with Aitken acceleration. The closure is weakly
 coupled (dm_total/dm ≈ 0.05). Newton from the cold-start outputs diverged.
 
-**Multi-panel Eq. 33 is dropped** (your decision, 2026-10-09: tapered multi-panel wings aren't needed for the
+**Multi-panel Eq. 33 is dropped** (decided 2026-10-09: tapered multi-panel wings aren't needed for the
 optimiser). The model uses Eq. 32 with one equivalent panel; `n_panels` only sets the f_wing exponent (the
 number of wing joints).
 
@@ -519,24 +518,24 @@ Decision B (2026-10-09): the powertrain sets the power; the cruise speed is an o
 
 ## 6h. Twin-motor configurations (D8, in progress)
 
-Brief: `THESIS/4_PROMPTS/aircrafter2_twin_motor_prompt.md` (all AirCrafter2 briefs live in `THESIS/4_PROMPTS/`), which replaces Task A of the step 9 brief. Sources:
+Sources:
 - **Woombah:** USYD 2025 DBF design report, *Project Woombah*. Used only for cited placeholder defaults.
 - **Bohari et al. (2017):** Bohari, B., Bronz, M., Benard, E. & Borlon, Q., *Conceptual design of distributed
   propeller aircraft: linear aerodynamic model verification of propeller–wing interaction*, EUCASS 2017-445
   (`3_LITERATURE/state of art/prop-wing interaction.pdf`).
 - **Raymer:** *Aircraft Design: A Conceptual Approach*, Ch. 12.
 
-**Status:** all three checkpoints are done: propulsion, airframe integration, and the single-vs-twin study
+**Status:** all three stages are done: propulsion, airframe integration, and the single-vs-twin study
 (`docs/studies/twin_motor_study.md`, `studies/twin_motor_study.py`). `examples/full_mdo.py` now enumerates n_motors ×
 prop. Its doc (`docs/problems/full_mdo.md`) has not been regenerated since step 8 added the energy reserve.
 
-**Decisions 2026-10-13 (checkpoint 1 review):**
+**Decisions 2026-10-13 (stage 1 review):**
 - **T3:** two switches. `motor_inertia_relief` (bending and shear) defaults to off; `nacelle_torsion` defaults to
   on.
 - **T4:** the absolute station `y_motor_m` = 9.9" is the default; the fraction `y_motor` is an option.
 - **T1:** `m_nacelle` stays at the 0 placeholder (Q25).
 
-**Checkpoint 2, MDA convergence over the DV box** (`verification/twin/mda_sweep.py`): 16 random corners, 8
+**Stage 2, MDA convergence over the DV box** (`verification/twin/mda_sweep.py`): 16 random corners, 8
 random interior points and the centre, from the config's cold-start initial guesses.
 
 | Config | Converged | Max Newton iterations |
@@ -555,7 +554,7 @@ random interior points and the centre, from the config's cold-start initial gues
   introduced. The optimiser warm-starts from its previous point and did not hit it in the runs below.
 - Making the MDA more robust (line search, warm start, homotopy) is left for later.
 
-**Checkpoint 2, one twin optimisation** (`verification/twin/opt_twin.py`, 10x7E, placeholder powertrain;
+**Stage 2, one twin optimisation** (`verification/twin/opt_twin.py`, 10x7E, placeholder powertrain;
 `opt_twin_10x7E.json`). Both runs converged: 60 and 61 SLSQP iterations, ≈ 145 s each (one analysis ≈ 2.7 s).
 
 The result is the same with relief off and on:
@@ -602,7 +601,7 @@ rudder would need 247° (C_n,req = 0.164). Full-thrust OEI at low speed is uncon
 twin relies on cutting the live motor; DBF has no OEI requirement that we know of.
 
 **Compared with the single 10x7E:** 76.96 s for the twin against 79.73 s for the single, but the twin has twice
-the installed static thrust (42.3 vs 21.2 N). The matched-power comparison is in checkpoint 3.
+the installed static thrust (42.3 vs 21.2 N). The matched-power comparison is in stage 3.
 
 
 
@@ -616,7 +615,7 @@ the installed static thrust (42.3 vs 21.2 N). The matched-power comparison is in
 | `full_mdo` | The stability motor mass is now the powertrain's `m_motor_group`, no longer an ExecComp sum. Optional `I_pack_margin`, added when `pack_I_max` is set. | identical values |
 | CLI | `--n-motors {1,2}` and `--battery-topology {per_motor,shared}`. `check_fixed_limits` reports the per-ESC and pack current margins. | |
 | Config | New `configs/full_mdo_twin.yaml`: `full_mdo.yaml` plus the layout fields. | |
-| *Checkpoint 2* | <br>• G&G `WingLoads` motor terms (option `motor_inertia_relief`, default off)<br>• nacelle `CD_nac`<br>• placement constraints<br>• OEI post-check<br>• plots<br>• UI | |
+| *Stage 2* | <br>• G&G `WingLoads` motor terms (option `motor_inertia_relief`, default off)<br>• nacelle `CD_nac`<br>• placement constraints<br>• OEI post-check<br>• plots<br>• UI | |
 
 ### Battery topologies and the shared-pack equation
 
@@ -690,7 +689,7 @@ The sums run over the units on one side (y_m > 0); for n_motors = 2 there is one
 - that is the same sense as a cambered section's C_m < 0;
 - so the two terms add.
 
-The brief asks only for bending and torsion. The shear term comes from the same free body, and leaving it out
+The specification asks only for bending and torsion. The shear term comes from the same free body, and leaving it out
 would make Eqs. 44 and 45 inconsistent. It is small (about 4% of Q_fl here).
 
 **Free body, ground wingtip-suspension test (Eqs. 48–50).** G&G state that the aircraft "is suspended by its wing
@@ -718,7 +717,7 @@ while flight lift is distributed. Two consequences:
 - **Thrust and motor-torque loads** on the wing (in-plane bending and a nose-up torque from a thrust line below the
   axis; Woombah's firewall is 0.8" below the wing) are not modelled. This is a stated limitation.
 
-**Implementation (checkpoint 2).**
+**Implementation (stage 2).**
 - Option `motor_inertia_relief` on `WingLoads`, default false. False is the published model exactly; the G&G
   verification tests don't change.
 - New inputs: m_u (`m_motor_unit`), y_m (= `y_motor` b/2), x_m (`x_motor`), c.
@@ -737,20 +736,20 @@ with y_m = y_motor b/2, so ∂y_m/∂b = y_motor/2 and ∂y_m/∂y_motor = b/2.
 ### Flagged for decision
 
 **T1. Nacelle mass is not in Woombah Table 34.**
-- The brief points to a "Motor nacelles" row in Table 34. Table 34 (p. 45, checked on the rendered page) has no
+- The specification points to a "Motor nacelles" row in Table 34. Table 34 (p. 45, checked on the rendered page) has no
   such row. Its rows are wing, fuselage nose, fuselage, undercarriage, HT, VT, ESC, receiver, receiver battery,
   motors ×2, propellers ×2, payload and batteries.
 - "Motor nacelles" is a row of **Table 26 (drag)**: C_D0 = 0.00069 for both nacelles in M1.
 - The nacelles are built into the mid-wing (Sec. 4.3.2, 5.3.2), so their mass is most likely inside the 3.41 lb
   "Wing" item.
-- `m_nacelle` is therefore 0.0 PLACEHOLDER in the twin config (OPEN_QUESTIONS Q25) until a value is supplied. With
+- `m_nacelle` is therefore 0.0 PLACEHOLDER in the twin config (PLACEHOLDERS Q25) until a value is supplied. With
   0, the twin is not charged for the nacelles' mass.
 
-**T2. Motor station.** The firewall is 5.5" forward of the LE (Sec. 4.3.2 and 5.3.2), and that is the briefed
+**T2. Motor station.** The firewall is 5.5" forward of the LE (Sec. 4.3.2 and 5.3.2), and that is the specified
 `x_motor` default. Table 34 puts the motor masses at x = −6.50" and the props at −7.48", measured from the wing LE.
 For the CG, −6.5" (the motor's own CG) is arguably the right mass station. On Woombah the 1" difference moves the
 CG by (0.50 + 0.08)/9.32 × 1" ≈ 0.06", i.e. 0.5% of the 13.0" MAC (M1 mass from Table 34, MAC from Table 19). It
-is used as briefed (−5.5") until you say otherwise.
+is used as specified (−5.5").
 
 **T3. The default `motor_inertia_relief: false` is not conservative in torsion.** The switch adds one relieving
 term (bending, shear) and one *adding* term (nacelle torsion). At the step 7 10x7E optimum scale:
@@ -759,7 +758,7 @@ term (bending, shear) and one *adding* term (nacelle torsion). At the step 7 10x
 - added torque ΔT_fl = 2.09 N·m, about 3.5× G&G's aerodynamic T_fl (≈ 0.6 N·m).
 
 So "off" may *under*-size t_T for a twin. Options:
-- (a) one switch, as briefed;
+- (a) one switch, as specified;
 - (b) two switches: `motor_inertia_relief` for bending and shear, default false; `nacelle_torsion` for the added
   torque, default **true** for n = 2. The latter is a no-op for n = 1, so the G&G tests are unaffected.
 
@@ -772,7 +771,7 @@ I recommend (b), so that the default is conservative in every load.
 - The fixed-fraction fuselage-clearance constraint therefore needs b ≥ 1.52 m (the DV upper bound) for 10" props,
   and cannot be met for 11" or 12".
 - Options:
-  - (a) keep the fraction, as briefed (the twin is then pinned at maximum span, or infeasible);
+  - (a) keep the fraction, as specified (the twin is then pinned at maximum span, or infeasible);
   - (b) fix the **absolute** station y_m = 9.9" = 0.251 m by default (clearances hold for 10–12" props for any
     b ≥ 0.76 m), with the fraction as an alternative;
   - (c) make `y_motor` a DV by default.
@@ -781,7 +780,7 @@ I recommend (b) for the single-vs-twin study. Otherwise the comparison is decide
 by the physics.
 
 **T6. Nacelle form factor.**
-- The brief asks for the body form factor already in `parasite.py`: FF = 1 + 60/f³ + f/400. At nacelle fineness
+- The specification asks for the body form factor already in `parasite.py`: FF = 1 + 60/f³ + f/400. At nacelle fineness
   (f = l/d ≈ 3) it gives FF ≈ 3.2.
 - Raymer's nacelle / smooth-store form is FF = 1 + 0.35/f ≈ 1.12.
 - Check with the placeholder size (l = 0.15 m, d = 0.05 m, Q = 1.3, 87 mph, Woombah S = 914.5 in²):
@@ -793,11 +792,10 @@ by the physics.
 | Woombah Table 26 (M1) | 0.00069 |
 
 - Woombah's nacelle dimensions are not published, so this is a plausibility check only.
-- Kept as briefed (`nacelle_ff: body`). The switch is `propulsion.nacelle_ff: nacelle`. This matters for the
+- Kept as specified (`nacelle_ff: body`). The switch is `propulsion.nacelle_ff: nacelle`. This matters for the
   single-vs-twin study: it is ~0.001 in C_D against the twin.
 
-**T5. Shear relief** (above) goes slightly beyond the brief. It is included for consistency. Tell me if you want it
-out.
+**T5. Shear relief** (above) goes slightly beyond the specification. It is included for consistency.
 
 ### Slipstream and prop–wing interaction (proposal only, not built)
 
@@ -838,15 +836,15 @@ Leaving slipstream out therefore:
 - **omits the single layout's fuselage scrubbing drag.**
 
 For the lap-time comparison, where cruise and straights dominate, the omission is second order. Where
-`thrust_margin_static` or the stall and turn margins are active, it is not. The study (checkpoint 3) will report
+`thrust_margin_static` or the stall and turn margins are active, it is not. The study (stage 3) will report
 which constraints are active, so the reader can tell which case applies.
 
 ## 6i. OpenVSP geometry mock-up
 
-Brief: OpenVSP mock-up of a framework result. It is a visual and consistency mock-up only and never enters the
+Scope: an OpenVSP mock-up of a framework result. It is a visual and consistency mock-up only and never enters the
 OpenMDAO model.
 
-**Checkpoint 1 (done): Friday renders.**
+**Stage 1 (done): Friday renders.**
 - **Environment check:**
   - `import openvsp` reports "OpenVSP 3.55.0";
   - a wing builds, saves and reloads headlessly.
@@ -881,11 +879,11 @@ OpenMDAO model.
 4. **POD `FineRatio` is length/radius here, not length/diameter:** a 0.15 m pod at FineRatio 3 measured 0.10 m.
    The builder sets 2L/d and checks the bounding box.
 
-**Checkpoint 2 (done): check, interfaces and docs.**
+**Stage 2 (done): check, interfaces and docs.**
 - **`vsp/check.py`** writes `vsp_check.md` for each design. It reloads the `.vsp3` from disk, reads back the
   parameters and the CompGeom wetted areas, and compares them with `geometry.json`. Every parameter matches to
   < 0.01%, except the x location of maximum t/c (≈ 1%, from the sampling grid).
-- **Wetted areas over 5%** (OPEN_QUESTIONS Q31):
+- **Wetted areas over 5%** (PLACEHOLDERS Q31):
   - cargo bay −6% (the illustrative rounded corners);
   - nacelles −26%: the POD shape against the framework's cylinder π d l;
   - the boom's *trimmed* area −20 to −29% (by design), because that share of its length lies inside the cargo bay. The framework's fuselage
@@ -914,13 +912,13 @@ OpenMDAO model.
 
 All three would run outside the optimiser, as post-checks at a fixed design, in the same spirit as `vsp_check.md`.
 
-**Added beyond the brief:** an illustrative motor mount joins the nose prop to the cargo-bay front for n = 1.
+**Added beyond the specification:** an illustrative motor mount joins the nose prop to the cargo-bay front for n = 1.
 The framework places the motor at x = −0.30 m but has no nose structure, so the prop would otherwise float. It is
 listed in `mockup_assumptions`.
 
 ## 6j. 2024-25 results (AirCrafter 1.0 vs multipoint vs RDO)
 
-Plan: `docs/RESULTS_PLAN.md`. Results: `docs/studies/results/` (`INDEX.md` first). Branch `results`.
+Plan: `docs/development/RESULTS_PLAN.md`. Results: `docs/studies/results/` (`INDEX.md` first). Branch `results`.
 
 **Built:**
 - The `dbf2025` scoring plug-in (`docs/modules/scoring.md`), with the store modules (external tanks and pylons,
@@ -934,9 +932,9 @@ Plan: `docs/RESULTS_PLAN.md`. Results: `docs/studies/results/` (`INDEX.md` first
 
 **Status:**
 
-| checkpoint | content | page |
+| stage | content | page |
 |---|---|---|
-| 1 | plan | `RESULTS_PLAN.md` |
+| 1 | plan | `docs/development/RESULTS_PLAN.md` |
 | 2 | scoring, stores, Woombah, deterministic multipoint | `validation_2025.md` |
 | 3 | AirCrafter 1.0 2024-25 mode, both mappings | `aircrafter1_2025.json`, `results_2025.md` §2 |
 | 4 | the study: enumeration, bottle sensitivity, bookends, normalisation, multistart, screening, RDO, common evaluation, Monte Carlo | `results_2025.md` |
@@ -944,7 +942,7 @@ Plan: `docs/RESULTS_PLAN.md`. Results: `docs/studies/results/` (`INDEX.md` first
 
 **Findings to carry into the thesis** (evidence in `results_2025.md`; numbers are not repeated here):
 - M2 dominates the multipoint optimum. The fuel weight sits at the tank capacity in every case, so the tank size and
-  count (OPEN_QUESTIONS Q38) is the largest lever, ahead of R2/R3 and every uncertainty spread (`INDEX.md`).
+  count (PLACEHOLDERS Q38) is the largest lever, ahead of R2/R3 and every uncertainty spread (`INDEX.md`).
 - The cell count barely matters (Kv absorbs it), and the M2 prop sets the ranking. Kv is set by the M2 rpm limit,
   not by its bounds.
 - AirCrafter 1.0's designs score higher than the 1 L multipoint design only because their fuel needs 2 L bottles.
@@ -978,12 +976,12 @@ by the mass equations) or the root chord (used for sizing).
 
 **G4. Cross-reference slips** (no effect on the maths):
 - p. 260: "Eq. (7) … substituting i with le or te" should be Eq. (11).
-- §2.2.5: ribs "Eq. (23)" should be Eq. (26). Confirmed; this matches the brief.
+- §2.2.5: ribs "Eq. (23)" should be Eq. (26). Confirmed; this matches the specification.
 - After Eq. 107: "M_x in Eq. (59)" should be Eq. (107).
 - Before Eq. 111: "given by Eq. (82)" should be Eq. (85).
 - After Eq. 93: "x̄_e from Eq. (21)" should be Eq. (20).
 - Before Eq. 94: twist "Eq. (91)" should be Eq. (92).
-- §3.4: "as described in Section 3.4" should be §3.3.3 (matches the brief).
+- §3.4: "as described in Section 3.4" should be §3.3.3 (matches the specification).
 - Eqs. 102–103: "n_tib" should be n_rib.
 - Eq. 33: "(c/t)_j" should be (t/c)_j.
 
@@ -1022,7 +1020,7 @@ framework we use the OAS wing slope; tests use 6 /rad.
 - Exact double integration gives `3(b⁴ + 4b³y₁ − 20b²y₁² + 32by₁³ − 16y₁⁴)` over the same denominator.
 - At y₁ = b/6, Eq. 70 is **+23% above the exact result**.
 → Default to the printed Eq. 110 (to reproduce the paper), with `deflection_mode: exact` available. **y₁ isn't
-given in Table 3** (OPEN_QUESTIONS Q4).
+given in Table 3** (PLACEHOLDERS Q4).
 
 **G11. Eq. 112 shear factor.** The 3Q/(2A) peak factor is for a solid rectangle. A thin-walled circular tube peaks
 at 2Q/A, so t^τ is 25% low. It's a small term; I implement the paper as printed. Flagged.
@@ -1037,7 +1035,7 @@ mass by about 3.5%.
 
 **G14.** Eq. 39: `m_gear = f_gear·m` uses the *total* mass. This adds to the closure loop; that's fine in the MDA.
 
-**G15.** Eq. 50 needs the ground-test hold point x_gd, which isn't in Table 3 (OPEN_QUESTIONS Q4). Eqs. 48–49 use
+**G15.** Eq. 50 needs the ground-test hold point x_gd, which isn't in Table 3 (PLACEHOLDERS Q4). Eqs. 48–49 use
 the *full* W (payload included).
 
 **G16.** Table 3 gives g = 9.80655 (standard is 9.80665). Tests use the table value; the framework uses 9.80665.
@@ -1099,7 +1097,7 @@ The port uses the exact Vstall. → Add a `matlab_compat` switch.
 the first lap, and **`lapCount` is always 1** in the MATLAB runner. The port defaults `battery_fraction = 1.0`.
 Reproduction runs must state which convention they use.
 
-**M3.** Take-off time is not added to Lap 1. This is known and already documented in the port. The port keeps it out; the smooth model now has a switch, `course.takeoff.in_mission_time` (default off, so every published result is unchanged), that adds the ground roll to lap 1's time and energy (docs/modules/mission.md, docs/TAKEOFF_COURSE_PLAN.md, docs/studies/takeoff_study.md).
+**M3.** Take-off time is not added to Lap 1. This is known and already documented in the port. The port keeps it out; the smooth model now has a switch, `course.takeoff.in_mission_time` (default off, so every published result is unchanged), that adds the ground roll to lap 1's time and energy (docs/modules/mission.md, docs/development/TAKEOFF_COURSE_PLAN.md, docs/studies/takeoff_study.md).
 
 **M4.** In the MATLAB decel-table build, `a_vector` is filtered and then reused as a mask for `v_vector`. The port
 does this correctly. The results match as long as the a < 0 region is a contiguous prefix of the descending
@@ -1120,11 +1118,11 @@ becomes the propulsion requirement `T_static_req`.
 
 ---
 
-## 9. Conflicts with the brief or existing work (flagged, not decided)
+## 9. Conflicts with the specification or existing work (flagged, not decided)
 
-**B1. Preliminary report vs brief.** Report §3.2 lists *m* in the design vector *x* and treats the airfoil as a
-*discrete* database choice (§3.3). The brief's settled decisions make *m* a coupling variable and the airfoil
-continuous, with database mode kept. I'm following the brief; the thesis text will need to match.
+**B1. Preliminary report vs specification.** Report §3.2 lists *m* in the design vector *x* and treats the airfoil as a
+*discrete* database choice (§3.3). The specification's settled decisions make *m* a coupling variable and the airfoil
+continuous, with database mode kept. I'm following the specification; the thesis text will need to match.
 
 **B2. One tube vs two tubes.**
 - The USYD 2025 spar sizer models **two CF tubes**: front 22/20 mm and rear 20/18 mm, with a 60/40 load split.
@@ -1132,16 +1130,16 @@ continuous, with database mode kept. I'm following the brief; the thesis text wi
 - Its spar properties are UTS = 340.7 MPa and E = 220 GPa, against G&G Table 13's 720 MPa and 84 GPa.
 
 The G&G tube concept is single-tube. Options:
-- (a) one equivalent tube (default, as briefed);
+- (a) one equivalent tube (default, as specified);
 - (b) extend `TubeSparSizing` to N tubes with a load split.
 
-I'll keep the Table 13 placeholders as briefed, but the team's own tube data differs a lot (OPEN_QUESTIONS Q6).
+I'll keep the Table 13 placeholders as specified, but the team's own tube data differs a lot (PLACEHOLDERS Q6).
 
-**B3. x̄_spar default.** The brief's 0.25–0.30 range: at anything above 0.25, Eq. 117 is active. I'll default to
+**B3. x̄_spar default.** The specification's 0.25–0.30 range: at anything above 0.25, Eq. 117 is active. I'll default to
 0.25 and expose it in config.
 
 **B4. "Reuse this code rather than rewriting it" vs a smooth lap model (D2).** The reference port is reused
-verbatim. The smooth twin is an *addition* for gradients and needs your go-ahead.
+verbatim. The smooth twin is an *addition* for gradients and needed approval.
 
 **B5. Two weight bases.** The lap modeller's `payload_fraction` assumption is unused once mass comes from the G&G
 closure with a fixed `m_pay`. It will be dropped from the 2.0 inputs, but kept in the reference port's signature.
@@ -1190,7 +1188,7 @@ D5 (Table 15 tolerance) is still open. Working value: ±3%.
 | D5 | Table 15 tolerance for "a few percent" | ±3% per component *if* the cause in G20 is found; otherwise I report |
 | D6 | B2: single equivalent tube or N-tube extension | Single tube now, N-tube later |
 | D7 | Config validation with pydantic v2 (clear error messages for students) | **Yes** |
-| D8 | Twin wing-mounted tractors (2026-10-13 brief) | `n_motors` ∈ {1, 2} is a discrete config choice enumerated with prop and cells (D4), not a DV. Identical units; `per_motor` packs by default, `shared` optional; `capacity` is per pack. Wing-load motor terms are switchable, default off (see §6h T3). Slipstream not modelled (§6h). |
+| D8 | Twin wing-mounted tractors (2026-10-13 specification) | `n_motors` ∈ {1, 2} is a discrete config choice enumerated with prop and cells (D4), not a DV. Identical units; `per_motor` packs by default, `shared` optional; `capacity` is per pack. Wing-load motor terms are switchable, default off (see §6h T3). Slipstream not modelled (§6h). |
 
 ---
 
@@ -1211,8 +1209,7 @@ Extras:
 - `[test]`: `pytest`, `sympy`
 - pyOptSparse optional (IPOPT/SNOPT used only if importable)
 
-Exact versions for unpinned items will be the ones `uv` resolves at install time, recorded in the pyproject. Nothing
-gets installed until you approve.
+Exact versions for unpinned items will be the ones `uv` resolves at install time, recorded in the pyproject. 
 
 ---
 

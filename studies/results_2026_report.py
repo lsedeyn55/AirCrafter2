@@ -866,7 +866,7 @@ def findings(R):
         F.append(f"**Propagation at the robust optimum:** mean of F {u['mu']:.4f} (UDR), {sm['mu']:.4f} (Smolyak), {so['mu']:.4f} (Sobol'); sigma {u['sigma']:.4f}, {sm['sigma']:.4f}, {so['sigma']:.4f}.")
     tot = {x: (R["designs"][x]["mc_in"]["mda_failed"], R["designs"][x]["mc_in"]["wind_limit"], R["designs"][x]["mc_in"]["N"]) for x in ("humpback", "mdo", "mdo_wind", "rdo") if R["designs"][x].get("mc_in")}
     if tot:
-        F.append("**Analysis failures are counted apart from violations:** in-set Monte Carlo, MDA failures / lap-model limits out of N: " + "; ".join(f"{LABELS[x]} {a} / {b} of {n}" for x, (a, b, n) in tot.items()) + ". A first run lost 17-30 % of its samples to a worker failure, not to the design (RESULTS_LOG.md, Decision 13), and was replaced.")
+        F.append("**Analysis failures are counted apart from violations:** in-set Monte Carlo, MDA failures / lap-model limits out of N: " + "; ".join(f"{LABELS[x]} {a} / {b} of {n}" for x, (a, b, n) in tot.items()) + ". A first run lost 17-30 % of its samples to a worker failure, not to the design (docs/development/RESULTS_LOG.md, Decision 13), and was replaced.")
     re_m, re_r = (R["designs"][x].get("reanalysis") for x in ("mdo", "rdo"))
     if re_m and re_r:
         bad = lambda r: [k for k, x in r["cases"].items() if "rpm" not in k and "full" not in k and (not x.get("ok") or x.get("violated"))]  # noqa: E731
@@ -920,7 +920,7 @@ def limitations(R):
     rows.append(["Calm air in the deterministic optimum", "§4", f"MDO F {f(mdo['nominal']['score']['flight_score'], 4) if mdo else '–'} in calm air, {f(mdo['mean_wind'].get('score', {}).get('flight_score'), 4) if mdo else '–'} at the mean wind; designing at the mean wind changes the Monte Carlo mean by {signed(d['mu']['wind']) if d else '–'}."])
     ss = sub_stall(R, "mdo")
     if ss:
-        rows.append(["Fixed-throttle analysis can land on the sub-stall balance", "docs/MDA_ROBUSTNESS_PLAN.md §0", f"{ss['n']} of {ss['of']} in-set samples of MDO have M3's level speed below 1.2 V_stall at its fixed throttle. They count as stall-margin violations. Without them the mean of F is {f(ss['mu_without'], 4)} against {f(ss['mu'], 4)}."])
+        rows.append(["Fixed-throttle analysis can land on the sub-stall balance", "docs/development/MDA_ROBUSTNESS_PLAN.md §0", f"{ss['n']} of {ss['of']} in-set samples of MDO have M3's level speed below 1.2 V_stall at its fixed throttle. They count as stall-margin violations. Without them the mean of F is {f(ss['mu_without'], 4)} against {f(ss['mu'], 4)}."])
     return T("limitations", "Biases and limitations, with their measured size at the final designs.", ["item", "measured in", "size"], rows)
 
 
@@ -977,14 +977,14 @@ def render(R, ts, recs):
     w("\n" + ts["humpback_factors"].md())
     w("\n**Every constraint's margin:**\n\n" + ts["constraint_margins"].md())
     w("\n### 2.3 In-set Monte Carlo\n")
-    w("These Monte Carlos ran in batches of 384 samples, each on fresh workers (`studies/results_2026_mc_batched.py`), with the frozen model and study code. A first run in one pool lost 17-30 % of its samples to a failure that depends on how many evaluations a worker has done, not on the sample (RESULTS_LOG.md, Decision 13); on the samples both runs converged, F agrees to 2e-12.\n")
+    w("These Monte Carlos ran in batches of 384 samples, each on fresh workers (`studies/results_2026_mc_batched.py`), with the frozen model and study code. A first run in one pool lost 17-30 % of its samples to a failure that depends on how many evaluations a worker has done, not on the sample (docs/development/RESULTS_LOG.md, Decision 13); on the samples both runs converged, F agrees to 2e-12.\n")
     w(ts["mc_in_summary"].md())
     w("\n" + ts["mc_in_p_violation"].md())
     w("\n![CDF in set](figures/mc_cdf_in_set.png)\n\n![P(violation) in set](figures/p_violation_in_set.png)\n")
     ss = [(lab, sub_stall(R, lab)) for lab in MAIN]
     ss = [(lab, x) for lab, x in ss if x]
     if ss:
-        w("**Samples on the low-speed balance.** At a fixed throttle, a sample with enough drag or mass has no level-flight root above stall, and the T = D balance can land on the sub-stall root (docs/MDA_ROBUSTNESS_PLAN.md §0). Those samples converge, count as violations of the stall margin, and still carry an F from the lap model: "
+        w("**Samples on the low-speed balance.** At a fixed throttle, a sample with enough drag or mass has no level-flight root above stall, and the T = D balance can land on the sub-stall root (docs/development/MDA_ROBUSTNESS_PLAN.md §0). Those samples converge, count as violations of the stall margin, and still carry an F from the lap model: "
           + "; ".join(f"{LABELS[lab]} {x['n']}/{x['of']}, mean of F without them {f(x['mu_without'], 4)} (with {f(x['mu'], 4)})" for lab, x in ss) + ".\n")
     w("### 2.4 Propagation check\n")
     w(ts["propagation"].md())

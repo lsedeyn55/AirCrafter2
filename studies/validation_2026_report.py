@@ -281,13 +281,13 @@ def render(R):
                 rows.append([r["props"], _f(r["Kv"], 0), _f(r["throttle"], 1), "no"] + [""] * 8)
         w(_table(["props M2/M3", "Kv", "throttle", "converged", "M2 v", "M2 v_fit margin", "M2 laps",
                   "M2 stall margin", "M3 v", "M3 v_fit margin", "M3 laps", "M3 stall margin"], rows))
-        w("\nThe MDA runs with the continuation fallback (`mda_robust`, docs/MDA_ROBUSTNESS_PLAN.md): cells whose "
+        w("\nThe MDA runs with the continuation fallback (`mda_robust`, docs/development/MDA_ROBUSTNESS_PLAN.md): cells whose "
           "Newton start lies outside the T = D root's basin converge through it. Stall margin = V - 1.2 V_stall (m/s); "
           "'yes, < 1.2 V_stall': the balance converged with V below 1.2 V_stall (stall margin < 0), which the "
           "optimiser's stall_margin constraint rejects.\n")
         w("\nThe T(v) fit range: `f_fit` = 0.95 for the 2025-26 configs (0.8 in 2024-25): Humpback's props cruise at "
           "J ≈ 0.9 J_max, past the 0.8 fit's top node (thrust 5 % low at the M2 cruise speed), while at 0.95 the top "
-          "node stays inside the APC data and the thrust is within 1.4 % (checkpoint-2 check, 19x12E).\n")
+          "node stays inside the APC data and the thrust is within 1.4 % (19x12E).\n")
     else:
         w("Not run yet (`studies/validation_2026.py envelope`).\n")
 

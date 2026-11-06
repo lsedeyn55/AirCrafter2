@@ -1,9 +1,10 @@
-# Universal placeholders file and ruleset files: plan and inventory
+# Placeholders file and ruleset files
 
-Brief: `4_PROMPTS/aircrafter2_placeholders_rulesets_prompt.md`. Branch `placeholders-rulesets`, from `26b0e30` (the
-take-off re-optimisation commit, which settled the brief's uncommitted take-off files) rather than `6341316`.
+Design notes and inventory for splitting the inputs into one placeholders file (`configs/placeholders.yaml`) and one
+file per ruleset (`configs/rulesets/`): the load order, every value moved, the conflicts found and how each was
+settled (branch `placeholders-rulesets`).
 
-## Decisions (user, 2026-10-22, before checkpoint 1 closed)
+## Decisions (2026-10-22)
 
 1. **Single-point configs get a generic ruleset.** `configs/rulesets/generic.yaml` holds the `inputs_file.m` values:
    altitude 400 m, mission time 300 s, the course preset, the pilot reaction time, the start offset and the 0–3 m/s
@@ -140,9 +141,9 @@ No conflict touches a value that the 2024-25 configs use: dbf2025's line is the 
 | `lap_mdo.yaml` | takeoff_distance 100→106.68 |
 | `aero_mass.yaml`, `wing_aero.yaml`, `oval_lap.yaml` | nothing |
 
-The full table with commits is printed by the checkpoint 2 test (`tests/test_placeholders.py`).
+The full table with commits is printed by the stage 2 test (`tests/test_placeholders.py`).
 
-**References and pages affected (not regenerated; the user decides):**
+**References and pages affected (not regenerated; left as a decision):**
 - `tests/data/configs_reference.json`: entries `full_mdo`, `full_mdo_twin`, `full_mdo_rdo` and `full_mdo_twin_rdo`.
   The four `*_fixed_kv` entries are unchanged.
 - `tests/data/kv_dv_reference.json` and `rdo_off_reference.json`: both entries (`full_mdo`, `full_mdo_twin`).
@@ -161,8 +162,8 @@ The full table with commits is printed by the checkpoint 2 test (`tests/test_pla
 
 ## Status
 
-- **Checkpoint 1** (`cee6a3c`): this inventory.
-- **Checkpoint 2** (`d6277a9`): the files, the loader, the migration and the non-UI verification.
+- **Stage 1** (`cee6a3c`): this inventory.
+- **Stage 2** (`d6277a9`): the files, the loader, the migration and the non-UI verification.
   - **Files:** `configs/placeholders.yaml` (60 values and the 3 shared spreads), `configs/rulesets/dbf_2024_25.yaml` (50
     values, the bottle catalogue and lap.wind) and `configs/rulesets/generic.yaml`.
   - **Code:**
@@ -186,15 +187,15 @@ The full table with commits is printed by the checkpoint 2 test (`tests/test_pla
     - the reduced RDO set is the shared spreads.
 
     The mass verification and `multipoint_nominal_reference.json` pass unchanged.
-  - **References:** the regression entries the migration changes were strict xfail (`tests/migration.py`) until the
-    user's go-ahead. They were then regenerated (2026-10-22): `configs_reference.json` (`full_mdo`, `full_mdo_twin`,
+  - **References:** the regression entries the migration changes were strict xfail (`tests/migration.py`) until
+    approval. They were then regenerated (2026-10-22): `configs_reference.json` (`full_mdo`, `full_mdo_twin`,
     `full_mdo_rdo`, `full_mdo_twin_rdo`) and `kv_dv_reference.json` (`full_mdo`, `full_mdo_twin`). The four `*_fixed_kv`
     entries came out bit-identical, and the fixed-Kv configs still match `rdo_off_reference.json` bit for bit.
     Start-point 3-lap time, num_y 11: `full_mdo` 81.44 → 77.53 s, `full_mdo_twin` 77.16 → 74.54 s, `full_mdo_rdo`
     83.23 → 78.82 s, `full_mdo_twin_rdo` 78.18 → 75.17 s.
   - **`test_kv_dv.py`:** four tests hard-coded the old 900 rpm/V reference motor. They now read the reference motor from
     the config, and the fixed-motor comparison uses `full_mdo.yaml` with its own motor fixed.
-- **Checkpoint 3:** the UI.
+- **Stage 3:** the UI.
   - **Tabs:** "Design and mission", "Placeholders" and "Ruleset". The layer tabs run first and the config is loaded over
     their (possibly unsaved) edits. Each layer table has an "overridden by" column, and Save / Discard sit on each tab.
   - **Multipoint configs** show the two layer tabs and an info box, with no Run button.

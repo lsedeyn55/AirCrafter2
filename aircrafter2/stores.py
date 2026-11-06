@@ -37,7 +37,7 @@ def _ruleset_bottles(name="dbf_2024_25"):
 
 
 # Candidate external bottles of the bottle study: the 'bottles:' block of configs/rulesets/dbf_2024_25.yaml (rules:
-# >= 16 fl oz, any commercial non-glass bottle, p. 8; dimensions and empty masses PLACEHOLDERS, OPEN_QUESTIONS Q36).
+# >= 16 fl oz, any commercial non-glass bottle, p. 8; dimensions and empty masses PLACEHOLDERS, PLACEHOLDERS Q36).
 BOTTLES = _ruleset_bottles()
 
 

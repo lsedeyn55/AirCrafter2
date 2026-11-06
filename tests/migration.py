@@ -1,9 +1,9 @@
 """Configs whose regression references are expected to differ after a deliberate change of their effective values.
 
-The placeholders migration (docs/PLACEHOLDERS_RULESETS_PLAN.md) changed full_mdo, full_mdo_twin, full_mdo_rdo and
+The placeholders migration (docs/development/PLACEHOLDERS_RULESETS_PLAN.md) changed full_mdo, full_mdo_twin, full_mdo_rdo and
 full_mdo_twin_rdo; their entries in configs_reference.json and kv_dv_reference.json were regenerated on 2026-10-22
-with the user's go-ahead (the unchanged entries reproduced bit for bit), so the set is empty again. The USYD mass
-calibration (2026-10-23, docs/MASS_CALIBRATION_PLAN.md §7) changed every full config; all their entries were
+after approval (the unchanged entries reproduced bit for bit), so the set is empty again. The USYD mass
+calibration (2026-10-23, docs/development/MASS_CALIBRATION_PLAN.md §7) changed every full config; all their entries were
 regenerated in their own commit, and the set is empty again. The Q45 fix (2026-10-27, lap 1's clustered grid) moved
 only lap-1-derived outputs (<= 5e-7 relative); the eight single-point entries were regenerated in their own commit. For a future
 deliberate change, list the configs here: the reference tests then mark them strict xfail until the references are
@@ -13,7 +13,7 @@ matching)."""
 import pytest
 
 CHANGED_BY_MIGRATION = set()
-REASON = "effective values changed deliberately; reference not regenerated pending the user's go-ahead"
+REASON = "effective values changed deliberately; reference not regenerated pending approval"
 
 
 def ref_params(names):
@@ -21,7 +21,7 @@ def ref_params(names):
             for n in names]
 
 
-# The mass model of every result published before the USYD mass calibration (docs/MASS_CALIBRATION_PLAN.md): the
+# The mass model of every result published before the USYD mass calibration (docs/development/MASS_CALIBRATION_PLAN.md): the
 # previous placeholders.yaml values (0.5 mm spar gauge, G&G Table 13 strength), G&G's correction factors with gg tails
 # (mass_garcia_gamboa_2022.yaml), one wing panel and the placeholder cargo box. The frozen references that are never
 # regenerated (rdo_off_reference.json, multipoint_nominal_reference.json) are reproduced with it.

@@ -117,7 +117,7 @@ laws: [CITATION NEEDED] (standard brushless-motor rewinding relations; not verif
 
 **Real motors.** Kv stays continuous in the optimiser. `api.reanalyse_with_motor(cfg, dv, Kv, Rm, I0, m_motor)` (also
 on the UI results page) re-analyses a design, without optimising, with a real motor, and reports the score and
-constraint changes. No motor catalogue is built in (OPEN_QUESTIONS Q7).
+constraint changes. No motor catalogue is built in (PLACEHOLDERS Q7).
 
 **Fixed motor.** Leave `Kv` out of `design_variables`: `configs/full_mdo_fixed_kv.yaml` and
 `full_mdo_twin_fixed_kv.yaml` are the defaults with `fixed_design_variables: [Kv]`, which removes the inherited DV
@@ -142,7 +142,7 @@ variables). Its uncertainty is `Kv_factor` and the resistance uncertainty moves 
 **Discrete choices** (prop, cell count, `n_motors`) are enumerated outside the optimiser (D4): `examples/full_mdo.py`
 or `aircrafter2 run --prop`. The motor's Kv is continuous (above); the motor frame is the reference motor.
 
-## Placeholders (OPEN_QUESTIONS Q7, Q8, Q23)
+## Placeholders (PLACEHOLDERS Q7, Q8, Q23)
 
 Motor Kv/Rm/I0/mass/I_max (with Kv a DV: the reference motor and the Kv bounds, 500-1500 rpm/V, Q34), cell
 voltage/resistance/specific energy, ESC/prop/avionics masses. With a fixed motor the lap time is most sensitive to Kv

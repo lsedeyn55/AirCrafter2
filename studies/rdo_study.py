@@ -1,6 +1,6 @@
 """Robust design optimisation study (docs/studies/rdo_study.md). Each part writes outputs/rdo/<part>.json.
 
-    .venv/bin/python studies/rdo_study.py propagation     # checkpoint 2: quadrature vs Monte Carlo at the det. optimum
+    .venv/bin/python studies/rdo_study.py propagation     # quadrature vs Monte Carlo at the det. optimum
     .venv/bin/python studies/rdo_study.py optimise --tag robust_single_10x7E [--reserve 0] [--sigma-cap S] ...
     .venv/bin/python studies/rdo_study.py validate --tags det_single_10x7E robust_single_10x7E ...
 
@@ -99,7 +99,7 @@ def sample_rows(dists, act, rule):
     return rows
 
 
-# --- checkpoint 2 ------------------------------------------------------------------------------------
+# --- propagation accuracy ------------------------------------------------------------------------------------
 def propagation(cfg_name="full_mdo_rdo.yaml", tag="single_10x7E"):
     cfg = load_full_config(config_path(cfg_name))
     det = deterministic_optimum(cfg, tag)
@@ -160,7 +160,7 @@ def propagation(cfg_name="full_mdo_rdo.yaml", tag="single_10x7E"):
     return res
 
 
-# --- checkpoint 3 ------------------------------------------------------------------------------------
+# --- deterministic vs robust, energy margin ------------------------------------------------------------------------------------
 def _cfg(cfg_name, reserve=None, prop=None, k=None, sigma_cap=None, optimizer=None):
     cfg = load_full_config(config_path(cfg_name))
     if reserve is not None:
@@ -310,7 +310,7 @@ def _g(x, n=4):
 def report_propagation(w):
     r = load("propagation")
     n = r["mc_all"]["N"]
-    w("## 1. Propagation accuracy at the deterministic optimum (checkpoint 2)\n")
+    w("## 1. Propagation accuracy at the deterministic optimum\n")
     w("Design: deterministic optimum of single 10x7E 4S (`configs/full_mdo_rdo.yaml` without the robust block): "
       f"3-lap time {load('det_single_10x7E')['values']['ThreeLapTime']:.2f} s. Rules over the d = 7 screened "
       "parameters (the other 8 at their means), and a Monte Carlo over all 15 so the screening error shows. "
@@ -368,7 +368,7 @@ def report_robust(w):
         return
     cfg = load_full_config(config_path("full_mdo_rdo.yaml"))
     k, beta = cfg.robust.k, cfg.robust.beta
-    w("## 2. Deterministic vs robust optimum, single 10x7E 4S (checkpoint 3)\n")
+    w("## 2. Deterministic vs robust optimum, single 10x7E 4S\n")
     w(f"Robust: minimise μ + {k:g}σ of the 3-lap time (UDR, d = 7, N = 15), robust constraints μ − {beta:g}σ ≥ lower "
       "/ μ + βσ ≤ upper for energy, take-off thrust, stall margin, SM, wall ratio and r_tube, the rest at the "
       "reference node. Both from the config start point, SLSQP, 20 % energy reserve. 'Nominal' = the config's own "
@@ -421,7 +421,7 @@ def report_robust(w):
       f"parameters add {100 * (sm['all'] / sm['act'] - 1):.0f} % to σ ({sm['all']:.4f}), which puts the upper bound "
       f"{(0.2 - smu) / sm['all']:.2f} σ from the mean instead of {beta:g} σ (normal: "
       f"{100 * norm.sf((0.2 - smu) / sm['all']):.1f} %); the rest is the shape of the distribution. Both are "
-      "known, quantified costs of the choices in the brief (screening, β σ with a normal reading).\n")
+      "known, quantified costs of the choices made (screening, β σ with a normal reading).\n")
 
 
 def report_reserve(w):
@@ -430,7 +430,7 @@ def report_reserve(w):
     tags = [(t, lab) for t, lab in tags if (OUT / f"{t}.json").exists() and "mc" in load(t)]
     if len(tags) < 4:
         return
-    w("## 3. Energy margin: does βσ replace the hand-picked 20 % reserve? (checkpoint 3)\n")
+    w("## 3. Energy margin: does βσ replace the hand-picked 20 % reserve?\n")
     w("The energy constraint is (1 − reserve) E_usable − E_3laps ≥ 0 (deterministic) or its μ − 2σ form (robust). "
       "Probabilities from the Monte Carlo over all 15 parameters, on what the battery physically delivers: "
       "'3 laps' = E_3laps ≤ E_usable, '20 % left' = E_3laps ≤ 0.8 E_usable.\n")
@@ -478,7 +478,7 @@ def report_pareto(w):
     if (OUT / "robust_single_10x7E.json").exists():
         pts.append(dict(load("robust_single_10x7E"), tag="robust_single_10x7E (k = 1)"))
     det = load("det_single_10x7E_r02")
-    w("## 4. Pareto front: μ against σ of the 3-lap time (checkpoint 4)\n")
+    w("## 4. Pareto front: μ against σ of the 3-lap time\n")
     w("ε-constraint: minimise μ subject to σ ≤ ε (robust constraints as in §2), plus the k = 0 (min μ) and k = 10 "
       "(≈ min σ) end points; UDR estimates (N = 15). Single 10x7E 4S, 20 % reserve. Each run starts from the "
       "k = 1 robust design.\n")
@@ -514,7 +514,7 @@ def report_enumeration(w):
             rows.append((lab, load(dt), load(rt)))
     if len(rows) < 2:
         return
-    w("## 5. Robust enumeration: does the layout and prop ranking change? (checkpoint 4)\n")
+    w("## 5. Robust enumeration: does the layout and prop ranking change?\n")
     w("Same robust settings for every case (the d = 7 set screened on the single design; §5a checks it on the "
       "twins). μ, σ from the Monte Carlo over all 15 parameters where it was run, else the UDR estimate.\n")
     w("| Case | det.: nominal 3-lap (s) | det.: μ ± σ (s) | robust: nominal (s) | robust: μ ± σ (s) | robust: μ + σ (s) "
@@ -560,7 +560,7 @@ def report_enumeration(w):
           "(Monte Carlo over all 15): " + "; ".join(flag) + ". Constraints outside `robust.robust_constraints` "
           "(e.g. rpm_margin) are only enforced at the reference node, so nothing bounds their probability, and RDO "
           "can make them worse, as it does for rpm_margin on the 10x7E twin. Adding one to the list is a config "
-          "change, not done here so that every case uses the same settings (OPEN_QUESTIONS Q33). On the 10x7E "
+          "change, not done here so that every case uses the same settings (PLACEHOLDERS Q33). On the 10x7E "
           "twin the robust μ + σ lead over the single motor is about 3 s, far more than a robust rpm_margin is "
           "likely to cost, but that is not verified.\n")
     if (OUT / "screen_twin.json").exists():
@@ -584,7 +584,7 @@ def report_cost(w):
         pairs.append(("1 x 10x7E 4S, reserve 0", load("det_single_10x7E_r0"), load("robust_single_10x7E_r0")))
     if not pairs:
         return
-    w("## 6. Cost: deterministic vs robust (checkpoint 4)\n")
+    w("## 6. Cost: deterministic vs robust\n")
     w("Wall time on this machine (16 cores, 14 GB), each optimisation one process with 3 BLAS threads (two or three "
       "robust runs and a Monte Carlo ran at once, so these are upper bounds), from the config start point, SLSQP. Robust: UDR, d = 7, N = 15 nodes, "
       "serial (no MPI).\n")
@@ -740,8 +740,8 @@ def report():
     w("# Robust design optimisation: AirCrafter 2.0 study\n")
     w("Generated by `studies/rdo_study.py report` from `outputs/rdo/*.json` (the raw results, not in git; a compact "
       "copy is in `docs/studies/rdo_study_results.json`). Plan, "
-      "screening and node-convergence check: `docs/RDO_PLAN.md`. Formulation: `docs/modules/robustness.md`.\n")
-    w("**Read this first.** Every spread is a PLACEHOLDER (`configs/uncertainty.yaml`, OPEN_QUESTIONS Q32), as are the "
+      "screening and node-convergence check: `docs/development/RDO_PLAN.md`. Formulation: `docs/modules/robustness.md`.\n")
+    w("**Read this first.** Every spread is a PLACEHOLDER (`configs/uncertainty.yaml`, PLACEHOLDERS Q32), as are the "
       "motor, battery and payload values. The objective is the placeholder 3-lap time with the 20 % energy reserve "
       "unless stated. The results show how the model behaves under RDO and what RDO costs, not a design.\n")
     report_summary(w)

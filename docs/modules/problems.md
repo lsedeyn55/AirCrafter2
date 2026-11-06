@@ -82,7 +82,7 @@ rewound; `propulsion/motor_scaling.py`), and the static current limit becomes a 
 
 ## `multipoint`
 
-Why: [r25-multipoint](../DECISIONS.md#r25-multipoint). Rules and sources: `docs/RESULTS_PLAN.md`, `docs/modules/scoring.md`. The notes
+Why: [r25-multipoint](../DECISIONS.md#r25-multipoint). Rules and sources: `docs/development/RESULTS_PLAN.md`, `docs/modules/scoring.md`. The notes
 below are the 2024-25 ruleset; 2025-26 has the same structure with its own stores, extra variables and score
 (`docs/modules/stores.md`).
 

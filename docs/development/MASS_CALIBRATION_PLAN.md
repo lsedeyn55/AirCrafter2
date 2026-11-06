@@ -1,7 +1,8 @@
-# Mass-model calibration on three USYD aircraft: plan and data
+# Mass-model calibration on three USYD aircraft
 
-Brief: `Claude outputs/aircrafter2_mass_calibration_prompt.md`. Branch `mass-calibration`, from `5e0a008`
-(`placeholders-rulesets`). The numbers in this plan come from a standalone checkpoint-1 run of the mass group.
+Design notes and data for calibrating the Garcia & Gamboa mass model on Orange Hornet, Woombah and Humpback (branch
+`mass-calibration`, from `placeholders-rulesets`). The numbers in these notes come from a standalone run of the mass
+group made before the calibration was built.
 `studies/mass_calibration_usyd.py` regenerates all of them, and its output
 (`docs/studies/mass_calibration_usyd.md`) supersedes this plan's tables.
 
@@ -12,7 +13,7 @@ Sources (printed page numbers):
   the PDF page index is one lower than the printed page number)
 - [GG] Garcia & Gamboa (2022)
 
-## Decisions (user, 2026-10-23, before checkpoint 1)
+## Decisions (2026-10-23)
 
 1. **Tail form: `areal`.** Eq. 128 objective 0.553 (areal) against 0.782 (gg). The LOO errors on the tail
    components have an RMS of 22 % (areal) against 34 % (gg). The LOO structure-total errors are mixed:
@@ -22,20 +23,18 @@ Sources (printed page numbers):
    Areal has the lower maximum and gg the lower RMS (22.7 against 22.1 %). Both forms give the same f_build spread
    (30 %). Areal was chosen on the components the tail form changes, and the mixed totals are reported in the
    calibration doc.
-2. **k_fill stays 0.85.** The spar check gives +9 % [OH] and −16 % [W]; the brief's estimate was +14 / −6 %. The
+2. **k_fill stays 0.85.** The spar check gives +9 % [OH] and −16 % [W]; the specification's estimate was +14 / −6 %. The
    conclusion is the same: a front-spar fit makes [W]'s single tube 3.5 mm thick, t/r 0.41, over `wall_ratio_max` 0.2.
-3. **Run straight through.** One commit per checkpoint. The references are regenerated in their own commit after
-   checkpoint 2's list of changes, without stopping. A "stop and show me" condition of the brief that triggers still
-   stops the run.
+3. **One commit per stage.** The references are regenerated in their own commit after stage 2's list of changes.
 
 ## 1. Extraction, checked against the PDFs
 
-Every value of the brief's table was read back from the PDFs. All of them match. What I read differently, or what
-the brief leaves out:
+Every value of the specification's table was read back from the PDFs. All of them match. What I read differently, or what
+the specification leaves out:
 
-| Item | Brief | Reports | Used |
+| Item | Specification | Reports | Used |
 |---|---|---|---|
-| [OH] Table 35 | p. 42 | Table 35 is on p. 42 (CG column "y-Disp." is the longitudinal axis) | as brief |
+| [OH] Table 35 | p. 42 | Table 35 is on p. 42 (CG column "y-Disp." is the longitudinal axis) | as specification |
 | [OH] site | Wichita, 1300 ft (p. 25) | p. 25: "standard atmosphere density at an elevation of 400 m" (= 1312 ft) | 400 m |
 | [OH] span | 1.524 m (Table 33) | Table 22 (p. 21) and Table 36 (p. 43) round it to 1.5 m | 1.524 m |
 | [OH] wing endplates | not mentioned | 1 mm plywood endplates, h/b = 1/20 (p. 21) | `winglet_ratio` 0 (see note 1) |
@@ -46,13 +45,13 @@ the brief leaves out:
 | [W] outer spar sizes | 0.87/0.79 and 0.79/0.71 in | outer panels "stepped down by 0.08 in", 2 in overhang into the mid-wing (p. 33): front 0.79/0.71, rear 0.71/0.63 in | as the report |
 | [HB] spar sizes | 0.63/0.55 and 0.39/0.31 in | Table 24 (p. 26): 0.63/0.55 and 0.39/0.31. Text on p. 26: "0.71 in/0.63 in front, 0.55 in/0.47 in rear". p. 37: 5/8 and 3/8 in. All walls are 0.04 in | Table 24 (only the 1 mm wall is used) |
 | [HB] spar layout | CF joiners | CF tubes only across the fuselage junction. Full-span 1/4 × 1/2 in Celery Top Pine caps and balsa webs form the I-beam outboard (pp. 26, 37). The tails use the same hybrid (p. 37) | one full-span G&G tube; `k_wing` absorbs the difference |
-| [HB] area | 868 in² | p. 36: 868 in², but 59 × 14.57 = 859.6 in² | 868 in² (S); c from the brief, 14.57 in |
+| [HB] area | 868 in² | p. 36: 868 in², but 59 × 14.57 = 859.6 in² | 868 in² (S); c from the specification, 14.57 in |
 
 Notes:
 1. **[OH] endplates.** The model has no endplates and the optimiser's designs have none, so `winglet_ratio` stays 0
    and [OH]'s `k_wing` absorbs them. Modelling them as winglets (ratio 0.10) would claim about 10 % of the wing. Two
    1 mm plywood plates of about 0.033 m² each weigh roughly 3 %.
-2. **[OH] "Empenage" is the rear fuselage.** I read it the same way as the brief. Its CG is 898 mm aft of the LE
+2. **[OH] "Empenage" is the rear fuselage.** I read it the same way as the specification. Its CG is 898 mm aft of the LE
    datum. The 1050 mm midsection sits with its centroid at the wing quarter chord (p. 19), and the "Fuselage" row's
    CG is 108 mm. The 680 mm rear fuselage (p. 39) therefore spans about 630 to 1310 mm, and the HS and VS rows are at
    1169 and 1153 mm.
@@ -127,10 +126,10 @@ Before Step 1, `t_tube_min` is 0.5 mm and `sigma_spar` 720 MPa. After Step 1 the
 | gear | 5.15 | 5.15 | 2.85 | 2.85 | – | – |
 | spar wall | 0.50 mm | 1.00 mm | 0.68 mm | 1.17 mm | 0.50 mm | 1.00 mm |
 
-These are within ~4 % of the brief's estimate (wing 2.69 / 2.35 / 1.75). E_spar changes no wing mass (42.9 and
+These are within ~4 % of the specification's estimate (wing 2.69 / 2.35 / 1.75). E_spar changes no wing mass (42.9 and
 220 GPa give the same masses), because the deflection limit never binds.
 
-**Quick fit** (a linear least-squares probe; the real fits run through `calibration.py` at checkpoint 2):
+**Quick fit** (a linear least-squares probe; the real fits run through `calibration.py` at stage 2):
 
 | Fit | k_wing | a_ht | a_vt | f_cb | f_tb | f_gear | Eq. 128 |
 |---|---|---|---|---|---|---|---|
@@ -181,13 +180,13 @@ spar makes the single tube thick-walled (t/r up to 0.41), outside the thin-wall 
 - **One place per value** (`tests/test_placeholders.py`). `mass_garcia_gamboa_2022.yaml` keeps the published G&G
   factors (Table 14), which the verification and the "uncalibrated" comparison read. It joins the test's `ALLOWED`
   list, as do `mass_usyd_loo_woombah.yaml` and the 2024-25 Woombah box in `woombah_2025.yaml`.
-- **The migration snapshot test** compares every config with its pre-migration dump. It gets this brief's changes as
+- **The migration snapshot test** compares every config with its pre-migration dump. It gets this specification's changes as
   a second list of expected differences: mass inputs and options for every config, and the cargo box and n_panels
   for the 2024-25 configs.
 - **`f_build`'s placement.** It already multiplies the m_wing that feeds the gg tails. In `areal` mode it must
   multiply m_ht and m_vt directly. `BUILD_NOTE` is updated.
 
-## 6. Report inconsistencies (to OPEN_QUESTIONS)
+## 6. Report inconsistencies (to PLACEHOLDERS)
 
 - [HB] mass basis: CAD values "validated against the measured weights … with a ≈20 % increase from CAD to
   manufacturing" (p. 43). The report does not say whether Table 36 includes the 20 %.
@@ -204,7 +203,7 @@ spar makes the single tube thick-walled (t/r up to 0.41), outside the thin-wall 
 - [OH] σ: "3.13 MPa" on p. 55 against 313 MPa on p. 35 (a typo).
 - [OH] y_motor: not dimensioned.
 
-## 7. Regression references (checkpoint 2)
+## 7. Regression references (stage 2)
 
 Every full config now loads the calibrated mass model, so every regenerable reference entry changes. Start point,
 one coupled analysis (`tests/configs_snapshot.py`, `tests/rdo_off_snapshot.py`). The largest relative change is
@@ -229,24 +228,24 @@ they are regenerated in their own commit. **Not regenerated, ever:** `rdo_off_re
 model (`tests/migration.py pre_calibration`), and both reproduce bit for bit. This also shows that nothing else in the
 model moved.
 
-## 8. Checkpoints
+## 8. Stages
 
 1. This plan (commit).
 2. `k_wing`, `tail_mass_model`, `f_build` on the areal tails, the calibration hook (external sizing, lumped
    targets, LOO, bounds), tests; `studies/mass_calibration_usyd.py fit/report`; configs; full suite; the list of
    reference changes (commit), then the regenerated references (their own commit).
 3. Woombah validation with the LOO config; one deterministic 2024-25 multipoint optimum; the RDO cost estimate;
-   `mass.md`, OPEN_QUESTIONS, PLAN G5, INDEX (commit).
+   `mass.md`, PLACEHOLDERS, PLAN G5, INDEX (commit).
 
-## 9. Outcome (checkpoints 2 and 3)
+## 9. Outcome (stages 2 and 3)
 
-- Checkpoint 2 `725cb51`; references regenerated `da1158f`; checkpoint 3 the commit after. Full suite on checkpoint 2:
+- Stage 2 `725cb51`; references regenerated `da1158f`; stage 3 the commit after. Full suite on stage 2:
   337 passed, 18 strict-xfail (the reference entries), then 0 xfail after the regeneration.
 - Fits, LOO, gg vs areal, sensitivities, closure check and the calibrated optimum: `docs/studies/mass_calibration_usyd.md`.
 - Woombah validation, out-of-sample: `docs/studies/results/validation_2025.md` §2–3 (`studies/validation_2025.py woombah
   --mass gg|loo`). The pre-calibration run (`outputs/results/validation_woombah.json`) is kept; the superseded
   Woombah-only refit stays as a column.
-- RDO reruns on the calibrated model (2026-10-23, after the brief): the reduced set (calibration doc §10, `--set
+- RDO reruns on the calibrated model (2026-10-23, after the specification): the reduced set (calibration doc §10, `--set
   usyd`, runs `rdoru_*`, `outputs/results/reduced_usyd/`), the full 15-parameter set (§11, `--set full_usyd`, runs
   `rdofu_*`, `outputs/results/full_usyd/`), and the Monte Carlo at the calibrated deterministic and robust optima
   plus the propagation check (§12). The published `rdor_*` / `rdo_*` runs and outputs are untouched. Not rerun:

@@ -4,7 +4,7 @@
 # it (uncertainty_2025_reduced_calibrated.yaml, written by studies/results_2025.py calibrate). Decision 2026-10-21:
 # the Woombah ratio is a calibration (a nominal shift), not a spread.
 # Robust design optimisation of the 2024-25 multipoint problem (aircrafter2/robustness/rdo_multipoint.py) with the
-# REDUCED uncertain set: mass and wind only (docs/RDO_REDUCED_PLAN.md). Everything not listed here is
+# REDUCED uncertain set: mass and wind only (docs/development/RDO_REDUCED_PLAN.md). Everything not listed here is
 # configs/dbf2025_multipoint.yaml. UDR, maximise mu - k sigma of the flight score, mu -/+ beta sigma robust
 # constraints; every spread is a PLACEHOLDER. The published 15-parameter RDO: dbf2025_multipoint_rdo_full.yaml.
 extends: dbf2025_multipoint.yaml

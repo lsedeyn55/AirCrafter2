@@ -139,7 +139,7 @@ and never scored.
 
 Agreement with the reference port: ≤ 0.65% on the 3-lap time across 8 points.
 
-**Step resolution near the wind limit** (found in `docs/studies/takeoff_study.md` §6; OPEN_QUESTIONS Q45). The first
+**Step resolution near the wind limit** (found in `docs/studies/takeoff_study.md` §6; PLACEHOLDERS Q45). The first
 straight uses a fixed 40-step RK4 in ground distance, and dt/ds = 1/(v − w) grows as the ground speed falls.
 - Below 5 m/s, M3's lap-1 time is within 0.15 % of a 640-step solution.
 - Close to the limit the error grows. For the heavy M3 aircraft of multipoint_2L, with take-off off, it is +0.8 % at
@@ -179,12 +179,12 @@ and what every published result uses, the lap model does the same: lap 1 starts 
 - **Assumptions:**
   - the aircraft is level at lift-off: no rotation, transition or climb is modelled;
   - the roll is at the point's throttle, while pilots take off at full throttle (a separate take-off throttle is not
-    built: `docs/TAKEOFF_COURSE_PLAN.md`);
+    built: `docs/development/TAKEOFF_COURSE_PLAN.md`);
   - `CL_ground` = 0.15 is a PLACEHOLDER: a taildragger rolling tail-up at Woombah's 2° wing setting, on the model's
     own lift curve;
   - `start_offset_ft` = 0 (brake release on the start line) is a PLACEHOLDER.
 
-  See OPEN_QUESTIONS Q40–Q44.
+  See PLACEHOLDERS Q40–Q44.
 - **Power mode:** `propulsion` only. In `aircrafter` mode T = P/v is infinite at rest, so switching take-off on raises
   a config error. `lap_mdo` and the reference port (`lap_modeller.py`) keep take-off out.
 - **Verification:** closed form to 1e-10; `solve_ivp` within 0.1 % at 6 cases; FD partials

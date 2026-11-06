@@ -21,5 +21,5 @@ For comparison, G&G's own combined fit (load-based walls) has boom errors of +10
 Default adopted in `configs/mass_garcia_gamboa_2022.yaml`: t_tb_min = 1.0 mm (USYD tube walls,
 Spar Sizer 3.1) with f_tb = 0.847. The boom term is then essentially 'a CFRP tube of
 the boom's diameter and length, times ~1'. Recalibrate on USYD aircraft when data exist
-(OPEN_QUESTIONS Q14). The Table 15 verification keeps the paper's basis (no minimum wall,
+(PLACEHOLDERS Q14). The Table 15 verification keeps the paper's basis (no minimum wall,
 f_tb = 12.81).

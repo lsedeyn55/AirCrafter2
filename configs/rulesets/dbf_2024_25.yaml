@@ -1,11 +1,11 @@
 # The 2024-25 DBF ruleset (X-1 Supersonic Flight Program): every value that depends on the competition rules.
 # Layer 3 (code defaults < placeholders.yaml < this file < the problem config < the study variant), opt-in: the
 # 2024-25 configs set 'ruleset: rulesets/dbf_2024_25.yaml'. A single-point load uses the top-level keys only and ignores
-# multipoint.*. Plan: docs/PLACEHOLDERS_RULESETS_PLAN.md.
+# multipoint.*. Plan: docs/development/PLACEHOLDERS_RULESETS_PLAN.md.
 #
 # One value per line, as a dotted path into the config schema. Comment: # <units>; <PLACEHOLDER | cited>; Q..; <source>
 # [R] = Rules_2025.pdf page; [W] = 2025 USYD DBF Design Report (Project Woombah), page / table. PLACEHOLDER = not
-# sourced (docs/OPEN_QUESTIONS.md). Edit here or in the UI's Ruleset tab (which saves in place, keeping every comment).
+# sourced (docs/PLACEHOLDERS.md). Edit here or in the UI's Ruleset tab (which saves in place, keeping every comment).
 
 # --- site ---
 altitude: 800.0                              # m; cited; no Q; Tucson elevation 2625 ft [W p. 25]; fly-off at TIMPA, Tucson [R p. 7]

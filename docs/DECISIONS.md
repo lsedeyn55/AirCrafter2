@@ -2,9 +2,9 @@
 
 Why the code is the way it is. Code comments link here (`docs/DECISIONS.md#plan-d2`) instead of using bare labels such as
 "D2", which clash between plan files. Each entry says what was decided, why, where it applies in the code and which plan
-file it comes from. The plan files themselves are the history and aren't edited.
+file it comes from. The development notes in `docs/development/` are the history.
 
-Open questions and placeholders are a separate, live list: `docs/OPEN_QUESTIONS.md` (the `Q` numbers in the code).
+Open questions and placeholders are a separate, live list: `docs/PLACEHOLDERS.md` (the `Q` numbers in the code).
 
 ## Sources
 
@@ -27,7 +27,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 | **Raymer** | D. P. Raymer, *Aircraft Design: A Conceptual Approach*. Component drag build-up, form factors and tail volume coefficients (Table 6.4). |
 | **Drela** | M. Drela's first-order DC motor model, used in `propulsion/powertrain.py`. |
 | **ICAO Doc 7488/3** | Manual of the ICAO Standard Atmosphere, 1993. Used in `atmosphere.py`. |
-| **Spar Sizer 3.1** | The team's earlier spar spreadsheet. Notes in `docs/PLAN.md` §10. |
+| **Spar Sizer 3.1** | The team's earlier spar spreadsheet. Notes in `docs/development/PLAN.md` §10. |
 
 ## Abbreviations
 
@@ -49,7 +49,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 | **UDR** | univariate dimension reduction |
 | **VLM** | vortex-lattice method |
 
-## Architecture decisions (`docs/PLAN.md`)
+## Architecture decisions (`docs/development/PLAN.md`)
 
 <a id="plan-d1"></a>
 ### plan-d1: the spar tube radius is derived
@@ -57,7 +57,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** the tube radius comes from the airfoil, r = k_fill · t_spar · c / 2, instead of being a design variable with a tube-fit constraint. The design-variable mode stays available.
 - **Why:** the tube always fills the section at the spar, and the optimiser has one variable and one constraint fewer.
 - **Applies in:** `mass/garcia_gamboa/section.py` (`TubeRadius`, `TubeFitMargin`), `problems/aero_mass.py`.
-- **Source:** `docs/PLAN.md` §11, approved 2026-10-09.
+- **Source:** `docs/development/PLAN.md` §11, approved 2026-10-09.
 
 <a id="plan-d2"></a>
 ### plan-d2: a smooth twin of the lap modeller
@@ -65,7 +65,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** add a differentiable lap model for the optimiser. Keep the table-based port for reporting and for the check against the MATLAB.
 - **Why:** gradients through lookup tables and while loops aren't exact. The smooth model gets exact complex-step partials.
 - **Applies in:** `mission/smooth_lap.py` (`SmoothLapModel`), with `mission/lap_modeller.py` as the reference.
-- **Source:** `docs/PLAN.md` §11, approved 2026-10-09.
+- **Source:** `docs/development/PLAN.md` §11, approved 2026-10-09.
 
 <a id="plan-d3"></a>
 ### plan-d3: reduced airfoil shape modes
@@ -73,23 +73,23 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** the airfoil design variables are a few shape modes on a seed Kulfan airfoil (2 + 4 to 8). Full 18-weight CST stays optional.
 - **Why:** fewer variables and fewer odd shapes than free CST weights.
 - **Applies in:** `airfoil/shape.py`, `config/aero.py` (`n_modes`).
-- **Source:** `docs/PLAN.md` §11, approved 2026-10-09.
+- **Source:** `docs/development/PLAN.md` §11, approved 2026-10-09.
 
 <a id="plan-d4"></a>
 ### plan-d4: prop, motor and cells are enumerated outside the optimiser
 
 - **Decided:** propeller, motor and cell count are discrete choices enumerated in an outer loop. Battery capacity stays continuous.
 - **Why:** they are catalogue items, not continuous quantities, and gradients don't exist across them.
-- **Applies in:** `propulsion/powertrain.py` (option `prop`), `problems/full_mdo.py` (`PropulsionInputs`), the studies that enumerate them. The motor Kv later became a continuous design variable with a rewound reference motor (`propulsion/motor_scaling.py`, `docs/KV_PLAN.md`).
-- **Source:** `docs/PLAN.md` §11, approved 2026-10-09.
+- **Applies in:** `propulsion/powertrain.py` (option `prop`), `problems/full_mdo.py` (`PropulsionInputs`), the studies that enumerate them. The motor Kv later became a continuous design variable with a rewound reference motor (`propulsion/motor_scaling.py`, `docs/development/KV_PLAN.md`).
+- **Source:** `docs/development/PLAN.md` §11, approved 2026-10-09.
 
 <a id="plan-d5"></a>
 ### plan-d5: Table 15 tolerance
 
 - **Decided:** working value ±3 % per component for "a few percent" in G&G Table 15. The plan lists this one as still open.
-- **Why:** the brief didn't give a number. The verification reproduces Table 15 within 2.3 % (`docs/verification/mass.md`).
+- **Why:** the specification gave no number. The verification reproduces Table 15 within 2.3 % (`docs/verification/mass.md`).
 - **Applies in:** the mass verification, `verification/` and `tests/`. No code in `aircrafter2/` depends on it.
-- **Source:** `docs/PLAN.md` §11.
+- **Source:** `docs/development/PLAN.md` §11.
 - **Unconfirmed:** the plan records it as open, and no later entry closes it.
 
 <a id="plan-d6"></a>
@@ -98,7 +98,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** model one equivalent tube. An N-tube extension is left for later.
 - **Why:** enough for the conceptual stage, and the paper's tube concept is one tube.
 - **Applies in:** `mass/garcia_gamboa/sizing.py` (`TubeSparSizing`).
-- **Source:** `docs/PLAN.md` §11, 2026-10-09.
+- **Source:** `docs/development/PLAN.md` §11, 2026-10-09.
 
 <a id="plan-d7"></a>
 ### plan-d7: config validation with pydantic
@@ -106,7 +106,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** every config is a pydantic v2 model that forbids unknown keys.
 - **Why:** clear error messages for students, and misspelt keys are errors instead of silently ignored values.
 - **Applies in:** `config/`, `problems/full_mdo.py`, `problems/multipoint.py`.
-- **Source:** `docs/PLAN.md` §11, approved 2026-10-09.
+- **Source:** `docs/development/PLAN.md` §11, approved 2026-10-09.
 
 <a id="plan-d8"></a>
 ### plan-d8: twin wing-mounted tractors
@@ -114,7 +114,7 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** `n_motors` ∈ {1, 2} is a discrete config choice, enumerated with the prop and cells, not a design variable. Units are identical. Packs are `per_motor` by default, with `shared` as an option, and `capacity` is per pack. The wing-load motor terms are switchable, default off. The slipstream isn't modelled. The one-engine-inoperative check is for information only.
 - **Why:** the twin layout is a configuration choice, and Woombah flew it. The team has no data yet to size the rudder against the check.
 - **Applies in:** `geometry/planform.py` (`MotorPlacement`), `problems/full_mdo.py` (`build_full_model`, `full_constraints`), `propulsion/powertrain.py`, `mass/garcia_gamboa/loads.py`, `stability/static.py` (`oei_check`).
-- **Source:** `docs/PLAN.md` §6h and §11, 2026-10-13 brief.
+- **Source:** `docs/development/PLAN.md` §6h and §11, 2026-10-13 specification.
 
 <a id="plan-b"></a>
 ### plan-b: the powertrain sets the power
@@ -122,15 +122,15 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Decided:** in the full model, thrust and battery power come from the powertrain at a fixed throttle (`power_mode="propulsion"`), and the cruise speed is an output of the MDA (where T = D). AirCrafter's rule P = D(V) V / η stays available as `power_mode="aircrafter"`.
 - **Why:** under AirCrafter's rule, lap time improves with cruise drag, since more drag means more power and more thrust out of the turns. The optimiser exploited that (Finding L1 in the plan).
 - **Applies in:** `mission/smooth_lap.py`, `propulsion/powertrain.py`, `problems/full_mdo.py`.
-- **Source:** `docs/PLAN.md` §6e (Finding L1) and §6f, 2026-10-09.
+- **Source:** `docs/development/PLAN.md` §6e (Finding L1) and §6f, 2026-10-09.
 
 <a id="plan-t6"></a>
 ### plan-t6: nacelle form factor
 
-- **Decided:** the default is Raymer's body form factor, as the brief asked. Raymer's nacelle and smooth-store form, FF = 1 + 0.35/f, is the option `nacelle_ff: nacelle`.
+- **Decided:** the default is Raymer's body form factor, as specified. Raymer's nacelle and smooth-store form, FF = 1 + 0.35/f, is the option `nacelle_ff: nacelle`.
 - **Why:** at nacelle fineness (f ≈ 3), the body form gives FF ≈ 3.2 and the nacelle form ≈ 1.12, so the choice is left visible as a switch.
 - **Applies in:** `aero/parasite.py`, `problems/full_mdo.py` (`PropulsionInputs.nacelle_ff`).
-- **Source:** `docs/PLAN.md` §6h, T6.
+- **Source:** `docs/development/PLAN.md` §6h, T6.
 
 <a id="plan-a2"></a>
 ### plan-a2: the VLM is a flat-plate model
@@ -138,9 +138,9 @@ The citation keys used in the code. Page numbers are printed page numbers unless
 - **Finding:** the vortex-lattice α is measured from zero lift, and camber enters only through the NeuralFoil strips, which are matched on section c_l.
 - **Consequence:** `alpha_sec` reports the true section angle, and the bound on α_turn is set wide.
 - **Applies in:** `aero/performance.py`, `aero/wing.py`, `aero/polar.py`.
-- **Source:** `docs/PLAN.md` §6b.
+- **Source:** `docs/development/PLAN.md` §6b.
 
-## Source notes on Garcia & Gamboa 2022 (`docs/PLAN.md` §7)
+## Source notes on Garcia & Gamboa 2022 (`docs/development/PLAN.md` §7)
 
 The default is the paper as printed unless an entry says otherwise. Each deviation is a config switch.
 
@@ -167,7 +167,7 @@ Slips with no effect on the maths. In the code, the one that matters is §2.2.5:
 <a id="plan-g5"></a>
 ### plan-g5: Eq. 32's f_wing^(n_panels-1) is an exponent
 
-Back-solving Table 15 with the Table 14 factors gives exponents 2.08, 2.05 and 4.18, matching n_panels − 1 = 2, 2 and 4. A single-panel wing therefore gets no f_wing correction, so the USYD calibration added a wing construction factor `k_wing` (not in G&G, default 1), which reproduces Table 15 unchanged. **Applies in:** `mass/garcia_gamboa/masses.py` (`WingMass`), `mass/calibration.py`. **Source:** `docs/PLAN.md` §7, with the note of 2026-10-23.
+Back-solving Table 15 with the Table 14 factors gives exponents 2.08, 2.05 and 4.18, matching n_panels − 1 = 2, 2 and 4. A single-panel wing therefore gets no f_wing correction, so the USYD calibration added a wing construction factor `k_wing` (not in G&G, default 1), which reproduces Table 15 unchanged. **Applies in:** `mass/garcia_gamboa/masses.py` (`WingMass`), `mass/calibration.py`. **Source:** `docs/development/PLAN.md` §7, with the note of 2026-10-23.
 
 <a id="plan-g6"></a>
 ### plan-g6: Eq. 33 multi-panel
@@ -217,7 +217,7 @@ m_gear = f_gear · m uses the total mass, which adds to the closure loop. That's
 <a id="plan-g15"></a>
 ### plan-g15: Eq. 50 needs x_gd
 
-Eq. 50 needs the ground-test hold point x_gd, which Table 3 doesn't give (`docs/OPEN_QUESTIONS.md` Q4). Eqs. 48-49 use the full weight, payload included. **Applies in:** `mass/garcia_gamboa/loads.py` (`WingLoads`).
+Eq. 50 needs the ground-test hold point x_gd, which Table 3 doesn't give (`docs/PLACEHOLDERS.md` Q4). Eqs. 48-49 use the full weight, payload included. **Applies in:** `mass/garcia_gamboa/loads.py` (`WingLoads`).
 
 <a id="plan-g16"></a>
 ### plan-g16: g in Table 3
@@ -259,7 +259,7 @@ It uses UBI11's individual general factors, not the combined ones (f_wing and f_
 
 The paper's numbers use K_tube = r/c_mean with the sizing chord c_root, which sizes the tube as if its radius were r c_root/c_mean. **Decided:** `sizing_radius_mode: paper` by default (consistent with f_wing = 1.12), `physical` available. The two are identical for a rectangular wing. **Applies in:** `mass/garcia_gamboa/sizing.py` (`TubeSparSizing`).
 
-## Port notes on the AirCrafter 1.0 MATLAB (`docs/PLAN.md` §8)
+## Port notes on the AirCrafter 1.0 MATLAB (`docs/development/PLAN.md` §8)
 
 <a id="plan-m1"></a>
 ### plan-m1: MATLAB rounds V_stall
@@ -271,7 +271,7 @@ MATLAB rounds `Vstall` to an integer, and the rounded value starts the accelerat
 
 If the turn-entry speed is below the slowest speed in the deceleration table, `interp1` returns NaN, nothing flags it, the lap times become NaN and the lap count is 1. The port keeps the speed unchanged in that case; `matlab_compat=True` reproduces the NaN. **Applies in:** `mission/lap_modeller.py`. **Source:** found 2026-10-09 with the MATLAB run.
 
-## Final fixes before the final run (`docs/RESULTS_2026_PLAN.md`)
+## Final fixes before the final run (`docs/development/RESULTS_2026_PLAN.md`)
 
 All from the section "Final fixes before the final run", 2026-11-02. Each is limited to the 2025-26 ruleset.
 
@@ -310,7 +310,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Why:** each of these paths did a cold `run_model` at a low-speed banner design, which can diverge. A setup error was found hidden by the `RuntimeError` catch.
 - **Applies in:** `problems/multipoint.py`, `robustness/sampling.py`, `studies/results_2026.py`.
 
-## MDA robustness (`docs/MDA_ROBUSTNESS_PLAN.md`)
+## MDA robustness (`docs/development/MDA_ROBUSTNESS_PLAN.md`)
 
 <a id="mr-f1"></a>
 ### mr-f1: continuation fallback in RetryNewton
@@ -352,7 +352,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** a switch, `course.takeoff.in_mission_time`, off by default so that published results don't change. When on, the ground roll is integrated and its time and energy go into lap 1.
 - **Why:** the rules start the clock when the throttle is advanced for take-off, and `performance_modeller.m` has the ground roll commented out (l. 435), so model times were too short by an amount that depends on the design.
 - **Applies in:** `mission/course.py` (`TakeoffConfig`), `mission/smooth_lap.py`, `mission/lap_modeller.py`.
-- **Source:** `docs/TAKEOFF_COURSE_PLAN.md`.
+- **Source:** `docs/development/TAKEOFF_COURSE_PLAN.md`.
 
 <a id="r25-multipoint"></a>
 ### r25-multipoint: the 2024-25 multipoint formulation
@@ -360,7 +360,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** one airframe flying M2 and M3. Airframe and Kv are shared, capacity, x_batt and throttle are per point, fuel is M2 only, and the prop per point is enumerated. M1 is an analysis-only check.
 - **Why:** the rules require the same configuration for all missions but allow other packs and props between attempts (Rules_2025 p. 10, 14, 16).
 - **Applies in:** `problems/multipoint.py`, `scoring/dbf2025.py`, `stores.py`.
-- **Source:** `docs/RESULTS_PLAN.md` §9.
+- **Source:** `docs/development/RESULTS_PLAN.md` §9.
 
 <a id="r26-scoring"></a>
 ### r26-scoring: the 2025-26 score model
@@ -368,7 +368,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** F = M1 + M2 + M3 with M1 = 1, M2 from the net income, and M3 from the banner term, with the laps taken from the continuous `laps_frac`. See [ff-d1](#ff-d1) for the cap.
 - **Why:** [R26] p. 20 defines the mission scores. [HB] Eq. 6 omits EF, and the rules are used.
 - **Applies in:** `scoring/dbf2026.py`.
-- **Source:** `docs/RESULTS_2026_PLAN.md` §4.1.
+- **Source:** `docs/development/RESULTS_2026_PLAN.md` §4.1.
 
 <a id="r26-payload"></a>
 ### r26-payload: payload and fuselage sizing
@@ -376,7 +376,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** n_p and n_c are continuous design variables with n_p ≥ 3 n_c, and the payload fuselage is sized from the counts. Final designs round the counts and re-optimise, running only the candidates that fit (`rounding_check`). The restraints stay on board in M1 and M3.
 - **Why:** rules p. 10-11. Rounding candidates that can't fit the fuselage cap are infeasible for every design and stalled the optimiser.
 - **Applies in:** `stores2026.py`, `problems/multipoint.py`, `studies/results_2026.py`.
-- **Source:** `docs/RESULTS_2026_PLAN.md` §4.2, and `docs/MDA_ROBUSTNESS_PLAN.md` "Status", deviation 3.
+- **Source:** `docs/development/RESULTS_2026_PLAN.md` §4.2, and `docs/development/MDA_ROBUSTNESS_PLAN.md` "Status", deviation 3.
 
 <a id="r26-banner"></a>
 ### r26-banner: the banner
@@ -384,7 +384,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** L_banner is a design variable in [10 in, 275 in], height L/5, drag on the banner's own area with C_D,b 0.024 (the mean of [HB] Table 41's length column). The stowed banner flies lap 1 until the first downwind leg.
 - **Why:** [R26] rule limits, and [HB]'s values disagree with each other, so the choice is recorded in Q56.
 - **Applies in:** `stores2026.py`, `mission/smooth_lap.py` (`banner_stowed_legs`), `mission/course.py`.
-- **Source:** `docs/RESULTS_2026_PLAN.md` §4.3.
+- **Source:** `docs/development/RESULTS_2026_PLAN.md` §4.3.
 
 <a id="r26-wind"></a>
 ### r26-wind: wind direction and turn drift
@@ -392,7 +392,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** a steady wind with a direction. On straights, the along-track component adds to the ground speed and the crosswind is crabbed out. Turns are flown at constant airspeed in the air-mass frame, and the drift can be carried to the next straight (`course.turn_drift`, off by default).
 - **Why:** the earlier model had only an along-course wind, and turns ignored it. The expression reduces exactly to the earlier one at wind_dir = 0.
 - **Applies in:** `mission/smooth_lap.py`, `mission/course.py`.
-- **Source:** `docs/RESULTS_2026_PLAN.md` §4.7.
+- **Source:** `docs/development/RESULTS_2026_PLAN.md` §4.7.
 
 <a id="rr-f-build"></a>
 ### rr-f-build: the overall build factor
@@ -400,7 +400,7 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** `f_build` (default 1.0) multiplies every G&G structural mass inside the mass closure, and is the mass parameter of the reduced RDO.
 - **Why:** it stands for how heavy the aircraft comes out when built. It carries 70-78 % of the static-margin variance, so it belongs in the uncertain set.
 - **Applies in:** `mass/garcia_gamboa/inputs.py`, `mass/garcia_gamboa/masses.py`.
-- **Source:** `docs/RDO_REDUCED_PLAN.md` §1.
+- **Source:** `docs/development/RDO_REDUCED_PLAN.md` §1.
 
 <a id="pr-layers"></a>
 ### pr-layers: placeholders and ruleset files
@@ -408,4 +408,4 @@ All from the section "Final fixes before the final run", 2026-11-02. Each is lim
 - **Decided:** every placeholder lives in `configs/placeholders.yaml` (independent of the rules) or `configs/rulesets/<ruleset>.yaml` (depends on them), one value per line with a comment giving units, status, Q number and source. Load order: code defaults, placeholders, ruleset, problem config and its `extends:` chain, study variant.
 - **Why:** one place to edit a value, with every config picking it up.
 - **Applies in:** `config/loader.py`, `config/layer_files.py`.
-- **Source:** `docs/PLACEHOLDERS_RULESETS_PLAN.md`, 2026-10-22.
+- **Source:** `docs/development/PLACEHOLDERS_RULESETS_PLAN.md`, 2026-10-22.

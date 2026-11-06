@@ -1,6 +1,6 @@
 # AirCrafter lap modeller coupled to aero + mass (MDF); minimise the 3-lap time.
 # Schema: aircrafter2/problems/lap_mdo.py (LapMDOConfig, extends the aero_mass schema). SI units.
-# Values marked PLACEHOLDER are not USYD data (docs/OPEN_QUESTIONS.md). Shared placeholders (payload, boom, cargo
+# Values marked PLACEHOLDER are not USYD data (docs/PLACEHOLDERS.md). Shared placeholders (payload, boom, cargo
 # bay, minimum tube, n_crit): configs/placeholders.yaml; altitude, mission time: configs/rulesets/generic.yaml.
 
 placeholders: placeholders.yaml        # universal placeholders and assumptions (layer 2)
@@ -21,7 +21,7 @@ geometry:
   l_ht: 0.8              # m, PLACEHOLDER tail arm
   S_ht: 0.06             # m^2, PLACEHOLDER
   S_vt: 0.03             # m^2, PLACEHOLDER
-  x_spar: 0.25           # brief default
+  x_spar: 0.25           # default
 
 clmax_ratio_min: 1.44    # cruise at >= 1.2 V_stall
 wall_ratio_max: 0.2      # thin-wall validity of the tube equations

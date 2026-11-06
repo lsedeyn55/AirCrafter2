@@ -1,12 +1,12 @@
 # The 2025-26 DBF ruleset (Banner Towing Bush Plane): every value that depends on the competition rules, plus the
 # reference aircraft's components (Project Humpback, the 2025-26 USYD aircraft). Layer 3 (code defaults <
 # placeholders.yaml < this file < the problem config < the study variant), opt-in: the 2025-26 configs set
-# 'ruleset: rulesets/dbf_2025_26.yaml'. Plan: docs/RESULTS_2026_PLAN.md.
+# 'ruleset: rulesets/dbf_2025_26.yaml'. Plan: docs/development/RESULTS_2026_PLAN.md.
 #
 # One value per line, as a dotted path into the config schema. Comment: # <units>; <PLACEHOLDER | cited>; Q..; <source>
 # [R26] = 2026-DBF-Rules.pdf printed page ("N of 34"); [HB] = 2026 USYD DBF Design Report (Project Humpback), printed
 # page ("Page N of 60" = PDF page + 1) / table; [TM7] = THESIS/3_LITERATURE/26 competition/T-Motor AT7215/;
-# [APC] = APC-Propeller-RPM-Limits-rev5.pdf. PLACEHOLDER = not sourced (docs/OPEN_QUESTIONS.md).
+# [APC] = APC-Propeller-RPM-Limits-rev5.pdf. PLACEHOLDER = not sourced (docs/PLACEHOLDERS.md).
 #
 # Why Humpback's motor, ESC and pack are here and not in placeholders.yaml (where Woombah's are): placeholders.yaml
 # feeds every single-point and 2024-25 config, whose references must not move; the reference aircraft's components
@@ -19,7 +19,7 @@ altitude: 396.24                             # m = 1300 ft; cited; no Q; Wichita
 mission_time: 300.0                          # s; cited; no Q; 5-minute windows [R26 pp. 19-20]
 course.preset: dbf_2025_360_mid              # -; cited; no Q; [R26 p. 17] course figure: 360 deg turn halfway along the back (downwind) straight; turn markers 500 ft from the start line [R26 p. 18]
 course.pilot_reaction_time_s: 3.0            # s per lap; PLACEHOLDER; no Q; performance_modeller.m
-course.turn_drift: true                      # -; cited; no Q; turns drift with the wind (docs/RESULTS_2026_PLAN.md §4.7; decision 2026-10-26)
+course.turn_drift: true                      # -; cited; no Q; turns drift with the wind (docs/development/RESULTS_2026_PLAN.md §4.7; decision 2026-10-26)
 course.takeoff.in_mission_time: true         # -; cited; no Q; time starts when the throttle is advanced for the first take-off [R26 pp. 19-20]
 course.takeoff.start_offset_ft: 0.0          # ft; PLACEHOLDER; Q43; brake release on the start line
 takeoff_distance: 106.68                     # m = 350 ft; cited; no Q; Humpback's design input, "lower than actual runway length" [HB p. 12 Table 7]; the rules set no take-off limit [R26 p. 18]
@@ -41,7 +41,7 @@ propulsion.e_spec: 176.5                     # Wh/kg; cited; Q8; 97.68 Wh (GNB 8
 energy_reserve: 0.0                          # fraction of usable energy; cited; Q24; usable_fraction 0.8 already holds Humpback's single 20 % margin, 80 Wh of 100 Wh "to protect battery" [HB p. 12 Table 7]; 0.2 on top flew 64 % of the pack
 stability.x_motor: -0.5334                   # m = -21.0 in; cited; no Q; motor station from the wing LE [HB Table 36]
 
-# --- tails and stability (relaxed constraint set, docs/RESULTS_2026_PLAN.md §4.5) ---
+# --- tails and stability (relaxed constraint set, docs/development/RESULTS_2026_PLAN.md §4.5) ---
 stability.AR_ht: 4.0                         # -; cited; no Q; Humpback HS [HB p. 36]
 stability.AR_vt: 1.5                         # -; cited; no Q; Humpback VS [HB p. 36]
 stability.tc_tail: 0.101                     # -; cited; Q37; SD8020 [HB p. 27]: 10.1 % at 27.6 % chord from the UIUC coordinates (aerosandbox airfoil_database/sd8020.dat)
@@ -77,7 +77,7 @@ multipoint.payload_initial.n_c: 14.0         # cargo; cited; no Q; Humpback [HB 
 multipoint.payload_initial.L_banner: 197.0   # in; cited; no Q; Humpback's competition banner [HB p. 40]
 
 # --- uncertainty ---
-# Wichita in April (docs/RESULTS_2026_PLAN.md §4.6): mean 12.6 mph = 5.6 m/s (Weather Spark, Q39); [HB] 16.9 ft/s
+# Wichita in April (docs/development/RESULTS_2026_PLAN.md §4.6): mean 12.6 mph = 5.6 m/s (Weather Spark, Q39); [HB] 16.9 ft/s
 # (NWS normals, p. 32). Uniform 0-10 m/s (mean 5): the light designs' validity edge is the lift-off speed into the
 # wind (counted as the wind limit, separately from MDA failures). The direction is the shift from the course axis that
 # the Flight Line Judge set to the prevailing wind [R26 p. 17]: +/-30 deg, inside the daytime Pasquill classes (Q59).

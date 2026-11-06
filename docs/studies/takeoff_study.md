@@ -5,7 +5,7 @@
 Script: `studies/takeoff_study.py` (`run`, `woombah`, `wind`, `robust`, `resolution`, `reopt`, `report`). Its outputs are in
 `outputs/takeoff/`, which git ignores. Config: `configs/dbf2025_multipoint_takeoff.yaml`. It extends
 `dbf2025_multipoint.yaml` and switches `course.takeoff.in_mission_time` on. The model and its decisions are in
-`docs/TAKEOFF_COURSE_PLAN.md` and `docs/modules/mission.md`.
+`docs/development/TAKEOFF_COURSE_PLAN.md` and `docs/modules/mission.md`.
 
 Sections 1–8 are **analysis only**: every design is re-analysed at its published design variables. Section 9
 re-optimises the best deterministic case and the reduced-set RDO with take-off on; its runs are new files
@@ -98,9 +98,9 @@ with take-off on, against 28.46 s with it off.
     laps fall to 2.87–2.97.
   - That includes the RDO design: its calm-air M2 energy margin (2.3 kJ) was smaller than the take-off energy.
 - **The reserve is a placeholder.** The energy budget holds back 20 % of usable energy (`energy_reserve`, a
-  PLACEHOLDER, OPEN_QUESTIONS Q24), so these aircraft would finish M2 into the reserve. Against the model's own
+  PLACEHOLDER, PLACEHOLDERS Q24), so these aircraft would finish M2 into the reserve. Against the model's own
   constraints, though, they are infeasible.
-- **Re-optimising restores the energy almost for free (section 9).** I expected the re-analysis ΔF to be a lower
+- **Re-optimising restores the energy almost for free (section 9).** The re-analysis ΔF was expected to be a lower
   bound on the cost. It is not: the re-optimised best case scores 5.1200, slightly above its infeasible re-analysis
   (5.1194). The optimiser buys the energy back with a bigger M2 pack (1.03 → 1.07 Ah), not a slower M2.
 - **The M1 check doesn't change:** every design passes or fails it as before. M1 is far inside its window and energy.
@@ -146,7 +146,7 @@ Table 39 gives two readings of Woombah's M2 time [W p. 59]:
 - **138.1 s** in total;
 - **112.2 s** for 3 × the 37.4 s average lap.
 
-The 25.9 s gap is one of the inconsistencies `RESULTS_PLAN.md` §6 lists. Reading (a) is that 138.1 s is the scored
+The 25.9 s gap is one of the inconsistencies `docs/development/RESULTS_PLAN.md` §6 lists. Reading (a) is that 138.1 s is the scored
 time with take-off included.
 
 Here are the three cases of `validation_2025.md` §3, with take-off off and on:
@@ -234,13 +234,13 @@ value):
   - Its size is bounded by the share of samples near 7 m/s and by M3's weak dependence on lap 1 (0.04 of a lap per
     second of lap 1). The mean and p5 are probably affected in the third decimal at most, but this was not rerun.
 - **Take-off on:** the error is smaller at the same wind, because the in-air part starts 10 % faster.
-- **Fix, recorded in OPEN_QUESTIONS and not made:** more steps, or a distance grid clustered at the start of lap 1's
-  first straight. That would change the take-off-off numbers, so it would mean new reference files; it is outside
-  this brief.
+- **Fix, recorded in PLACEHOLDERS and not made:** more steps, or a distance grid clustered at the start of lap 1's
+  first straight. That would change the take-off-off numbers, so it would mean new reference files; it was left out of
+  this study.
 
 ## 7. Eq. 3.3 against the integrated ground roll
 
-See `docs/TAKEOFF_COURSE_PLAN.md` for the table.
+See `docs/development/TAKEOFF_COURSE_PLAN.md` for the table.
 - **Eq. 3.3's roll** (V_R = 1.2 V_stall, drag at C_L,max and T(0) throughout) is 10 % to 1.9× longer than the
   integrated roll.
 - **The constraint stays inactive:** every roll is far inside the 100 m take-off distance. `thrust_margin_static`
@@ -254,9 +254,9 @@ See `docs/TAKEOFF_COURSE_PLAN.md` for the table.
   proportion.
 - **Take-off throttle:** re-analysed at throttle 1.0 as an estimate. The M2 roll would be 30–45 % shorter, so ΔF would
   shrink by roughly that share. The energy finding of section 2 would get worse: at full throttle E_takeoff
-  rises by 4–38 %. A separate take-off throttle is not built (`docs/TAKEOFF_COURSE_PLAN.md`).
+  rises by 4–38 %. A separate take-off throttle is not built (`docs/development/TAKEOFF_COURSE_PLAN.md`).
 - **Not modelled:** rotation, transition, climb, and a start offset behind the line (default 0).
-- **Placeholders:** OPEN_QUESTIONS Q40–Q44 cover `CL_ground`, `k_lof`, the take-off throttle, the start offset and
+- **Placeholders:** PLACEHOLDERS Q40–Q44 cover `CL_ground`, `k_lof`, the take-off throttle, the start offset and
   climb. Q45 covers the step resolution.
 
 ## 9. Re-optimisation with take-off on

@@ -41,7 +41,7 @@ G&G scale the tails with the wing mass (Eqs. 34–35, `gg`, the default). The US
 their areal masses are consistent (docs/studies/mass_calibration_usyd.md §4). In `areal` mode f_ht and f_vt are not
 inputs, so an uncertain parameter of that name needs `gg` (the published full-set RDO configs pin it).
 
-**Build-mass factor `f_build`** (not G&G; default 1, docs/RDO_REDUCED_PLAN.md). One multiplier on the whole
+**Build-mass factor `f_build`** (not G&G; default 1, docs/development/RDO_REDUCED_PLAN.md). One multiplier on the whole
 structural mass: how heavy the airframe comes out when built. It multiplies m_wing, m_tb, m_cb and m_gear, and the
 tails: with `gg` tails they follow m_wing, and with `areal` tails f_build multiplies them directly. Together these are
 the structure of Eq. 40 without m_sys, m_ballast and the payload. It acts inside the closure, so the loads, the spar
@@ -50,7 +50,7 @@ see it. The bare-wing breakdown (m_tube … m_film, m_wing_bare) is not scaled. 
 to the sum in `MassSum` is what lets the CG see it. At f_build = 1 every result is reproduced bit for bit
 (`tests/test_rdo_reduced.py`). **Overlap with f_tb:** both scale the tail boom. This is accepted: f_tb carries the CG
 effect of mass at the tail, f_build the overall build. Since the USYD calibration the factors carry the construction
-bias, and f_build's nominal is 1 with the leave-one-out spread (OPEN_QUESTIONS Q39).
+bias, and f_build's nominal is 1 with the leave-one-out spread (PLACEHOLDERS Q39).
 
 **Closure.** The group uses block Gauss–Seidel with Aitken acceleration when standalone. Inside the full model it
 is a subsystem of the MDF Newton solver.
@@ -111,7 +111,7 @@ switch defaulting to off would under-size t_T (PLAN §6h T3). With both defaults
 - **Eq. 110 deflection:** uses nW and ignores the point relief, which is conservative.
 - **Eq. 117 divergence:** unchanged.
 - **Thrust and motor-torque loads** on the wing are not modelled (limitation).
-- **Batteries** stay at the fuselage `x_batt`. Wing-mounted packs are an option for later (OPEN_QUESTIONS Q27).
+- **Batteries** stay at the fuselage `x_batt`. Wing-mounted packs are an option for later (PLACEHOLDERS Q27).
 
 The partials of the new terms are analytic (`loads.py`) and checked with complex step
 (`tests/test_twin_motor.py`). With no wing units (`n_motor_pairs = 0`) the component has its original inputs, and
@@ -147,7 +147,7 @@ Every problem config loads `configs/placeholders.yaml` above it. That file holds
 
 So the factors are large (k_wing ≈ 2) and absorb the construction difference. They hold for this construction only.
 With three aircraft the evidence is the leave-one-out scatter (about ±25 % on the structure), and the fuselage and
-gear factors rest on two aircraft each (OPEN_QUESTIONS Q46).
+gear factors rest on two aircraft each (PLACEHOLDERS Q46).
 
 ## Verification
 

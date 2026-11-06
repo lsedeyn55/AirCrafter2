@@ -1,4 +1,4 @@
-"""MDA robustness (docs/MDA_ROBUSTNESS_PLAN.md): RetryNewton's continuation fallback (robust mode, F1) and the warm
+"""MDA robustness (docs/development/MDA_ROBUSTNESS_PLAN.md): RetryNewton's continuation fallback (robust mode, F1) and the warm
 path of studies/results_2026.py optimise (F2), both behind the problem-config switch mda_robust (default false).
 
 The low-speed designs (tests/data/mda_low_speed_designs.json) are the cold-start smoke's failing SLSQP step (iter3)
@@ -151,7 +151,7 @@ def test_slsqp_step_converges_by_continuation():
 
     Not asserted: the switch-off failure. On the development machine (3 threads) M2's diverged attempt reaches a
     singular Jacobian there, and OpenMDAO's DirectSolver then spends ~10 min and > 3 GB on its SVD diagnosis before a
-    RuntimeError (docs/MDA_ROBUSTNESS_PLAN.md, status); elsewhere it ends in AnalysisError."""
+    RuntimeError (docs/development/MDA_ROBUSTNESS_PLAN.md, status); elsewhere it ends in AnalysisError."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         p = _problem(True)

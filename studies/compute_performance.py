@@ -5,7 +5,7 @@ on the 2024-25 problem (docs/studies/results/compute_performance.md).
     .venv/bin/python studies/compute_performance.py refine     # AirCrafter 1.0 local grid refinement (~25 min)
     .venv/bin/python studies/compute_performance.py report
 
-Protocol (docs/RESULTS_PLAN.md, the brief's "Computational performance protocol"): one machine, nothing else running,
+Protocol (docs/development/RESULTS_PLAN.md, its "Computational performance protocol"): one machine, nothing else running,
 on a clean committed tree, after the results runs. Each measurement is its own process: single-threaded
 (OMP/OPENBLAS/MKL_NUM_THREADS = 1, MATLAB -singleCompThread) for the main table, plus one row per method at default
 threading. Median and range of 5 repeats for runs under 10 min, 3 for longer. AirCrafter 1.0's per-point progress
@@ -267,7 +267,7 @@ def _repeats(first_wall):
 
 
 def run_reduced():
-    """The reduced mass-and-wind set (docs/RDO_REDUCED_PLAN.md): RDO at d = 4 (RDO_MAXITER SLSQP iterations, 5
+    """The reduced mass-and-wind set (docs/development/RDO_REDUCED_PLAN.md): RDO at d = 4 (RDO_MAXITER SLSQP iterations, 5
     repeats) for the cost-against-d table, and one complete RDO from the deterministic optimum (the main run, clean)."""
     r = _measure("rdor_d4", 0, ["rdo", "--d", "4", "--set", "reduced"])
     for i in range(1, _repeats(r["wall_s"])):

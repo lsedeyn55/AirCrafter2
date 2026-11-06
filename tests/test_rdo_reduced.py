@@ -1,6 +1,6 @@
 """RDO with the reduced uncertainty set (mass and wind): the build-mass factor f_build and its RDO composition.
 
-docs/RDO_REDUCED_PLAN.md. f_build = 1 must reproduce every existing result bit for bit: compared with == against the
+docs/development/RDO_REDUCED_PLAN.md. f_build = 1 must reproduce every existing result bit for bit: compared with == against the
 regression references (tests/data/*_reference.json) and the published 2024-25 nominal evaluation (frozen from
 results_2025.json at ec639dd into tests/data/multipoint_nominal_reference.json), none of them regenerated.
 """

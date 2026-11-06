@@ -258,7 +258,7 @@ def test_dv_bound_rules_caption():
     assert CV.dv_bound_rules(load("full_mdo.yaml")) == []
 
 
-# --- checkpoint 2: the tab's edits, on/off, saving -----------------------------------------------------------------------
+# --- the tab's edits, on/off, saving -----------------------------------------------------------------------
 
 def _driver(cfg):
     prob = CV.setup_problem(cfg)

@@ -1,6 +1,8 @@
-# Take-off in the mission time and an editable course: plan (checkpoint 1)
+# Take-off in the mission time and an editable course
 
-Brief: `4_PROMPTS/aircrafter2_takeoff_course_prompt.md`. Branch `takeoff-course` from `rdo-reduced` (`30411f4`).
+Design notes for counting the take-off ground roll in the mission time and making the course editable (branch
+`takeoff-course`): why, what was built, the ground lift coefficient, the check against the integrated ground roll,
+verification and re-optimisation.
 Re-analysis data: `outputs/takeoff/reanalysis.json` (`studies/takeoff_study.py`). Nothing published was rerun or
 overwritten.
 
@@ -179,7 +181,7 @@ complex evaluation).
 - The full 11-case propulsion enumeration plus the bottle runs: about 4–5 h on 4 workers.
 - The reduced-set RDO (3 starts): about 1.5 h.
 
-## Open questions (OPEN_QUESTIONS Q40–Q45)
+## Open questions (PLACEHOLDERS Q40–Q45)
 
 - `CL_ground` (0.15, PLACEHOLDER) and `k_lof` (1.1, from the MATLAB comment, not a measurement).
 - The take-off throttle.
@@ -190,9 +192,9 @@ complex evaluation).
 
 ## Status
 
-- **Checkpoint 1** (`7fa5148`): model, course data and presets, verification.
-- **Checkpoint 2** (`77ff476`): re-analysis (`docs/studies/takeoff_study.md`), wording fixes, docs and OPEN_QUESTIONS.
-- **Checkpoint 3:** the UI.
+- **Stage 1** (`7fa5148`): model, course data and presets, verification.
+- **Stage 2** (`77ff476`): re-analysis (`docs/studies/takeoff_study.md`), wording fixes, docs and PLACEHOLDERS.
+- **Stage 3:** the UI.
   - **Mission panel:** the Mission column (mission time, take-off, `mu_roll`, the Eq. 3.3 distance, reaction time) and
     the course editor.
   - **Course editor:** preset selector, leg table with an order column and "Add leg" / "Sort by order", a different

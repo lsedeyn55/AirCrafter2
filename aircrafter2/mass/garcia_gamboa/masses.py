@@ -11,13 +11,13 @@ from ...analytic import AnalyticComponent, D
 
 
 BUILD_NOTE = """f_build (default 1, not G&G) is one multiplier on the whole structural mass, i.e. how heavy the airframe
-comes out when built (docs/RDO_REDUCED_PLAN.md). It scales m_wing, m_tb, m_cb and m_gear, and the tails: with
+comes out when built (docs/development/RDO_REDUCED_PLAN.md). It scales m_wing, m_tb, m_cb and m_gear, and the tails: with
 tail_mass_model gg they follow m_wing (m_ht, m_vt = f S/S_wing m_wing), with areal (m = a S) they are scaled
 directly. It acts inside the mass closure: the loads, the sizing, the total mass and the CG all see it. The breakdown
 of the bare wing (m_tube ... m_film, m_wing_bare) is not scaled. f_tb also scales the boom (overlap accepted: f_tb
 carries the CG effect at the tail, f_build the overall build). Since the USYD calibration
 (docs/studies/mass_calibration_usyd.md) the correction factors carry the construction bias, and f_build stays at 1
-with its spread from the leave-one-out errors (OPEN_QUESTIONS Q39)."""
+with its spread from the leave-one-out errors (PLACEHOLDERS Q39)."""
 
 
 class WingMass(AnalyticComponent):

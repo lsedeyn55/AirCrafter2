@@ -57,7 +57,7 @@ def main():
           f"Default adopted in `configs/mass_garcia_gamboa_2022.yaml`: t_tb_min = 1.0 mm (USYD tube walls,",
           f"Spar Sizer 3.1) with f_tb = {combined[1.0e-3]:.3f}. The boom term is then essentially 'a CFRP tube of",
           "the boom's diameter and length, times ~1'. Recalibrate on USYD aircraft when data exist",
-          "(OPEN_QUESTIONS Q14). The Table 15 verification keeps the paper's basis (no minimum wall,",
+          "(PLACEHOLDERS Q14). The Table 15 verification keeps the paper's basis (no minimum wall,",
           "f_tb = 12.81)."]
     out = ROOT / "docs" / "studies" / "tail_boom_calibration.md"
     out.write_text("\n".join(L))

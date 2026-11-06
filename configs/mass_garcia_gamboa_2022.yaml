@@ -30,9 +30,9 @@ inputs:
   # Load case (Table 3 values for the tube-spar aircraft; USYD values are an open question, Q12)
   n: 2.0                       # Table 3 (UBI11, GRA13, UBI15)
   div_speed_factor: 1.2        # text after Eq. 47
-  x_spar: 0.25                 # brief default; Eq. 117 vanishes at the quarter chord
+  x_spar: 0.25                 # default; Eq. 117 vanishes at the quarter chord
   # The spar and tail-boom materials (Table 13), delta_tip_ratio and theta_tb_max (Table 3), the tube fit (k_fill,
-  # clearance) and t_tube_min are in configs/placeholders.yaml (docs/PLACEHOLDERS_RULESETS_PLAN.md). A file that
+  # clearance) and t_tube_min are in configs/placeholders.yaml (docs/development/PLACEHOLDERS_RULESETS_PLAN.md). A file that
   # loads this one alone (configs/verification/) gets the inputs.py defaults, which are the same values.
   # Balsa ribs and LE/TE stringers (Table 13)
   sigma_balsa: 1.0e+7          # Table 13

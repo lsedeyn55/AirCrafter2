@@ -3,7 +3,7 @@
 The first Monte Carlos (fr_mc_*, moved to outputs/results_2026/superseded_worker_failure/) lost 17-30 % of their samples to
 an analysis failure that has nothing to do with the sample: after about 250-280 evaluations, a worker's problem answers
 every later sample with "singular Jacobian in 'points.M3.mda'", and the retry from the nominal state fails too
-(RESULTS_LOG.md, Decision 13). `aircrafter2/robustness/sampling.evaluate` keeps one pool for all the samples, and model code
+(docs/development/RESULTS_LOG.md, Decision 13). `aircrafter2/robustness/sampling.evaluate` keeps one pool for all the samples, and model code
 can't change after the freeze, so this wraps it: at most BATCH samples per pool, about 128 per worker, then results_2026.mc
 runs as frozen. Same rows, same seed, same outputs.
 

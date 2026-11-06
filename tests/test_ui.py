@@ -129,7 +129,7 @@ def test_streamlit_course_validation_blocks_run():
     assert any("shipped preset" in e.value for e in at.error)
 
 
-# --- placeholders and ruleset tabs (docs/PLACEHOLDERS_RULESETS_PLAN.md) ---------------------------------------------
+# --- placeholders and ruleset tabs (docs/development/PLACEHOLDERS_RULESETS_PLAN.md) ---------------------------------------------
 
 CONFIGS = Path(__file__).resolve().parents[1] / "configs"
 PH_KEY = "layer_full_mdo.yaml_placeholders.yaml"

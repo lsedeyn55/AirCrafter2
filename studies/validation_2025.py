@@ -417,7 +417,7 @@ def report():
         w_("\nTable 34's M2 total (26.02 lb) is 2.21 lb above the sum of its own rows, and its M3 total omits the empty "
            "bottles the rules require; the flight-test take-off masses (Table 38: 26.9 and 13.7 lb) include ballast "
            "added after P1 [W p. 60]. The model masses are the full-throttle point's (the closure re-sizes the "
-           "structure at the closed take-off mass). Table 34 has no servo row (OPEN_QUESTIONS Q48).")
+           "structure at the closed take-off mass). Table 34 has no servo row (PLACEHOLDERS Q48).")
         if cal:
             f1, f3 = cal["results"]["n_panels_1"]["factors"], cal["results"]["n_panels_3"]["factors"]
             w_(f"\n**Superseded: the Woombah-only refit** (Eq. 127, one aircraft; `configs/mass_usyd_woombah.yaml`, "
@@ -427,7 +427,7 @@ def report():
                "f_wing^2, PLAN G5). Five factors fit five masses exactly: interpolation, not evidence. Replaced by "
                "the three-aircraft calibration, whose Woombah-out factors give the out-of-sample column.\n")
         w_("## 3. Flight performance against Table 39\n")
-        w_("Table 39 is not internally consistent (docs/RESULTS_PLAN.md §6), so each quantity is compared with each "
+        w_("Table 39 is not internally consistent (docs/development/RESULTS_PLAN.md §6), so each quantity is compared with each "
            "reading. M2 'time' readings: 112.2 s (3 × the 37.4 s average lap), 138.1 s (the total flight time, take-off "
            "included). Average speeds are over 3 × 3000 ft. Columns: the mass model (G&G, out-of-sample), then the "
            "case.\n")
