@@ -5,6 +5,17 @@ aircraft: a small fixed-wing electric RC aircraft, optimised for competition mis
 successor to AirCrafter 1.0 (MATLAB grid search, J. Kallarackel, 2025), and adds coupled aerodynamics, a
 structure-based mass model, airfoil optimisation, propulsion, stability and gradient-based optimisation.
 
+**Thesis:** this repository accompanies the undergraduate honours thesis *AirCrafter 2.0: A Gradient-Based
+Multidisciplinary Design Optimisation Framework for the AIAA Design/Build/Fly Competition* (Lucas Sedeyn, School of
+Aerospace, Mechanical and Mechatronic Engineering, The University of Sydney, 2026; supervisor Dr Bingran Wang). Its
+results were run at the tag `results-2026-final`; the branch `thesis-results-2026` holds the 2025-26 result pages
+and `rerun-2025-final` the 2024-25 re-run. The thesis's Reproducibility appendix lists every command.
+
+**Not included:** AirCrafter 1.0, the USYD DBF team's MATLAB tool, is the team's code and is not in this public
+repository. The steps that run it (the AirCrafter 1.0 sweeps, timings and `tests/test_aircrafter1.py`) need a copy
+in `reference/aircrafter1/`, available from the team; everything else runs without it. Its outputs used by the
+thesis are kept in `docs/studies/`.
+
 **Status:** the full model and all its sub-problems are implemented. Inputs marked `PLACEHOLDER` in the configs are not USYD data yet
 (see `docs/OPEN_QUESTIONS.md`); replace them before trusting the numbers.
 
@@ -85,7 +96,7 @@ the validation case. Each script writes its page and JSON in `docs/studies/resul
 .venv/bin/python studies/results_index.py                  # docs/studies/results/INDEX.md
 ```
 
-AirCrafter 1.0 (MATLAB) runs from `reference/aircrafter1/` (`run_2025.m`, `time_2025.m`; see its README).
+AirCrafter 1.0 (MATLAB) runs from `reference/aircrafter1/` (`run_2025.m`, `time_2025.m`), which is not in the public repository (see "Not included" above).
 
 ### Where outputs go
 
@@ -283,7 +294,7 @@ The `aircrafter2/` rows run in data-flow order, from the design variables to the
 | `configs/` | run configs (`full_mdo.yaml` is the full model), `placeholders.yaml`, `rulesets/`, shared mass inputs, `verification/` paper cases |
 | `examples/` | user-facing demos, one per problem (`oval_lap`, `aero_mass`, `lap_mdo`, `full_mdo`) |
 | `studies/` | thesis and paper scripts (thesis figures, twin-motor study, OpenVSP mock-ups, tail-boom calibration, 2024-25 validation, results, computational performance) |
-| `reference/aircrafter1/` | AirCrafter 1.0: shipped copy, the switchable copy with its 2024-25 mode, baseline checks |
+| `reference/aircrafter1/` | AirCrafter 1.0 (not in the public repository): shipped copy, the switchable copy with its 2024-25 mode, baseline checks |
 | `verification/` | verification harnesses (aero, mass, NeuralFoil steps), `matlab/` reference, `twin/` checks |
 | `tests/` | pytest suite |
 | `docs/` | see Documentation above |
@@ -311,3 +322,6 @@ installed into the project without root:
 To recreate it on another machine, repeat these steps. `pyproject.toml` does not list OpenVSP, because it can't
 be installed from an index.
 
+## Licence
+
+MIT (see `LICENSE`). AirCrafter 1.0 and the APC propeller data are not covered and not included.
